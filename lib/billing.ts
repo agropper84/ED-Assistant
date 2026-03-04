@@ -4,7 +4,7 @@ export interface BillingCode {
   fee: string;
 }
 
-export type BillingCategory = 'base' | 'visitType' | 'premium' | 'additional';
+export type BillingCategory = 'visitType' | 'premium' | 'additional';
 
 export interface BillingItem {
   code: string;
@@ -16,7 +16,6 @@ export interface BillingItem {
 
 // Category definitions for UI grouping
 export const BILLING_CATEGORIES: Record<BillingCategory, { label: string; codes: string[] }> = {
-  base: { label: 'Base Fee', codes: ['0145', '0146'] },
   visitType: { label: 'Visit Type', codes: ['1100', '1101', '0081'] },
   premium: { label: 'Time Premium', codes: ['1153', '1154'] },
   additional: { label: 'Additional', codes: [] }, // everything else
@@ -41,8 +40,6 @@ const DEFAULT_CODES: Record<string, { description: string; fee: string }> = {
   '5581': { description: 'Thumb spica cast', fee: '45.20' },
   '0900': { description: 'WCB 1st report / 1st visit', fee: '' },
   'M0915': { description: 'WCB FAF', fee: '' },
-  '0146': { description: 'Base Fee 2300-0800', fee: '119.60' },
-  '0145': { description: 'Base Fee 0800-2300', fee: '81.80' },
   '750': { description: 'Lumbar Puncture', fee: '60.00' },
   '215': { description: 'Punch Biopsy', fee: '47.50' },
 };
@@ -96,7 +93,6 @@ export function removeBillingCode(code: string): void {
 
 /** Determine billing category for a given code */
 export function getCategoryForCode(code: string): BillingCategory {
-  if (BILLING_CATEGORIES.base.codes.includes(code)) return 'base';
   if (BILLING_CATEGORIES.visitType.codes.includes(code)) return 'visitType';
   if (BILLING_CATEGORIES.premium.codes.includes(code)) return 'premium';
   return 'additional';
@@ -117,17 +113,6 @@ export function getAutoBilling(timestamp: string, isWeekend: boolean): BillingIt
   }
 
   const items: BillingItem[] = [];
-
-  // Base fee: 0800-2300 → 0145, 2300-0800 → 0146
-  if (hour >= 0) {
-    if (hour >= 8 && hour < 23) {
-      items.push({ code: '0145', description: 'Base Fee 0800-2300', fee: '81.80', unit: '1', category: 'base' });
-    } else {
-      items.push({ code: '0146', description: 'Base Fee 2300-0800', fee: '119.60', unit: '1', category: 'base' });
-    }
-  } else {
-    items.push({ code: '0145', description: 'Base Fee 0800-2300', fee: '81.80', unit: '1', category: 'base' });
-  }
 
   // Time premium
   if (hour >= 0) {
@@ -205,10 +190,9 @@ export function calculateTotal(items: BillingItem[]): string {
   return total > 0 ? total.toFixed(2) : '';
 }
 
-/** Get additional codes (everything not in base/visitType/premium) */
+/** Get additional codes (everything not in visitType/premium) */
 export function getAdditionalCodes(): BillingCode[] {
   const categoryCodes = new Set([
-    ...BILLING_CATEGORIES.base.codes,
     ...BILLING_CATEGORIES.visitType.codes,
     ...BILLING_CATEGORIES.premium.codes,
   ]);

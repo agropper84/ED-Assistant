@@ -1,4 +1,5 @@
 import { google } from 'googleapis';
+import { BillingItem, calculateTotal } from '@/lib/billing';
 
 // Column mappings matching the Apps Script CONFIG
 export const COLUMNS = {
@@ -335,7 +336,139 @@ export async function setShiftTimes(
   return { start, end, hours: hoursStr, fee: currentFee, total: totalStr };
 }
 
-/** Clear all data in a patient row (for deletion) */
+// --- Multi-row billing helpers ---
+
+/** Get the numeric sheetId for a given sheet name (needed for insert/delete row operations) */
+async function getSheetIdByName(sheetName: string): Promise<number> {
+  const sheets = getSheets();
+  const spreadsheetId = getSpreadsheetId();
+  const spreadsheet = await sheets.spreadsheets.get({ spreadsheetId });
+  const sheetMeta = spreadsheet.data.sheets?.find(
+    (s: any) => s.properties.title === sheetName
+  );
+  if (!sheetMeta) throw new Error(`Sheet "${sheetName}" not found`);
+  return sheetMeta.properties!.sheetId!;
+}
+
+/** Count continuation rows below a patient row (rows with billing data but no name/transcript) */
+async function countContinuationRows(rowIndex: number, sheetName: string): Promise<number> {
+  const sheets = getSheets();
+  const spreadsheetId = getSpreadsheetId();
+  const startRow = rowIndex + 1;
+
+  try {
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId,
+      range: `'${sheetName}'!A${startRow}:S${startRow + 20}`,
+    });
+
+    const rows = response.data.values || [];
+    let count = 0;
+    for (const row of rows) {
+      const name = row[COLUMNS.PATIENT_NAME]?.toString() || '';
+      const transcript = row[COLUMNS.TRANSCRIPT]?.toString() || '';
+      const procCode = row[COLUMNS.PROC_CODE]?.toString() || '';
+      if (!name && !transcript && procCode) {
+        count++;
+      } else {
+        break;
+      }
+    }
+    return count;
+  } catch {
+    return 0;
+  }
+}
+
+/** Save billing items as multi-row data (first item on patient row, rest on continuation rows below) */
+export async function saveBillingRows(
+  rowIndex: number,
+  items: BillingItem[],
+  sheetName?: string
+): Promise<void> {
+  const sheet = sheetName || getTodaySheetName();
+  const sheets = getSheets();
+  const spreadsheetId = getSpreadsheetId();
+
+  const existingCont = await countContinuationRows(rowIndex, sheet);
+  const neededCont = Math.max(0, items.length - 1);
+
+  // Insert or delete continuation rows to match
+  if (neededCont > existingCont) {
+    const toInsert = neededCont - existingCont;
+    const sheetId = await getSheetIdByName(sheet);
+    await sheets.spreadsheets.batchUpdate({
+      spreadsheetId,
+      requestBody: {
+        requests: [{
+          insertDimension: {
+            range: {
+              sheetId,
+              dimension: 'ROWS',
+              startIndex: rowIndex, // 0-indexed = after patient row (rowIndex is 1-indexed)
+              endIndex: rowIndex + toInsert,
+            },
+            inheritFromBefore: false,
+          },
+        }],
+      },
+    });
+  } else if (neededCont < existingCont) {
+    const toDelete = existingCont - neededCont;
+    const sheetId = await getSheetIdByName(sheet);
+    await sheets.spreadsheets.batchUpdate({
+      spreadsheetId,
+      requestBody: {
+        requests: [{
+          deleteDimension: {
+            range: {
+              sheetId,
+              dimension: 'ROWS',
+              startIndex: rowIndex, // first continuation row (0-indexed)
+              endIndex: rowIndex + toDelete,
+            },
+          },
+        }],
+      },
+    });
+  }
+
+  // Build batch data for all billing rows
+  const batchData: { range: string; values: string[][] }[] = [];
+
+  if (items.length === 0) {
+    // Clear billing columns on patient row
+    batchData.push({
+      range: `'${sheet}'!L${rowIndex}:P${rowIndex}`,
+      values: [['', '', '', '', '']],
+    });
+  } else {
+    for (let i = 0; i < items.length; i++) {
+      const targetRow = rowIndex + i; // i=0 is patient row, i>0 are continuation rows
+      const lineTotal = '';  // individual line totals left blank
+      batchData.push({
+        range: `'${sheet}'!L${targetRow}:P${targetRow}`,
+        values: [[items[i].description, items[i].code, items[i].fee, items[i].unit || '1', lineTotal]],
+      });
+    }
+    // Write grand total on patient row column P
+    const grandTotal = calculateTotal(items);
+    batchData.push({
+      range: `'${sheet}'!P${rowIndex}`,
+      values: [[grandTotal]],
+    });
+  }
+
+  await sheets.spreadsheets.values.batchUpdate({
+    spreadsheetId,
+    requestBody: {
+      valueInputOption: 'USER_ENTERED',
+      data: batchData,
+    },
+  });
+}
+
+/** Clear all data in a patient row and delete any continuation rows below */
 export async function clearPatientRow(
   rowIndex: number,
   sheetName?: string
@@ -343,6 +476,27 @@ export async function clearPatientRow(
   const sheet = sheetName || getTodaySheetName();
   const sheets = getSheets();
   const spreadsheetId = getSpreadsheetId();
+
+  // Delete continuation rows first
+  const contCount = await countContinuationRows(rowIndex, sheet);
+  if (contCount > 0) {
+    const sheetId = await getSheetIdByName(sheet);
+    await sheets.spreadsheets.batchUpdate({
+      spreadsheetId,
+      requestBody: {
+        requests: [{
+          deleteDimension: {
+            range: {
+              sheetId,
+              dimension: 'ROWS',
+              startIndex: rowIndex, // 0-indexed = first continuation row
+              endIndex: rowIndex + contCount,
+            },
+          },
+        }],
+      },
+    });
+  }
 
   await sheets.spreadsheets.values.clear({
     spreadsheetId,
@@ -352,7 +506,7 @@ export async function clearPatientRow(
 
 // --- Patient CRUD operations (now date-sheet aware) ---
 
-/** Fetch all patients from a specific date sheet */
+/** Fetch all patients from a specific date sheet (merges continuation rows for multi-row billing) */
 export async function getPatients(sheetName?: string): Promise<Patient[]> {
   const sheet = sheetName || getTodaySheetName();
   const sheets = getSheets();
@@ -367,31 +521,75 @@ export async function getPatients(sheetName?: string): Promise<Patient[]> {
 
   const response = await sheets.spreadsheets.values.get({
     spreadsheetId,
-    range: `'${sheet}'!A${DATA_START_ROW}:Z100`,
+    range: `'${sheet}'!A${DATA_START_ROW}:AA200`,
   });
 
   const rows = response.data.values || [];
+  const patients: Patient[] = [];
 
-  return rows
-    .map((row, index) => rowToPatient(row, index + DATA_START_ROW, sheet))
-    .filter(p => p.name || p.transcript);
+  for (let i = 0; i < rows.length; i++) {
+    const row = rows[i];
+    const name = row[COLUMNS.PATIENT_NAME]?.toString() || '';
+    const transcript = row[COLUMNS.TRANSCRIPT]?.toString() || '';
+    const procCode = row[COLUMNS.PROC_CODE]?.toString() || '';
+
+    if (name || transcript) {
+      // Patient row
+      patients.push(rowToPatient(row, i + DATA_START_ROW, sheet));
+    } else if (procCode && patients.length > 0) {
+      // Continuation row — merge billing into previous patient
+      const prev = patients[patients.length - 1];
+      const desc = row[COLUMNS.VISIT_PROCEDURE]?.toString() || '';
+      const fee = row[COLUMNS.FEE]?.toString() || '';
+      const unit = row[COLUMNS.UNIT]?.toString() || '';
+      prev.visitProcedure = prev.visitProcedure ? `${prev.visitProcedure}\n${desc}` : desc;
+      prev.procCode = prev.procCode ? `${prev.procCode}\n${procCode}` : procCode;
+      prev.fee = prev.fee ? `${prev.fee}\n${fee}` : fee;
+      prev.unit = prev.unit ? `${prev.unit}\n${unit}` : unit;
+    }
+  }
+
+  return patients;
 }
 
-/** Get a single patient by row index and sheet name */
+/** Get a single patient by row index and sheet name (includes continuation rows for billing) */
 export async function getPatient(rowIndex: number, sheetName?: string): Promise<Patient | null> {
   const sheet = sheetName || getTodaySheetName();
   const sheets = getSheets();
   const spreadsheetId = getSpreadsheetId();
 
+  // Read patient row + up to 20 continuation rows below
   const response = await sheets.spreadsheets.values.get({
     spreadsheetId,
-    range: `'${sheet}'!A${rowIndex}:Z${rowIndex}`,
+    range: `'${sheet}'!A${rowIndex}:AA${rowIndex + 20}`,
   });
 
   const rows = response.data.values || [];
   if (rows.length === 0) return null;
 
-  return rowToPatient(rows[0], rowIndex, sheet);
+  const patient = rowToPatient(rows[0], rowIndex, sheet);
+
+  // Merge continuation rows
+  for (let i = 1; i < rows.length; i++) {
+    const row = rows[i];
+    const name = row[COLUMNS.PATIENT_NAME]?.toString() || '';
+    const transcript = row[COLUMNS.TRANSCRIPT]?.toString() || '';
+    const procCode = row[COLUMNS.PROC_CODE]?.toString() || '';
+
+    if (!name && !transcript && procCode) {
+      const desc = row[COLUMNS.VISIT_PROCEDURE]?.toString() || '';
+      const fee = row[COLUMNS.FEE]?.toString() || '';
+      const unit = row[COLUMNS.UNIT]?.toString() || '';
+      patient.visitProcedure = patient.visitProcedure ? `${patient.visitProcedure}\n${desc}` : desc;
+      patient.procCode = patient.procCode ? `${patient.procCode}\n${procCode}` : procCode;
+      patient.fee = patient.fee ? `${patient.fee}\n${fee}` : fee;
+      patient.unit = patient.unit ? `${patient.unit}\n${unit}` : unit;
+    } else {
+      break;
+    }
+  }
+
+  return patient;
 }
 
 /** Update specific columns for a patient */
@@ -439,7 +637,7 @@ export async function updatePatientFields(
   });
 }
 
-/** Find the next empty row in a sheet */
+/** Find the next empty row in a sheet (skips continuation rows) */
 export async function getNextEmptyRow(sheetName?: string): Promise<number> {
   const sheet = sheetName || getTodaySheetName();
   const sheets = getSheets();
@@ -447,13 +645,17 @@ export async function getNextEmptyRow(sheetName?: string): Promise<number> {
 
   const response = await sheets.spreadsheets.values.get({
     spreadsheetId,
-    range: `'${sheet}'!C${DATA_START_ROW}:C100`,
+    range: `'${sheet}'!A${DATA_START_ROW}:S200`,
   });
 
   const rows = response.data.values || [];
 
   for (let i = 0; i < rows.length; i++) {
-    if (!rows[i] || !rows[i][0]) {
+    const name = rows[i]?.[COLUMNS.PATIENT_NAME]?.toString() || '';
+    const transcript = rows[i]?.[COLUMNS.TRANSCRIPT]?.toString() || '';
+    const procCode = rows[i]?.[COLUMNS.PROC_CODE]?.toString() || '';
+    // A truly empty row has no name, no transcript, and no proc code
+    if (!name && !transcript && !procCode) {
       return DATA_START_ROW + i;
     }
   }

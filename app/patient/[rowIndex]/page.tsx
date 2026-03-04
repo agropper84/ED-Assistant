@@ -15,7 +15,7 @@ import { VoiceRecorder } from '@/components/VoiceRecorder';
 import { getStyleGuide, addExample } from '@/lib/style-guide';
 import {
   BillingItem,
-  parseBillingItems, serializeBillingItems,
+  parseBillingItems,
 } from '@/lib/billing';
 import { BillingSection } from '@/components/BillingSection';
 
@@ -155,17 +155,12 @@ export default function PatientPage() {
 
   const handleBillingSave = async (items: BillingItem[], comments?: string) => {
     setBillingItems(items);
-    const serialized = serializeBillingItems(items);
     try {
       await fetch(`/api/patients/${rowIndex}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          visitProcedure: serialized.visitProcedure,
-          procCode: serialized.procCode,
-          fee: serialized.fee,
-          unit: serialized.unit,
-          total: serialized.total,
+          _billingItems: items,
           ...(comments !== undefined ? { comments } : {}),
           _sheetName: sheetName,
         }),

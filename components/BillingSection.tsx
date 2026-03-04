@@ -97,7 +97,6 @@ function BillingBody({
   const additionalCodes = getAdditionalCodes();
   const total = calculateTotal(billingItems);
 
-  const currentBase = billingItems.find(i => i.category === 'base');
   const currentVisit = billingItems.find(i => i.category === 'visitType');
   const currentPremium = billingItems.find(i => i.category === 'premium');
   const additionalItems = billingItems.filter(i => i.category === 'additional');
@@ -172,29 +171,6 @@ function BillingBody({
           )}
         </div>
       )}
-
-      {/* Base Fee Toggle */}
-      <div>
-        <label className="block text-xs font-medium text-gray-500 mb-1">Base Fee</label>
-        <div className="flex gap-2">
-          <button
-            onClick={() => setCategoryItem('base', { code: '0145', description: 'Base Fee 0800-2300', fee: '81.80', unit: '1', category: 'base' })}
-            className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-              currentBase?.code === '0145' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-            }`}
-          >
-            0800-2300 ($81.80)
-          </button>
-          <button
-            onClick={() => setCategoryItem('base', { code: '0146', description: 'Base Fee 2300-0800', fee: '119.60', unit: '1', category: 'base' })}
-            className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-              currentBase?.code === '0146' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-            }`}
-          >
-            2300-0800 ($119.60)
-          </button>
-        </div>
-      </div>
 
       {/* Visit Type Toggle */}
       <div>

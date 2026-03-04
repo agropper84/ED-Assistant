@@ -9,7 +9,7 @@ import { PatientDataModal } from '@/components/PatientDataModal';
 import { InlineBilling } from '@/components/BillingSection';
 import {
   BillingItem,
-  parseBillingItems, serializeBillingItems,
+  parseBillingItems,
 } from '@/lib/billing';
 import {
   Plus, RefreshCw, Loader2, ChevronLeft, ChevronRight,
@@ -271,17 +271,12 @@ export default function HomePage() {
   };
 
   const handleDashboardBillingSave = async (patient: Patient, items: BillingItem[], comments?: string) => {
-    const serialized = serializeBillingItems(items);
     try {
       await fetch(`/api/patients/${patient.rowIndex}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          visitProcedure: serialized.visitProcedure,
-          procCode: serialized.procCode,
-          fee: serialized.fee,
-          unit: serialized.unit,
-          total: serialized.total,
+          _billingItems: items,
           ...(comments !== undefined ? { comments } : {}),
           _sheetName: patient.sheetName,
         }),

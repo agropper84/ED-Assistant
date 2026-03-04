@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getPatient, updatePatientFields, clearPatientRow } from '@/lib/google-sheets';
+import { getPatient, updatePatientFields, clearPatientRow, saveBillingRows } from '@/lib/google-sheets';
 
 // GET /api/patients/[rowIndex]?sheet=Mar+03,+2026
 export async function GET(
@@ -33,9 +33,24 @@ export async function PATCH(
   try {
     const rowIndex = parseInt(params.rowIndex);
     const body = await request.json();
-    const { _sheetName, ...fields } = body;
+    const { _sheetName, _billingItems, ...fields } = body;
 
-    await updatePatientFields(rowIndex, fields, _sheetName || undefined);
+    if (_billingItems) {
+      // Multi-row billing save
+      await saveBillingRows(rowIndex, _billingItems, _sheetName || undefined);
+      // Also save non-billing fields (like comments)
+      const nonBillingFields = { ...fields };
+      delete nonBillingFields.visitProcedure;
+      delete nonBillingFields.procCode;
+      delete nonBillingFields.fee;
+      delete nonBillingFields.unit;
+      delete nonBillingFields.total;
+      if (Object.keys(nonBillingFields).length > 0) {
+        await updatePatientFields(rowIndex, nonBillingFields, _sheetName || undefined);
+      }
+    } else {
+      await updatePatientFields(rowIndex, fields, _sheetName || undefined);
+    }
 
     return NextResponse.json({ success: true });
   } catch (error: any) {

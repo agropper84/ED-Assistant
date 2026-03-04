@@ -134,14 +134,15 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
             e.stopPropagation();
             onBillingToggle();
           }}
-          className="p-2 hover:bg-green-50 rounded-lg transition-colors flex-shrink-0 relative"
+          className="p-2 hover:bg-green-50 rounded-lg transition-colors flex-shrink-0"
           title="Billing"
         >
-          <DollarSign className="w-4 h-4 text-gray-400 hover:text-green-600" />
-          {billingCodes && (
-            <span className="absolute -top-1 -right-1 text-[10px] bg-green-100 text-green-700 px-1 rounded-full font-medium whitespace-nowrap">
+          {billingCodes ? (
+            <span className="text-xs font-medium text-green-700 whitespace-nowrap">
               {billingCodes}
             </span>
+          ) : (
+            <DollarSign className="w-4 h-4 text-gray-400 hover:text-green-600" />
           )}
         </button>
       )}
