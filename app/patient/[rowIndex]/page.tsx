@@ -787,7 +787,6 @@ function InteractiveContent({
 }) {
   const [parts, setParts] = useState<ContentPart[]>(() => splitContent(content));
   const [selected, setSelected] = useState<Set<number>>(new Set());
-  const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
   const [addingDetail, setAddingDetail] = useState(false);
   const [detailText, setDetailText] = useState('');
 
@@ -872,7 +871,6 @@ function InteractiveContent({
         if (part.type === 'break') return <br key={idx} />;
 
         const isSelected = selected.has(idx);
-        const isHovered = hoveredIdx === idx && !isSelected;
 
         return (
           <span key={idx}>
@@ -883,19 +881,8 @@ function InteractiveContent({
                   : 'hover:bg-purple-100'
               }`}
               onClick={(e) => { e.stopPropagation(); toggleSelect(idx); }}
-              onMouseEnter={() => setHoveredIdx(idx)}
-              onMouseLeave={() => setHoveredIdx(null)}
             >
               {part.text}
-              {(isHovered || isSelected) && (
-                <button
-                  onClick={(e) => { e.stopPropagation(); handleRemove(idx); }}
-                  title="Remove"
-                  className="inline-flex items-center ml-0.5 p-0.5 rounded-full hover:bg-red-200 transition-colors align-middle"
-                >
-                  <X className="w-3 h-3 text-red-400 hover:text-red-600" />
-                </button>
-              )}
             </span>
             {' '}
           </span>
