@@ -12,6 +12,7 @@ import {
 import { ExamToggles } from '@/components/ExamToggles';
 import { ReferralModal } from '@/components/ReferralModal';
 import { getStyleGuide, addExample } from '@/lib/style-guide';
+import { getAllBillingCodes, lookupFee, addBillingCode } from '@/lib/billing';
 
 export default function PatientPage() {
   const router = useRouter();
@@ -476,88 +477,13 @@ export default function PatientPage() {
         )}
 
         {/* Billing Section */}
-        <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
-          <button
-            onClick={() => setShowBilling(!showBilling)}
-            className="w-full flex items-center justify-between p-4 cursor-pointer"
-          >
-            <div className="flex items-center gap-2">
-              <DollarSign className="w-5 h-5 text-gray-400" />
-              <h3 className="font-semibold text-gray-900">Billing</h3>
-            </div>
-            {showBilling ? (
-              <ChevronUp className="w-5 h-5 text-gray-400" />
-            ) : (
-              <ChevronDown className="w-5 h-5 text-gray-400" />
-            )}
-          </button>
-          {showBilling && (
-            <div className="px-4 pb-4 space-y-3">
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-medium text-gray-500 mb-1">Visit Procedure</label>
-                  <input
-                    type="text"
-                    value={billingFields.visitProcedure}
-                    onChange={(e) => setBillingFields(prev => ({ ...prev, visitProcedure: e.target.value }))}
-                    onBlur={(e) => handleBillingBlur('visitProcedure', e.target.value)}
-                    className="w-full p-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-500 mb-1">Proc Code</label>
-                  <input
-                    type="text"
-                    value={billingFields.procCode}
-                    onChange={(e) => setBillingFields(prev => ({ ...prev, procCode: e.target.value }))}
-                    onBlur={(e) => handleBillingBlur('procCode', e.target.value)}
-                    className="w-full p-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-500 mb-1">Fee</label>
-                  <input
-                    type="text"
-                    value={billingFields.fee}
-                    onChange={(e) => setBillingFields(prev => ({ ...prev, fee: e.target.value }))}
-                    onBlur={(e) => handleBillingBlur('fee', e.target.value)}
-                    className="w-full p-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-500 mb-1">Units</label>
-                  <input
-                    type="text"
-                    value={billingFields.unit}
-                    onChange={(e) => setBillingFields(prev => ({ ...prev, unit: e.target.value }))}
-                    onBlur={(e) => handleBillingBlur('unit', e.target.value)}
-                    className="w-full p-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-500 mb-1">Total</label>
-                  <input
-                    type="text"
-                    value={billingFields.total}
-                    onChange={(e) => setBillingFields(prev => ({ ...prev, total: e.target.value }))}
-                    onBlur={(e) => handleBillingBlur('total', e.target.value)}
-                    className="w-full p-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-500 mb-1">Comments</label>
-                  <input
-                    type="text"
-                    value={billingFields.comments}
-                    onChange={(e) => setBillingFields(prev => ({ ...prev, comments: e.target.value }))}
-                    onBlur={(e) => handleBillingBlur('comments', e.target.value)}
-                    className="w-full p-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  />
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
+        <BillingSection
+          billingFields={billingFields}
+          setBillingFields={setBillingFields}
+          onSaveField={handleBillingBlur}
+          showBilling={showBilling}
+          setShowBilling={setShowBilling}
+        />
 
         {/* Input Data (Triage, Transcript) */}
         {(patient.triageVitals || patient.transcript) && (
@@ -751,6 +677,231 @@ function OutputSection({
               {content}
             </p>
           )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Billing Section Component
+function BillingSection({
+  billingFields,
+  setBillingFields,
+  onSaveField,
+  showBilling,
+  setShowBilling,
+}: {
+  billingFields: { visitProcedure: string; procCode: string; fee: string; unit: string; total: string; comments: string };
+  setBillingFields: React.Dispatch<React.SetStateAction<typeof billingFields>>;
+  onSaveField: (field: string, value: string) => void;
+  showBilling: boolean;
+  setShowBilling: (v: boolean) => void;
+}) {
+  const [showAddCode, setShowAddCode] = useState(false);
+  const [newCode, setNewCode] = useState('');
+  const [newDesc, setNewDesc] = useState('');
+  const [newFee, setNewFee] = useState('');
+
+  const allCodes = getAllBillingCodes();
+
+  const handleSelectProcedure = (code: string, description: string, fee: string) => {
+    setBillingFields(prev => ({
+      ...prev,
+      visitProcedure: description,
+      procCode: code,
+      fee: fee,
+      unit: prev.unit || '1',
+      total: fee,
+    }));
+    // Save all fields
+    onSaveField('visitProcedure', description);
+    onSaveField('procCode', code);
+    onSaveField('fee', fee);
+    onSaveField('total', fee);
+    if (!billingFields.unit) onSaveField('unit', '1');
+  };
+
+  const handleAddCustomCode = () => {
+    if (!newCode.trim() || !newDesc.trim()) return;
+    addBillingCode(newCode.trim(), newDesc.trim(), newFee.trim());
+    setNewCode('');
+    setNewDesc('');
+    setNewFee('');
+    setShowAddCode(false);
+  };
+
+  return (
+    <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
+      <button
+        onClick={() => setShowBilling(!showBilling)}
+        className="w-full flex items-center justify-between p-4 cursor-pointer"
+      >
+        <div className="flex items-center gap-2">
+          <DollarSign className="w-5 h-5 text-gray-400" />
+          <h3 className="font-semibold text-gray-900">Billing</h3>
+          {billingFields.procCode && (
+            <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">
+              {billingFields.procCode}
+            </span>
+          )}
+        </div>
+        {showBilling ? (
+          <ChevronUp className="w-5 h-5 text-gray-400" />
+        ) : (
+          <ChevronDown className="w-5 h-5 text-gray-400" />
+        )}
+      </button>
+      {showBilling && (
+        <div className="px-4 pb-4 space-y-3">
+          {/* Quick Select Procedure */}
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1">Quick Select Procedure</label>
+            <div className="max-h-40 overflow-y-auto border rounded-lg divide-y">
+              {allCodes.map((item) => (
+                <button
+                  key={item.code}
+                  onClick={() => handleSelectProcedure(item.code, item.description, item.fee)}
+                  className={`w-full text-left px-3 py-2 text-sm hover:bg-blue-50 flex justify-between items-center ${
+                    billingFields.procCode === item.code ? 'bg-blue-50 font-medium' : ''
+                  }`}
+                >
+                  <span className="truncate">{item.description}</span>
+                  <span className="text-gray-500 flex-shrink-0 ml-2 text-xs">
+                    {item.code} {item.fee && `• $${item.fee}`}
+                  </span>
+                </button>
+              ))}
+            </div>
+            <button
+              onClick={() => setShowAddCode(!showAddCode)}
+              className="mt-1 text-xs text-blue-600 font-medium"
+            >
+              + Add custom code
+            </button>
+          </div>
+
+          {/* Add Custom Code */}
+          {showAddCode && (
+            <div className="bg-gray-50 rounded-lg p-3 space-y-2">
+              <div className="grid grid-cols-3 gap-2">
+                <input
+                  type="text"
+                  value={newCode}
+                  onChange={(e) => setNewCode(e.target.value)}
+                  placeholder="Code"
+                  className="p-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+                <input
+                  type="text"
+                  value={newDesc}
+                  onChange={(e) => setNewDesc(e.target.value)}
+                  placeholder="Description"
+                  className="col-span-2 p-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={newFee}
+                  onChange={(e) => setNewFee(e.target.value)}
+                  placeholder="Fee (e.g. 50.00)"
+                  className="flex-1 p-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+                <button
+                  onClick={handleAddCustomCode}
+                  disabled={!newCode.trim() || !newDesc.trim()}
+                  className="px-3 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium disabled:opacity-50"
+                >
+                  Add
+                </button>
+                <button
+                  onClick={() => setShowAddCode(false)}
+                  className="px-3 py-2 bg-gray-200 text-gray-700 rounded-lg text-sm font-medium"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Manual Fields */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1">Visit Procedure</label>
+              <input
+                type="text"
+                value={billingFields.visitProcedure}
+                onChange={(e) => setBillingFields(prev => ({ ...prev, visitProcedure: e.target.value }))}
+                onBlur={(e) => onSaveField('visitProcedure', e.target.value)}
+                className="w-full p-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1">Proc Code</label>
+              <input
+                type="text"
+                value={billingFields.procCode}
+                onChange={(e) => setBillingFields(prev => ({ ...prev, procCode: e.target.value }))}
+                onBlur={(e) => {
+                  onSaveField('procCode', e.target.value);
+                  // Auto-fill fee from code
+                  const result = lookupFee(e.target.value);
+                  if (result) {
+                    setBillingFields(prev => ({
+                      ...prev,
+                      visitProcedure: result.description,
+                      fee: result.fee,
+                      total: result.fee,
+                    }));
+                    onSaveField('visitProcedure', result.description);
+                    onSaveField('fee', result.fee);
+                    onSaveField('total', result.fee);
+                  }
+                }}
+                className="w-full p-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1">Fee</label>
+              <input
+                type="text"
+                value={billingFields.fee}
+                onChange={(e) => setBillingFields(prev => ({ ...prev, fee: e.target.value }))}
+                onBlur={(e) => onSaveField('fee', e.target.value)}
+                className="w-full p-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1">Units</label>
+              <input
+                type="text"
+                value={billingFields.unit}
+                onChange={(e) => setBillingFields(prev => ({ ...prev, unit: e.target.value }))}
+                onBlur={(e) => onSaveField('unit', e.target.value)}
+                className="w-full p-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1">Total</label>
+              <input
+                type="text"
+                value={billingFields.total}
+                onChange={(e) => setBillingFields(prev => ({ ...prev, total: e.target.value }))}
+                onBlur={(e) => onSaveField('total', e.target.value)}
+                className="w-full p-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1">Comments</label>
+              <input
+                type="text"
+                value={billingFields.comments}
+                onChange={(e) => setBillingFields(prev => ({ ...prev, comments: e.target.value }))}
+                onBlur={(e) => onSaveField('comments', e.target.value)}
+                className="w-full p-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
+            </div>
+          </div>
         </div>
       )}
     </div>
