@@ -11,8 +11,14 @@ import {
 } from 'lucide-react';
 import { ExamToggles } from '@/components/ExamToggles';
 import { ReferralModal } from '@/components/ReferralModal';
+import { VoiceRecorder } from '@/components/VoiceRecorder';
 import { getStyleGuide, addExample } from '@/lib/style-guide';
-import { getAllBillingCodes, lookupFee, addBillingCode } from '@/lib/billing';
+import {
+  BillingItem, BillingCategory,
+  addBillingCode,
+  parseBillingItems, serializeBillingItems, calculateTotal,
+  getAdditionalCodes,
+} from '@/lib/billing';
 
 export default function PatientPage() {
   const router = useRouter();
@@ -41,14 +47,8 @@ export default function PatientPage() {
 
   // Billing state
   const [showBilling, setShowBilling] = useState(false);
-  const [billingFields, setBillingFields] = useState({
-    visitProcedure: '',
-    procCode: '',
-    fee: '',
-    unit: '',
-    total: '',
-    comments: '',
-  });
+  const [billingItems, setBillingItems] = useState<BillingItem[]>([]);
+  const [billingComments, setBillingComments] = useState('');
 
   // Error state
   const [processError, setProcessError] = useState('');
@@ -62,14 +62,14 @@ export default function PatientPage() {
 
   useEffect(() => {
     if (patient) {
-      setBillingFields({
-        visitProcedure: patient.visitProcedure || '',
-        procCode: patient.procCode || '',
-        fee: patient.fee || '',
-        unit: patient.unit || '',
-        total: patient.total || '',
-        comments: patient.comments || '',
-      });
+      const items = parseBillingItems(
+        patient.visitProcedure || '',
+        patient.procCode || '',
+        patient.fee || '',
+        patient.unit || ''
+      );
+      setBillingItems(items);
+      setBillingComments(patient.comments || '');
     }
   }, [patient]);
 
@@ -154,17 +154,25 @@ export default function PatientPage() {
     }
   };
 
-  const handleBillingBlur = async (field: string, value: string) => {
-    const fieldMap: Record<string, string> = {
-      visitProcedure: 'visitProcedure',
-      procCode: 'procCode',
-      fee: 'fee',
-      unit: 'unit',
-      total: 'total',
-      comments: 'comments',
-    };
-    if (fieldMap[field]) {
-      await handleSaveField(fieldMap[field], value);
+  const handleBillingSave = async (items: BillingItem[], comments?: string) => {
+    setBillingItems(items);
+    const serialized = serializeBillingItems(items);
+    try {
+      await fetch(`/api/patients/${rowIndex}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          visitProcedure: serialized.visitProcedure,
+          procCode: serialized.procCode,
+          fee: serialized.fee,
+          unit: serialized.unit,
+          total: serialized.total,
+          ...(comments !== undefined ? { comments } : {}),
+          _sheetName: sheetName,
+        }),
+      });
+    } catch (error) {
+      console.error('Failed to save billing:', error);
     }
   };
 
@@ -494,47 +502,55 @@ export default function PatientPage() {
 
         {/* Billing Section */}
         <BillingSection
-          billingFields={billingFields}
-          setBillingFields={setBillingFields}
-          onSaveField={handleBillingBlur}
+          billingItems={billingItems}
+          comments={billingComments}
+          onSave={handleBillingSave}
+          onSaveComments={(c) => { setBillingComments(c); handleSaveField('comments', c); }}
           showBilling={showBilling}
           setShowBilling={setShowBilling}
         />
 
         {/* Input Data (Triage, Transcript) */}
-        {(patient.triageVitals || patient.transcript) && (
-          <div className="mt-6 pt-6 border-t">
-            <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">
+        <div className="mt-6 pt-6 border-t">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">
               Source Data
             </h3>
-
-            {patient.triageVitals && (
-              <OutputSection
-                title="Triage Notes"
-                content={patient.triageVitals}
-                field="triageVitals"
-                expanded={expandedSections.has('triage')}
-                onToggle={() => toggleSection('triage')}
-                onCopy={() => copyToClipboard(patient.triageVitals, 'triage')}
-                copied={copied === 'triage'}
-                variant="muted"
-              />
-            )}
-
-            {patient.transcript && (
-              <OutputSection
-                title="Transcript"
-                content={patient.transcript}
-                field="transcript"
-                expanded={expandedSections.has('transcript')}
-                onToggle={() => toggleSection('transcript')}
-                onCopy={() => copyToClipboard(patient.transcript, 'transcript')}
-                copied={copied === 'transcript'}
-                variant="muted"
-              />
-            )}
+            <VoiceRecorder
+              onTranscript={(text) => {
+                const current = patient.transcript || '';
+                const updated = current ? `${current}\n\n${text}` : text;
+                handleSaveField('transcript', updated);
+              }}
+            />
           </div>
-        )}
+
+          {patient.triageVitals && (
+            <OutputSection
+              title="Triage Notes"
+              content={patient.triageVitals}
+              field="triageVitals"
+              expanded={expandedSections.has('triage')}
+              onToggle={() => toggleSection('triage')}
+              onCopy={() => copyToClipboard(patient.triageVitals, 'triage')}
+              copied={copied === 'triage'}
+              variant="muted"
+              onSave={(value) => handleSaveField('triageVitals', value)}
+            />
+          )}
+
+          <OutputSection
+            title="Transcript"
+            content={patient.transcript || ''}
+            field="transcript"
+            expanded={expandedSections.has('transcript')}
+            onToggle={() => toggleSection('transcript')}
+            onCopy={() => copyToClipboard(patient.transcript || '', 'transcript')}
+            copied={copied === 'transcript'}
+            variant="muted"
+            onSave={(value) => handleSaveField('transcript', value)}
+          />
+        </div>
       </main>
 
       {/* Referral Modal */}
@@ -582,7 +598,7 @@ function OutputSection({
   const [editing, setEditing] = useState(false);
   const [editValue, setEditValue] = useState(content);
 
-  if (!content && !editing) return null;
+  if (!content && !editing && !onSave) return null;
 
   const bgColor = variant === 'muted' ? 'bg-gray-50' : 'bg-white';
   const borderColor = variant === 'muted' ? 'border-gray-200' : 'border-gray-100';
@@ -701,15 +717,17 @@ function OutputSection({
 
 // Billing Section Component
 function BillingSection({
-  billingFields,
-  setBillingFields,
-  onSaveField,
+  billingItems,
+  comments,
+  onSave,
+  onSaveComments,
   showBilling,
   setShowBilling,
 }: {
-  billingFields: { visitProcedure: string; procCode: string; fee: string; unit: string; total: string; comments: string };
-  setBillingFields: React.Dispatch<React.SetStateAction<typeof billingFields>>;
-  onSaveField: (field: string, value: string) => void;
+  billingItems: BillingItem[];
+  comments: string;
+  onSave: (items: BillingItem[], comments?: string) => void;
+  onSaveComments: (comments: string) => void;
   showBilling: boolean;
   setShowBilling: (v: boolean) => void;
 }) {
@@ -718,28 +736,39 @@ function BillingSection({
   const [newDesc, setNewDesc] = useState('');
   const [newFee, setNewFee] = useState('');
 
-  const allCodes = getAllBillingCodes();
+  const additionalCodes = getAdditionalCodes();
+  const total = calculateTotal(billingItems);
 
-  const handleSelectProcedure = (code: string, description: string, fee: string) => {
-    setBillingFields(prev => ({
-      ...prev,
-      visitProcedure: description,
-      procCode: code,
-      fee: fee,
-      unit: prev.unit || '1',
-      total: fee,
-    }));
-    // Save all fields
-    onSaveField('visitProcedure', description);
-    onSaveField('procCode', code);
-    onSaveField('fee', fee);
-    onSaveField('total', fee);
-    if (!billingFields.unit) onSaveField('unit', '1');
+  // Get current selection for each category
+  const currentBase = billingItems.find(i => i.category === 'base');
+  const currentVisit = billingItems.find(i => i.category === 'visitType');
+  const currentPremium = billingItems.find(i => i.category === 'premium');
+  const additionalItems = billingItems.filter(i => i.category === 'additional');
+
+  // Replace or set category item (single-select categories)
+  const setCategoryItem = (category: BillingCategory, item: BillingItem | null) => {
+    const filtered = billingItems.filter(i => i.category !== category);
+    const updated = item ? [...filtered, item] : filtered;
+    onSave(updated);
+  };
+
+  // Add an additional item
+  const addItem = (code: string, description: string, fee: string) => {
+    const item: BillingItem = { code, description, fee, category: 'additional' };
+    onSave([...billingItems, item]);
+  };
+
+  // Remove item by index in the full array
+  const removeItem = (index: number) => {
+    const updated = billingItems.filter((_, i) => i !== index);
+    onSave(updated);
   };
 
   const handleAddCustomCode = () => {
     if (!newCode.trim() || !newDesc.trim()) return;
     addBillingCode(newCode.trim(), newDesc.trim(), newFee.trim());
+    // Also add it to current billing
+    addItem(newCode.trim(), newDesc.trim(), newFee.trim());
     setNewCode('');
     setNewDesc('');
     setNewFee('');
@@ -755,10 +784,13 @@ function BillingSection({
         <div className="flex items-center gap-2">
           <DollarSign className="w-5 h-5 text-gray-400" />
           <h3 className="font-semibold text-gray-900">Billing</h3>
-          {billingFields.procCode && (
+          {billingItems.length > 0 && (
             <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">
-              {billingFields.procCode}
+              {billingItems.length} item{billingItems.length !== 1 ? 's' : ''}
             </span>
+          )}
+          {total && (
+            <span className="text-sm font-semibold text-green-700">${total}</span>
           )}
         </div>
         {showBilling ? (
@@ -768,25 +800,148 @@ function BillingSection({
         )}
       </button>
       {showBilling && (
-        <div className="px-4 pb-4 space-y-3">
-          {/* Quick Select Procedure */}
+        <div className="px-4 pb-4 space-y-4">
+          {/* Current Items */}
+          {billingItems.length > 0 && (
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1">Current Items</label>
+              <div className="border rounded-lg divide-y">
+                {billingItems.map((item, idx) => (
+                  <div key={`${item.code}-${idx}`} className="flex items-center justify-between px-3 py-2 text-sm">
+                    <div className="flex-1 min-w-0">
+                      <span className="font-medium">{item.code}</span>
+                      <span className="text-gray-500 ml-2 truncate">{item.description}</span>
+                    </div>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      {item.fee && <span className="text-gray-700">${item.fee}</span>}
+                      <button
+                        onClick={() => removeItem(idx)}
+                        className="p-1 hover:bg-red-50 rounded text-gray-400 hover:text-red-500"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              {total && (
+                <div className="flex justify-end mt-1">
+                  <span className="text-sm font-bold text-gray-900">Total: ${total}</span>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Base Fee Toggle */}
           <div>
-            <label className="block text-xs font-medium text-gray-500 mb-1">Quick Select Procedure</label>
+            <label className="block text-xs font-medium text-gray-500 mb-1">Base Fee</label>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setCategoryItem('base', { code: '0145', description: 'Base Fee 0800-2300', fee: '81.80', category: 'base' })}
+                className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  currentBase?.code === '0145' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                0800-2300 ($81.80)
+              </button>
+              <button
+                onClick={() => setCategoryItem('base', { code: '0146', description: 'Base Fee 2300-0800', fee: '119.60', category: 'base' })}
+                className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  currentBase?.code === '0146' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                2300-0800 ($119.60)
+              </button>
+            </div>
+          </div>
+
+          {/* Visit Type Toggle */}
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1">Visit Type</label>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setCategoryItem('visitType', { code: '1100', description: 'ED Visit', fee: '50.90', category: 'visitType' })}
+                className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  currentVisit?.code === '1100' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                ED Visit ($50.90)
+              </button>
+              <button
+                onClick={() => setCategoryItem('visitType', { code: '1101', description: 'Complete examination', fee: '111.50', category: 'visitType' })}
+                className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  currentVisit?.code === '1101' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                Complete ($111.50)
+              </button>
+              <button
+                onClick={() => setCategoryItem('visitType', { code: '0081', description: 'Critical Care', fee: '147.10', category: 'visitType' })}
+                className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  currentVisit?.code === '0081' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                Critical ($147.10)
+              </button>
+            </div>
+          </div>
+
+          {/* Premium Toggle */}
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1">Time Premium</label>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setCategoryItem('premium', null)}
+                className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  !currentPremium ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                None
+              </button>
+              <button
+                onClick={() => setCategoryItem('premium', { code: '1153', description: 'Evening/Weekend premium', fee: '50.00', category: 'premium' })}
+                className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  currentPremium?.code === '1153' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                Eve/Wknd ($50)
+              </button>
+              <button
+                onClick={() => setCategoryItem('premium', { code: '1154', description: 'Night (2300-0759) premium', fee: '107.40', category: 'premium' })}
+                className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  currentPremium?.code === '1154' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                Night ($107.40)
+              </button>
+            </div>
+          </div>
+
+          {/* Additional Procedures */}
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1">Additional Procedures</label>
             <div className="max-h-40 overflow-y-auto border rounded-lg divide-y">
-              {allCodes.map((item) => (
-                <button
-                  key={item.code}
-                  onClick={() => handleSelectProcedure(item.code, item.description, item.fee)}
-                  className={`w-full text-left px-3 py-2 text-sm hover:bg-blue-50 flex justify-between items-center ${
-                    billingFields.procCode === item.code ? 'bg-blue-50 font-medium' : ''
-                  }`}
-                >
-                  <span className="truncate">{item.description}</span>
-                  <span className="text-gray-500 flex-shrink-0 ml-2 text-xs">
-                    {item.code} {item.fee && `• $${item.fee}`}
-                  </span>
-                </button>
-              ))}
+              {additionalCodes.map((item) => {
+                const isAdded = additionalItems.some(a => a.code === item.code);
+                return (
+                  <button
+                    key={item.code}
+                    onClick={() => {
+                      if (!isAdded) addItem(item.code, item.description, item.fee);
+                    }}
+                    disabled={isAdded}
+                    className={`w-full text-left px-3 py-2 text-sm flex justify-between items-center ${
+                      isAdded ? 'bg-green-50 text-green-700' : 'hover:bg-blue-50'
+                    }`}
+                  >
+                    <span className="truncate">{item.description}</span>
+                    <span className="text-gray-500 flex-shrink-0 ml-2 text-xs">
+                      {item.code} {item.fee && `• $${item.fee}`}
+                      {isAdded && ' (added)'}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
             <button
               onClick={() => setShowAddCode(!showAddCode)}
@@ -840,83 +995,16 @@ function BillingSection({
             </div>
           )}
 
-          {/* Manual Fields */}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1">Visit Procedure</label>
-              <input
-                type="text"
-                value={billingFields.visitProcedure}
-                onChange={(e) => setBillingFields(prev => ({ ...prev, visitProcedure: e.target.value }))}
-                onBlur={(e) => onSaveField('visitProcedure', e.target.value)}
-                className="w-full p-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1">Proc Code</label>
-              <input
-                type="text"
-                value={billingFields.procCode}
-                onChange={(e) => setBillingFields(prev => ({ ...prev, procCode: e.target.value }))}
-                onBlur={(e) => {
-                  onSaveField('procCode', e.target.value);
-                  // Auto-fill fee from code
-                  const result = lookupFee(e.target.value);
-                  if (result) {
-                    setBillingFields(prev => ({
-                      ...prev,
-                      visitProcedure: result.description,
-                      fee: result.fee,
-                      total: result.fee,
-                    }));
-                    onSaveField('visitProcedure', result.description);
-                    onSaveField('fee', result.fee);
-                    onSaveField('total', result.fee);
-                  }
-                }}
-                className="w-full p-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1">Fee</label>
-              <input
-                type="text"
-                value={billingFields.fee}
-                onChange={(e) => setBillingFields(prev => ({ ...prev, fee: e.target.value }))}
-                onBlur={(e) => onSaveField('fee', e.target.value)}
-                className="w-full p-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1">Units</label>
-              <input
-                type="text"
-                value={billingFields.unit}
-                onChange={(e) => setBillingFields(prev => ({ ...prev, unit: e.target.value }))}
-                onBlur={(e) => onSaveField('unit', e.target.value)}
-                className="w-full p-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1">Total</label>
-              <input
-                type="text"
-                value={billingFields.total}
-                onChange={(e) => setBillingFields(prev => ({ ...prev, total: e.target.value }))}
-                onBlur={(e) => onSaveField('total', e.target.value)}
-                className="w-full p-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1">Comments</label>
-              <input
-                type="text"
-                value={billingFields.comments}
-                onChange={(e) => setBillingFields(prev => ({ ...prev, comments: e.target.value }))}
-                onBlur={(e) => onSaveField('comments', e.target.value)}
-                className="w-full p-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              />
-            </div>
+          {/* Comments */}
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1">Comments</label>
+            <input
+              type="text"
+              value={comments}
+              onChange={(e) => onSaveComments(e.target.value)}
+              onBlur={(e) => onSaveComments(e.target.value)}
+              className="w-full p-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            />
           </div>
         </div>
       )}

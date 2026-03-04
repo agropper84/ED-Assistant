@@ -4,6 +4,23 @@ export interface BillingCode {
   fee: string;
 }
 
+export type BillingCategory = 'base' | 'visitType' | 'premium' | 'additional';
+
+export interface BillingItem {
+  code: string;
+  description: string;
+  fee: string;
+  category: BillingCategory;
+}
+
+// Category definitions for UI grouping
+export const BILLING_CATEGORIES: Record<BillingCategory, { label: string; codes: string[] }> = {
+  base: { label: 'Base Fee', codes: ['0145', '0146'] },
+  visitType: { label: 'Visit Type', codes: ['1100', '1101', '0081'] },
+  premium: { label: 'Time Premium', codes: ['1153', '1154'] },
+  additional: { label: 'Additional', codes: [] }, // everything else
+};
+
 // Default billing codes
 const DEFAULT_CODES: Record<string, { description: string; fee: string }> = {
   '1101': { description: 'Complete examination', fee: '111.50' },
@@ -74,4 +91,123 @@ export function removeBillingCode(code: string): void {
   const custom = getCustomCodes();
   delete custom[code.trim()];
   saveCustomCodes(custom);
+}
+
+/** Determine billing category for a given code */
+export function getCategoryForCode(code: string): BillingCategory {
+  if (BILLING_CATEGORIES.base.codes.includes(code)) return 'base';
+  if (BILLING_CATEGORIES.visitType.codes.includes(code)) return 'visitType';
+  if (BILLING_CATEGORIES.premium.codes.includes(code)) return 'premium';
+  return 'additional';
+}
+
+/** Get auto-billing items based on encounter time */
+export function getAutoBilling(timestamp: string, isWeekend: boolean): BillingItem[] {
+  // Parse HH:MM from timestamp (e.g. "14:30" or "2:30 PM")
+  let hour = -1;
+  const match24 = timestamp.match(/(\d{1,2}):(\d{2})/);
+  if (match24) {
+    hour = parseInt(match24[1], 10);
+    // Handle 12-hour format with AM/PM
+    const isPM = /pm/i.test(timestamp);
+    const isAM = /am/i.test(timestamp);
+    if (isPM && hour < 12) hour += 12;
+    if (isAM && hour === 12) hour = 0;
+  }
+
+  const items: BillingItem[] = [];
+
+  // Base fee: 0800-2300 → 0145, 2300-0800 → 0146
+  if (hour >= 0) {
+    if (hour >= 8 && hour < 23) {
+      items.push({ code: '0145', description: 'Base Fee 0800-2300', fee: '81.80', category: 'base' });
+    } else {
+      items.push({ code: '0146', description: 'Base Fee 2300-0800', fee: '119.60', category: 'base' });
+    }
+  } else {
+    // Default to daytime if can't parse
+    items.push({ code: '0145', description: 'Base Fee 0800-2300', fee: '81.80', category: 'base' });
+  }
+
+  // Time premium
+  if (hour >= 0) {
+    if ((hour >= 18 && hour < 23) || isWeekend) {
+      items.push({ code: '1153', description: 'Evening/Weekend premium', fee: '50.00', category: 'premium' });
+    } else if (hour >= 23 || hour < 8) {
+      items.push({ code: '1154', description: 'Night (2300-0759) premium', fee: '107.40', category: 'premium' });
+    }
+  }
+
+  return items;
+}
+
+/** Serialize billing items into newline-separated sheet columns */
+export function serializeBillingItems(items: BillingItem[]): {
+  visitProcedure: string;
+  procCode: string;
+  fee: string;
+  unit: string;
+  total: string;
+} {
+  const descriptions = items.map(i => i.description);
+  const codes = items.map(i => i.code);
+  const fees = items.map(i => i.fee);
+  const units = items.map(() => '1');
+
+  const grandTotal = items.reduce((sum, i) => {
+    const f = parseFloat(i.fee);
+    return sum + (isNaN(f) ? 0 : f);
+  }, 0);
+
+  return {
+    visitProcedure: descriptions.join('\n'),
+    procCode: codes.join('\n'),
+    fee: fees.join('\n'),
+    unit: units.join('\n'),
+    total: grandTotal > 0 ? grandTotal.toFixed(2) : '',
+  };
+}
+
+/** Parse newline-separated sheet columns back into BillingItem[] */
+export function parseBillingItems(
+  visitProcedure: string,
+  procCode: string,
+  fee: string,
+  unit: string
+): BillingItem[] {
+  if (!procCode?.trim()) return [];
+
+  const codes = procCode.split('\n').map(s => s.trim());
+  const descriptions = (visitProcedure || '').split('\n').map(s => s.trim());
+  const fees = (fee || '').split('\n').map(s => s.trim());
+
+  return codes.map((code, i) => {
+    // Look up description/fee from defaults if not provided
+    const lookup = DEFAULT_CODES[code];
+    return {
+      code,
+      description: descriptions[i] || lookup?.description || code,
+      fee: fees[i] || lookup?.fee || '',
+      category: getCategoryForCode(code),
+    };
+  }).filter(item => item.code); // filter out empty entries
+}
+
+/** Calculate grand total from billing items */
+export function calculateTotal(items: BillingItem[]): string {
+  const total = items.reduce((sum, i) => {
+    const f = parseFloat(i.fee);
+    return sum + (isNaN(f) ? 0 : f);
+  }, 0);
+  return total > 0 ? total.toFixed(2) : '';
+}
+
+/** Get additional codes (everything not in base/visitType/premium) */
+export function getAdditionalCodes(): BillingCode[] {
+  const categoryCodes = new Set([
+    ...BILLING_CATEGORIES.base.codes,
+    ...BILLING_CATEGORIES.visitType.codes,
+    ...BILLING_CATEGORIES.premium.codes,
+  ]);
+  return getAllBillingCodes().filter(c => !categoryCodes.has(c.code));
 }

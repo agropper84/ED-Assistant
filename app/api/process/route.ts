@@ -1,18 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { processEncounter, ProcessedNote } from '@/lib/claude';
 import { getPatient, updatePatientFields } from '@/lib/google-sheets';
+import { getAutoBilling, serializeBillingItems, BillingItem } from '@/lib/billing';
 
 // Allow longer execution for Claude API calls
 export const maxDuration = 60;
-
-// Default billing code for standard ED visit
-const DEFAULT_BILLING = {
-  procCode: '1100',
-  visitProcedure: 'ED Visit',
-  fee: '50.90',
-  unit: '1',
-  total: '50.90',
-};
 
 // POST /api/process - Process patient encounter with Claude
 export async function POST(request: NextRequest) {
@@ -74,11 +66,34 @@ export async function POST(request: NextRequest) {
 
     // Auto-assign billing if not already set (only on fresh processing, not modifications)
     if (!modifications && !patient.procCode) {
-      fieldsToUpdate.visitProcedure = DEFAULT_BILLING.visitProcedure;
-      fieldsToUpdate.procCode = DEFAULT_BILLING.procCode;
-      fieldsToUpdate.fee = DEFAULT_BILLING.fee;
-      fieldsToUpdate.unit = DEFAULT_BILLING.unit;
-      fieldsToUpdate.total = DEFAULT_BILLING.total;
+      // Determine time from patient timestamp
+      const timestamp = patient.timestamp || '';
+
+      // Detect weekend from sheet name (e.g. "Mar 03, 2026")
+      let isWeekend = false;
+      if (sheetName) {
+        try {
+          const d = new Date(sheetName);
+          if (!isNaN(d.getTime())) {
+            const day = d.getDay();
+            isWeekend = day === 0 || day === 6;
+          }
+        } catch {}
+      }
+
+      // Build billing items: auto base + premium + default visit type
+      const autoItems = getAutoBilling(timestamp, isWeekend);
+      const billingItems: BillingItem[] = [
+        ...autoItems,
+        { code: '1100', description: 'ED Visit', fee: '50.90', category: 'visitType' },
+      ];
+
+      const serialized = serializeBillingItems(billingItems);
+      fieldsToUpdate.visitProcedure = serialized.visitProcedure;
+      fieldsToUpdate.procCode = serialized.procCode;
+      fieldsToUpdate.fee = serialized.fee;
+      fieldsToUpdate.unit = serialized.unit;
+      fieldsToUpdate.total = serialized.total;
     }
 
     // Update the sheet

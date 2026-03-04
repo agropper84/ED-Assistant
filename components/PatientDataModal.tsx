@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { Patient } from '@/lib/google-sheets';
 import { X, Loader2, Save, ExternalLink } from 'lucide-react';
 import { ExamToggles } from '@/components/ExamToggles';
+import { VoiceRecorder } from '@/components/VoiceRecorder';
 
 /** Combine transcript + encounter notes into one string for storage */
 function combineTranscriptAndNotes(transcript: string, encounterNotes: string): string {
@@ -129,9 +130,14 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
 
           {/* Transcript */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Transcript
-            </label>
+            <div className="flex items-center justify-between mb-1">
+              <label className="text-sm font-medium text-gray-700">
+                Transcript
+              </label>
+              <VoiceRecorder
+                onTranscript={(text) => setTranscript(prev => prev ? `${prev}\n\n${text}` : text)}
+              />
+            </div>
             <textarea
               value={transcript}
               onChange={(e) => setTranscript(e.target.value)}

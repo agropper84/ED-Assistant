@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { X, Clipboard, Check, Loader2 } from 'lucide-react';
 import { ExamToggles } from '@/components/ExamToggles';
+import { VoiceRecorder } from '@/components/VoiceRecorder';
 
 interface ParseModalProps {
   isOpen: boolean;
@@ -206,9 +207,14 @@ export function ParseModal({ isOpen, onClose, onSave }: ParseModalProps) {
 
           {/* Transcript */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Transcript (optional)
-            </label>
+            <div className="flex items-center justify-between mb-1">
+              <label className="text-sm font-medium text-gray-700">
+                Transcript (optional)
+              </label>
+              <VoiceRecorder
+                onTranscript={(text) => setTranscript(prev => prev ? `${prev}\n\n${text}` : text)}
+              />
+            </div>
             <textarea
               value={transcript}
               onChange={(e) => setTranscript(e.target.value)}
