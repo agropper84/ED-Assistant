@@ -5,6 +5,7 @@ export interface StyleGuide {
     assessmentPlan: string[];
   };
   computedFeatures: string;
+  customGuidance: string;
 }
 
 const STORAGE_KEY = 'ed-app-style-guide';
@@ -13,6 +14,7 @@ function getDefault(): StyleGuide {
   return {
     examples: { hpi: [], objective: [], assessmentPlan: [] },
     computedFeatures: '',
+    customGuidance: '',
   };
 }
 

@@ -92,7 +92,8 @@ export default function PatientPage() {
       // Get style guidance from localStorage
       const styleGuide = getStyleGuide();
       let styleGuidance: string | undefined;
-      if (styleGuide && Object.values(styleGuide.examples).some(arr => arr.length > 0)) {
+      const hasExamples = Object.values(styleGuide.examples).some(arr => arr.length > 0);
+      if (styleGuide && (hasExamples || styleGuide.customGuidance)) {
         const parts: string[] = [];
         for (const [section, examples] of Object.entries(styleGuide.examples)) {
           if (examples.length > 0) {
@@ -101,6 +102,9 @@ export default function PatientPage() {
         }
         if (styleGuide.computedFeatures) {
           parts.push(`Computed style features: ${styleGuide.computedFeatures}`);
+        }
+        if (styleGuide.customGuidance) {
+          parts.push(`Charting guidance from the physician:\n${styleGuide.customGuidance}`);
         }
         styleGuidance = parts.join('\n\n');
       }

@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, Trash2, Plus, X } from 'lucide-react';
-import { getStyleGuide, addExample, removeExample, StyleGuide } from '@/lib/style-guide';
+import { getStyleGuide, addExample, removeExample, saveStyleGuide, StyleGuide } from '@/lib/style-guide';
 import { getSettings, saveSettings, AppSettings, DEFAULT_SETTINGS } from '@/lib/settings';
 
 type Tab = 'style' | 'settings';
@@ -84,6 +84,24 @@ export default function SettingsPage() {
         {/* Style Guide Tab */}
         {activeTab === 'style' && styleGuide && (
           <>
+            {/* Custom Guidance */}
+            <div className="bg-white rounded-xl shadow-sm border p-4 space-y-2">
+              <h3 className="font-semibold text-gray-900">Charting Guidance</h3>
+              <p className="text-xs text-gray-500">
+                Specify preferences for voice, tone, language, formatting, abbreviations, level of detail, or any other charting conventions.
+              </p>
+              <textarea
+                value={styleGuide.customGuidance || ''}
+                onChange={(e) => {
+                  const updated = { ...styleGuide, customGuidance: e.target.value };
+                  setStyleGuide(updated);
+                  saveStyleGuide(updated);
+                }}
+                placeholder="e.g. Use third-person, past tense. Keep sentences concise. Use standard medical abbreviations (pt, hx, dx). Avoid hedging language. Use bullet points for assessment & plan."
+                className="w-full h-28 p-3 border rounded-lg text-sm resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
+            </div>
+
             {/* Computed Features */}
             {styleGuide.computedFeatures && (
               <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
