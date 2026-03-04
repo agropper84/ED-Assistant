@@ -672,6 +672,7 @@ export default function HomePage() {
         onClose={() => setDataModalPatient(null)}
         onSaved={() => fetchPatients()}
         onNavigate={() => dataModalPatient && navigateToPatient(dataModalPatient)}
+        onRegenerate={() => fetchPatients()}
       />
 
       {/* Delete Confirmation */}

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Patient } from '@/lib/google-sheets';
-import { X, Loader2, Save, ExternalLink } from 'lucide-react';
+import { X, Loader2, Save, ExternalLink, RefreshCw } from 'lucide-react';
 import { ExamToggles } from '@/components/ExamToggles';
 import { VoiceRecorder } from '@/components/VoiceRecorder';
 
@@ -31,15 +31,17 @@ interface PatientDataModalProps {
   onClose: () => void;
   onSaved: () => void;
   onNavigate: () => void;
+  onRegenerate?: () => void;
 }
 
-export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate }: PatientDataModalProps) {
+export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate, onRegenerate }: PatientDataModalProps) {
   const [transcript, setTranscript] = useState('');
   const [encounterNotes, setEncounterNotes] = useState('');
   const [triageVitals, setTriageVitals] = useState('');
   const [additional, setAdditional] = useState('');
   const [pastDocs, setPastDocs] = useState('');
   const [saving, setSaving] = useState(false);
+  const [regenerating, setRegenerating] = useState(false);
 
   // Sync state when patient changes
   useEffect(() => {
@@ -92,7 +94,7 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
         <div className="flex items-center justify-between p-4 border-b">
           <div className="min-w-0">
             <h2 className="text-lg font-semibold truncate">
-              {patient.patientNum && `#${patient.patientNum} `}{patient.name || 'Unknown'}
+              {patient.name || 'Unknown'}
             </h2>
             <p className="text-sm text-gray-500">
               {patient.age && `${patient.age} `}{patient.gender && `${patient.gender} `}
@@ -191,7 +193,7 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
         <div className="p-4 border-t bg-gray-50 flex gap-2">
           <button
             onClick={handleSave}
-            disabled={saving || !hasChanges}
+            disabled={saving || regenerating || !hasChanges}
             className="flex-1 py-3 bg-green-600 text-white rounded-lg font-medium disabled:opacity-50 disabled:bg-gray-300 flex items-center justify-center gap-2"
           >
             {saving ? (
@@ -201,6 +203,55 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
             )}
             Save
           </button>
+          {patient.hasOutput && onRegenerate && (
+            <button
+              onClick={async () => {
+                setRegenerating(true);
+                try {
+                  // Save first if there are changes
+                  if (hasChanges) {
+                    await fetch(`/api/patients/${patient.rowIndex}`, {
+                      method: 'PATCH',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        _sheetName: patient.sheetName,
+                        transcript: combineTranscriptAndNotes(transcript, encounterNotes),
+                        triageVitals,
+                        additional,
+                        pastDocs,
+                      }),
+                    });
+                  }
+                  // Regenerate
+                  const res = await fetch('/api/process', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      rowIndex: patient.rowIndex,
+                      sheetName: patient.sheetName,
+                    }),
+                  });
+                  if (res.ok) {
+                    onSaved();
+                    onClose();
+                  }
+                } catch (error) {
+                  console.error('Failed to regenerate:', error);
+                } finally {
+                  setRegenerating(false);
+                }
+              }}
+              disabled={regenerating || saving}
+              className="py-3 px-4 bg-amber-500 text-white rounded-lg font-medium disabled:opacity-50 flex items-center justify-center gap-2"
+            >
+              {regenerating ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <RefreshCw className="w-4 h-4" />
+              )}
+              Regenerate
+            </button>
+          )}
           <button
             onClick={onNavigate}
             className="py-3 px-4 bg-blue-600 text-white rounded-lg font-medium flex items-center justify-center gap-2"
