@@ -6,6 +6,11 @@ import { Patient } from '@/lib/google-sheets';
 import { PatientCard } from '@/components/PatientCard';
 import { ParseModal } from '@/components/ParseModal';
 import { PatientDataModal } from '@/components/PatientDataModal';
+import { InlineBilling } from '@/components/BillingSection';
+import {
+  BillingItem,
+  parseBillingItems, serializeBillingItems, calculateTotal,
+} from '@/lib/billing';
 import {
   Plus, RefreshCw, Loader2, ChevronLeft, ChevronRight,
   Calendar, Settings, CheckSquare, Square, Play, Clock, EyeOff, Eye
@@ -66,6 +71,9 @@ export default function HomePage() {
 
   // Anonymize toggle
   const [anonymize, setAnonymize] = useState(false);
+
+  // Dashboard billing
+  const [billingPatientIdx, setBillingPatientIdx] = useState<number | null>(null);
 
   const sheetName = formatDateForSheet(currentDate);
   const isToday = formatDateDisplay(currentDate) === 'Today';
@@ -260,6 +268,65 @@ export default function HomePage() {
     } catch (error) {
       console.error('Failed to update time:', error);
     }
+  };
+
+  const handleDashboardBillingSave = async (patient: Patient, items: BillingItem[], comments?: string) => {
+    const serialized = serializeBillingItems(items);
+    try {
+      await fetch(`/api/patients/${patient.rowIndex}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          visitProcedure: serialized.visitProcedure,
+          procCode: serialized.procCode,
+          fee: serialized.fee,
+          unit: serialized.unit,
+          total: serialized.total,
+          ...(comments !== undefined ? { comments } : {}),
+          _sheetName: patient.sheetName,
+        }),
+      });
+      fetchPatients();
+    } catch (error) {
+      console.error('Failed to save billing:', error);
+    }
+  };
+
+  const toggleBilling = (rowIndex: number) => {
+    setBillingPatientIdx(prev => prev === rowIndex ? null : rowIndex);
+  };
+
+  const renderPatientWithBilling = (patient: Patient) => {
+    const items = parseBillingItems(
+      patient.visitProcedure || '', patient.procCode || '',
+      patient.fee || '', patient.unit || ''
+    );
+    const total = calculateTotal(items);
+    const isBillingOpen = billingPatientIdx === patient.rowIndex;
+
+    return (
+      <div key={patient.rowIndex}>
+        <PatientCard
+          patient={patient}
+          onClick={() => handlePatientClick(patient)}
+          onDelete={() => setDeleteConfirm(patient)}
+          anonymize={anonymize}
+          onTimeChange={(time) => handleTimeChange(patient, time)}
+          onBillingToggle={() => toggleBilling(patient.rowIndex)}
+          billingTotal={total}
+        />
+        {isBillingOpen && (
+          <div className="mt-1 ml-0">
+            <InlineBilling
+              billingItems={items}
+              comments={patient.comments || ''}
+              onSave={(newItems) => handleDashboardBillingSave(patient, newItems)}
+              onSaveComments={(c) => handleDashboardBillingSave(patient, items, c)}
+            />
+          </div>
+        )}
+      </div>
+    );
   };
 
   const handlePatientClick = (patient: Patient) => {
@@ -480,11 +547,11 @@ export default function HomePage() {
                 </h2>
                 <div className="space-y-2">
                   {pendingPatients.map((patient) => (
-                    <div key={patient.rowIndex} className="flex items-center gap-2">
+                    <div key={patient.rowIndex} className="flex items-start gap-2">
                       {batchMode && (
                         <button
                           onClick={() => togglePatientSelection(patient.rowIndex)}
-                          className="flex-shrink-0 p-1"
+                          className="flex-shrink-0 p-1 mt-3"
                         >
                           {selectedPatients.has(patient.rowIndex) ? (
                             <CheckSquare className="w-5 h-5 text-amber-600" />
@@ -494,13 +561,7 @@ export default function HomePage() {
                         </button>
                       )}
                       <div className="flex-1">
-                        <PatientCard
-                          patient={patient}
-                          onClick={() => handlePatientClick(patient)}
-                          onDelete={() => setDeleteConfirm(patient)}
-                          anonymize={anonymize}
-                          onTimeChange={(time) => handleTimeChange(patient, time)}
-                        />
+                        {renderPatientWithBilling(patient)}
                       </div>
                     </div>
                   ))}
@@ -515,16 +576,7 @@ export default function HomePage() {
                   New ({newPatients.length})
                 </h2>
                 <div className="space-y-2">
-                  {newPatients.map((patient) => (
-                    <PatientCard
-                      key={patient.rowIndex}
-                      patient={patient}
-                      onClick={() => handlePatientClick(patient)}
-                      onDelete={() => setDeleteConfirm(patient)}
-                      anonymize={anonymize}
-                      onTimeChange={(time) => handleTimeChange(patient, time)}
-                    />
-                  ))}
+                  {newPatients.map((patient) => renderPatientWithBilling(patient))}
                 </div>
               </section>
             )}
@@ -536,16 +588,7 @@ export default function HomePage() {
                   Processed ({processedPatients.length})
                 </h2>
                 <div className="space-y-2">
-                  {processedPatients.map((patient) => (
-                    <PatientCard
-                      key={patient.rowIndex}
-                      patient={patient}
-                      onClick={() => handlePatientClick(patient)}
-                      onDelete={() => setDeleteConfirm(patient)}
-                      anonymize={anonymize}
-                      onTimeChange={(time) => handleTimeChange(patient, time)}
-                    />
-                  ))}
+                  {processedPatients.map((patient) => renderPatientWithBilling(patient))}
                 </div>
               </section>
             )}

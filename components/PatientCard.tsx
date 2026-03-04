@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 import { Patient } from '@/lib/google-sheets';
-import { Clock, User, FileText, ChevronRight, Trash2, AlertCircle } from 'lucide-react';
+import { Clock, User, FileText, ChevronRight, Trash2, AlertCircle, DollarSign } from 'lucide-react';
+import { calculateTotal } from '@/lib/billing';
 
 interface PatientCardProps {
   patient: Patient;
@@ -10,6 +11,8 @@ interface PatientCardProps {
   onDelete?: () => void;
   anonymize?: boolean;
   onTimeChange?: (time: string) => void;
+  onBillingToggle?: () => void;
+  billingTotal?: string;
 }
 
 /** Convert a full name to initials, e.g. "John Smith" → "J.S." */
@@ -31,7 +34,7 @@ function getPresentingIssue(triageVitals: string): string {
   return firstLine.substring(0, 57) + '...';
 }
 
-export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChange }: PatientCardProps) {
+export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChange, onBillingToggle, billingTotal }: PatientCardProps) {
   const [editingTime, setEditingTime] = useState(false);
   const [timeValue, setTimeValue] = useState(patient.timestamp || '');
 
@@ -124,6 +127,24 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
             className="w-24 p-1 border rounded text-sm text-center focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           />
         </div>
+      )}
+
+      {onBillingToggle && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onBillingToggle();
+          }}
+          className="p-2 hover:bg-green-50 rounded-lg transition-colors flex-shrink-0 relative"
+          title="Billing"
+        >
+          <DollarSign className="w-4 h-4 text-gray-400 hover:text-green-600" />
+          {billingTotal && (
+            <span className="absolute -top-1 -right-1 text-[10px] bg-green-100 text-green-700 px-1 rounded-full font-medium">
+              ${billingTotal}
+            </span>
+          )}
+        </button>
       )}
 
       {onDelete && (
