@@ -96,6 +96,17 @@ function getSpreadsheetId() {
   return process.env.GOOGLE_SHEETS_ID!;
 }
 
+// --- Timezone helper ---
+
+/** The local timezone for all date operations (defaults to America/Toronto) */
+const LOCAL_TZ = process.env.TIMEZONE || 'America/Toronto';
+
+/** Get "now" in the local timezone as a pseudo-Date with correct local fields */
+function localNow(): Date {
+  const str = new Date().toLocaleString('en-US', { timeZone: LOCAL_TZ });
+  return new Date(str);
+}
+
 // --- Date sheet helpers ---
 
 /** Format a date as the sheet tab name, e.g. "Mar 03, 2026" */
@@ -108,9 +119,9 @@ export function dateToSheetName(date: Date): string {
   return `${month} ${day}, ${year}`;
 }
 
-/** Get today's sheet name */
+/** Get today's sheet name using local timezone */
 export function getTodaySheetName(): string {
-  return dateToSheetName(new Date());
+  return dateToSheetName(localNow());
 }
 
 /** List all date sheets (excluding Template and other non-date sheets) */
@@ -179,7 +190,7 @@ export async function getOrCreateDateSheet(date?: Date): Promise<string> {
   });
 
   // Write today's date into cell A3
-  const today = date || new Date();
+  const today = date || localNow();
   const dateStr = `${today.getMonth() + 1}/${today.getDate()}/${today.getFullYear()}`;
   await sheets.spreadsheets.values.update({
     spreadsheetId,

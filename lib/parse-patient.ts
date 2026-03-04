@@ -104,13 +104,14 @@ export function parsePatientInfo(patientInfoText: string): ParsedPatient {
   return result;
 }
 
-// Get current time rounded to nearest 15 minutes
+// Get current time rounded to nearest 15 minutes (in local timezone)
 export function getRoundedTime(): string {
-  const now = new Date();
+  const LOCAL_TZ = process.env.TIMEZONE || 'America/Toronto';
+  const now = new Date(new Date().toLocaleString('en-US', { timeZone: LOCAL_TZ }));
   const minutes = Math.round(now.getMinutes() / 15) * 15;
   now.setMinutes(minutes);
   now.setSeconds(0);
-  
+
   const hours = now.getHours().toString().padStart(2, '0');
   const mins = now.getMinutes().toString().padStart(2, '0');
   return `${hours}:${mins}`;
