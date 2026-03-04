@@ -50,6 +50,9 @@ export default function PatientPage() {
     comments: '',
   });
 
+  // Error state
+  const [processError, setProcessError] = useState('');
+
   // Style save confirmation
   const [styleSaved, setStyleSaved] = useState<string | null>(null);
 
@@ -85,6 +88,7 @@ export default function PatientPage() {
 
   const handleProcess = async (mods?: string) => {
     setProcessing(true);
+    setProcessError('');
     try {
       // Get style guidance from localStorage
       const styleGuide = getStyleGuide();
@@ -125,9 +129,13 @@ export default function PatientPage() {
         await fetchPatient();
         setShowModify(false);
         setModifications('');
+      } else {
+        const err = await res.json().catch(() => ({ error: 'Unknown error' }));
+        setProcessError(err.detail || err.error || `Failed (${res.status})`);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to process:', error);
+      setProcessError(error?.message || 'Network error - check connection');
     } finally {
       setProcessing(false);
     }
@@ -284,6 +292,14 @@ export default function PatientPage() {
               </>
             )}
           </button>
+        )}
+
+        {/* Process Error */}
+        {processError && (
+          <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-red-700 text-sm">
+            <p className="font-medium">Processing failed</p>
+            <p className="mt-1">{processError}</p>
+          </div>
         )}
 
         {/* Output Sections */}
