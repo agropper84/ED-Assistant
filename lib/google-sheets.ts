@@ -174,7 +174,7 @@ export async function getOrCreateDateSheet(date?: Date): Promise<string> {
 
   const newSheetId = dupResponse.data.sheetId;
 
-  // Rename the duplicated sheet
+  // Rename the duplicated sheet and ensure it has enough columns (27 = AA)
   await sheets.spreadsheets.batchUpdate({
     spreadsheetId,
     requestBody: {
@@ -183,6 +183,15 @@ export async function getOrCreateDateSheet(date?: Date): Promise<string> {
           updateSheetProperties: {
             properties: { sheetId: newSheetId, title: sheetName },
             fields: 'title',
+          },
+        },
+        {
+          updateSheetProperties: {
+            properties: {
+              sheetId: newSheetId,
+              gridProperties: { columnCount: 27 },
+            },
+            fields: 'gridProperties.columnCount',
           },
         },
       ],
@@ -200,6 +209,38 @@ export async function getOrCreateDateSheet(date?: Date): Promise<string> {
   });
 
   return sheetName;
+}
+
+/** Ensure a sheet has at least the required number of columns */
+async function ensureColumnCount(sheetName: string, requiredColumns: number): Promise<void> {
+  const sheets = getSheets();
+  const spreadsheetId = getSpreadsheetId();
+
+  const spreadsheet = await sheets.spreadsheets.get({ spreadsheetId });
+  const sheetMeta = spreadsheet.data.sheets?.find(
+    (s: any) => s.properties.title === sheetName
+  );
+  if (!sheetMeta) return;
+
+  const currentColumns = sheetMeta.properties?.gridProperties?.columnCount || 26;
+  if (currentColumns >= requiredColumns) return;
+
+  await sheets.spreadsheets.batchUpdate({
+    spreadsheetId,
+    requestBody: {
+      requests: [
+        {
+          updateSheetProperties: {
+            properties: {
+              sheetId: sheetMeta.properties!.sheetId!,
+              gridProperties: { columnCount: requiredColumns },
+            },
+            fields: 'gridProperties.columnCount',
+          },
+        },
+      ],
+    },
+  });
 }
 
 // --- Shift time helpers (row 2, columns A and B) ---
@@ -250,7 +291,7 @@ export async function clearPatientRow(
 
   await sheets.spreadsheets.values.clear({
     spreadsheetId,
-    range: `'${sheet}'!A${rowIndex}:AA${rowIndex}`,
+    range: `'${sheet}'!A${rowIndex}:Z${rowIndex}`,
   });
 }
 
@@ -271,7 +312,7 @@ export async function getPatients(sheetName?: string): Promise<Patient[]> {
 
   const response = await sheets.spreadsheets.values.get({
     spreadsheetId,
-    range: `'${sheet}'!A${DATA_START_ROW}:AA100`,
+    range: `'${sheet}'!A${DATA_START_ROW}:Z100`,
   });
 
   const rows = response.data.values || [];
@@ -289,7 +330,7 @@ export async function getPatient(rowIndex: number, sheetName?: string): Promise<
 
   const response = await sheets.spreadsheets.values.get({
     spreadsheetId,
-    range: `'${sheet}'!A${rowIndex}:AA${rowIndex}`,
+    range: `'${sheet}'!A${rowIndex}:Z${rowIndex}`,
   });
 
   const rows = response.data.values || [];
@@ -326,6 +367,12 @@ export async function updatePatientFields(
     }));
 
   if (data.length === 0) return;
+
+  // If writing to columns beyond Z, ensure the sheet has enough columns
+  const needsExpand = data.some(d => d.range.includes('!AA'));
+  if (needsExpand) {
+    await ensureColumnCount(sheet, 27);
+  }
 
   await sheets.spreadsheets.values.batchUpdate({
     spreadsheetId,
