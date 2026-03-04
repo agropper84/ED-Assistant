@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { X, Clipboard, Check, Loader2 } from 'lucide-react';
+import { ExamToggles } from '@/components/ExamToggles';
 
 interface ParseModalProps {
   isOpen: boolean;
@@ -9,7 +10,7 @@ interface ParseModalProps {
   onSave: (data: ParsedData) => void;
 }
 
-interface ParsedData {
+export interface ParsedData {
   name: string;
   age: string;
   gender: string;
@@ -19,12 +20,17 @@ interface ParsedData {
   timestamp: string;
   triageVitals: string;
   transcript: string;
+  additional: string;
+  pastDocs: string;
 }
 
 export function ParseModal({ isOpen, onClose, onSave }: ParseModalProps) {
   const [pasteText, setPasteText] = useState('');
   const [triageVitals, setTriageVitals] = useState('');
   const [transcript, setTranscript] = useState('');
+  const [additional, setAdditional] = useState('');
+  const [pastDocs, setPastDocs] = useState('');
+  const [encounterTime, setEncounterTime] = useState('');
   const [parsedData, setParsedData] = useState<ParsedData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -50,10 +56,14 @@ export function ParseModal({ isOpen, onClose, onSave }: ParseModalProps) {
       if (!res.ok) throw new Error('Failed to parse');
 
       const data = await res.json();
+      const timestamp = encounterTime || data.timestamp;
       setParsedData({
         ...data,
+        timestamp,
         triageVitals,
         transcript,
+        additional,
+        pastDocs,
       });
     } catch (e) {
       setError('Failed to parse patient data');
@@ -64,15 +74,22 @@ export function ParseModal({ isOpen, onClose, onSave }: ParseModalProps) {
 
   const handleSave = () => {
     if (parsedData) {
+      const timestamp = encounterTime || parsedData.timestamp;
       onSave({
         ...parsedData,
+        timestamp,
         triageVitals,
         transcript,
+        additional,
+        pastDocs,
       });
       // Reset form
       setPasteText('');
       setTriageVitals('');
       setTranscript('');
+      setAdditional('');
+      setPastDocs('');
+      setEncounterTime('');
       setParsedData(null);
       onClose();
     }
@@ -129,7 +146,7 @@ export function ParseModal({ isOpen, onClose, onSave }: ParseModalProps) {
                 <div><span className="text-gray-500">DOB:</span> {parsedData.birthday}</div>
                 <div><span className="text-gray-500">HCN:</span> {parsedData.hcn}</div>
                 <div><span className="text-gray-500">MRN:</span> {parsedData.mrn}</div>
-                <div><span className="text-gray-500">Time:</span> {parsedData.timestamp}</div>
+                <div><span className="text-gray-500">Time:</span> {encounterTime || parsedData.timestamp}</div>
               </div>
             </div>
           )}
@@ -139,6 +156,19 @@ export function ParseModal({ isOpen, onClose, onSave }: ParseModalProps) {
               {error}
             </div>
           )}
+
+          {/* Encounter Time Override */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Encounter Time (optional override)
+            </label>
+            <input
+              type="time"
+              value={encounterTime}
+              onChange={(e) => setEncounterTime(e.target.value)}
+              className="w-full p-3 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            />
+          </div>
 
           {/* Triage Notes */}
           <div>
@@ -163,6 +193,33 @@ export function ParseModal({ isOpen, onClose, onSave }: ParseModalProps) {
               onChange={(e) => setTranscript(e.target.value)}
               placeholder="Encounter transcript..."
               className="w-full h-32 p-3 border rounded-lg text-sm resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            />
+          </div>
+
+          {/* Additional Findings */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Additional Findings (optional)
+            </label>
+            <ExamToggles value={additional} onChange={setAdditional} />
+            <textarea
+              value={additional}
+              onChange={(e) => setAdditional(e.target.value)}
+              placeholder="Exam findings, investigations, plan notes..."
+              className="w-full h-24 p-3 border rounded-lg text-sm resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            />
+          </div>
+
+          {/* Past Documentation */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Past Documentation (optional)
+            </label>
+            <textarea
+              value={pastDocs}
+              onChange={(e) => setPastDocs(e.target.value)}
+              placeholder="Previous visit notes, relevant history..."
+              className="w-full h-24 p-3 border rounded-lg text-sm resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             />
           </div>
         </div>

@@ -28,12 +28,14 @@ export const COLUMNS = {
   OBJECTIVE: 23,     // X
   ASSESSMENT_PLAN: 24, // Y
   REFERRAL: 25,      // Z
+  PAST_DOCS: 26,     // AA
 };
 
 export const DATA_START_ROW = 8; // Row 8 in spreadsheet (0-indexed: 7)
 
 export interface Patient {
   rowIndex: number;
+  sheetName: string;
   patientNum: string;
   timestamp: string;
   name: string;
@@ -60,6 +62,7 @@ export interface Patient {
   objective: string;
   assessmentPlan: string;
   referral: string;
+  pastDocs: string;
   // Computed
   hasOutput: boolean;
   status: 'new' | 'pending' | 'processed';
@@ -67,14 +70,21 @@ export interface Patient {
 
 // Initialize Google Sheets client
 function getAuthClient() {
-  const auth = new google.auth.GoogleAuth({
+  if (process.env.GOOGLE_CREDENTIALS) {
+    const credentials = JSON.parse(process.env.GOOGLE_CREDENTIALS);
+    return new google.auth.GoogleAuth({
+      credentials,
+      scopes: ['https://www.googleapis.com/auth/spreadsheets'],
+    });
+  }
+
+  return new google.auth.GoogleAuth({
     credentials: {
       client_email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
       private_key: process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
     },
     scopes: ['https://www.googleapis.com/auth/spreadsheets'],
   });
-  return auth;
 }
 
 function getSheets() {
@@ -82,108 +92,229 @@ function getSheets() {
   return google.sheets({ version: 'v4', auth });
 }
 
-// Fetch all patients from the sheet
-export async function getPatients(): Promise<Patient[]> {
+function getSpreadsheetId() {
+  return process.env.GOOGLE_SHEETS_ID!;
+}
+
+// --- Date sheet helpers ---
+
+/** Format a date as the sheet tab name, e.g. "Mar 03, 2026" */
+export function dateToSheetName(date: Date): string {
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const month = months[date.getMonth()];
+  const day = date.getDate().toString().padStart(2, '0');
+  const year = date.getFullYear();
+  return `${month} ${day}, ${year}`;
+}
+
+/** Get today's sheet name */
+export function getTodaySheetName(): string {
+  return dateToSheetName(new Date());
+}
+
+/** List all date sheets (excluding Template and other non-date sheets) */
+export async function getDateSheets(): Promise<string[]> {
   const sheets = getSheets();
-  const spreadsheetId = process.env.GOOGLE_SHEETS_ID;
-  const sheetName = process.env.GOOGLE_SHEET_NAME || 'Template';
+  const spreadsheetId = getSpreadsheetId();
+
+  const spreadsheet = await sheets.spreadsheets.get({ spreadsheetId });
+  const allSheets = spreadsheet.data.sheets || [];
+
+  // Date sheets match pattern like "Mar 03, 2026"
+  const datePattern = /^[A-Z][a-z]{2} \d{2}, \d{4}$/;
+  return allSheets
+    .map((s: any) => s.properties.title as string)
+    .filter((name: string) => datePattern.test(name))
+    .sort()
+    .reverse(); // Most recent first
+}
+
+/** Get or create a sheet for the given date by copying Template */
+export async function getOrCreateDateSheet(date?: Date): Promise<string> {
+  const sheetName = date ? dateToSheetName(date) : getTodaySheetName();
+  const sheets = getSheets();
+  const spreadsheetId = getSpreadsheetId();
+
+  // Check if sheet already exists
+  const spreadsheet = await sheets.spreadsheets.get({ spreadsheetId });
+  const allSheets = spreadsheet.data.sheets || [];
+  const exists = allSheets.some(
+    (s: any) => s.properties.title === sheetName
+  );
+
+  if (exists) return sheetName;
+
+  // Find the Template sheet ID
+  const templateSheet = allSheets.find(
+    (s: any) => s.properties.title === 'Template'
+  );
+  if (!templateSheet) {
+    throw new Error('Template sheet not found');
+  }
+  const templateSheetId = templateSheet.properties!.sheetId!;
+
+  // Duplicate the Template sheet
+  const dupResponse = await sheets.spreadsheets.sheets.copyTo({
+    spreadsheetId,
+    sheetId: templateSheetId,
+    requestBody: { destinationSpreadsheetId: spreadsheetId },
+  } as any);
+
+  const newSheetId = dupResponse.data.sheetId;
+
+  // Rename the duplicated sheet
+  await sheets.spreadsheets.batchUpdate({
+    spreadsheetId,
+    requestBody: {
+      requests: [
+        {
+          updateSheetProperties: {
+            properties: { sheetId: newSheetId, title: sheetName },
+            fields: 'title',
+          },
+        },
+      ],
+    },
+  });
+
+  // Write today's date into cell A3
+  const today = date || new Date();
+  const dateStr = `${today.getMonth() + 1}/${today.getDate()}/${today.getFullYear()}`;
+  await sheets.spreadsheets.values.update({
+    spreadsheetId,
+    range: `'${sheetName}'!A3`,
+    valueInputOption: 'USER_ENTERED',
+    requestBody: { values: [[dateStr]] },
+  });
+
+  return sheetName;
+}
+
+// --- Shift time helpers (row 2, columns A and B) ---
+
+/** Get shift start/end times from cells A2 and B2 */
+export async function getShiftTimes(sheetName?: string): Promise<{ start: string; end: string }> {
+  const sheet = sheetName || getTodaySheetName();
+  const sheets = getSheets();
+  const spreadsheetId = getSpreadsheetId();
+
+  try {
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId,
+      range: `'${sheet}'!A2:B2`,
+    });
+    const row = response.data.values?.[0] || [];
+    return { start: row[0]?.toString() || '', end: row[1]?.toString() || '' };
+  } catch {
+    return { start: '', end: '' };
+  }
+}
+
+/** Set shift start/end times in cells A2 and B2 */
+export async function setShiftTimes(
+  sheetName: string,
+  start: string,
+  end: string
+): Promise<void> {
+  const sheets = getSheets();
+  const spreadsheetId = getSpreadsheetId();
+
+  await sheets.spreadsheets.values.update({
+    spreadsheetId,
+    range: `'${sheetName}'!A2:B2`,
+    valueInputOption: 'USER_ENTERED',
+    requestBody: { values: [[start, end]] },
+  });
+}
+
+/** Clear all data in a patient row (for deletion) */
+export async function clearPatientRow(
+  rowIndex: number,
+  sheetName?: string
+): Promise<void> {
+  const sheet = sheetName || getTodaySheetName();
+  const sheets = getSheets();
+  const spreadsheetId = getSpreadsheetId();
+
+  await sheets.spreadsheets.values.clear({
+    spreadsheetId,
+    range: `'${sheet}'!A${rowIndex}:AA${rowIndex}`,
+  });
+}
+
+// --- Patient CRUD operations (now date-sheet aware) ---
+
+/** Fetch all patients from a specific date sheet */
+export async function getPatients(sheetName?: string): Promise<Patient[]> {
+  const sheet = sheetName || getTodaySheetName();
+  const sheets = getSheets();
+  const spreadsheetId = getSpreadsheetId();
+
+  // Check if the sheet exists first
+  const spreadsheet = await sheets.spreadsheets.get({ spreadsheetId });
+  const exists = spreadsheet.data.sheets?.some(
+    (s: any) => s.properties.title === sheet
+  );
+  if (!exists) return [];
 
   const response = await sheets.spreadsheets.values.get({
     spreadsheetId,
-    range: `${sheetName}!A${DATA_START_ROW}:Z100`,
+    range: `'${sheet}'!A${DATA_START_ROW}:AA100`,
   });
 
   const rows = response.data.values || [];
-  
+
   return rows
-    .map((row, index) => rowToPatient(row, index + DATA_START_ROW))
-    .filter(p => p.name || p.transcript); // Only return rows with data
+    .map((row, index) => rowToPatient(row, index + DATA_START_ROW, sheet))
+    .filter(p => p.name || p.transcript);
 }
 
-// Get a single patient by row index
-export async function getPatient(rowIndex: number): Promise<Patient | null> {
+/** Get a single patient by row index and sheet name */
+export async function getPatient(rowIndex: number, sheetName?: string): Promise<Patient | null> {
+  const sheet = sheetName || getTodaySheetName();
   const sheets = getSheets();
-  const spreadsheetId = process.env.GOOGLE_SHEETS_ID;
-  const sheetName = process.env.GOOGLE_SHEET_NAME || 'Template';
+  const spreadsheetId = getSpreadsheetId();
 
   const response = await sheets.spreadsheets.values.get({
     spreadsheetId,
-    range: `${sheetName}!A${rowIndex}:Z${rowIndex}`,
+    range: `'${sheet}'!A${rowIndex}:AA${rowIndex}`,
   });
 
   const rows = response.data.values || [];
   if (rows.length === 0) return null;
-  
-  return rowToPatient(rows[0], rowIndex);
+
+  return rowToPatient(rows[0], rowIndex, sheet);
 }
 
-// Update a patient row
-export async function updatePatient(rowIndex: number, data: Partial<Patient>): Promise<void> {
-  const sheets = getSheets();
-  const spreadsheetId = process.env.GOOGLE_SHEETS_ID;
-  const sheetName = process.env.GOOGLE_SHEET_NAME || 'Template';
-
-  // Build the row array
-  const values = [
-    data.patientNum || '',
-    data.timestamp || '',
-    data.name || '',
-    data.age || '',
-    data.gender || '',
-    data.birthday || '',
-    data.hcn || '',
-    data.mrn || '',
-    data.diagnosis || '',
-    data.icd9 || '',
-    data.icd10 || '',
-    data.visitProcedure || '',
-    data.procCode || '',
-    data.fee || '',
-    data.unit || '',
-    data.total || '',
-    data.comments || '',
-    data.triageVitals || '',
-    data.transcript || '',
-    data.additional || '',
-    data.ddx || '',
-    data.investigations || '',
-    data.hpi || '',
-    data.objective || '',
-    data.assessmentPlan || '',
-    data.referral || '',
-  ];
-
-  await sheets.spreadsheets.values.update({
-    spreadsheetId,
-    range: `${sheetName}!A${rowIndex}:Z${rowIndex}`,
-    valueInputOption: 'USER_ENTERED',
-    requestBody: { values: [values] },
-  });
-}
-
-// Update specific columns only
+/** Update specific columns for a patient */
 export async function updatePatientFields(
-  rowIndex: number, 
-  fields: Record<string, string>
+  rowIndex: number,
+  fields: Record<string, string>,
+  sheetName?: string
 ): Promise<void> {
+  const sheet = sheetName || getTodaySheetName();
   const sheets = getSheets();
-  const spreadsheetId = process.env.GOOGLE_SHEETS_ID;
-  const sheetName = process.env.GOOGLE_SHEET_NAME || 'Template';
+  const spreadsheetId = getSpreadsheetId();
 
-  // Get column letters for each field
   const columnMap: Record<string, string> = {
-    name: 'C', age: 'D', gender: 'E', birthday: 'F',
+    patientNum: 'A', name: 'C', age: 'D', gender: 'E', birthday: 'F',
     hcn: 'G', mrn: 'H', diagnosis: 'I', timestamp: 'B',
+    icd9: 'J', icd10: 'K',
     triageVitals: 'R', transcript: 'S', additional: 'T',
     ddx: 'U', investigations: 'V', hpi: 'W',
     objective: 'X', assessmentPlan: 'Y', referral: 'Z',
+    pastDocs: 'AA',
   };
 
-  // Batch update
-  const data = Object.entries(fields).map(([field, value]) => ({
-    range: `${sheetName}!${columnMap[field]}${rowIndex}`,
-    values: [[value]],
-  }));
+  const data = Object.entries(fields)
+    .filter(([field]) => columnMap[field])
+    .map(([field, value]) => ({
+      range: `'${sheet}'!${columnMap[field]}${rowIndex}`,
+      values: [[value]],
+    }));
+
+  if (data.length === 0) return;
 
   await sheets.spreadsheets.values.batchUpdate({
     spreadsheetId,
@@ -194,14 +325,51 @@ export async function updatePatientFields(
   });
 }
 
+/** Find the next empty row in a sheet */
+export async function getNextEmptyRow(sheetName?: string): Promise<number> {
+  const sheet = sheetName || getTodaySheetName();
+  const sheets = getSheets();
+  const spreadsheetId = getSpreadsheetId();
+
+  const response = await sheets.spreadsheets.values.get({
+    spreadsheetId,
+    range: `'${sheet}'!C${DATA_START_ROW}:C100`,
+  });
+
+  const rows = response.data.values || [];
+
+  for (let i = 0; i < rows.length; i++) {
+    if (!rows[i] || !rows[i][0]) {
+      return DATA_START_ROW + i;
+    }
+  }
+
+  return DATA_START_ROW + rows.length;
+}
+
+/** Get the count of patients in a sheet (for auto-numbering) */
+export async function getPatientCount(sheetName?: string): Promise<number> {
+  const sheet = sheetName || getTodaySheetName();
+  const sheets = getSheets();
+  const spreadsheetId = getSpreadsheetId();
+
+  const response = await sheets.spreadsheets.values.get({
+    spreadsheetId,
+    range: `'${sheet}'!C${DATA_START_ROW}:C100`,
+  });
+
+  const rows = response.data.values || [];
+  return rows.filter(r => r && r[0]).length;
+}
+
 // Convert a row array to a Patient object
-function rowToPatient(row: string[], rowIndex: number): Patient {
+function rowToPatient(row: string[], rowIndex: number, sheetName: string): Patient {
   const getValue = (col: number) => row[col]?.toString() || '';
-  
+
   const hpi = getValue(COLUMNS.HPI);
   const assessmentPlan = getValue(COLUMNS.ASSESSMENT_PLAN);
   const transcript = getValue(COLUMNS.TRANSCRIPT);
-  
+
   let status: 'new' | 'pending' | 'processed' = 'new';
   if (hpi || assessmentPlan) {
     status = 'processed';
@@ -211,6 +379,7 @@ function rowToPatient(row: string[], rowIndex: number): Patient {
 
   return {
     rowIndex,
+    sheetName,
     patientNum: getValue(COLUMNS.PATIENT_NUM),
     timestamp: getValue(COLUMNS.TIMESTAMP),
     name: getValue(COLUMNS.PATIENT_NAME),
@@ -237,30 +406,8 @@ function rowToPatient(row: string[], rowIndex: number): Patient {
     objective: getValue(COLUMNS.OBJECTIVE),
     assessmentPlan: getValue(COLUMNS.ASSESSMENT_PLAN),
     referral: getValue(COLUMNS.REFERRAL),
+    pastDocs: getValue(COLUMNS.PAST_DOCS),
     hasOutput: !!(hpi || assessmentPlan),
     status,
   };
-}
-
-// Find the next empty row
-export async function getNextEmptyRow(): Promise<number> {
-  const sheets = getSheets();
-  const spreadsheetId = process.env.GOOGLE_SHEETS_ID;
-  const sheetName = process.env.GOOGLE_SHEET_NAME || 'Template';
-
-  const response = await sheets.spreadsheets.values.get({
-    spreadsheetId,
-    range: `${sheetName}!C${DATA_START_ROW}:C100`,
-  });
-
-  const rows = response.data.values || [];
-  
-  // Find first empty row
-  for (let i = 0; i < rows.length; i++) {
-    if (!rows[i] || !rows[i][0]) {
-      return DATA_START_ROW + i;
-    }
-  }
-  
-  return DATA_START_ROW + rows.length;
 }

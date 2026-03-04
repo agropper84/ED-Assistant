@@ -23,15 +23,34 @@ export interface PatientData {
   triageVitals: string;
   transcript: string;
   additional: string;
+  pastDocs?: string;
 }
 
-export async function processEncounter(patientData: PatientData): Promise<ProcessedNote> {
-  const prompt = buildPrompt(patientData);
-  
+export interface ProcessOptions {
+  modifications?: string;
+  existingOutput?: ProcessedNote;
+  styleGuidance?: string;
+  settings?: {
+    model?: string;
+    maxTokens?: number;
+    temperature?: number;
+  };
+}
+
+export async function processEncounter(
+  patientData: PatientData,
+  options?: ProcessOptions
+): Promise<ProcessedNote> {
+  const prompt = buildPrompt(patientData, options);
+
+  const model = options?.settings?.model || 'claude-sonnet-4-20250514';
+  const maxTokens = options?.settings?.maxTokens || 4096;
+  const temperature = options?.settings?.temperature ?? 0.3;
+
   const response = await anthropic.messages.create({
-    model: 'claude-sonnet-4-20250514',
-    max_tokens: 4096,
-    temperature: 0.3,
+    model,
+    max_tokens: maxTokens,
+    temperature,
     messages: [{ role: 'user', content: prompt }],
   });
 
@@ -39,20 +58,76 @@ export async function processEncounter(patientData: PatientData): Promise<Proces
   return parseClaudeResponse(text);
 }
 
-function buildPrompt(patientData: PatientData): string {
+function buildPrompt(patientData: PatientData, options?: ProcessOptions): string {
   let dataSection = '';
-  
+
   if (patientData.triageVitals) {
     dataSection += `TRIAGE NOTE AND VITALS:\n${patientData.triageVitals}\n\n`;
   }
-  
+
   if (patientData.transcript) {
     dataSection += `TRANSCRIPT OF ENCOUNTER:\n${patientData.transcript}\n\n`;
   }
-  
+
   if (patientData.additional) {
-    dataSection += `ADDITIONAL FINDINGS (exam, investigations, plan):\n${patientData.additional}`;
+    dataSection += `ADDITIONAL FINDINGS (exam, investigations, plan):\n${patientData.additional}\n\n`;
   }
+
+  if (patientData.pastDocs) {
+    dataSection += `PAST DOCUMENTATION / PREVIOUS VISITS:\n${patientData.pastDocs}\n\n`;
+  }
+
+  // If modifying existing output, include it
+  let modificationSection = '';
+  if (options?.modifications && options?.existingOutput) {
+    modificationSection = `
+---
+
+EXISTING DOCUMENTATION (to be modified):
+
+===DDX===
+${options.existingOutput.ddx}
+
+===INVESTIGATIONS===
+${options.existingOutput.investigations}
+
+===HPI===
+${options.existingOutput.hpi}
+
+===OBJECTIVE===
+${options.existingOutput.objective}
+
+===ASSESSMENT_PLAN===
+${options.existingOutput.assessmentPlan}
+
+===DIAGNOSIS===
+${options.existingOutput.diagnosis}
+
+---
+
+MODIFICATION INSTRUCTIONS:
+${options.modifications}
+
+Please regenerate the documentation incorporating these modifications. Preserve the existing content where not affected by the modifications.
+
+`;
+  }
+
+  // Style guidance section
+  let styleSection = '';
+  if (options?.styleGuidance) {
+    styleSection = `
+STYLE GUIDANCE:
+${options.styleGuidance}
+
+Please match the writing style demonstrated above when generating documentation.
+
+`;
+  }
+
+  const baseInstruction = options?.modifications
+    ? 'Based on the available information and the modification instructions above, regenerate the ED documentation.'
+    : 'Based on the available information, generate comprehensive ED documentation.';
 
   return `You are an AI assistant helping an emergency department physician create encounter documentation.
 
@@ -63,10 +138,9 @@ PATIENT INFORMATION:
 - Date of Birth: ${patientData.birthday || 'Not provided'}
 
 ${dataSection}
+${modificationSection}${styleSection}---
 
----
-
-Based on the available information, generate comprehensive ED documentation. You must provide ALL five sections below.
+${baseInstruction} You must provide ALL five sections below.
 
 IMPORTANT RULES:
 - Do NOT assume, infer, or make up information not explicitly stated in the provided data
@@ -144,6 +218,50 @@ function parseClaudeResponse(response: string): ProcessedNote {
   return sections;
 }
 
+export async function generateReferral(
+  patientData: PatientData,
+  encounterNote: ProcessedNote,
+  referralInfo: { specialty: string; urgency: string; reason: string }
+): Promise<string> {
+  const response = await anthropic.messages.create({
+    model: 'claude-sonnet-4-20250514',
+    max_tokens: 2048,
+    temperature: 0.3,
+    messages: [{
+      role: 'user',
+      content: `You are an AI assistant helping an emergency department physician write a referral letter.
+
+PATIENT INFORMATION:
+- Name: ${patientData.name || 'Not provided'}
+- Age: ${patientData.age || 'Not provided'}
+- Gender: ${patientData.gender || 'Not provided'}
+- Date of Birth: ${patientData.birthday || 'Not provided'}
+
+ENCOUNTER SUMMARY:
+HPI: ${encounterNote.hpi}
+Objective: ${encounterNote.objective}
+Assessment & Plan: ${encounterNote.assessmentPlan}
+Diagnosis: ${encounterNote.diagnosis}
+
+REFERRAL DETAILS:
+- Specialty: ${referralInfo.specialty}
+- Urgency: ${referralInfo.urgency}
+- Reason: ${referralInfo.reason}
+
+Write a professional, concise referral letter to the specified specialty. Include:
+1. Patient demographics and reason for referral
+2. Brief clinical summary from the ED encounter
+3. Relevant findings and investigations
+4. Specific question or request for the consultant
+5. Urgency context
+
+Use professional medical language. Be concise but thorough. Write in paragraph form.`
+    }],
+  });
+
+  return response.content[0].type === 'text' ? response.content[0].text : '';
+}
+
 export async function lookupICDCodes(diagnosisText: string): Promise<{
   diagnosis: string;
   icd9: string;
@@ -170,7 +288,7 @@ ICD10: [code only, no description]`
   });
 
   const text = response.content[0].type === 'text' ? response.content[0].text : '';
-  
+
   const diagMatch = text.match(/DIAGNOSIS:\s*(.+)/i);
   const icd9Match = text.match(/ICD9:\s*([A-Z0-9.]+)/i);
   const icd10Match = text.match(/ICD10:\s*([A-Z0-9.]+)/i);

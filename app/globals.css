@@ -32,3 +32,12 @@ button, .btn {
 .badge-pending { @apply bg-amber-100 text-amber-800; }
 .badge-processed { @apply bg-green-100 text-green-800; }
 .badge-new { @apply bg-blue-100 text-blue-800; }
+
+/* Hide scrollbar for exam toggles */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
