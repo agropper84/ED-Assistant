@@ -1,5 +1,5 @@
 import { google } from 'googleapis';
-import { BillingItem, calculateTotal } from '@/lib/billing';
+import { BillingItem, BillingCode, calculateTotal } from '@/lib/billing';
 
 // Column mappings matching the Apps Script CONFIG
 export const COLUMNS = {
@@ -752,4 +752,36 @@ function rowToPatient(row: string[], rowIndex: number, sheetName: string): Patie
     hasOutput: !!(hpi || assessmentPlan),
     status,
   };
+}
+
+// --- Billing Codes Sheet ---
+
+const BILLING_SHEET_NAME = 'Billing Codes';
+
+/** Read billing codes from the "Billing Codes" sheet tab. Columns: A=Code, B=Description, C=Fee */
+export async function getBillingCodes(): Promise<BillingCode[]> {
+  const sheets = getSheets();
+  const spreadsheetId = getSpreadsheetId();
+
+  // Check if the sheet exists
+  const spreadsheet = await sheets.spreadsheets.get({ spreadsheetId });
+  const exists = spreadsheet.data.sheets?.some(
+    (s: any) => s.properties.title === BILLING_SHEET_NAME
+  );
+  if (!exists) return [];
+
+  const response = await sheets.spreadsheets.values.get({
+    spreadsheetId,
+    range: `'${BILLING_SHEET_NAME}'!A2:C500`,
+  });
+
+  const rows = response.data.values || [];
+  return rows
+    .filter((row: any[]) => row[0]?.toString().trim())
+    .map((row: any[]) => ({
+      code: row[0]?.toString().trim() || '',
+      description: row[1]?.toString().trim() || '',
+      fee: row[2]?.toString().trim() || '',
+    }))
+    .sort((a: BillingCode, b: BillingCode) => a.description.localeCompare(b.description));
 }

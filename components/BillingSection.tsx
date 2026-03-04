@@ -1,10 +1,10 @@
 'use client';
 
-import { useState } from 'react';
-import { X, ChevronDown, ChevronUp, DollarSign } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { X, ChevronDown, ChevronUp, DollarSign, Search } from 'lucide-react';
 import {
-  BillingItem, BillingCategory,
-  addBillingCode, calculateTotal, getAdditionalCodes,
+  BillingItem, BillingCategory, BillingCode,
+  addBillingCode, calculateTotal, getAdditionalCodes, filterAdditionalCodes,
 } from '@/lib/billing';
 
 interface BillingSectionProps {
@@ -93,13 +93,39 @@ function BillingBody({
   const [newCode, setNewCode] = useState('');
   const [newDesc, setNewDesc] = useState('');
   const [newFee, setNewFee] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [sheetCodes, setSheetCodes] = useState<BillingCode[] | null>(null);
 
-  const additionalCodes = getAdditionalCodes();
+  // Fetch billing codes from Google Sheet on mount
+  useEffect(() => {
+    fetch('/api/billing-codes')
+      .then(res => res.ok ? res.json() : null)
+      .then(data => {
+        if (Array.isArray(data) && data.length > 0) {
+          setSheetCodes(data);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  // Use sheet codes if available, otherwise fall back to local defaults
+  const additionalCodes = sheetCodes
+    ? filterAdditionalCodes(sheetCodes)
+    : getAdditionalCodes();
+
   const total = calculateTotal(billingItems);
 
   const currentVisit = billingItems.find(i => i.category === 'visitType');
   const currentPremium = billingItems.find(i => i.category === 'premium');
   const additionalItems = billingItems.filter(i => i.category === 'additional');
+
+  // Filter additional codes by search query
+  const filteredCodes = searchQuery.trim()
+    ? additionalCodes.filter(c =>
+        c.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        c.code.toLowerCase().includes(searchQuery.toLowerCase())
+      )
+    : additionalCodes;
 
   const setCategoryItem = (category: BillingCategory, item: BillingItem | null) => {
     const filtered = billingItems.filter(i => i.category !== category);
@@ -234,31 +260,56 @@ function BillingBody({
         </div>
       </div>
 
-      {/* Additional Procedures */}
+      {/* Additional Fees */}
       <div>
-        <label className="block text-xs font-medium text-gray-500 mb-1">Additional Procedures</label>
+        <label className="block text-xs font-medium text-gray-500 mb-1">Additional Fees</label>
+        {/* Search */}
+        <div className="relative mb-1">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search fees..."
+            className="w-full pl-8 pr-8 py-1.5 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery('')}
+              className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 text-gray-400 hover:text-gray-600"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
         <div className="max-h-40 overflow-y-auto border rounded-lg divide-y bg-white">
-          {additionalCodes.map((item) => {
-            const isAdded = additionalItems.some(a => a.code === item.code);
-            return (
-              <button
-                key={item.code}
-                onClick={() => {
-                  if (!isAdded) addItem(item.code, item.description, item.fee);
-                }}
-                disabled={isAdded}
-                className={`w-full text-left px-3 py-2 text-sm flex justify-between items-center ${
-                  isAdded ? 'bg-green-50 text-green-700' : 'hover:bg-blue-50'
-                }`}
-              >
-                <span className="truncate">{item.description}</span>
-                <span className="text-gray-500 flex-shrink-0 ml-2 text-xs">
-                  {item.code} {item.fee && `• $${item.fee}`}
-                  {isAdded && ' (added)'}
-                </span>
-              </button>
-            );
-          })}
+          {filteredCodes.length === 0 ? (
+            <div className="px-3 py-2 text-sm text-gray-400 italic">
+              {searchQuery ? 'No matching fees' : 'No billing codes available'}
+            </div>
+          ) : (
+            filteredCodes.map((item) => {
+              const isAdded = additionalItems.some(a => a.code === item.code);
+              return (
+                <button
+                  key={item.code}
+                  onClick={() => {
+                    if (!isAdded) addItem(item.code, item.description, item.fee);
+                  }}
+                  disabled={isAdded}
+                  className={`w-full text-left px-3 py-2 text-sm flex justify-between items-center ${
+                    isAdded ? 'bg-green-50 text-green-700' : 'hover:bg-blue-50'
+                  }`}
+                >
+                  <span className="truncate">{item.description}</span>
+                  <span className="text-gray-500 flex-shrink-0 ml-2 text-xs">
+                    {item.code} {item.fee && `• $${item.fee}`}
+                    {isAdded && ' (added)'}
+                  </span>
+                </button>
+              );
+            })
+          )}
         </div>
         <button
           onClick={() => setShowAddCode(!showAddCode)}

@@ -190,11 +190,20 @@ export function calculateTotal(items: BillingItem[]): string {
   return total > 0 ? total.toFixed(2) : '';
 }
 
-/** Get additional codes (everything not in visitType/premium) */
+/** Get additional codes (everything not in visitType/premium) from local defaults */
 export function getAdditionalCodes(): BillingCode[] {
   const categoryCodes = new Set([
     ...BILLING_CATEGORIES.visitType.codes,
     ...BILLING_CATEGORIES.premium.codes,
   ]);
   return getAllBillingCodes().filter(c => !categoryCodes.has(c.code));
+}
+
+/** Filter additional codes from a provided list (e.g. fetched from Google Sheet) */
+export function filterAdditionalCodes(codes: BillingCode[]): BillingCode[] {
+  const categoryCodes = new Set([
+    ...BILLING_CATEGORIES.visitType.codes,
+    ...BILLING_CATEGORIES.premium.codes,
+  ]);
+  return codes.filter(c => !categoryCodes.has(c.code));
 }
