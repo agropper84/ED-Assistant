@@ -270,23 +270,31 @@ export default function HomePage() {
         <div className="flex items-center gap-3 max-w-2xl mx-auto px-4 py-2">
           <Clock className="w-4 h-4 text-gray-400 flex-shrink-0" />
           <span className="text-sm text-gray-500 flex-shrink-0">Shift:</span>
-          <input
-            type="time"
+          <select
             value={shiftStart}
-            onChange={(e) => setShiftStart(e.target.value)}
-            onBlur={(e) => handleShiftTimeBlur('start', e.target.value)}
-            placeholder="Start"
-            className="flex-1 p-1.5 border rounded-lg text-sm text-center focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-          />
+            onChange={(e) => { setShiftStart(e.target.value); handleShiftTimeBlur('start', e.target.value); }}
+            className="flex-1 p-1.5 border rounded-lg text-sm text-center focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+          >
+            <option value="">Start</option>
+            <option value="08:00">8:00 AM</option>
+            <option value="11:00">11:00 AM</option>
+            <option value="13:00">1:00 PM</option>
+            <option value="18:00">6:00 PM</option>
+            <option value="23:00">11:00 PM</option>
+          </select>
           <span className="text-gray-400">—</span>
-          <input
-            type="time"
+          <select
             value={shiftEnd}
-            onChange={(e) => setShiftEnd(e.target.value)}
-            onBlur={(e) => handleShiftTimeBlur('end', e.target.value)}
-            placeholder="End"
-            className="flex-1 p-1.5 border rounded-lg text-sm text-center focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-          />
+            onChange={(e) => { setShiftEnd(e.target.value); handleShiftTimeBlur('end', e.target.value); }}
+            className="flex-1 p-1.5 border rounded-lg text-sm text-center focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+          >
+            <option value="">End</option>
+            <option value="15:00">3:00 PM</option>
+            <option value="18:00">6:00 PM</option>
+            <option value="21:00">9:00 PM</option>
+            <option value="01:00">1:00 AM</option>
+            <option value="08:00">8:00 AM</option>
+          </select>
         </div>
       </div>
 
