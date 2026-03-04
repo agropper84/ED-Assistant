@@ -7,7 +7,7 @@ import {
   ArrowLeft, Loader2, Play, Copy, Check,
   User, Calendar, CreditCard, FileText,
   ChevronDown, ChevronUp, Pencil, X, Save,
-  RefreshCw, Send, Bookmark
+  RefreshCw, Send, Bookmark, Plus, Scissors
 } from 'lucide-react';
 import { ExamToggles } from '@/components/ExamToggles';
 import { ReferralModal } from '@/components/ReferralModal';
@@ -405,6 +405,7 @@ export default function PatientPage() {
                   onSave={(value) => handleSaveField('hpi', value)}
                   onSaveStyle={() => handleSaveStyleExample('hpi', patient.hpi)}
                   styleSaved={styleSaved === 'hpi'}
+                  interactiveEdit
                 />
 
                 <OutputSection
@@ -419,6 +420,7 @@ export default function PatientPage() {
                   onSaveStyle={() => handleSaveStyleExample('objective', patient.objective)}
                   styleSaved={styleSaved === 'objective'}
                   showExamToggles
+                  interactiveEdit
                 />
 
                 <OutputSection
@@ -432,6 +434,7 @@ export default function PatientPage() {
                   onSave={(value) => handleSaveField('assessmentPlan', value)}
                   onSaveStyle={() => handleSaveStyleExample('assessmentPlan', patient.assessmentPlan)}
                   styleSaved={styleSaved === 'assessmentPlan'}
+                  interactiveEdit
                 />
               </>
             )}
@@ -575,6 +578,7 @@ function OutputSection({
   onSaveStyle,
   styleSaved,
   showExamToggles,
+  interactiveEdit,
 }: {
   title: string;
   content: string;
@@ -588,6 +592,7 @@ function OutputSection({
   onSaveStyle?: () => void;
   styleSaved?: boolean;
   showExamToggles?: boolean;
+  interactiveEdit?: boolean;
 }) {
   const [editing, setEditing] = useState(false);
   const [editValue, setEditValue] = useState(content);
@@ -698,6 +703,8 @@ function OutputSection({
                 </button>
               </div>
             </div>
+          ) : interactiveEdit && onSave ? (
+            <InteractiveContent content={content} onSave={onSave} />
           ) : (
             <p className="text-gray-700 whitespace-pre-wrap text-sm leading-relaxed">
               {content}
@@ -705,6 +712,204 @@ function OutputSection({
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+// --- Sentence-level interactive content editor ---
+
+type ContentPart = { text: string; type: 'sentence' | 'break' };
+
+/** Split text into sentence-level parts, preserving line breaks */
+function splitContent(text: string): ContentPart[] {
+  if (!text) return [];
+  const result: ContentPart[] = [];
+  const lines = text.split('\n');
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    if (!line.trim()) {
+      result.push({ text: '', type: 'break' });
+      continue;
+    }
+    // Split sentences at ". " followed by uppercase letter, requiring 10+ chars
+    // before the period to avoid splitting abbreviations (Dr., i.e., etc.)
+    const sentences = line.split(/(?<=.{10,}\.)\s+(?=[A-Z])/);
+    for (const s of sentences) {
+      if (s.trim()) result.push({ text: s.trim(), type: 'sentence' });
+    }
+    if (i < lines.length - 1) {
+      result.push({ text: '', type: 'break' });
+    }
+  }
+  return result;
+}
+
+/** Reconstruct text from parts, joining same-paragraph sentences with spaces */
+function partsToText(parts: ContentPart[]): string {
+  const lines: string[] = [];
+  let cur: string[] = [];
+  for (const p of parts) {
+    if (p.type === 'break') {
+      lines.push(cur.join(' '));
+      cur = [];
+    } else {
+      cur.push(p.text);
+    }
+  }
+  if (cur.length > 0) lines.push(cur.join(' '));
+  return lines.join('\n');
+}
+
+function InteractiveContent({
+  content,
+  onSave,
+}: {
+  content: string;
+  onSave: (newContent: string) => void;
+}) {
+  const [parts, setParts] = useState<ContentPart[]>(() => splitContent(content));
+  const [activeIdx, setActiveIdx] = useState<number | null>(null);
+  const [addingIdx, setAddingIdx] = useState<number | null>(null);
+  const [detailText, setDetailText] = useState('');
+
+  // Sync parts when content prop changes (after save round-trip)
+  useEffect(() => {
+    setParts(splitContent(content));
+    setActiveIdx(null);
+    setAddingIdx(null);
+  }, [content]);
+
+  function save(newParts: ContentPart[]) {
+    setParts(newParts);
+    onSave(partsToText(newParts));
+  }
+
+  function handleRemove(idx: number) {
+    // Also remove an adjacent break if it would leave a double blank line
+    const newParts = parts.filter((_, i) => i !== idx);
+    save(newParts);
+    setActiveIdx(null);
+  }
+
+  function handleTruncate(idx: number) {
+    const text = parts[idx].text;
+    // 1. Remove parenthetical content
+    let truncated = text.replace(/\s*\([^)]*\)/g, '');
+    // 2. Truncate at first comma (if enough content before it)
+    const commaIdx = truncated.indexOf(', ');
+    if (commaIdx > 10) {
+      truncated = truncated.substring(0, commaIdx) + '.';
+    }
+    if (truncated === text) {
+      // If nothing changed, try truncating at semicolon
+      const semiIdx = truncated.indexOf('; ');
+      if (semiIdx > 10) {
+        truncated = truncated.substring(0, semiIdx) + '.';
+      }
+    }
+    const newParts = [...parts];
+    newParts[idx] = { ...newParts[idx], text: truncated };
+    save(newParts);
+    setActiveIdx(null);
+  }
+
+  function handleAddDetail(idx: number) {
+    if (!detailText.trim()) return;
+    const text = parts[idx].text;
+    let newText: string;
+    if (text.endsWith('.')) {
+      newText = text.slice(0, -1) + ', ' + detailText.trim() + '.';
+    } else {
+      newText = text + ' ' + detailText.trim();
+    }
+    const newParts = [...parts];
+    newParts[idx] = { ...newParts[idx], text: newText };
+    save(newParts);
+    setAddingIdx(null);
+    setDetailText('');
+    setActiveIdx(null);
+  }
+
+  return (
+    <div className="text-gray-700 text-sm leading-relaxed">
+      {parts.map((part, idx) => {
+        if (part.type === 'break') return <br key={idx} />;
+
+        const isActive = activeIdx === idx;
+        const isAdding = addingIdx === idx;
+
+        return (
+          <span key={idx}>
+            <span
+              className={`transition-colors duration-150 cursor-pointer rounded-sm px-0.5 -mx-0.5 ${
+                isActive ? 'bg-blue-100' : 'hover:bg-gray-100'
+              }`}
+              onClick={(e) => {
+                e.stopPropagation();
+                setActiveIdx(isActive ? null : idx);
+                if (!isActive) { setAddingIdx(null); setDetailText(''); }
+              }}
+            >
+              {part.text}
+            </span>
+            {isActive && !isAdding && (
+              <span className="inline-flex items-center gap-0.5 ml-0.5 align-middle">
+                <button
+                  onClick={(e) => { e.stopPropagation(); handleRemove(idx); }}
+                  title="Remove"
+                  className="p-1 rounded hover:bg-red-100 transition-colors"
+                >
+                  <X className="w-3.5 h-3.5 text-red-500" />
+                </button>
+                <button
+                  onClick={(e) => { e.stopPropagation(); setAddingIdx(idx); setDetailText(''); }}
+                  title="Add detail"
+                  className="p-1 rounded hover:bg-blue-100 transition-colors"
+                >
+                  <Plus className="w-3.5 h-3.5 text-blue-500" />
+                </button>
+                <button
+                  onClick={(e) => { e.stopPropagation(); handleTruncate(idx); }}
+                  title="Shorten"
+                  className="p-1 rounded hover:bg-amber-100 transition-colors"
+                >
+                  <Scissors className="w-3.5 h-3.5 text-amber-500" />
+                </button>
+              </span>
+            )}
+            {isAdding && (
+              <div className="flex items-center gap-1 my-1">
+                <input
+                  type="text"
+                  value={detailText}
+                  onChange={(e) => setDetailText(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') handleAddDetail(idx);
+                    if (e.key === 'Escape') { setAddingIdx(null); setDetailText(''); }
+                  }}
+                  placeholder="Add detail..."
+                  autoFocus
+                  className="flex-1 p-1.5 border rounded text-xs focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                  onClick={(e) => e.stopPropagation()}
+                />
+                <button
+                  onClick={(e) => { e.stopPropagation(); handleAddDetail(idx); }}
+                  className="text-xs text-blue-600 font-medium px-2 py-1 hover:bg-blue-50 rounded"
+                >
+                  Add
+                </button>
+                <button
+                  onClick={(e) => { e.stopPropagation(); setAddingIdx(null); setDetailText(''); }}
+                  className="text-xs text-gray-500 px-2 py-1 hover:bg-gray-100 rounded"
+                >
+                  Cancel
+                </button>
+              </div>
+            )}
+            {' '}
+          </span>
+        );
+      })}
     </div>
   );
 }
