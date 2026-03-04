@@ -1,16 +1,7 @@
 'use client';
 
-const EXAM_SYSTEMS: { label: string; text: string }[] = [
-  { label: 'General', text: 'General: Patient appears well, NAD. AVSS.' },
-  { label: 'HEENT', text: 'HEENT: PERRL, EOMI, TMs clear bilaterally, oropharynx clear, no lymphadenopathy.' },
-  { label: 'Resp', text: 'Resp: Clear to auscultation bilaterally, no wheezes/crackles, normal work of breathing.' },
-  { label: 'CVS', text: 'CVS: S1S2, regular rate and rhythm, no murmurs, peripheral pulses intact.' },
-  { label: 'Abdo', text: 'Abdo: Soft, non-tender, non-distended, no guarding/rigidity, BS+.' },
-  { label: 'MSK', text: 'MSK: No deformity, full ROM, no tenderness, neurovascularly intact distally.' },
-  { label: 'Neuro', text: 'Neuro: Alert and oriented, CN II-XII intact, normal motor/sensory, normal gait.' },
-  { label: 'Skin', text: 'Skin: No rashes, warm and well-perfused, no lesions.' },
-  { label: 'Psych', text: 'Psych: Calm, cooperative, normal affect, no SI/HI.' },
-];
+import { useState, useEffect } from 'react';
+import { getExamPresets, ExamPreset } from '@/lib/exam-presets';
 
 interface ExamTogglesProps {
   value: string;
@@ -18,6 +9,12 @@ interface ExamTogglesProps {
 }
 
 export function ExamToggles({ value, onChange }: ExamTogglesProps) {
+  const [presets, setPresets] = useState<ExamPreset[]>([]);
+
+  useEffect(() => {
+    setPresets(getExamPresets());
+  }, []);
+
   const isActive = (system: { text: string }) => {
     return value.includes(system.text);
   };
@@ -39,7 +36,7 @@ export function ExamToggles({ value, onChange }: ExamTogglesProps) {
 
   return (
     <div className="flex gap-1.5 overflow-x-auto pb-2 -mx-1 px-1 scrollbar-hide">
-      {EXAM_SYSTEMS.map((system) => (
+      {presets.map((system) => (
         <button
           key={system.label}
           type="button"

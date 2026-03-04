@@ -2,9 +2,10 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Trash2, Plus, X } from 'lucide-react';
+import { ArrowLeft, Trash2, Plus, Pencil, RotateCcw } from 'lucide-react';
 import { getStyleGuide, addExample, removeExample, saveStyleGuide, StyleGuide } from '@/lib/style-guide';
 import { getSettings, saveSettings, AppSettings, DEFAULT_SETTINGS } from '@/lib/settings';
+import { getExamPresets, saveExamPresets, resetExamPresets, ExamPreset } from '@/lib/exam-presets';
 
 type Tab = 'style' | 'settings';
 
@@ -15,10 +16,16 @@ export default function SettingsPage() {
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
   const [addingTo, setAddingTo] = useState<'hpi' | 'objective' | 'assessmentPlan' | null>(null);
   const [newExample, setNewExample] = useState('');
+  const [examPresets, setExamPresets] = useState<ExamPreset[]>([]);
+  const [editingPreset, setEditingPreset] = useState<number | null>(null);
+  const [addingPreset, setAddingPreset] = useState(false);
+  const [presetLabel, setPresetLabel] = useState('');
+  const [presetText, setPresetText] = useState('');
 
   useEffect(() => {
     setStyleGuide(getStyleGuide());
     setSettings(getSettings());
+    setExamPresets(getExamPresets());
   }, []);
 
   const handleAddExample = (section: 'hpi' | 'objective' | 'assessmentPlan') => {
@@ -100,6 +107,157 @@ export default function SettingsPage() {
                 placeholder="e.g. Use third-person, past tense. Keep sentences concise. Use standard medical abbreviations (pt, hx, dx). Avoid hedging language. Use bullet points for assessment & plan."
                 className="w-full h-28 p-3 border rounded-lg text-sm resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               />
+            </div>
+
+            {/* Exam Presets */}
+            <div className="bg-white rounded-xl shadow-sm border p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="font-semibold text-gray-900">Physical Exam Presets</h3>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => {
+                      const reset = resetExamPresets();
+                      setExamPresets(reset);
+                    }}
+                    className="flex items-center gap-1 px-2.5 py-1.5 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg text-xs font-medium transition-colors"
+                    title="Reset to defaults"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    onClick={() => { setAddingPreset(true); setPresetLabel(''); setPresetText(''); }}
+                    className="flex items-center gap-1 px-3 py-1.5 bg-blue-100 text-blue-700 rounded-lg text-sm font-medium"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    Add
+                  </button>
+                </div>
+              </div>
+
+              {examPresets.length === 0 ? (
+                <p className="text-sm text-gray-400 italic">No presets configured</p>
+              ) : (
+                <div className="space-y-2">
+                  {examPresets.map((preset, idx) => (
+                    <div key={idx} className="bg-gray-50 rounded-lg p-3 relative group">
+                      {editingPreset === idx ? (
+                        <div className="space-y-2">
+                          <input
+                            type="text"
+                            value={presetLabel}
+                            onChange={(e) => setPresetLabel(e.target.value)}
+                            placeholder="Label (e.g. HEENT)"
+                            className="w-full p-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            autoFocus
+                          />
+                          <textarea
+                            value={presetText}
+                            onChange={(e) => setPresetText(e.target.value)}
+                            placeholder="Normal exam text..."
+                            className="w-full h-20 p-2 border rounded-lg text-sm resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                          />
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => {
+                                if (!presetLabel.trim() || !presetText.trim()) return;
+                                const updated = [...examPresets];
+                                updated[idx] = { label: presetLabel.trim(), text: presetText.trim() };
+                                saveExamPresets(updated);
+                                setExamPresets(updated);
+                                setEditingPreset(null);
+                              }}
+                              disabled={!presetLabel.trim() || !presetText.trim()}
+                              className="px-3 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-medium disabled:opacity-50"
+                            >
+                              Save
+                            </button>
+                            <button
+                              onClick={() => setEditingPreset(null)}
+                              className="px-3 py-1.5 bg-gray-200 text-gray-700 rounded-lg text-xs font-medium"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="flex items-start gap-2 pr-16">
+                            <span className="inline-block px-2 py-0.5 bg-blue-100 text-blue-700 rounded text-xs font-semibold flex-shrink-0 mt-0.5">
+                              {preset.label}
+                            </span>
+                            <p className="text-sm text-gray-700">{preset.text}</p>
+                          </div>
+                          <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button
+                              onClick={() => {
+                                setEditingPreset(idx);
+                                setPresetLabel(preset.label);
+                                setPresetText(preset.text);
+                              }}
+                              className="p-1 bg-blue-100 text-blue-600 rounded"
+                            >
+                              <Pencil className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              onClick={() => {
+                                const updated = examPresets.filter((_, i) => i !== idx);
+                                saveExamPresets(updated);
+                                setExamPresets(updated);
+                              }}
+                              className="p-1 bg-red-100 text-red-600 rounded"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Add Preset Form */}
+              {addingPreset && (
+                <div className="border-t pt-3 space-y-2">
+                  <input
+                    type="text"
+                    value={presetLabel}
+                    onChange={(e) => setPresetLabel(e.target.value)}
+                    placeholder="Label (e.g. GU, Vascular)"
+                    className="w-full p-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    autoFocus
+                  />
+                  <textarea
+                    value={presetText}
+                    onChange={(e) => setPresetText(e.target.value)}
+                    placeholder="Normal exam findings text..."
+                    className="w-full h-20 p-2 border rounded-lg text-sm resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => {
+                        if (!presetLabel.trim() || !presetText.trim()) return;
+                        const updated = [...examPresets, { label: presetLabel.trim(), text: presetText.trim() }];
+                        saveExamPresets(updated);
+                        setExamPresets(updated);
+                        setAddingPreset(false);
+                        setPresetLabel('');
+                        setPresetText('');
+                      }}
+                      disabled={!presetLabel.trim() || !presetText.trim()}
+                      className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium disabled:opacity-50"
+                    >
+                      Save Preset
+                    </button>
+                    <button
+                      onClick={() => { setAddingPreset(false); setPresetLabel(''); setPresetText(''); }}
+                      className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg text-sm font-medium"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Computed Features */}
