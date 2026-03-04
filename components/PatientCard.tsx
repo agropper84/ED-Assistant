@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Patient } from '@/lib/google-sheets';
-import { Clock, User, FileText, ChevronRight, Trash2, AlertCircle, DollarSign } from 'lucide-react';
+import { Clock, User, FileText, ChevronRight, Trash2, MessageSquare, DollarSign } from 'lucide-react';
 
 interface PatientCardProps {
   patient: Patient;
@@ -25,15 +25,6 @@ function toInitials(name: string): string {
     .join('');
 }
 
-/** Extract presenting issue from triage vitals (first line / first sentence) */
-function getPresentingIssue(triageVitals: string): string {
-  if (!triageVitals) return '';
-  // Take first line, then truncate at ~60 chars
-  const firstLine = triageVitals.split('\n')[0].trim();
-  if (firstLine.length <= 60) return firstLine;
-  return firstLine.substring(0, 57) + '...';
-}
-
 export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChange, onBillingToggle, billingCodes, onViewNote }: PatientCardProps) {
   const [editingTime, setEditingTime] = useState(false);
   const [timeValue, setTimeValue] = useState(patient.timestamp || '');
@@ -51,7 +42,6 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
   };
 
   const displayName = anonymize ? toInitials(patient.name) : (patient.name || 'No name');
-  const presentingIssue = getPresentingIssue(patient.triageVitals);
 
   const handleTimeSave = () => {
     if (onTimeChange && timeValue !== patient.timestamp) {
@@ -88,10 +78,12 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
           )}
         </div>
 
-        {presentingIssue && (
-          <div className="flex items-center gap-1 text-sm text-gray-700 mb-1">
-            <AlertCircle className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
-            <span className="truncate">{presentingIssue}</span>
+        {patient.triageVitals && (
+          <div className="relative group/triage inline-flex mb-1">
+            <MessageSquare className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
+            <div className="absolute left-0 top-full mt-1 z-50 hidden group-hover/triage:block w-72 max-h-48 overflow-y-auto p-3 bg-gray-900 text-gray-100 text-xs rounded-lg shadow-lg whitespace-pre-wrap leading-relaxed">
+              {patient.triageVitals}
+            </div>
           </div>
         )}
 

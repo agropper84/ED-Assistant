@@ -12,7 +12,7 @@ import {
 import { ExamToggles } from '@/components/ExamToggles';
 import { ReferralModal } from '@/components/ReferralModal';
 import { VoiceRecorder } from '@/components/VoiceRecorder';
-import { getStyleGuide, addExample } from '@/lib/style-guide';
+import { fetchStyleGuide, addExampleAsync, persistStyleGuide, StyleGuide } from '@/lib/style-guide';
 import {
   BillingItem,
   parseBillingItems,
@@ -89,26 +89,6 @@ export default function PatientPage() {
     setProcessing(true);
     setProcessError('');
     try {
-      // Get style guidance from localStorage
-      const styleGuide = getStyleGuide();
-      let styleGuidance: string | undefined;
-      const hasExamples = Object.values(styleGuide.examples).some(arr => arr.length > 0);
-      if (styleGuide && (hasExamples || styleGuide.customGuidance)) {
-        const parts: string[] = [];
-        for (const [section, examples] of Object.entries(styleGuide.examples)) {
-          if (examples.length > 0) {
-            parts.push(`${section.toUpperCase()} style examples:\n${examples.map((e, i) => `Example ${i + 1}:\n${e}`).join('\n\n')}`);
-          }
-        }
-        if (styleGuide.computedFeatures) {
-          parts.push(`Computed style features: ${styleGuide.computedFeatures}`);
-        }
-        if (styleGuide.customGuidance) {
-          parts.push(`Charting guidance from the physician:\n${styleGuide.customGuidance}`);
-        }
-        styleGuidance = parts.join('\n\n');
-      }
-
       // Get settings from localStorage
       let settings: any;
       try {
@@ -116,6 +96,7 @@ export default function PatientPage() {
         if (stored) settings = JSON.parse(stored);
       } catch {}
 
+      // Style guide is now fetched server-side in the process route
       const res = await fetch('/api/process', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -123,7 +104,6 @@ export default function PatientPage() {
           rowIndex: parseInt(rowIndex),
           sheetName,
           modifications: mods,
-          styleGuidance,
           settings,
         }),
       });
@@ -174,11 +154,39 @@ export default function PatientPage() {
     }
   };
 
-  const handleSaveStyleExample = (section: string, content: string) => {
+  const handleSaveStyleExample = async (section: string, content: string) => {
     const sectionKey = section as 'hpi' | 'objective' | 'assessmentPlan';
-    addExample(sectionKey, content);
     setStyleSaved(section);
     setTimeout(() => setStyleSaved(null), 2000);
+
+    try {
+      const current = await fetchStyleGuide();
+      const updated = await addExampleAsync(sectionKey, content, current);
+
+      // Fire-and-forget: extract style features
+      fetch('/api/extract-style', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          example: content,
+          section: sectionKey,
+          existingFeatures: updated.extractedFeatures,
+        }),
+      })
+        .then(res => res.ok ? res.json() : null)
+        .then(data => {
+          if (data?.features?.length > 0) {
+            const merged: StyleGuide = {
+              ...updated,
+              extractedFeatures: [...updated.extractedFeatures, ...data.features],
+            };
+            persistStyleGuide(merged);
+          }
+        })
+        .catch(() => {}); // silently ignore
+    } catch (err) {
+      console.error('Failed to save style example:', err);
+    }
   };
 
   const handleReferralGenerated = async () => {

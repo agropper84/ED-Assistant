@@ -4,7 +4,7 @@ export interface StyleGuide {
     objective: string[];
     assessmentPlan: string[];
   };
-  computedFeatures: string;
+  extractedFeatures: string[];
   customGuidance: string;
 }
 
@@ -13,73 +13,81 @@ const STORAGE_KEY = 'ed-app-style-guide';
 function getDefault(): StyleGuide {
   return {
     examples: { hpi: [], objective: [], assessmentPlan: [] },
-    computedFeatures: '',
+    extractedFeatures: [],
     customGuidance: '',
   };
 }
+
+// --- Sync helpers (kept for backward compat / migration) ---
 
 export function getStyleGuide(): StyleGuide {
   if (typeof window === 'undefined') return getDefault();
   try {
     const stored = localStorage.getItem(STORAGE_KEY);
     if (!stored) return getDefault();
-    return JSON.parse(stored);
+    const parsed = JSON.parse(stored);
+    // Normalize legacy computedFeatures → extractedFeatures
+    return {
+      examples: parsed.examples || { hpi: [], objective: [], assessmentPlan: [] },
+      extractedFeatures: parsed.extractedFeatures || [],
+      customGuidance: parsed.customGuidance || '',
+    };
   } catch {
     return getDefault();
   }
 }
 
-export function saveStyleGuide(guide: StyleGuide): void {
+export function clearLocalStyleGuide(): void {
   if (typeof window === 'undefined') return;
-  guide.computedFeatures = computeFeatures(guide);
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(guide));
+  localStorage.removeItem(STORAGE_KEY);
 }
 
-export function addExample(section: 'hpi' | 'objective' | 'assessmentPlan', example: string): void {
-  const guide = getStyleGuide();
-  if (!guide.examples[section].includes(example)) {
-    guide.examples[section].push(example);
-    saveStyleGuide(guide);
-  }
+// --- Async API-backed functions ---
+
+export async function fetchStyleGuide(): Promise<StyleGuide> {
+  const res = await fetch('/api/style-guide');
+  if (!res.ok) throw new Error('Failed to fetch style guide');
+  return res.json();
 }
 
-export function removeExample(section: 'hpi' | 'objective' | 'assessmentPlan', index: number): void {
-  const guide = getStyleGuide();
-  guide.examples[section].splice(index, 1);
-  saveStyleGuide(guide);
+export async function persistStyleGuide(guide: StyleGuide): Promise<void> {
+  const res = await fetch('/api/style-guide', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(guide),
+  });
+  if (!res.ok) throw new Error('Failed to save style guide');
 }
 
-function computeFeatures(guide: StyleGuide): string {
-  const features: string[] = [];
-  const allExamples = [
-    ...guide.examples.hpi,
-    ...guide.examples.objective,
-    ...guide.examples.assessmentPlan,
-  ];
+export async function addExampleAsync(
+  section: 'hpi' | 'objective' | 'assessmentPlan',
+  example: string,
+  current: StyleGuide
+): Promise<StyleGuide> {
+  if (current.examples[section].includes(example)) return current;
+  const updated: StyleGuide = {
+    ...current,
+    examples: {
+      ...current.examples,
+      [section]: [...current.examples[section], example],
+    },
+  };
+  await persistStyleGuide(updated);
+  return updated;
+}
 
-  if (allExamples.length === 0) return '';
-
-  // Check format preferences
-  const hasBullets = allExamples.some(e => /^[\s]*[-*•]/.test(e) || /\n[\s]*[-*•]/.test(e));
-  const hasParagraphs = allExamples.some(e => !(/^[\s]*[-*•]/.test(e)) && e.length > 100);
-
-  if (hasParagraphs && !hasBullets) features.push('paragraph form preferred');
-  if (hasBullets && !hasParagraphs) features.push('bullet points preferred');
-  if (hasBullets && hasParagraphs) features.push('mixed format (paragraphs and bullets)');
-
-  // Check abbreviation usage
-  const commonAbbrevs = ['pt', 'hx', 'dx', 'tx', 'rx', 'sx', 'c/o', 'w/', 'b/l', 'NAD', 'AVSS', 'WNL'];
-  const abbrevCount = allExamples.reduce((count, e) => {
-    return count + commonAbbrevs.filter(a => e.toLowerCase().includes(a.toLowerCase())).length;
-  }, 0);
-  if (abbrevCount > allExamples.length * 2) features.push('heavy abbreviation use');
-  else if (abbrevCount > 0) features.push('moderate abbreviation use');
-
-  // Check detail level
-  const avgLength = allExamples.reduce((sum, e) => sum + e.length, 0) / allExamples.length;
-  if (avgLength > 500) features.push('high detail level');
-  else if (avgLength > 200) features.push('moderate detail level');
-  else features.push('concise/brief style');
-
-  return features.join(', ');
+export async function removeExampleAsync(
+  section: 'hpi' | 'objective' | 'assessmentPlan',
+  index: number,
+  current: StyleGuide
+): Promise<StyleGuide> {
+  const updated: StyleGuide = {
+    ...current,
+    examples: {
+      ...current.examples,
+      [section]: current.examples[section].filter((_, i) => i !== index),
+    },
+  };
+  await persistStyleGuide(updated);
+  return updated;
 }

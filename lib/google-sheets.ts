@@ -1,5 +1,6 @@
 import { google } from 'googleapis';
 import { BillingItem, BillingCode, calculateTotal } from '@/lib/billing';
+import type { StyleGuide } from '@/lib/style-guide';
 
 // Column mappings matching the Apps Script CONFIG
 export const COLUMNS = {
@@ -202,8 +203,8 @@ export async function getOrCreateDateSheet(date?: Date): Promise<string> {
   // Write sheet header layout:
   // A1: Date
   // A3: "TIME BASED FEE" header
-  // A4:E4: START, END, HOURS, FEE, TOTAL
-  // A5:E5: values (start with formulas for HOURS and TOTAL)
+  // A4:F4: START, END, HOURS, FEE TYPE, CODE, TOTAL
+  // A5:F5: values (auto-populated from shift times)
   const today = date || localNow();
   const dateStr = `${today.getMonth() + 1}/${today.getDate()}/${today.getFullYear()}`;
   await sheets.spreadsheets.values.batchUpdate({
@@ -213,7 +214,7 @@ export async function getOrCreateDateSheet(date?: Date): Promise<string> {
       data: [
         { range: `'${sheetName}'!A1`, values: [[dateStr]] },
         { range: `'${sheetName}'!A3`, values: [['TIME BASED FEE']] },
-        { range: `'${sheetName}'!A4:E4`, values: [['START', 'END', 'HOURS', 'FEE', 'TOTAL']] },
+        { range: `'${sheetName}'!A4:F4`, values: [['START', 'END', 'HOURS', 'FEE TYPE', 'CODE', 'TOTAL']] },
       ],
     },
   });
@@ -253,14 +254,28 @@ async function ensureColumnCount(sheetName: string, requiredColumns: number): Pr
   });
 }
 
-// --- Shift time helpers (row 5: START, END, HOURS, FEE, TOTAL) ---
+// --- Shift time helpers (row 5: START, END, HOURS, FEE TYPE, CODE, TOTAL) ---
 
 export interface ShiftTimes {
   start: string;
   end: string;
   hours: string;
-  fee: string;
+  feeType: string;
+  code: string;
   total: string;
+}
+
+/** Fee type definitions for time-based billing */
+const SHIFT_FEE_TYPES = {
+  day:   { name: 'Base Fee 0800-2300', code: '0145', rate: 81.80 },
+  night: { name: 'Base Fee 2300-0800', code: '0146', rate: 119.60 },
+} as const;
+
+/** Determine fee type from shift start time */
+function getShiftFeeType(start: string): typeof SHIFT_FEE_TYPES['day'] | typeof SHIFT_FEE_TYPES['night'] {
+  if (!start) return SHIFT_FEE_TYPES.day;
+  const hour = parseInt(start.split(':')[0], 10);
+  return (hour >= 23 || hour < 8) ? SHIFT_FEE_TYPES.night : SHIFT_FEE_TYPES.day;
 }
 
 /** Compute shift hours from HH:MM start/end, handling overnight wraps */
@@ -300,7 +315,7 @@ function normalizeTime(val: string): string {
   return val;
 }
 
-/** Get shift data from row 5 (A5:E5) */
+/** Get shift data from row 5 (A5:F5) */
 export async function getShiftTimes(sheetName?: string): Promise<ShiftTimes> {
   const sheet = sheetName || getTodaySheetName();
   const sheets = getSheets();
@@ -309,7 +324,7 @@ export async function getShiftTimes(sheetName?: string): Promise<ShiftTimes> {
   try {
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId,
-      range: `'${sheet}'!A5:E5`,
+      range: `'${sheet}'!A5:F5`,
       valueRenderOption: 'UNFORMATTED_VALUE',
     });
     const row = response.data.values?.[0] || [];
@@ -317,49 +332,39 @@ export async function getShiftTimes(sheetName?: string): Promise<ShiftTimes> {
       start: normalizeTime(row[0]?.toString() || ''),
       end: normalizeTime(row[1]?.toString() || ''),
       hours: row[2]?.toString() || '',
-      fee: row[3]?.toString() || '',
-      total: row[4]?.toString() || '',
+      feeType: row[3]?.toString() || '',
+      code: row[4]?.toString() || '',
+      total: row[5]?.toString() || '',
     };
   } catch {
-    return { start: '', end: '', hours: '', fee: '', total: '' };
+    return { start: '', end: '', hours: '', feeType: '', code: '', total: '' };
   }
 }
 
-/** Set shift times in row 5 and compute hours + total */
+/** Set shift times in row 5 and auto-populate fee type, code, and total */
 export async function setShiftTimes(
   sheetName: string,
   start: string,
   end: string,
-  fee?: string
 ): Promise<ShiftTimes> {
   const sheets = getSheets();
   const spreadsheetId = getSpreadsheetId();
 
-  // If fee not provided, try to read existing fee from D5
-  let currentFee = fee ?? '';
-  if (fee === undefined) {
-    try {
-      const res = await sheets.spreadsheets.values.get({
-        spreadsheetId,
-        range: `'${sheetName}'!D5`,
-      });
-      currentFee = res.data.values?.[0]?.[0]?.toString() || '';
-    } catch {}
-  }
-
+  const feeInfo = getShiftFeeType(start);
   const hours = computeShiftHours(start, end);
   const hoursStr = hours > 0 ? hours.toString() : '';
-  const feeNum = parseFloat(currentFee);
-  const totalStr = hours > 0 && !isNaN(feeNum) ? (hours * feeNum).toFixed(2) : '';
+  const totalStr = hours > 0 ? (hours * feeInfo.rate).toFixed(2) : '';
+  const feeType = start ? feeInfo.name : '';
+  const code = start ? feeInfo.code : '';
 
   await sheets.spreadsheets.values.update({
     spreadsheetId,
-    range: `'${sheetName}'!A5:E5`,
+    range: `'${sheetName}'!A5:F5`,
     valueInputOption: 'RAW',
-    requestBody: { values: [[start, end, hoursStr, currentFee, totalStr]] },
+    requestBody: { values: [[start, end, hoursStr, feeType, code, totalStr]] },
   });
 
-  return { start, end, hours: hoursStr, fee: currentFee, total: totalStr };
+  return { start, end, hours: hoursStr, feeType, code, total: totalStr };
 }
 
 // --- Multi-row billing helpers ---
@@ -784,4 +789,93 @@ export async function getBillingCodes(): Promise<BillingCode[]> {
       fee: row[2]?.toString().trim() || '',
     }))
     .sort((a: BillingCode, b: BillingCode) => a.description.localeCompare(b.description));
+}
+
+// --- Style Guide Sheet ---
+
+const STYLE_GUIDE_SHEET = 'Style Guide';
+
+const DEFAULT_STYLE_GUIDE: StyleGuide = {
+  examples: { hpi: [], objective: [], assessmentPlan: [] },
+  extractedFeatures: [],
+  customGuidance: '',
+};
+
+/** Read the style guide JSON blob from the "Style Guide" tab B2. Returns default if missing. */
+export async function getStyleGuideFromSheet(): Promise<StyleGuide> {
+  const sheets = getSheets();
+  const spreadsheetId = getSpreadsheetId();
+
+  try {
+    const spreadsheet = await sheets.spreadsheets.get({ spreadsheetId });
+    const exists = spreadsheet.data.sheets?.some(
+      (s: any) => s.properties.title === STYLE_GUIDE_SHEET
+    );
+    if (!exists) return { ...DEFAULT_STYLE_GUIDE };
+
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId,
+      range: `'${STYLE_GUIDE_SHEET}'!B2`,
+    });
+    const raw = response.data.values?.[0]?.[0]?.toString();
+    if (!raw) return { ...DEFAULT_STYLE_GUIDE };
+
+    const parsed = JSON.parse(raw);
+    return {
+      examples: parsed.examples || { hpi: [], objective: [], assessmentPlan: [] },
+      extractedFeatures: parsed.extractedFeatures || [],
+      customGuidance: parsed.customGuidance || '',
+    };
+  } catch {
+    return { ...DEFAULT_STYLE_GUIDE };
+  }
+}
+
+/** Save style guide as JSON blob to "Style Guide" tab B2. Auto-creates the tab if needed. */
+export async function saveStyleGuideToSheet(guide: StyleGuide): Promise<void> {
+  const sheets = getSheets();
+  const spreadsheetId = getSpreadsheetId();
+
+  // Check if tab exists, create if not
+  const spreadsheet = await sheets.spreadsheets.get({ spreadsheetId });
+  const exists = spreadsheet.data.sheets?.some(
+    (s: any) => s.properties.title === STYLE_GUIDE_SHEET
+  );
+
+  if (!exists) {
+    await sheets.spreadsheets.batchUpdate({
+      spreadsheetId,
+      requestBody: {
+        requests: [{
+          addSheet: {
+            properties: { title: STYLE_GUIDE_SHEET },
+          },
+        }],
+      },
+    });
+
+    // Write headers
+    await sheets.spreadsheets.values.update({
+      spreadsheetId,
+      range: `'${STYLE_GUIDE_SHEET}'!A1:B1`,
+      valueInputOption: 'RAW',
+      requestBody: { values: [['key', 'value']] },
+    });
+
+    // Write key label
+    await sheets.spreadsheets.values.update({
+      spreadsheetId,
+      range: `'${STYLE_GUIDE_SHEET}'!A2`,
+      valueInputOption: 'RAW',
+      requestBody: { values: [['styleGuide']] },
+    });
+  }
+
+  // Write JSON blob
+  await sheets.spreadsheets.values.update({
+    spreadsheetId,
+    range: `'${STYLE_GUIDE_SHEET}'!B2`,
+    valueInputOption: 'RAW',
+    requestBody: { values: [[JSON.stringify(guide)]] },
+  });
 }

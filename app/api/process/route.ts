@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { processEncounter, ProcessedNote } from '@/lib/claude';
-import { getPatient, updatePatientFields, saveBillingRows } from '@/lib/google-sheets';
+import { getPatient, updatePatientFields, saveBillingRows, getStyleGuideFromSheet } from '@/lib/google-sheets';
 import { getAutoBilling, BillingItem } from '@/lib/billing';
 
 // Allow longer execution for Claude API calls
@@ -32,6 +32,32 @@ export async function POST(request: NextRequest) {
       };
     }
 
+    // Build style guidance server-side if not provided by client
+    let effectiveStyleGuidance = styleGuidance;
+    if (!effectiveStyleGuidance) {
+      try {
+        const guide = await getStyleGuideFromSheet();
+        const hasExamples = Object.values(guide.examples).some(arr => arr.length > 0);
+        if (hasExamples || guide.customGuidance || guide.extractedFeatures.length > 0) {
+          const parts: string[] = [];
+          for (const [section, examples] of Object.entries(guide.examples)) {
+            if (examples.length > 0) {
+              parts.push(`${section.toUpperCase()} style examples:\n${examples.map((e: string, i: number) => `Example ${i + 1}:\n${e}`).join('\n\n')}`);
+            }
+          }
+          if (guide.extractedFeatures.length > 0) {
+            parts.push(`Detected style features: ${guide.extractedFeatures.join(', ')}`);
+          }
+          if (guide.customGuidance) {
+            parts.push(`Charting guidance from the physician:\n${guide.customGuidance}`);
+          }
+          effectiveStyleGuidance = parts.join('\n\n');
+        }
+      } catch (err) {
+        console.error('Failed to load style guide from sheet:', err);
+      }
+    }
+
     // Process with Claude
     const result = await processEncounter(
       {
@@ -47,7 +73,7 @@ export async function POST(request: NextRequest) {
       {
         modifications,
         existingOutput,
-        styleGuidance,
+        styleGuidance: effectiveStyleGuidance,
         settings,
       }
     );

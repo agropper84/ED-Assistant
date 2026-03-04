@@ -54,7 +54,8 @@ export default function HomePage() {
   const [shiftStart, setShiftStart] = useState('');
   const [shiftEnd, setShiftEnd] = useState('');
   const [shiftHours, setShiftHours] = useState('');
-  const [shiftFee, setShiftFee] = useState('');
+  const [shiftFeeType, setShiftFeeType] = useState('');
+  const [shiftCode, setShiftCode] = useState('');
   const [shiftTotal, setShiftTotal] = useState('');
 
   // Patient data modal
@@ -93,7 +94,8 @@ export default function HomePage() {
         setShiftStart(data.shiftTimes.start || '');
         setShiftEnd(data.shiftTimes.end || '');
         setShiftHours(data.shiftTimes.hours || '');
-        setShiftFee(data.shiftTimes.fee || '');
+        setShiftFeeType(data.shiftTimes.feeType || '');
+        setShiftCode(data.shiftTimes.code || '');
         setShiftTotal(data.shiftTimes.total || '');
       }
     } catch (error) {
@@ -141,10 +143,9 @@ export default function HomePage() {
     }
   };
 
-  const handleShiftTimeSave = async (overrides?: { start?: string; end?: string; fee?: string }) => {
+  const handleShiftTimeSave = async (overrides?: { start?: string; end?: string }) => {
     const s = overrides?.start ?? shiftStart;
     const e = overrides?.end ?? shiftEnd;
-    const f = overrides?.fee ?? shiftFee;
     try {
       const res = await fetch('/api/patients', {
         method: 'PATCH',
@@ -153,12 +154,13 @@ export default function HomePage() {
           sheetName,
           shiftStart: s,
           shiftEnd: e,
-          shiftFee: f,
         }),
       });
       const data = await res.json();
       if (data.shiftTimes) {
         setShiftHours(data.shiftTimes.hours || '');
+        setShiftFeeType(data.shiftTimes.feeType || '');
+        setShiftCode(data.shiftTimes.code || '');
         setShiftTotal(data.shiftTimes.total || '');
       }
     } catch (error) {
@@ -423,24 +425,23 @@ export default function HomePage() {
               <option value="08:00">8:00 AM</option>
             </select>
           </div>
-          {(shiftHours || shiftFee) && (
-            <div className="flex items-center gap-3 pl-7">
+          {(shiftHours || shiftFeeType) && (
+            <div className="flex items-center gap-3 pl-7 flex-wrap">
               {shiftHours && (
                 <span className="text-sm text-gray-600">
                   <span className="text-gray-400">Hours:</span> {shiftHours}h
                 </span>
               )}
-              <div className="flex items-center gap-1">
-                <span className="text-sm text-gray-400">Fee:</span>
-                <input
-                  type="text"
-                  value={shiftFee}
-                  onChange={(e) => setShiftFee(e.target.value)}
-                  onBlur={() => handleShiftTimeSave({ fee: shiftFee })}
-                  placeholder="$/hr"
-                  className="w-16 p-1 border rounded text-sm text-center focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                />
-              </div>
+              {shiftFeeType && (
+                <span className="text-sm text-gray-600">
+                  <span className="text-gray-400">Fee Type:</span> {shiftFeeType}
+                </span>
+              )}
+              {shiftCode && (
+                <span className="text-xs font-mono bg-gray-100 px-1.5 py-0.5 rounded text-gray-600">
+                  {shiftCode}
+                </span>
+              )}
               {shiftTotal && (
                 <span className="text-sm font-semibold text-green-700">
                   Total: ${shiftTotal}
