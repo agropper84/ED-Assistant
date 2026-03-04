@@ -1,0 +1,34 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: #f8fafc;
+  --foreground: #0f172a;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+/* Mobile-first touch targets */
+button, .btn {
+  min-height: 44px;
+  min-width: 44px;
+}
+
+/* Patient card styling */
+.patient-card {
+  @apply bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-3;
+  @apply active:bg-gray-50 transition-colors;
+}
+
+/* Status badges */
+.badge {
+  @apply px-2 py-1 rounded-full text-xs font-medium;
+}
+.badge-pending { @apply bg-amber-100 text-amber-800; }
+.badge-processed { @apply bg-green-100 text-green-800; }
+.badge-new { @apply bg-blue-100 text-blue-800; }
