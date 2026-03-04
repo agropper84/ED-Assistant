@@ -66,12 +66,12 @@ export async function POST(request: NextRequest) {
 // PATCH /api/patients - Update shift times
 export async function PATCH(request: NextRequest) {
   try {
-    const { sheetName, shiftStart, shiftEnd } = await request.json();
+    const { sheetName, shiftStart, shiftEnd, shiftFee } = await request.json();
     if (!sheetName) {
       return NextResponse.json({ error: 'sheetName required' }, { status: 400 });
     }
-    await setShiftTimes(sheetName, shiftStart || '', shiftEnd || '');
-    return NextResponse.json({ success: true });
+    const shiftTimes = await setShiftTimes(sheetName, shiftStart || '', shiftEnd || '', shiftFee);
+    return NextResponse.json({ success: true, shiftTimes });
   } catch (error: any) {
     console.error('Error updating shift times:', error);
     return NextResponse.json(

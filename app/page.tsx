@@ -47,6 +47,9 @@ export default function HomePage() {
   // Shift time state
   const [shiftStart, setShiftStart] = useState('');
   const [shiftEnd, setShiftEnd] = useState('');
+  const [shiftHours, setShiftHours] = useState('');
+  const [shiftFee, setShiftFee] = useState('');
+  const [shiftTotal, setShiftTotal] = useState('');
 
   // Patient data modal
   const [dataModalPatient, setDataModalPatient] = useState<Patient | null>(null);
@@ -73,6 +76,9 @@ export default function HomePage() {
       if (data.shiftTimes) {
         setShiftStart(data.shiftTimes.start || '');
         setShiftEnd(data.shiftTimes.end || '');
+        setShiftHours(data.shiftTimes.hours || '');
+        setShiftFee(data.shiftTimes.fee || '');
+        setShiftTotal(data.shiftTimes.total || '');
       }
     } catch (error) {
       console.error('Failed to fetch patients:', error);
@@ -119,17 +125,26 @@ export default function HomePage() {
     }
   };
 
-  const handleShiftTimeBlur = async (field: 'start' | 'end', value: string) => {
+  const handleShiftTimeSave = async (overrides?: { start?: string; end?: string; fee?: string }) => {
+    const s = overrides?.start ?? shiftStart;
+    const e = overrides?.end ?? shiftEnd;
+    const f = overrides?.fee ?? shiftFee;
     try {
-      await fetch('/api/patients', {
+      const res = await fetch('/api/patients', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           sheetName,
-          shiftStart: field === 'start' ? value : shiftStart,
-          shiftEnd: field === 'end' ? value : shiftEnd,
+          shiftStart: s,
+          shiftEnd: e,
+          shiftFee: f,
         }),
       });
+      const data = await res.json();
+      if (data.shiftTimes) {
+        setShiftHours(data.shiftTimes.hours || '');
+        setShiftTotal(data.shiftTimes.total || '');
+      }
     } catch (error) {
       console.error('Failed to save shift time:', error);
     }
@@ -267,34 +282,61 @@ export default function HomePage() {
 
       {/* Shift Times */}
       <div className="bg-white border-b">
-        <div className="flex items-center gap-3 max-w-2xl mx-auto px-4 py-2">
-          <Clock className="w-4 h-4 text-gray-400 flex-shrink-0" />
-          <span className="text-sm text-gray-500 flex-shrink-0">Shift:</span>
-          <select
-            value={shiftStart}
-            onChange={(e) => { setShiftStart(e.target.value); handleShiftTimeBlur('start', e.target.value); }}
-            className="flex-1 p-1.5 border rounded-lg text-sm text-center focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
-          >
-            <option value="">Start</option>
-            <option value="08:00">8:00 AM</option>
-            <option value="11:00">11:00 AM</option>
-            <option value="13:00">1:00 PM</option>
-            <option value="18:00">6:00 PM</option>
-            <option value="23:00">11:00 PM</option>
-          </select>
-          <span className="text-gray-400">—</span>
-          <select
-            value={shiftEnd}
-            onChange={(e) => { setShiftEnd(e.target.value); handleShiftTimeBlur('end', e.target.value); }}
-            className="flex-1 p-1.5 border rounded-lg text-sm text-center focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
-          >
-            <option value="">End</option>
-            <option value="15:00">3:00 PM</option>
-            <option value="18:00">6:00 PM</option>
-            <option value="21:00">9:00 PM</option>
-            <option value="01:00">1:00 AM</option>
-            <option value="08:00">8:00 AM</option>
-          </select>
+        <div className="max-w-2xl mx-auto px-4 py-2 space-y-2">
+          <div className="flex items-center gap-3">
+            <Clock className="w-4 h-4 text-gray-400 flex-shrink-0" />
+            <span className="text-sm text-gray-500 flex-shrink-0">Shift:</span>
+            <select
+              value={shiftStart}
+              onChange={(e) => { setShiftStart(e.target.value); handleShiftTimeSave({ start: e.target.value }); }}
+              className="flex-1 p-1.5 border rounded-lg text-sm text-center focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+            >
+              <option value="">Start</option>
+              <option value="08:00">8:00 AM</option>
+              <option value="11:00">11:00 AM</option>
+              <option value="13:00">1:00 PM</option>
+              <option value="18:00">6:00 PM</option>
+              <option value="23:00">11:00 PM</option>
+            </select>
+            <span className="text-gray-400">—</span>
+            <select
+              value={shiftEnd}
+              onChange={(e) => { setShiftEnd(e.target.value); handleShiftTimeSave({ end: e.target.value }); }}
+              className="flex-1 p-1.5 border rounded-lg text-sm text-center focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+            >
+              <option value="">End</option>
+              <option value="15:00">3:00 PM</option>
+              <option value="18:00">6:00 PM</option>
+              <option value="21:00">9:00 PM</option>
+              <option value="01:00">1:00 AM</option>
+              <option value="08:00">8:00 AM</option>
+            </select>
+          </div>
+          {(shiftHours || shiftFee) && (
+            <div className="flex items-center gap-3 pl-7">
+              {shiftHours && (
+                <span className="text-sm text-gray-600">
+                  <span className="text-gray-400">Hours:</span> {shiftHours}h
+                </span>
+              )}
+              <div className="flex items-center gap-1">
+                <span className="text-sm text-gray-400">Fee:</span>
+                <input
+                  type="text"
+                  value={shiftFee}
+                  onChange={(e) => setShiftFee(e.target.value)}
+                  onBlur={() => handleShiftTimeSave({ fee: shiftFee })}
+                  placeholder="$/hr"
+                  className="w-16 p-1 border rounded text-sm text-center focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+              {shiftTotal && (
+                <span className="text-sm font-semibold text-green-700">
+                  Total: ${shiftTotal}
+                </span>
+              )}
+            </div>
+          )}
         </div>
       </div>
 

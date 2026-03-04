@@ -198,14 +198,23 @@ export async function getOrCreateDateSheet(date?: Date): Promise<string> {
     },
   });
 
-  // Write today's date into cell A3
+  // Write sheet header layout:
+  // A1: Date
+  // A3: "TIME BASED FEE" header
+  // A4:E4: START, END, HOURS, FEE, TOTAL
+  // A5:E5: values (start with formulas for HOURS and TOTAL)
   const today = date || localNow();
   const dateStr = `${today.getMonth() + 1}/${today.getDate()}/${today.getFullYear()}`;
-  await sheets.spreadsheets.values.update({
+  await sheets.spreadsheets.values.batchUpdate({
     spreadsheetId,
-    range: `'${sheetName}'!A3`,
-    valueInputOption: 'USER_ENTERED',
-    requestBody: { values: [[dateStr]] },
+    requestBody: {
+      valueInputOption: 'USER_ENTERED',
+      data: [
+        { range: `'${sheetName}'!A1`, values: [[dateStr]] },
+        { range: `'${sheetName}'!A3`, values: [['TIME BASED FEE']] },
+        { range: `'${sheetName}'!A4:E4`, values: [['START', 'END', 'HOURS', 'FEE', 'TOTAL']] },
+      ],
+    },
   });
 
   return sheetName;
@@ -243,10 +252,30 @@ async function ensureColumnCount(sheetName: string, requiredColumns: number): Pr
   });
 }
 
-// --- Shift time helpers (row 2, columns A and B) ---
+// --- Shift time helpers (row 5: START, END, HOURS, FEE, TOTAL) ---
 
-/** Get shift start/end times from cells A2 and B2 */
-export async function getShiftTimes(sheetName?: string): Promise<{ start: string; end: string }> {
+export interface ShiftTimes {
+  start: string;
+  end: string;
+  hours: string;
+  fee: string;
+  total: string;
+}
+
+/** Compute shift hours from HH:MM start/end, handling overnight wraps */
+function computeShiftHours(start: string, end: string): number {
+  if (!start || !end) return 0;
+  const [sh, sm] = start.split(':').map(Number);
+  const [eh, em] = end.split(':').map(Number);
+  const startMin = sh * 60 + sm;
+  const endMin = eh * 60 + em;
+  let diff = endMin - startMin;
+  if (diff <= 0) diff += 24 * 60; // overnight
+  return diff / 60;
+}
+
+/** Get shift data from row 5 (A5:E5) */
+export async function getShiftTimes(sheetName?: string): Promise<ShiftTimes> {
   const sheet = sheetName || getTodaySheetName();
   const sheets = getSheets();
   const spreadsheetId = getSpreadsheetId();
@@ -254,30 +283,56 @@ export async function getShiftTimes(sheetName?: string): Promise<{ start: string
   try {
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId,
-      range: `'${sheet}'!A2:B2`,
+      range: `'${sheet}'!A5:E5`,
     });
     const row = response.data.values?.[0] || [];
-    return { start: row[0]?.toString() || '', end: row[1]?.toString() || '' };
+    return {
+      start: row[0]?.toString() || '',
+      end: row[1]?.toString() || '',
+      hours: row[2]?.toString() || '',
+      fee: row[3]?.toString() || '',
+      total: row[4]?.toString() || '',
+    };
   } catch {
-    return { start: '', end: '' };
+    return { start: '', end: '', hours: '', fee: '', total: '' };
   }
 }
 
-/** Set shift start/end times in cells A2 and B2 */
+/** Set shift times in row 5 and compute hours + total */
 export async function setShiftTimes(
   sheetName: string,
   start: string,
-  end: string
-): Promise<void> {
+  end: string,
+  fee?: string
+): Promise<ShiftTimes> {
   const sheets = getSheets();
   const spreadsheetId = getSpreadsheetId();
 
+  // If fee not provided, try to read existing fee from D5
+  let currentFee = fee ?? '';
+  if (fee === undefined) {
+    try {
+      const res = await sheets.spreadsheets.values.get({
+        spreadsheetId,
+        range: `'${sheetName}'!D5`,
+      });
+      currentFee = res.data.values?.[0]?.[0]?.toString() || '';
+    } catch {}
+  }
+
+  const hours = computeShiftHours(start, end);
+  const hoursStr = hours > 0 ? hours.toString() : '';
+  const feeNum = parseFloat(currentFee);
+  const totalStr = hours > 0 && !isNaN(feeNum) ? (hours * feeNum).toFixed(2) : '';
+
   await sheets.spreadsheets.values.update({
     spreadsheetId,
-    range: `'${sheetName}'!A2:B2`,
+    range: `'${sheetName}'!A5:E5`,
     valueInputOption: 'USER_ENTERED',
-    requestBody: { values: [[start, end]] },
+    requestBody: { values: [[start, end, hoursStr, currentFee, totalStr]] },
   });
+
+  return { start, end, hours: hoursStr, fee: currentFee, total: totalStr };
 }
 
 /** Clear all data in a patient row (for deletion) */
