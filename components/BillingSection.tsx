@@ -17,51 +17,9 @@ interface BillingSectionProps {
 }
 
 export function BillingSection({
-  billingItems,
-  comments,
-  onSave,
-  onSaveComments,
-  showBilling,
-  setShowBilling,
+  billingItems, comments, onSave, onSaveComments, showBilling, setShowBilling,
 }: BillingSectionProps) {
-  const [showAddCode, setShowAddCode] = useState(false);
-  const [newCode, setNewCode] = useState('');
-  const [newDesc, setNewDesc] = useState('');
-  const [newFee, setNewFee] = useState('');
-
-  const additionalCodes = getAdditionalCodes();
   const total = calculateTotal(billingItems);
-
-  const currentBase = billingItems.find(i => i.category === 'base');
-  const currentVisit = billingItems.find(i => i.category === 'visitType');
-  const currentPremium = billingItems.find(i => i.category === 'premium');
-  const additionalItems = billingItems.filter(i => i.category === 'additional');
-
-  const setCategoryItem = (category: BillingCategory, item: BillingItem | null) => {
-    const filtered = billingItems.filter(i => i.category !== category);
-    const updated = item ? [...filtered, item] : filtered;
-    onSave(updated);
-  };
-
-  const addItem = (code: string, description: string, fee: string) => {
-    const item: BillingItem = { code, description, fee, category: 'additional' };
-    onSave([...billingItems, item]);
-  };
-
-  const removeItem = (index: number) => {
-    const updated = billingItems.filter((_, i) => i !== index);
-    onSave(updated);
-  };
-
-  const handleAddCustomCode = () => {
-    if (!newCode.trim() || !newDesc.trim()) return;
-    addBillingCode(newCode.trim(), newDesc.trim(), newFee.trim());
-    addItem(newCode.trim(), newDesc.trim(), newFee.trim());
-    setNewCode('');
-    setNewDesc('');
-    setNewFee('');
-    setShowAddCode(false);
-  };
 
   return (
     <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
@@ -88,29 +46,14 @@ export function BillingSection({
         )}
       </button>
       {showBilling && (
-        <BillingBody
-          billingItems={billingItems}
-          comments={comments}
-          total={total}
-          currentBase={currentBase}
-          currentVisit={currentVisit}
-          currentPremium={currentPremium}
-          additionalItems={additionalItems}
-          additionalCodes={additionalCodes}
-          setCategoryItem={setCategoryItem}
-          addItem={addItem}
-          removeItem={removeItem}
-          onSaveComments={onSaveComments}
-          showAddCode={showAddCode}
-          setShowAddCode={setShowAddCode}
-          newCode={newCode}
-          setNewCode={setNewCode}
-          newDesc={newDesc}
-          setNewDesc={setNewDesc}
-          newFee={newFee}
-          setNewFee={setNewFee}
-          handleAddCustomCode={handleAddCustomCode}
-        />
+        <div className="px-4 pb-4">
+          <BillingBody
+            billingItems={billingItems}
+            comments={comments}
+            onSave={onSave}
+            onSaveComments={onSaveComments}
+          />
+        </div>
       )}
     </div>
   );
@@ -118,15 +61,33 @@ export function BillingSection({
 
 /** Inline billing panel (no wrapper card, always visible) — for dashboard use */
 export function InlineBilling({
-  billingItems,
-  comments,
-  onSave,
-  onSaveComments,
+  billingItems, comments, onSave, onSaveComments,
 }: {
   billingItems: BillingItem[];
   comments: string;
   onSave: (items: BillingItem[], comments?: string) => void;
   onSaveComments: (comments: string) => void;
+}) {
+  return (
+    <div className="bg-gray-50 border rounded-xl p-4 space-y-3" onClick={(e) => e.stopPropagation()}>
+      <BillingBody
+        billingItems={billingItems}
+        comments={comments}
+        onSave={onSave}
+        onSaveComments={onSaveComments}
+      />
+    </div>
+  );
+}
+
+/** Shared billing body */
+function BillingBody({
+  billingItems, comments, onSave, onSaveComments,
+}: {
+  billingItems: BillingItem[];
+  comments: string;
+  onSave: (items: BillingItem[]) => void;
+  onSaveComments: (c: string) => void;
 }) {
   const [showAddCode, setShowAddCode] = useState(false);
   const [newCode, setNewCode] = useState('');
@@ -148,12 +109,16 @@ export function InlineBilling({
   };
 
   const addItem = (code: string, description: string, fee: string) => {
-    const item: BillingItem = { code, description, fee, category: 'additional' };
+    const item: BillingItem = { code, description, fee, unit: '1', category: 'additional' };
     onSave([...billingItems, item]);
   };
 
   const removeItem = (index: number) => {
-    const updated = billingItems.filter((_, i) => i !== index);
+    onSave(billingItems.filter((_, i) => i !== index));
+  };
+
+  const updateItemUnit = (index: number, unit: string) => {
+    const updated = billingItems.map((item, i) => i === index ? { ...item, unit } : item);
     onSave(updated);
   };
 
@@ -168,67 +133,6 @@ export function InlineBilling({
   };
 
   return (
-    <div className="bg-gray-50 border rounded-xl p-4 space-y-3" onClick={(e) => e.stopPropagation()}>
-      <BillingBody
-        billingItems={billingItems}
-        comments={comments}
-        total={total}
-        currentBase={currentBase}
-        currentVisit={currentVisit}
-        currentPremium={currentPremium}
-        additionalItems={additionalItems}
-        additionalCodes={additionalCodes}
-        setCategoryItem={setCategoryItem}
-        addItem={addItem}
-        removeItem={removeItem}
-        onSaveComments={onSaveComments}
-        showAddCode={showAddCode}
-        setShowAddCode={setShowAddCode}
-        newCode={newCode}
-        setNewCode={setNewCode}
-        newDesc={newDesc}
-        setNewDesc={setNewDesc}
-        newFee={newFee}
-        setNewFee={setNewFee}
-        handleAddCustomCode={handleAddCustomCode}
-      />
-    </div>
-  );
-}
-
-/** Shared billing body used by both BillingSection and InlineBilling */
-function BillingBody({
-  billingItems, comments, total,
-  currentBase, currentVisit, currentPremium,
-  additionalItems, additionalCodes,
-  setCategoryItem, addItem, removeItem, onSaveComments,
-  showAddCode, setShowAddCode,
-  newCode, setNewCode, newDesc, setNewDesc, newFee, setNewFee,
-  handleAddCustomCode,
-}: {
-  billingItems: BillingItem[];
-  comments: string;
-  total: string;
-  currentBase?: BillingItem;
-  currentVisit?: BillingItem;
-  currentPremium?: BillingItem;
-  additionalItems: BillingItem[];
-  additionalCodes: { code: string; description: string; fee: string }[];
-  setCategoryItem: (cat: BillingCategory, item: BillingItem | null) => void;
-  addItem: (code: string, desc: string, fee: string) => void;
-  removeItem: (idx: number) => void;
-  onSaveComments: (c: string) => void;
-  showAddCode: boolean;
-  setShowAddCode: (v: boolean) => void;
-  newCode: string;
-  setNewCode: (v: string) => void;
-  newDesc: string;
-  setNewDesc: (v: string) => void;
-  newFee: string;
-  setNewFee: (v: string) => void;
-  handleAddCustomCode: () => void;
-}) {
-  return (
     <div className="space-y-4">
       {/* Current Items */}
       {billingItems.length > 0 && (
@@ -242,6 +146,14 @@ function BillingBody({
                   <span className="text-gray-500 ml-2 truncate">{item.description}</span>
                 </div>
                 <div className="flex items-center gap-2 flex-shrink-0">
+                  <input
+                    type="number"
+                    min="1"
+                    value={item.unit || '1'}
+                    onChange={(e) => updateItemUnit(idx, e.target.value)}
+                    className="w-12 p-1 border rounded text-xs text-center focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    title="Units"
+                  />
                   {item.fee && <span className="text-gray-700">${item.fee}</span>}
                   <button
                     onClick={() => removeItem(idx)}
@@ -266,7 +178,7 @@ function BillingBody({
         <label className="block text-xs font-medium text-gray-500 mb-1">Base Fee</label>
         <div className="flex gap-2">
           <button
-            onClick={() => setCategoryItem('base', { code: '0145', description: 'Base Fee 0800-2300', fee: '81.80', category: 'base' })}
+            onClick={() => setCategoryItem('base', { code: '0145', description: 'Base Fee 0800-2300', fee: '81.80', unit: '1', category: 'base' })}
             className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
               currentBase?.code === '0145' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
             }`}
@@ -274,7 +186,7 @@ function BillingBody({
             0800-2300 ($81.80)
           </button>
           <button
-            onClick={() => setCategoryItem('base', { code: '0146', description: 'Base Fee 2300-0800', fee: '119.60', category: 'base' })}
+            onClick={() => setCategoryItem('base', { code: '0146', description: 'Base Fee 2300-0800', fee: '119.60', unit: '1', category: 'base' })}
             className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
               currentBase?.code === '0146' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
             }`}
@@ -289,7 +201,7 @@ function BillingBody({
         <label className="block text-xs font-medium text-gray-500 mb-1">Visit Type</label>
         <div className="flex gap-2">
           <button
-            onClick={() => setCategoryItem('visitType', { code: '1100', description: 'ED Visit', fee: '50.90', category: 'visitType' })}
+            onClick={() => setCategoryItem('visitType', { code: '1100', description: 'ED Visit', fee: '50.90', unit: '1', category: 'visitType' })}
             className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
               currentVisit?.code === '1100' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
             }`}
@@ -297,7 +209,7 @@ function BillingBody({
             ED Visit ($50.90)
           </button>
           <button
-            onClick={() => setCategoryItem('visitType', { code: '1101', description: 'Complete examination', fee: '111.50', category: 'visitType' })}
+            onClick={() => setCategoryItem('visitType', { code: '1101', description: 'Complete examination', fee: '111.50', unit: '1', category: 'visitType' })}
             className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
               currentVisit?.code === '1101' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
             }`}
@@ -305,7 +217,7 @@ function BillingBody({
             Complete ($111.50)
           </button>
           <button
-            onClick={() => setCategoryItem('visitType', { code: '0081', description: 'Critical Care', fee: '147.10', category: 'visitType' })}
+            onClick={() => setCategoryItem('visitType', { code: '0081', description: 'Critical Care', fee: '147.10', unit: '1', category: 'visitType' })}
             className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
               currentVisit?.code === '0081' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
             }`}
@@ -328,7 +240,7 @@ function BillingBody({
             None
           </button>
           <button
-            onClick={() => setCategoryItem('premium', { code: '1153', description: 'Evening/Weekend premium', fee: '50.00', category: 'premium' })}
+            onClick={() => setCategoryItem('premium', { code: '1153', description: 'Evening/Weekend premium', fee: '50.00', unit: '1', category: 'premium' })}
             className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
               currentPremium?.code === '1153' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
             }`}
@@ -336,7 +248,7 @@ function BillingBody({
             Eve/Wknd ($50)
           </button>
           <button
-            onClick={() => setCategoryItem('premium', { code: '1154', description: 'Night (2300-0759) premium', fee: '107.40', category: 'premium' })}
+            onClick={() => setCategoryItem('premium', { code: '1154', description: 'Night (2300-0759) premium', fee: '107.40', unit: '1', category: 'premium' })}
             className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
               currentPremium?.code === '1154' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
             }`}

@@ -9,7 +9,7 @@ import { PatientDataModal } from '@/components/PatientDataModal';
 import { InlineBilling } from '@/components/BillingSection';
 import {
   BillingItem,
-  parseBillingItems, serializeBillingItems, calculateTotal,
+  parseBillingItems, serializeBillingItems,
 } from '@/lib/billing';
 import {
   Plus, RefreshCw, Loader2, ChevronLeft, ChevronRight,
@@ -301,7 +301,7 @@ export default function HomePage() {
       patient.visitProcedure || '', patient.procCode || '',
       patient.fee || '', patient.unit || ''
     );
-    const total = calculateTotal(items);
+    const codes = items.length > 0 ? items.map(i => i.code).join(', ') : '';
     const isBillingOpen = billingPatientIdx === patient.rowIndex;
 
     return (
@@ -313,7 +313,7 @@ export default function HomePage() {
           anonymize={anonymize}
           onTimeChange={(time) => handleTimeChange(patient, time)}
           onBillingToggle={() => toggleBilling(patient.rowIndex)}
-          billingTotal={total}
+          billingCodes={codes}
         />
         {isBillingOpen && (
           <div className="mt-1 ml-0">

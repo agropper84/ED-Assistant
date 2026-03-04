@@ -10,6 +10,7 @@ export interface BillingItem {
   code: string;
   description: string;
   fee: string;
+  unit: string;
   category: BillingCategory;
 }
 
@@ -120,21 +121,20 @@ export function getAutoBilling(timestamp: string, isWeekend: boolean): BillingIt
   // Base fee: 0800-2300 → 0145, 2300-0800 → 0146
   if (hour >= 0) {
     if (hour >= 8 && hour < 23) {
-      items.push({ code: '0145', description: 'Base Fee 0800-2300', fee: '81.80', category: 'base' });
+      items.push({ code: '0145', description: 'Base Fee 0800-2300', fee: '81.80', unit: '1', category: 'base' });
     } else {
-      items.push({ code: '0146', description: 'Base Fee 2300-0800', fee: '119.60', category: 'base' });
+      items.push({ code: '0146', description: 'Base Fee 2300-0800', fee: '119.60', unit: '1', category: 'base' });
     }
   } else {
-    // Default to daytime if can't parse
-    items.push({ code: '0145', description: 'Base Fee 0800-2300', fee: '81.80', category: 'base' });
+    items.push({ code: '0145', description: 'Base Fee 0800-2300', fee: '81.80', unit: '1', category: 'base' });
   }
 
   // Time premium
   if (hour >= 0) {
     if ((hour >= 18 && hour < 23) || isWeekend) {
-      items.push({ code: '1153', description: 'Evening/Weekend premium', fee: '50.00', category: 'premium' });
+      items.push({ code: '1153', description: 'Evening/Weekend premium', fee: '50.00', unit: '1', category: 'premium' });
     } else if (hour >= 23 || hour < 8) {
-      items.push({ code: '1154', description: 'Night (2300-0759) premium', fee: '107.40', category: 'premium' });
+      items.push({ code: '1154', description: 'Night (2300-0759) premium', fee: '107.40', unit: '1', category: 'premium' });
     }
   }
 
@@ -152,11 +152,12 @@ export function serializeBillingItems(items: BillingItem[]): {
   const descriptions = items.map(i => i.description);
   const codes = items.map(i => i.code);
   const fees = items.map(i => i.fee);
-  const units = items.map(() => '1');
+  const units = items.map(i => i.unit || '1');
 
   const grandTotal = items.reduce((sum, i) => {
     const f = parseFloat(i.fee);
-    return sum + (isNaN(f) ? 0 : f);
+    const u = parseInt(i.unit || '1', 10) || 1;
+    return sum + (isNaN(f) ? 0 : f * u);
   }, 0);
 
   return {
@@ -180,24 +181,26 @@ export function parseBillingItems(
   const codes = procCode.split('\n').map(s => s.trim());
   const descriptions = (visitProcedure || '').split('\n').map(s => s.trim());
   const fees = (fee || '').split('\n').map(s => s.trim());
+  const units = (unit || '').split('\n').map(s => s.trim());
 
   return codes.map((code, i) => {
-    // Look up description/fee from defaults if not provided
     const lookup = DEFAULT_CODES[code];
     return {
       code,
       description: descriptions[i] || lookup?.description || code,
       fee: fees[i] || lookup?.fee || '',
+      unit: units[i] || '1',
       category: getCategoryForCode(code),
     };
-  }).filter(item => item.code); // filter out empty entries
+  }).filter(item => item.code);
 }
 
 /** Calculate grand total from billing items */
 export function calculateTotal(items: BillingItem[]): string {
   const total = items.reduce((sum, i) => {
     const f = parseFloat(i.fee);
-    return sum + (isNaN(f) ? 0 : f);
+    const u = parseInt(i.unit || '1', 10) || 1;
+    return sum + (isNaN(f) ? 0 : f * u);
   }, 0);
   return total > 0 ? total.toFixed(2) : '';
 }

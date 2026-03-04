@@ -85,7 +85,7 @@ export async function POST(request: NextRequest) {
       const autoItems = getAutoBilling(timestamp, isWeekend);
       const billingItems: BillingItem[] = [
         ...autoItems,
-        { code: '1100', description: 'ED Visit', fee: '50.90', category: 'visitType' },
+        { code: '1100', description: 'ED Visit', fee: '50.90', unit: '1', category: 'visitType' },
       ];
 
       const serialized = serializeBillingItems(billingItems);
