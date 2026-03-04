@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Patient } from '@/lib/google-sheets';
-import { Clock, User, FileText, ChevronRight, Trash2, MessageSquare, DollarSign } from 'lucide-react';
+import { Clock, User, FileText, ChevronRight, Trash2, MessageSquare, DollarSign, Stethoscope } from 'lucide-react';
 
 interface PatientCardProps {
   patient: Patient;
@@ -109,7 +109,7 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
           )}
           {patient.diagnosis && (
             <span className="flex items-center gap-1 truncate">
-              <FileText className="w-3.5 h-3.5" />
+              <Stethoscope className="w-3.5 h-3.5" />
               {patient.diagnosis}
             </span>
           )}

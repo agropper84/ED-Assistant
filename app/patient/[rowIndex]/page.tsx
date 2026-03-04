@@ -246,7 +246,6 @@ export default function PatientPage() {
           </button>
           <div className="flex-1 min-w-0">
             <h1 className="font-semibold truncate">
-              {patient.patientNum && `#${patient.patientNum} `}
               {patient.name || 'Unknown'}
             </h1>
             <p className="text-blue-100 text-sm">
