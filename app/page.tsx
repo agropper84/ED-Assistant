@@ -13,7 +13,8 @@ import {
 } from '@/lib/billing';
 import {
   Plus, RefreshCw, Loader2, ChevronLeft, ChevronRight,
-  Calendar, Settings, CheckSquare, Square, Play, Clock, EyeOff, Eye
+  Calendar, Settings, CheckSquare, Square, Play, Clock, EyeOff, Eye,
+  Search, ArrowUpDown, X
 } from 'lucide-react';
 
 function formatDateForSheet(date: Date): string {
@@ -74,6 +75,10 @@ export default function HomePage() {
 
   // Dashboard billing
   const [billingPatientIdx, setBillingPatientIdx] = useState<number | null>(null);
+
+  // Search and sort
+  const [searchQuery, setSearchQuery] = useState('');
+  const [sortBy, setSortBy] = useState<'time' | 'name'>('time');
 
   const sheetName = formatDateForSheet(currentDate);
   const isToday = formatDateDisplay(currentDate) === 'Today';
@@ -193,10 +198,30 @@ export default function HomePage() {
     setCurrentDate(new Date());
   };
 
+  // Filter and sort patients
+  const filteredPatients = searchQuery.trim()
+    ? patients.filter(p => {
+        const q = searchQuery.toLowerCase();
+        return (
+          p.name?.toLowerCase().includes(q) ||
+          p.diagnosis?.toLowerCase().includes(q) ||
+          p.triageVitals?.split('\n')[0]?.toLowerCase().includes(q)
+        );
+      })
+    : patients;
+
+  const sortedPatients = [...filteredPatients].sort((a, b) => {
+    if (sortBy === 'name') {
+      return (a.name || '').localeCompare(b.name || '');
+    }
+    // sort by time (HH:MM string comparison works for 24h format)
+    return (a.timestamp || '').localeCompare(b.timestamp || '');
+  });
+
   // Batch processing
-  const pendingPatients = patients.filter(p => p.status === 'pending');
-  const processedPatients = patients.filter(p => p.status === 'processed');
-  const newPatients = patients.filter(p => p.status === 'new');
+  const pendingPatients = sortedPatients.filter(p => p.status === 'pending');
+  const processedPatients = sortedPatients.filter(p => p.status === 'processed');
+  const newPatients = sortedPatients.filter(p => p.status === 'new');
   const hasPending = pendingPatients.length > 0;
 
   const togglePatientSelection = (rowIndex: number) => {
@@ -524,6 +549,36 @@ export default function HomePage() {
           </div>
         ) : (
           <div className="space-y-6">
+            {/* Search & Sort Bar */}
+            <div className="flex items-center gap-2">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search patients..."
+                  className="w-full pl-9 pr-8 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery('')}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 hover:bg-gray-100 rounded"
+                  >
+                    <X className="w-3.5 h-3.5 text-gray-400" />
+                  </button>
+                )}
+              </div>
+              <button
+                onClick={() => setSortBy(prev => prev === 'time' ? 'name' : 'time')}
+                className="flex items-center gap-1.5 px-3 py-2 border rounded-lg text-sm text-gray-600 hover:bg-gray-50 flex-shrink-0"
+                title={`Sort by ${sortBy === 'time' ? 'name' : 'time'}`}
+              >
+                <ArrowUpDown className="w-3.5 h-3.5" />
+                {sortBy === 'time' ? 'Time' : 'Name'}
+              </button>
+            </div>
+
             {/* Batch Process Button */}
             {hasPending && !batchMode && (
               <button
