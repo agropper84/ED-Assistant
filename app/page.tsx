@@ -309,6 +309,7 @@ export default function HomePage() {
           onTimeChange={(time) => handleTimeChange(patient, time)}
           onBillingToggle={() => toggleBilling(patient.rowIndex)}
           billingCodes={codes}
+          onViewNote={() => router.push(`/patient/${patient.rowIndex}?sheet=${encodeURIComponent(patient.sheetName)}`)}
         />
         {isBillingOpen && (
           <div className="mt-1 ml-0">

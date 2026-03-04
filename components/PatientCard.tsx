@@ -12,6 +12,7 @@ interface PatientCardProps {
   onTimeChange?: (time: string) => void;
   onBillingToggle?: () => void;
   billingCodes?: string;
+  onViewNote?: () => void;
 }
 
 /** Convert a full name to initials, e.g. "John Smith" → "J.S." */
@@ -33,7 +34,7 @@ function getPresentingIssue(triageVitals: string): string {
   return firstLine.substring(0, 57) + '...';
 }
 
-export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChange, onBillingToggle, billingCodes }: PatientCardProps) {
+export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChange, onBillingToggle, billingCodes, onViewNote }: PatientCardProps) {
   const [editingTime, setEditingTime] = useState(false);
   const [timeValue, setTimeValue] = useState(patient.timestamp || '');
 
@@ -69,9 +70,22 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
           <span className="font-semibold text-gray-900 truncate">
             {displayName}
           </span>
-          <span className={`badge ${statusColors[patient.status]}`}>
-            {statusLabels[patient.status]}
-          </span>
+          {patient.status === 'processed' && onViewNote ? (
+            <span
+              onClick={(e) => {
+                e.stopPropagation();
+                onViewNote();
+              }}
+              className="flex-shrink-0 p-0.5 hover:bg-green-100 rounded transition-colors cursor-pointer"
+              title="View note"
+            >
+              <FileText className="w-4 h-4 text-green-600" />
+            </span>
+          ) : (
+            <span className={`badge ${statusColors[patient.status]}`}>
+              {statusLabels[patient.status]}
+            </span>
+          )}
         </div>
 
         {presentingIssue && (
