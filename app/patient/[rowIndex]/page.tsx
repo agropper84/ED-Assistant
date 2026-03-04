@@ -760,6 +760,24 @@ function partsToText(parts: ContentPart[]): string {
   return lines.join('\n');
 }
 
+function truncateSentence(text: string): string {
+  // 1. Remove parenthetical content
+  let truncated = text.replace(/\s*\([^)]*\)/g, '');
+  // 2. Truncate at first comma (if enough content before it)
+  const commaIdx = truncated.indexOf(', ');
+  if (commaIdx > 10) {
+    truncated = truncated.substring(0, commaIdx) + '.';
+  }
+  if (truncated === text) {
+    // If nothing changed, try truncating at semicolon
+    const semiIdx = truncated.indexOf('; ');
+    if (semiIdx > 10) {
+      truncated = truncated.substring(0, semiIdx) + '.';
+    }
+  }
+  return truncated;
+}
+
 function InteractiveContent({
   content,
   onSave,
@@ -768,15 +786,17 @@ function InteractiveContent({
   onSave: (newContent: string) => void;
 }) {
   const [parts, setParts] = useState<ContentPart[]>(() => splitContent(content));
-  const [activeIdx, setActiveIdx] = useState<number | null>(null);
-  const [addingIdx, setAddingIdx] = useState<number | null>(null);
+  const [selected, setSelected] = useState<Set<number>>(new Set());
+  const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
+  const [addingDetail, setAddingDetail] = useState(false);
   const [detailText, setDetailText] = useState('');
 
   // Sync parts when content prop changes (after save round-trip)
   useEffect(() => {
     setParts(splitContent(content));
-    setActiveIdx(null);
-    setAddingIdx(null);
+    setSelected(new Set());
+    setAddingDetail(false);
+    setDetailText('');
   }, [content]);
 
   function save(newParts: ContentPart[]) {
@@ -784,38 +804,52 @@ function InteractiveContent({
     onSave(partsToText(newParts));
   }
 
+  function toggleSelect(idx: number) {
+    const next = new Set(selected);
+    if (next.has(idx)) {
+      next.delete(idx);
+    } else {
+      next.add(idx);
+    }
+    setSelected(next);
+    setAddingDetail(false);
+    setDetailText('');
+  }
+
   function handleRemove(idx: number) {
-    // Also remove an adjacent break if it would leave a double blank line
     const newParts = parts.filter((_, i) => i !== idx);
+    const next = new Set<number>();
+    // Shift selected indices that are above the removed one
+    Array.from(selected).forEach(s => {
+      if (s < idx) next.add(s);
+      else if (s > idx) next.add(s - 1);
+    });
+    setSelected(next);
     save(newParts);
-    setActiveIdx(null);
   }
 
-  function handleTruncate(idx: number) {
-    const text = parts[idx].text;
-    // 1. Remove parenthetical content
-    let truncated = text.replace(/\s*\([^)]*\)/g, '');
-    // 2. Truncate at first comma (if enough content before it)
-    const commaIdx = truncated.indexOf(', ');
-    if (commaIdx > 10) {
-      truncated = truncated.substring(0, commaIdx) + '.';
-    }
-    if (truncated === text) {
-      // If nothing changed, try truncating at semicolon
-      const semiIdx = truncated.indexOf('; ');
-      if (semiIdx > 10) {
-        truncated = truncated.substring(0, semiIdx) + '.';
-      }
-    }
+  function handleRemoveSelected() {
+    const newParts = parts.filter((_, i) => !selected.has(i));
+    setSelected(new Set());
+    save(newParts);
+  }
+
+  function handleShortenSelected() {
     const newParts = [...parts];
-    newParts[idx] = { ...newParts[idx], text: truncated };
+    Array.from(selected).forEach(idx => {
+      if (newParts[idx]?.type === 'sentence') {
+        newParts[idx] = { ...newParts[idx], text: truncateSentence(newParts[idx].text) };
+      }
+    });
+    setSelected(new Set());
     save(newParts);
-    setActiveIdx(null);
   }
 
-  function handleAddDetail(idx: number) {
-    if (!detailText.trim()) return;
-    const text = parts[idx].text;
+  function handleAddDetailToSelection() {
+    if (!detailText.trim() || selected.size === 0) return;
+    const sorted = Array.from(selected).sort((a, b) => a - b);
+    const lastIdx = sorted[sorted.length - 1];
+    const text = parts[lastIdx].text;
     let newText: string;
     if (text.endsWith('.')) {
       newText = text.slice(0, -1) + ', ' + detailText.trim() + '.';
@@ -823,93 +857,118 @@ function InteractiveContent({
       newText = text + ' ' + detailText.trim();
     }
     const newParts = [...parts];
-    newParts[idx] = { ...newParts[idx], text: newText };
-    save(newParts);
-    setAddingIdx(null);
+    newParts[lastIdx] = { ...newParts[lastIdx], text: newText };
+    setSelected(new Set());
+    setAddingDetail(false);
     setDetailText('');
-    setActiveIdx(null);
+    save(newParts);
   }
+
+  const hasSelection = selected.size > 0;
 
   return (
     <div className="text-gray-700 text-sm leading-relaxed">
       {parts.map((part, idx) => {
         if (part.type === 'break') return <br key={idx} />;
 
-        const isActive = activeIdx === idx;
-        const isAdding = addingIdx === idx;
+        const isSelected = selected.has(idx);
+        const isHovered = hoveredIdx === idx && !isSelected;
 
         return (
           <span key={idx}>
             <span
-              className={`transition-colors duration-150 cursor-pointer rounded-sm px-0.5 -mx-0.5 ${
-                isActive ? 'bg-blue-100' : 'hover:bg-gray-100'
+              className={`relative transition-colors duration-150 cursor-pointer rounded-sm px-0.5 -mx-0.5 ${
+                isSelected
+                  ? 'bg-purple-200'
+                  : 'hover:bg-purple-100'
               }`}
-              onClick={(e) => {
-                e.stopPropagation();
-                setActiveIdx(isActive ? null : idx);
-                if (!isActive) { setAddingIdx(null); setDetailText(''); }
-              }}
+              onClick={(e) => { e.stopPropagation(); toggleSelect(idx); }}
+              onMouseEnter={() => setHoveredIdx(idx)}
+              onMouseLeave={() => setHoveredIdx(null)}
             >
               {part.text}
-            </span>
-            {isActive && !isAdding && (
-              <span className="inline-flex items-center gap-0.5 ml-0.5 align-middle">
+              {(isHovered || isSelected) && (
                 <button
                   onClick={(e) => { e.stopPropagation(); handleRemove(idx); }}
                   title="Remove"
-                  className="p-1 rounded hover:bg-red-100 transition-colors"
+                  className="inline-flex items-center ml-0.5 p-0.5 rounded-full hover:bg-red-200 transition-colors align-middle"
                 >
-                  <X className="w-3.5 h-3.5 text-red-500" />
+                  <X className="w-3 h-3 text-red-400 hover:text-red-600" />
                 </button>
-                <button
-                  onClick={(e) => { e.stopPropagation(); setAddingIdx(idx); setDetailText(''); }}
-                  title="Add detail"
-                  className="p-1 rounded hover:bg-blue-100 transition-colors"
-                >
-                  <Plus className="w-3.5 h-3.5 text-blue-500" />
-                </button>
-                <button
-                  onClick={(e) => { e.stopPropagation(); handleTruncate(idx); }}
-                  title="Shorten"
-                  className="p-1 rounded hover:bg-amber-100 transition-colors"
-                >
-                  <Scissors className="w-3.5 h-3.5 text-amber-500" />
-                </button>
-              </span>
-            )}
-            {isAdding && (
-              <div className="flex items-center gap-1 my-1">
-                <input
-                  type="text"
-                  value={detailText}
-                  onChange={(e) => setDetailText(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') handleAddDetail(idx);
-                    if (e.key === 'Escape') { setAddingIdx(null); setDetailText(''); }
-                  }}
-                  placeholder="Add detail..."
-                  autoFocus
-                  className="flex-1 p-1.5 border rounded text-xs focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                  onClick={(e) => e.stopPropagation()}
-                />
-                <button
-                  onClick={(e) => { e.stopPropagation(); handleAddDetail(idx); }}
-                  className="text-xs text-blue-600 font-medium px-2 py-1 hover:bg-blue-50 rounded"
-                >
-                  Add
-                </button>
-                <button
-                  onClick={(e) => { e.stopPropagation(); setAddingIdx(null); setDetailText(''); }}
-                  className="text-xs text-gray-500 px-2 py-1 hover:bg-gray-100 rounded"
-                >
-                  Cancel
-                </button>
-              </div>
-            )}
+              )}
+            </span>
             {' '}
           </span>
         );
       })}
+
+      {/* Selection action bar */}
+      {hasSelection && !addingDetail && (
+        <div className="flex items-center gap-2 mt-3 p-2 bg-purple-50 border border-purple-200 rounded-lg">
+          <span className="text-xs text-purple-700 font-medium">
+            {selected.size} selected
+          </span>
+          <div className="flex-1" />
+          <button
+            onClick={handleRemoveSelected}
+            className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-red-600 hover:bg-red-50 rounded transition-colors"
+          >
+            <X className="w-3 h-3" />
+            Remove
+          </button>
+          <button
+            onClick={() => { setAddingDetail(true); setDetailText(''); }}
+            className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-blue-600 hover:bg-blue-50 rounded transition-colors"
+          >
+            <Plus className="w-3 h-3" />
+            Add Detail
+          </button>
+          <button
+            onClick={handleShortenSelected}
+            className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-amber-600 hover:bg-amber-50 rounded transition-colors"
+          >
+            <Scissors className="w-3 h-3" />
+            Shorten
+          </button>
+          <button
+            onClick={() => setSelected(new Set())}
+            className="px-2 py-1 text-xs text-gray-500 hover:bg-gray-100 rounded transition-colors"
+          >
+            Clear
+          </button>
+        </div>
+      )}
+
+      {/* Add detail input */}
+      {addingDetail && (
+        <div className="flex items-center gap-1 mt-2 p-2 bg-blue-50 border border-blue-200 rounded-lg">
+          <input
+            type="text"
+            value={detailText}
+            onChange={(e) => setDetailText(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') handleAddDetailToSelection();
+              if (e.key === 'Escape') { setAddingDetail(false); setDetailText(''); }
+            }}
+            placeholder="Type detail to add..."
+            autoFocus
+            className="flex-1 p-1.5 border rounded text-xs focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+            onClick={(e) => e.stopPropagation()}
+          />
+          <button
+            onClick={(e) => { e.stopPropagation(); handleAddDetailToSelection(); }}
+            className="text-xs text-blue-600 font-medium px-2.5 py-1.5 hover:bg-blue-100 rounded"
+          >
+            Add
+          </button>
+          <button
+            onClick={(e) => { e.stopPropagation(); setAddingDetail(false); setDetailText(''); }}
+            className="text-xs text-gray-500 px-2.5 py-1.5 hover:bg-gray-100 rounded"
+          >
+            Cancel
+          </button>
+        </div>
+      )}
     </div>
   );
 }
