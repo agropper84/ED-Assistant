@@ -8,7 +8,7 @@ import { ParseModal } from '@/components/ParseModal';
 import { PatientDataModal } from '@/components/PatientDataModal';
 import {
   Plus, RefreshCw, Loader2, ChevronLeft, ChevronRight,
-  Calendar, Settings, CheckSquare, Square, Play, Clock
+  Calendar, Settings, CheckSquare, Square, Play, Clock, EyeOff, Eye
 } from 'lucide-react';
 
 function formatDateForSheet(date: Date): string {
@@ -63,6 +63,9 @@ export default function HomePage() {
   const [selectedPatients, setSelectedPatients] = useState<Set<number>>(new Set());
   const [batchProcessing, setBatchProcessing] = useState(false);
   const [batchProgress, setBatchProgress] = useState({ current: 0, total: 0 });
+
+  // Anonymize toggle
+  const [anonymize, setAnonymize] = useState(false);
 
   const sheetName = formatDateForSheet(currentDate);
   const isToday = formatDateDisplay(currentDate) === 'Today';
@@ -246,6 +249,19 @@ export default function HomePage() {
     setSelectedPatients(new Set());
   };
 
+  const handleTimeChange = async (patient: Patient, newTime: string) => {
+    try {
+      await fetch(`/api/patients/${patient.rowIndex}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ timestamp: newTime, _sheetName: patient.sheetName }),
+      });
+      fetchPatients();
+    } catch (error) {
+      console.error('Failed to update time:', error);
+    }
+  };
+
   const handlePatientClick = (patient: Patient) => {
     if (batchMode) return;
     setDataModalPatient(patient);
@@ -261,8 +277,15 @@ export default function HomePage() {
       {/* Header */}
       <header className="bg-blue-600 text-white px-4 py-4 sticky top-0 z-40">
         <div className="flex items-center justify-between max-w-2xl mx-auto">
-          <h1 className="text-xl font-bold">ED Documentation</h1>
+          <h1 className="text-xl font-bold">ED Dashboard</h1>
           <div className="flex items-center gap-1">
+            <button
+              onClick={() => setAnonymize(!anonymize)}
+              className="p-2 hover:bg-blue-500 rounded-full transition-colors"
+              title={anonymize ? 'Show names' : 'Anonymize names'}
+            >
+              {anonymize ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+            </button>
             <button
               onClick={() => router.push('/settings')}
               className="p-2 hover:bg-blue-500 rounded-full transition-colors"
@@ -475,6 +498,8 @@ export default function HomePage() {
                           patient={patient}
                           onClick={() => handlePatientClick(patient)}
                           onDelete={() => setDeleteConfirm(patient)}
+                          anonymize={anonymize}
+                          onTimeChange={(time) => handleTimeChange(patient, time)}
                         />
                       </div>
                     </div>
@@ -496,6 +521,8 @@ export default function HomePage() {
                       patient={patient}
                       onClick={() => handlePatientClick(patient)}
                       onDelete={() => setDeleteConfirm(patient)}
+                      anonymize={anonymize}
+                      onTimeChange={(time) => handleTimeChange(patient, time)}
                     />
                   ))}
                 </div>
@@ -515,6 +542,8 @@ export default function HomePage() {
                       patient={patient}
                       onClick={() => handlePatientClick(patient)}
                       onDelete={() => setDeleteConfirm(patient)}
+                      anonymize={anonymize}
+                      onTimeChange={(time) => handleTimeChange(patient, time)}
                     />
                   ))}
                 </div>
