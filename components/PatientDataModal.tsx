@@ -5,6 +5,25 @@ import { Patient } from '@/lib/google-sheets';
 import { X, Loader2, Save, ExternalLink } from 'lucide-react';
 import { ExamToggles } from '@/components/ExamToggles';
 
+/** Combine transcript + encounter notes into one string for storage */
+function combineTranscriptAndNotes(transcript: string, encounterNotes: string): string {
+  const parts: string[] = [];
+  if (transcript.trim()) parts.push(transcript.trim());
+  if (encounterNotes.trim()) parts.push(`--- ENCOUNTER NOTES ---\n${encounterNotes.trim()}`);
+  return parts.join('\n\n');
+}
+
+/** Split stored transcript back into transcript + encounter notes */
+function splitTranscriptAndNotes(combined: string): { transcript: string; encounterNotes: string } {
+  const separator = '--- ENCOUNTER NOTES ---';
+  const idx = combined.indexOf(separator);
+  if (idx === -1) return { transcript: combined, encounterNotes: '' };
+  return {
+    transcript: combined.substring(0, idx).trim(),
+    encounterNotes: combined.substring(idx + separator.length).trim(),
+  };
+}
+
 interface PatientDataModalProps {
   patient: Patient | null;
   isOpen: boolean;
@@ -15,6 +34,7 @@ interface PatientDataModalProps {
 
 export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate }: PatientDataModalProps) {
   const [transcript, setTranscript] = useState('');
+  const [encounterNotes, setEncounterNotes] = useState('');
   const [triageVitals, setTriageVitals] = useState('');
   const [additional, setAdditional] = useState('');
   const [pastDocs, setPastDocs] = useState('');
@@ -23,7 +43,9 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
   // Sync state when patient changes
   useEffect(() => {
     if (patient) {
-      setTranscript(patient.transcript || '');
+      const { transcript: t, encounterNotes: en } = splitTranscriptAndNotes(patient.transcript || '');
+      setTranscript(t);
+      setEncounterNotes(en);
       setTriageVitals(patient.triageVitals || '');
       setAdditional(patient.additional || '');
       setPastDocs(patient.pastDocs || '');
@@ -32,8 +54,9 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
 
   if (!isOpen || !patient) return null;
 
+  const combinedTranscript = combineTranscriptAndNotes(transcript, encounterNotes);
   const hasChanges =
-    transcript !== (patient.transcript || '') ||
+    combinedTranscript !== (patient.transcript || '') ||
     triageVitals !== (patient.triageVitals || '') ||
     additional !== (patient.additional || '') ||
     pastDocs !== (patient.pastDocs || '');
@@ -46,7 +69,7 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           _sheetName: patient.sheetName,
-          transcript,
+          transcript: combinedTranscript,
           triageVitals,
           additional,
           pastDocs,
@@ -107,12 +130,25 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
           {/* Transcript */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Transcript / Encounter Notes
+              Transcript
             </label>
             <textarea
               value={transcript}
               onChange={(e) => setTranscript(e.target.value)}
-              placeholder="Encounter transcript, dictation, or notes..."
+              placeholder="Audio transcript or dictation..."
+              className="w-full h-28 p-3 border rounded-lg text-sm resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            />
+          </div>
+
+          {/* Encounter Notes */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Encounter Notes
+            </label>
+            <textarea
+              value={encounterNotes}
+              onChange={(e) => setEncounterNotes(e.target.value)}
+              placeholder="Physician notes, clinical observations, plan..."
               className="w-full h-28 p-3 border rounded-lg text-sm resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             />
           </div>

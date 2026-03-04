@@ -24,10 +24,30 @@ export interface ParsedData {
   pastDocs: string;
 }
 
+/** Combine transcript + encounter notes into one string for storage */
+function combineTranscriptAndNotes(transcript: string, encounterNotes: string): string {
+  const parts: string[] = [];
+  if (transcript.trim()) parts.push(transcript.trim());
+  if (encounterNotes.trim()) parts.push(`--- ENCOUNTER NOTES ---\n${encounterNotes.trim()}`);
+  return parts.join('\n\n');
+}
+
+/** Split stored transcript back into transcript + encounter notes */
+function splitTranscriptAndNotes(combined: string): { transcript: string; encounterNotes: string } {
+  const separator = '--- ENCOUNTER NOTES ---';
+  const idx = combined.indexOf(separator);
+  if (idx === -1) return { transcript: combined, encounterNotes: '' };
+  return {
+    transcript: combined.substring(0, idx).trim(),
+    encounterNotes: combined.substring(idx + separator.length).trim(),
+  };
+}
+
 export function ParseModal({ isOpen, onClose, onSave }: ParseModalProps) {
   const [pasteText, setPasteText] = useState('');
   const [triageVitals, setTriageVitals] = useState('');
   const [transcript, setTranscript] = useState('');
+  const [encounterNotes, setEncounterNotes] = useState('');
   const [additional, setAdditional] = useState('');
   const [pastDocs, setPastDocs] = useState('');
   const [encounterTime, setEncounterTime] = useState('');
@@ -61,7 +81,7 @@ export function ParseModal({ isOpen, onClose, onSave }: ParseModalProps) {
         ...data,
         timestamp,
         triageVitals,
-        transcript,
+        transcript: combineTranscriptAndNotes(transcript, encounterNotes),
         additional,
         pastDocs,
       });
@@ -79,7 +99,7 @@ export function ParseModal({ isOpen, onClose, onSave }: ParseModalProps) {
         ...parsedData,
         timestamp,
         triageVitals,
-        transcript,
+        transcript: combineTranscriptAndNotes(transcript, encounterNotes),
         additional,
         pastDocs,
       });
@@ -87,6 +107,7 @@ export function ParseModal({ isOpen, onClose, onSave }: ParseModalProps) {
       setPasteText('');
       setTriageVitals('');
       setTranscript('');
+      setEncounterNotes('');
       setAdditional('');
       setPastDocs('');
       setEncounterTime('');
@@ -191,8 +212,21 @@ export function ParseModal({ isOpen, onClose, onSave }: ParseModalProps) {
             <textarea
               value={transcript}
               onChange={(e) => setTranscript(e.target.value)}
-              placeholder="Encounter transcript..."
-              className="w-full h-32 p-3 border rounded-lg text-sm resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              placeholder="Audio transcript or dictation..."
+              className="w-full h-28 p-3 border rounded-lg text-sm resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            />
+          </div>
+
+          {/* Encounter Notes */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Encounter Notes (optional)
+            </label>
+            <textarea
+              value={encounterNotes}
+              onChange={(e) => setEncounterNotes(e.target.value)}
+              placeholder="Physician notes, clinical observations, plan..."
+              className="w-full h-28 p-3 border rounded-lg text-sm resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             />
           </div>
 
