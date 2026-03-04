@@ -275,6 +275,31 @@ function computeShiftHours(start: string, end: string): number {
   return diff / 60;
 }
 
+/** Normalize a time value from Google Sheets into HH:MM format for dropdown matching */
+function normalizeTime(val: string): string {
+  if (!val) return '';
+  // Already HH:MM
+  const m24 = val.match(/^(\d{1,2}):(\d{2})$/);
+  if (m24) return m24[1].padStart(2, '0') + ':' + m24[2];
+  // Time serial number (e.g. 0.333 for 08:00)
+  const num = parseFloat(val);
+  if (!isNaN(num) && num >= 0 && num < 1) {
+    const totalMin = Math.round(num * 24 * 60);
+    const h = Math.floor(totalMin / 60);
+    const m = totalMin % 60;
+    return h.toString().padStart(2, '0') + ':' + m.toString().padStart(2, '0');
+  }
+  // AM/PM format like "8:00:00 AM"
+  const mAP = val.match(/(\d{1,2}):(\d{2})(?::\d{2})?\s*(AM|PM)/i);
+  if (mAP) {
+    let h = parseInt(mAP[1], 10);
+    if (mAP[3].toUpperCase() === 'PM' && h < 12) h += 12;
+    if (mAP[3].toUpperCase() === 'AM' && h === 12) h = 0;
+    return h.toString().padStart(2, '0') + ':' + mAP[2];
+  }
+  return val;
+}
+
 /** Get shift data from row 5 (A5:E5) */
 export async function getShiftTimes(sheetName?: string): Promise<ShiftTimes> {
   const sheet = sheetName || getTodaySheetName();
@@ -285,11 +310,12 @@ export async function getShiftTimes(sheetName?: string): Promise<ShiftTimes> {
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId,
       range: `'${sheet}'!A5:E5`,
+      valueRenderOption: 'UNFORMATTED_VALUE',
     });
     const row = response.data.values?.[0] || [];
     return {
-      start: row[0]?.toString() || '',
-      end: row[1]?.toString() || '',
+      start: normalizeTime(row[0]?.toString() || ''),
+      end: normalizeTime(row[1]?.toString() || ''),
       hours: row[2]?.toString() || '',
       fee: row[3]?.toString() || '',
       total: row[4]?.toString() || '',
@@ -329,7 +355,7 @@ export async function setShiftTimes(
   await sheets.spreadsheets.values.update({
     spreadsheetId,
     range: `'${sheetName}'!A5:E5`,
-    valueInputOption: 'USER_ENTERED',
+    valueInputOption: 'RAW',
     requestBody: { values: [[start, end, hoursStr, currentFee, totalStr]] },
   });
 
