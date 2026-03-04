@@ -353,6 +353,7 @@ export async function updatePatientFields(
     patientNum: 'A', name: 'C', age: 'D', gender: 'E', birthday: 'F',
     hcn: 'G', mrn: 'H', diagnosis: 'I', timestamp: 'B',
     icd9: 'J', icd10: 'K',
+    visitProcedure: 'L', procCode: 'M', fee: 'N', unit: 'O', total: 'P', comments: 'Q',
     triageVitals: 'R', transcript: 'S', additional: 'T',
     ddx: 'U', investigations: 'V', hpi: 'W',
     objective: 'X', assessmentPlan: 'Y', referral: 'Z',

@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { generateReferral } from '@/lib/claude';
 import { getPatient, updatePatientFields } from '@/lib/google-sheets';
 
+export const maxDuration = 60;
+
 // POST /api/referral - Generate referral letter
 export async function POST(request: NextRequest) {
   try {

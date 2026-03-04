@@ -196,17 +196,24 @@ export default function HomePage() {
 
     setBatchProcessing(true);
     setBatchProgress({ current: 0, total: toProcess.length });
+    let failures = 0;
 
     for (let i = 0; i < toProcess.length; i++) {
       setBatchProgress({ current: i + 1, total: toProcess.length });
       try {
-        await fetch('/api/process', {
+        const res = await fetch('/api/process', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ rowIndex: toProcess[i].rowIndex, sheetName }),
         });
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          console.error(`Failed to process ${toProcess[i].name}:`, err.detail || err.error);
+          failures++;
+        }
       } catch (error) {
         console.error(`Failed to process patient ${toProcess[i].name}:`, error);
+        failures++;
       }
     }
 
@@ -214,6 +221,9 @@ export default function HomePage() {
     setBatchMode(false);
     setSelectedPatients(new Set());
     fetchPatients();
+    if (failures > 0) {
+      alert(`${failures} of ${toProcess.length} patients failed to process. Check console for details.`);
+    }
   };
 
   const exitBatchMode = () => {
