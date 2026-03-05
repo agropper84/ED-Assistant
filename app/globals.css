@@ -24,8 +24,25 @@
   --overlay: rgba(0,0,0,0.4);
   --accent: #2563eb;
   --accent-light: #eff6ff;
+  --accent-green: #10b981;
+  --accent-orange: #f59e0b;
+  --accent-red: #ef4444;
+  --accent-purple: #8b5cf6;
   --fab-shadow: 0 4px 14px rgba(37,99,235,0.35);
   --page-px: 1rem;
+
+  /* Dashboard header zone — light blue palette */
+  --dash-header-from: #2563eb;
+  --dash-header-to: #3b82f6;
+  --dash-shift-bg: #4a8fe8;
+  --dash-date-bg: #5a9ef2;
+  --dash-text: #ffffff;
+  --dash-text-sub: rgba(255,255,255,0.75);
+  --dash-text-muted: rgba(255,255,255,0.55);
+  --dash-hover: rgba(255,255,255,0.12);
+  --dash-border: rgba(255,255,255,0.12);
+  --dash-input-bg: rgba(255,255,255,0.15);
+  --dash-input-border: rgba(255,255,255,0.2);
 }
 
 @media (min-width: 640px) {
@@ -56,7 +73,24 @@
   --overlay: rgba(0,0,0,0.6);
   --accent: #3b82f6;
   --accent-light: rgba(59,130,246,0.1);
+  --accent-green: #34d399;
+  --accent-orange: #fbbf24;
+  --accent-red: #f87171;
+  --accent-purple: #a78bfa;
   --fab-shadow: 0 4px 14px rgba(59,130,246,0.3);
+
+  /* Dashboard header zone — deep navy palette */
+  --dash-header-from: #0a1535;
+  --dash-header-to: #0c1e4a;
+  --dash-shift-bg: #0e2158;
+  --dash-date-bg: #102565;
+  --dash-text: #e8eeff;
+  --dash-text-sub: rgba(200,215,255,0.7);
+  --dash-text-muted: rgba(160,180,230,0.5);
+  --dash-hover: rgba(255,255,255,0.08);
+  --dash-border: rgba(100,140,255,0.12);
+  --dash-input-bg: rgba(255,255,255,0.06);
+  --dash-input-border: rgba(100,140,255,0.2);
 }
 
 body {
@@ -90,6 +124,22 @@ button, .btn {
   backdrop-filter: saturate(180%) blur(16px);
   border-bottom: 1px solid var(--header-border);
   color: var(--header-text);
+}
+
+/* Dashboard colored header zone */
+.dash-header {
+  background: linear-gradient(135deg, var(--dash-header-from), var(--dash-header-to));
+  color: var(--dash-text);
+}
+.dash-shift {
+  background: var(--dash-shift-bg);
+  border-bottom: 1px solid var(--dash-border);
+  color: var(--dash-text);
+}
+.dash-date {
+  background: var(--dash-date-bg);
+  border-bottom: 1px solid var(--dash-border);
+  color: var(--dash-text);
 }
 
 /* Modal overlay with blur */
