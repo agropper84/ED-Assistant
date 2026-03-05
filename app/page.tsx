@@ -145,14 +145,11 @@ export default function HomePage() {
       const res = await fetch('/api/patients', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
+        body: JSON.stringify({ ...data, _sheetName: sheetName }),
       });
 
       if (res.ok) {
         const { rowIndex, sheetName: savedSheet } = await res.json();
-        if (!isToday) {
-          setCurrentDate(new Date());
-        }
         fetchPatients();
         router.push(`/patient/${rowIndex}?sheet=${encodeURIComponent(savedSheet)}`);
       }
@@ -566,15 +563,13 @@ export default function HomePage() {
             <p className="text-[var(--text-muted)] mb-4">
               {isToday ? 'No patients yet today' : `No patients on ${sheetName}`}
             </p>
-            {isToday && (
-              <button
-                onClick={() => setShowParseModal(true)}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 active:scale-[0.97] transition-all"
-              >
-                <Plus className="w-4 h-4" />
-                Add First Patient
-              </button>
-            )}
+            <button
+              onClick={() => setShowParseModal(true)}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-[var(--accent)] text-white rounded-lg hover:brightness-110 active:scale-[0.97] transition-all"
+            >
+              <Plus className="w-4 h-4" />
+              Add Patient
+            </button>
           </div>
         ) : (
           <div className="space-y-6 animate-fadeIn">
@@ -676,16 +671,14 @@ export default function HomePage() {
         )}
       </main>
 
-      {/* FAB - Add Patient (only on today) */}
-      {isToday && (
-        <button
-          onClick={() => setShowParseModal(true)}
-          className="fixed bottom-6 right-6 w-14 h-14 bg-[var(--accent)] text-white rounded-2xl flex items-center justify-center hover:brightness-110 active:scale-[0.93] transition-all duration-200"
-          style={{ boxShadow: 'var(--fab-shadow)' }}
-        >
-          <Plus className="w-6 h-6" />
-        </button>
-      )}
+      {/* FAB - Add Patient */}
+      <button
+        onClick={() => setShowParseModal(true)}
+        className="fixed bottom-6 right-6 w-14 h-14 bg-[var(--accent)] text-white rounded-2xl flex items-center justify-center hover:brightness-110 active:scale-[0.93] transition-all duration-200"
+        style={{ boxShadow: 'var(--fab-shadow)' }}
+      >
+        <Plus className="w-6 h-6" />
+      </button>
 
       {/* Parse Modal */}
       <ParseModal
