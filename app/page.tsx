@@ -7,7 +7,6 @@ import { PatientCard } from '@/components/PatientCard';
 import { ParseModal } from '@/components/ParseModal';
 import { PatientDataModal } from '@/components/PatientDataModal';
 import { InlineBilling } from '@/components/BillingSection';
-import { ThemeToggle } from '@/components/ThemeToggle';
 import {
   BillingItem,
   parseBillingItems,
@@ -398,7 +397,6 @@ export default function HomePage() {
                 {userName || userEmail}
               </span>
             )}
-            <ThemeToggle className="hover:bg-white/10" />
             <button
               onClick={() => setAnonymize(!anonymize)}
               className="p-2 hover:bg-white/10 rounded-full transition-colors"
