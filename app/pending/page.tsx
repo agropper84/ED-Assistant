@@ -13,7 +13,7 @@ export default function PendingPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-[var(--bg-primary)] px-4">
       <div className="w-full max-w-sm space-y-8 animate-fadeIn text-center">
-        <div className="w-16 h-16 bg-amber-500 rounded-2xl flex items-center justify-center mx-auto shadow-lg">
+        <div className="w-16 h-16 bg-amber-500 rounded-3xl flex items-center justify-center mx-auto" style={{ boxShadow: '0 4px 14px rgba(245,158,11,0.3)' }}>
           <Clock className="w-8 h-8 text-white" />
         </div>
 

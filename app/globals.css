@@ -12,32 +12,51 @@
   --border: #e2e8f0;
   --border-light: #f1f5f9;
   --card-bg: #ffffff;
-  --card-border: #e2e8f0;
-  --card-shadow: 0 1px 3px rgba(0,0,0,0.08);
+  --card-border: #e5e7eb;
+  --card-shadow: 0 1px 2px rgba(0,0,0,0.04), 0 2px 8px rgba(0,0,0,0.06);
+  --card-shadow-hover: 0 2px 4px rgba(0,0,0,0.04), 0 8px 24px rgba(0,0,0,0.08);
+  --card-shadow-elevated: 0 4px 12px rgba(0,0,0,0.06), 0 16px 40px rgba(0,0,0,0.1);
   --input-bg: #ffffff;
   --input-border: #cbd5e1;
-  --header-bg: #1d4ed8;
-  --header-text: #ffffff;
-  --overlay: rgba(0,0,0,0.5);
+  --header-bg: rgba(255,255,255,0.72);
+  --header-text: #0f172a;
+  --header-border: rgba(0,0,0,0.06);
+  --overlay: rgba(0,0,0,0.4);
+  --accent: #2563eb;
+  --accent-light: #eff6ff;
+  --fab-shadow: 0 4px 14px rgba(37,99,235,0.35);
+  --page-px: 1rem;
+}
+
+@media (min-width: 640px) {
+  :root {
+    --page-px: 1.5rem;
+  }
 }
 
 .dark {
   --bg-primary: #09090b;
-  --bg-secondary: #18181b;
-  --bg-tertiary: #27272a;
+  --bg-secondary: #0f0f11;
+  --bg-tertiary: #1a1a1e;
   --text-primary: #fafafa;
   --text-secondary: #a1a1aa;
   --text-muted: #71717a;
-  --border: #3f3f46;
-  --border-light: #27272a;
-  --card-bg: #18181b;
-  --card-border: #27272a;
-  --card-shadow: 0 1px 3px rgba(0,0,0,0.3);
-  --input-bg: #27272a;
+  --border: #27272a;
+  --border-light: #1e1e22;
+  --card-bg: #141416;
+  --card-border: #232327;
+  --card-shadow: 0 1px 2px rgba(0,0,0,0.2), 0 2px 8px rgba(0,0,0,0.25);
+  --card-shadow-hover: 0 2px 4px rgba(0,0,0,0.2), 0 8px 24px rgba(0,0,0,0.3);
+  --card-shadow-elevated: 0 4px 12px rgba(0,0,0,0.3), 0 16px 40px rgba(0,0,0,0.4);
+  --input-bg: #1a1a1e;
   --input-border: #3f3f46;
-  --header-bg: #1e3a5f;
-  --header-text: #f0f6ff;
-  --overlay: rgba(0,0,0,0.7);
+  --header-bg: rgba(9,9,11,0.72);
+  --header-text: #fafafa;
+  --header-border: rgba(255,255,255,0.06);
+  --overlay: rgba(0,0,0,0.6);
+  --accent: #3b82f6;
+  --accent-light: rgba(59,130,246,0.1);
+  --fab-shadow: 0 4px 14px rgba(59,130,246,0.3);
 }
 
 body {
@@ -64,12 +83,31 @@ button, .btn {
   min-width: 44px;
 }
 
+/* Glass header */
+.glass-header {
+  background: var(--header-bg);
+  -webkit-backdrop-filter: saturate(180%) blur(16px);
+  backdrop-filter: saturate(180%) blur(16px);
+  border-bottom: 1px solid var(--header-border);
+  color: var(--header-text);
+}
+
+/* Modal overlay with blur */
+.modal-overlay {
+  background: var(--overlay);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+}
+
 /* Patient card styling */
 .patient-card {
   background: var(--card-bg);
   border: 1px solid var(--card-border);
   box-shadow: var(--card-shadow);
-  @apply rounded-xl p-4 mb-3 transition-all duration-200;
+  @apply rounded-2xl p-5 mb-3 transition-all duration-200;
+}
+.patient-card:hover {
+  box-shadow: var(--card-shadow-hover);
 }
 .patient-card:active {
   background: var(--bg-tertiary);

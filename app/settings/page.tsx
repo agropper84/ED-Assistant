@@ -179,16 +179,16 @@ export default function SettingsPage() {
   return (
     <div className="min-h-screen pb-24">
       {/* Header */}
-      <header className="bg-[var(--header-bg)] text-[var(--header-text)] px-4 py-4 sticky top-0 z-40">
+      <header className="glass-header px-4 py-4 sticky top-0 z-40">
         <div className="flex items-center gap-3 max-w-2xl mx-auto">
           <button
             onClick={() => router.push('/')}
-            className="p-2 hover:bg-white/10 rounded-full -ml-2"
+            className="p-2 hover:bg-black/5 dark:hover:bg-white/10 rounded-full -ml-2"
           >
-            <ArrowLeft className="w-5 h-5" />
+            <ArrowLeft className="w-5 h-5 text-[var(--text-secondary)]" />
           </button>
-          <h1 className="text-lg font-semibold flex-1">Settings</h1>
-          <div className="flex items-center bg-white/10 rounded-lg p-0.5 gap-0.5">
+          <h1 className="text-lg font-semibold flex-1 text-[var(--text-primary)]">Settings</h1>
+          <div className="flex items-center bg-black/5 dark:bg-white/10 rounded-lg p-0.5 gap-0.5">
             {([
               { value: 'light' as const, icon: Sun, label: 'Light' },
               { value: 'dark' as const, icon: Moon, label: 'Dark' },
@@ -199,8 +199,8 @@ export default function SettingsPage() {
                 onClick={() => setMode(value)}
                 className={`p-1.5 rounded-md transition-all ${
                   mode === value
-                    ? 'bg-white/20 text-white'
-                    : 'text-white/50 hover:text-white/80'
+                    ? 'bg-[var(--accent)] text-white'
+                    : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)]'
                 }`}
                 title={label}
               >
@@ -242,7 +242,7 @@ export default function SettingsPage() {
             ) : styleGuide && (
               <>
                 {/* Custom Guidance */}
-                <div className="bg-[var(--card-bg)] rounded-xl shadow-sm border border-[var(--card-border)] p-4 space-y-2">
+                <div className="bg-[var(--card-bg)] rounded-2xl border border-[var(--card-border)] p-5 space-y-2" style={{ boxShadow: 'var(--card-shadow)' }}>
                   <h3 className="font-semibold text-[var(--text-primary)]">Charting Guidance</h3>
                   <p className="text-xs text-[var(--text-muted)]">
                     Specify preferences for voice, tone, language, formatting, abbreviations, level of detail, or any other charting conventions.
@@ -260,7 +260,7 @@ export default function SettingsPage() {
                 </div>
 
                 {/* Exam Presets */}
-                <div className="bg-[var(--card-bg)] rounded-xl shadow-sm border border-[var(--card-border)] p-4 space-y-3">
+                <div className="bg-[var(--card-bg)] rounded-2xl border border-[var(--card-border)] p-5 space-y-3" style={{ boxShadow: 'var(--card-shadow)' }}>
                   <div className="flex items-center justify-between">
                     <h3 className="font-semibold text-[var(--text-primary)]">Physical Exam Presets</h3>
                     <div className="flex items-center gap-2">
@@ -440,7 +440,7 @@ export default function SettingsPage() {
 
                 {/* Sections */}
                 {(['hpi', 'objective', 'assessmentPlan'] as const).map((section) => (
-                  <div key={section} className="bg-[var(--card-bg)] rounded-xl shadow-sm border border-[var(--card-border)] p-4 space-y-3">
+                  <div key={section} className="bg-[var(--card-bg)] rounded-2xl border border-[var(--card-border)] p-5 space-y-3" style={{ boxShadow: 'var(--card-shadow)' }}>
                     <div className="flex items-center justify-between">
                       <h3 className="font-semibold text-[var(--text-primary)]">{sectionLabels[section]} Examples</h3>
                       <button
@@ -507,7 +507,7 @@ export default function SettingsPage() {
 
         {/* Settings Tab */}
         {activeTab === 'settings' && (
-          <div className="bg-[var(--card-bg)] rounded-xl shadow-sm border border-[var(--card-border)] p-4 space-y-4">
+          <div className="bg-[var(--card-bg)] rounded-2xl border border-[var(--card-border)] p-5 space-y-4" style={{ boxShadow: 'var(--card-shadow)' }}>
             <div>
               <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Model</label>
               <select

@@ -22,7 +22,7 @@ export function BillingSection({
   const total = calculateTotal(billingItems);
 
   return (
-    <div className="bg-[var(--card-bg)] rounded-xl shadow-sm border border-[var(--card-border)] overflow-hidden">
+    <div className="bg-[var(--card-bg)] rounded-2xl border border-[var(--card-border)] overflow-hidden" style={{ boxShadow: 'var(--card-shadow)' }}>
       <button
         onClick={() => setShowBilling(!showBilling)}
         className="w-full flex items-center justify-between p-4 cursor-pointer"

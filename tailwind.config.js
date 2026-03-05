@@ -28,8 +28,8 @@ module.exports = {
           to: { opacity: '1' },
         },
         slideUp: {
-          from: { opacity: '0', transform: 'translateY(16px)' },
-          to: { opacity: '1', transform: 'translateY(0)' },
+          from: { opacity: '0', transform: 'translateY(12px) scale(0.98)' },
+          to: { opacity: '1', transform: 'translateY(0) scale(1)' },
         },
         scaleIn: {
           from: { opacity: '0', transform: 'scale(0.95)' },
@@ -38,8 +38,8 @@ module.exports = {
       },
       animation: {
         fadeIn: 'fadeIn 200ms ease-out',
-        slideUp: 'slideUp 250ms ease-out',
-        scaleIn: 'scaleIn 200ms ease-out',
+        slideUp: 'slideUp 300ms cubic-bezier(0.16, 1, 0.3, 1)',
+        scaleIn: 'scaleIn 200ms cubic-bezier(0.16, 1, 0.3, 1)',
       },
     },
   },

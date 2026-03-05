@@ -256,19 +256,19 @@ export default function PatientPage() {
   return (
     <div className="min-h-screen pb-24">
       {/* Header */}
-      <header className="bg-[var(--header-bg)] text-[var(--header-text)] px-4 py-4 sticky top-0 z-40">
+      <header className="glass-header px-4 py-4 sticky top-0 z-40">
         <div className="flex items-center gap-3 max-w-2xl mx-auto">
           <button
             onClick={() => router.push('/')}
-            className="p-2 hover:bg-white/10 rounded-full -ml-2"
+            className="p-2 hover:bg-black/5 dark:hover:bg-white/10 rounded-full -ml-2"
           >
-            <ArrowLeft className="w-5 h-5" />
+            <ArrowLeft className="w-5 h-5 text-[var(--text-secondary)]" />
           </button>
           <div className="flex-1 min-w-0">
-            <h1 className="font-semibold truncate">
+            <h1 className="font-semibold truncate text-[var(--text-primary)]">
               {patient.name || 'Unknown'}
             </h1>
-            <p className="text-white/70 text-sm">
+            <p className="text-[var(--text-muted)] text-sm">
               {patient.age && `${patient.age} `}
               {patient.gender && `${patient.gender} `}
               {patient.timestamp && `• ${patient.timestamp}`}
@@ -277,9 +277,9 @@ export default function PatientPage() {
         </div>
       </header>
 
-      <main className="max-w-2xl mx-auto px-4 py-4 space-y-4 animate-fadeIn">
+      <main className="max-w-2xl mx-auto px-[var(--page-px)] py-4 space-y-4 animate-fadeIn">
         {/* Patient Info Card */}
-        <div className="bg-[var(--card-bg)] rounded-xl shadow-sm border border-[var(--card-border)] p-4">
+        <div className="bg-[var(--card-bg)] rounded-2xl border border-[var(--card-border)] p-5" style={{ boxShadow: 'var(--card-shadow)' }}>
           <div className="grid grid-cols-2 gap-3 text-sm">
             <div className="flex items-center gap-2">
               <Calendar className="w-4 h-4 text-[var(--text-muted)]" />
@@ -339,15 +339,15 @@ export default function PatientPage() {
         {patient.hasOutput && (
           <>
             {/* Tab Bar */}
-            <div className="flex bg-[var(--card-bg)] rounded-xl shadow-sm border border-[var(--card-border)] overflow-hidden">
+            <div className="flex gap-1 bg-[var(--bg-tertiary)] rounded-2xl p-1" style={{ boxShadow: 'var(--card-shadow)' }}>
               {(['encounter', 'ddx', 'referral'] as const).map((tab) => (
                 <button
                   key={tab}
                   onClick={() => setActiveTab(tab)}
-                  className={`flex-1 py-3 text-sm font-medium transition-colors ${
+                  className={`flex-1 py-2.5 text-sm font-medium rounded-xl transition-all ${
                     activeTab === tab
-                      ? 'bg-blue-600 text-white'
-                      : 'text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)]'
+                      ? 'bg-[var(--accent)] text-white shadow-sm'
+                      : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
                   }`}
                 >
                   {tab === 'encounter' ? 'Encounter Note' : tab === 'ddx' ? 'DDx & Workup' : 'Referral'}
@@ -359,7 +359,7 @@ export default function PatientPage() {
             <div className="flex gap-2">
               <button
                 onClick={copyFullNote}
-                className="flex-1 py-3 bg-blue-600 text-white rounded-xl font-medium flex items-center justify-center gap-2 hover:bg-blue-700 active:scale-[0.97] transition-all"
+                className="flex-1 py-3 bg-[var(--accent)] text-white rounded-2xl font-medium flex items-center justify-center gap-2 hover:brightness-110 active:scale-[0.97] transition-all"
               >
                 {copied === 'full' ? (
                   <>
@@ -375,14 +375,14 @@ export default function PatientPage() {
               </button>
               <button
                 onClick={() => setShowModify(!showModify)}
-                className="py-3 px-4 bg-amber-500 text-white rounded-xl font-medium flex items-center justify-center gap-2 hover:bg-amber-600 active:scale-[0.97] transition-all"
+                className="py-3 px-4 border border-[var(--border)] text-[var(--text-secondary)] rounded-2xl font-medium flex items-center justify-center gap-2 hover:bg-[var(--bg-tertiary)] active:scale-[0.97] transition-all"
               >
                 <RefreshCw className="w-4 h-4" />
                 Modify
               </button>
               <button
                 onClick={() => setShowReferralModal(true)}
-                className="py-3 px-4 bg-purple-600 text-white rounded-xl font-medium flex items-center justify-center gap-2 hover:bg-purple-700 active:scale-[0.97] transition-all"
+                className="py-3 px-4 border border-[var(--border)] text-[var(--text-secondary)] rounded-2xl font-medium flex items-center justify-center gap-2 hover:bg-[var(--bg-tertiary)] active:scale-[0.97] transition-all"
               >
                 <Send className="w-4 h-4" />
                 Refer
@@ -515,7 +515,7 @@ export default function PatientPage() {
                     onSave={(value) => handleSaveField('referral', value)}
                   />
                 ) : (
-                  <div className="bg-[var(--card-bg)] rounded-xl shadow-sm border border-[var(--card-border)] p-6 text-center">
+                  <div className="bg-[var(--card-bg)] rounded-2xl border border-[var(--card-border)] p-6 text-center" style={{ boxShadow: 'var(--card-shadow)' }}>
                     <p className="text-[var(--text-muted)] mb-3">No referral generated yet</p>
                     <button
                       onClick={() => setShowReferralModal(true)}
@@ -542,9 +542,9 @@ export default function PatientPage() {
         />
 
         {/* Input Data (Triage, Transcript) */}
-        <div className="mt-6 pt-6 border-t border-[var(--border)]">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-semibold text-[var(--text-muted)] uppercase tracking-wide">
+        <div className="mt-8 pt-6 border-t border-[var(--border)]">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-widest">
               Source Data
             </h3>
             <VoiceRecorder
@@ -674,8 +674,8 @@ function OutputSection({
   };
 
   return (
-    <div className={`${bgClass} rounded-xl shadow-sm border ${borderClass} overflow-hidden`}>
-      <div className="flex items-center justify-between p-4 cursor-pointer" onClick={onToggle}>
+    <div className={`${bgClass} rounded-2xl border ${borderClass} overflow-hidden`} style={{ boxShadow: variant === 'muted' ? 'none' : 'var(--card-shadow)' }}>
+      <div className="flex items-center justify-between p-5 cursor-pointer" onClick={onToggle}>
         <h3 className="font-semibold text-[var(--text-primary)]">{title}</h3>
         <div className="flex items-center gap-1">
           {onSaveStyle && (
@@ -726,7 +726,7 @@ function OutputSection({
         </div>
       </div>
       {expanded && (
-        <div className="px-4 pb-4">
+        <div className="px-5 pb-5">
           {editing ? (
             <div className="space-y-2">
               {showExamToggles && (

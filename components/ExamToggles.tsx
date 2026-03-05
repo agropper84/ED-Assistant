@@ -43,8 +43,8 @@ export function ExamToggles({ value, onChange }: ExamTogglesProps) {
           onClick={() => toggle(system)}
           className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
             isActive(system)
-              ? 'bg-blue-600 text-white'
-              : 'bg-[var(--bg-tertiary)] text-[var(--text-secondary)] hover:bg-[var(--border)]'
+              ? 'bg-[var(--accent)] text-white'
+              : 'bg-[var(--bg-tertiary)] text-[var(--text-secondary)] border border-[var(--border)] hover:border-[var(--accent)] hover:text-[var(--accent)]'
           }`}
         >
           {system.label}
