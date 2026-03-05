@@ -7,6 +7,7 @@ import { PatientCard } from '@/components/PatientCard';
 import { ParseModal } from '@/components/ParseModal';
 import { PatientDataModal } from '@/components/PatientDataModal';
 import { InlineBilling } from '@/components/BillingSection';
+import { ThemeToggle } from '@/components/ThemeToggle';
 import {
   BillingItem,
   parseBillingItems,
@@ -365,27 +366,28 @@ export default function HomePage() {
   return (
     <div className="min-h-screen pb-24">
       {/* Header */}
-      <header className="bg-blue-600 text-white px-4 py-4 sticky top-0 z-40">
+      <header className="bg-[var(--header-bg)] text-[var(--header-text)] px-4 py-4 sticky top-0 z-40">
         <div className="flex items-center justify-between max-w-2xl mx-auto">
           <h1 className="text-xl font-bold">ED Dashboard</h1>
           <div className="flex items-center gap-1">
+            <ThemeToggle className="hover:bg-white/10" />
             <button
               onClick={() => setAnonymize(!anonymize)}
-              className="p-2 hover:bg-blue-500 rounded-full transition-colors"
+              className="p-2 hover:bg-white/10 rounded-full transition-colors"
               title={anonymize ? 'Show names' : 'Anonymize names'}
             >
               {anonymize ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
             </button>
             <button
               onClick={() => router.push('/settings')}
-              className="p-2 hover:bg-blue-500 rounded-full transition-colors"
+              className="p-2 hover:bg-white/10 rounded-full transition-colors"
             >
               <Settings className="w-5 h-5" />
             </button>
             <button
               onClick={() => fetchPatients(true)}
               disabled={refreshing}
-              className="p-2 hover:bg-blue-500 rounded-full transition-colors"
+              className="p-2 hover:bg-white/10 rounded-full transition-colors"
             >
               <RefreshCw className={`w-5 h-5 ${refreshing ? 'animate-spin' : ''}`} />
             </button>
@@ -394,15 +396,15 @@ export default function HomePage() {
       </header>
 
       {/* Shift Times */}
-      <div className="bg-white border-b">
+      <div className="bg-[var(--bg-primary)] border-b border-[var(--border)]">
         <div className="max-w-2xl mx-auto px-4 py-2 space-y-2">
           <div className="flex items-center gap-3">
-            <Clock className="w-4 h-4 text-gray-400 flex-shrink-0" />
-            <span className="text-sm text-gray-500 flex-shrink-0">Shift:</span>
+            <Clock className="w-4 h-4 text-[var(--text-muted)] flex-shrink-0" />
+            <span className="text-sm text-[var(--text-secondary)] flex-shrink-0">Shift:</span>
             <select
               value={shiftStart}
               onChange={(e) => { setShiftStart(e.target.value); handleShiftTimeSave({ start: e.target.value }); }}
-              className="flex-1 p-1.5 border rounded-lg text-sm text-center focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+              className="flex-1 p-1.5 border border-[var(--input-border)] rounded-lg text-sm text-center focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)]"
             >
               <option value="">Start</option>
               <option value="08:00">8:00 AM</option>
@@ -411,11 +413,11 @@ export default function HomePage() {
               <option value="18:00">6:00 PM</option>
               <option value="23:00">11:00 PM</option>
             </select>
-            <span className="text-gray-400">—</span>
+            <span className="text-[var(--text-muted)]">—</span>
             <select
               value={shiftEnd}
               onChange={(e) => { setShiftEnd(e.target.value); handleShiftTimeSave({ end: e.target.value }); }}
-              className="flex-1 p-1.5 border rounded-lg text-sm text-center focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+              className="flex-1 p-1.5 border border-[var(--input-border)] rounded-lg text-sm text-center focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)]"
             >
               <option value="">End</option>
               <option value="15:00">3:00 PM</option>
@@ -428,22 +430,22 @@ export default function HomePage() {
           {(shiftHours || shiftFeeType) && (
             <div className="flex items-center gap-3 pl-7 flex-wrap">
               {shiftHours && (
-                <span className="text-sm text-gray-600">
-                  <span className="text-gray-400">Hours:</span> {shiftHours}h
+                <span className="text-sm text-[var(--text-secondary)]">
+                  <span className="text-[var(--text-muted)]">Hours:</span> {shiftHours}h
                 </span>
               )}
               {shiftFeeType && (
-                <span className="text-sm text-gray-600">
-                  <span className="text-gray-400">Fee Type:</span> {shiftFeeType}
+                <span className="text-sm text-[var(--text-secondary)]">
+                  <span className="text-[var(--text-muted)]">Fee Type:</span> {shiftFeeType}
                 </span>
               )}
               {shiftCode && (
-                <span className="text-xs font-mono bg-gray-100 px-1.5 py-0.5 rounded text-gray-600">
+                <span className="text-xs font-mono bg-[var(--bg-tertiary)] px-1.5 py-0.5 rounded text-[var(--text-secondary)]">
                   {shiftCode}
                 </span>
               )}
               {shiftTotal && (
-                <span className="text-sm font-semibold text-green-700">
+                <span className="text-sm font-semibold text-green-600 dark:text-green-400">
                   Total: ${shiftTotal}
                 </span>
               )}
@@ -453,54 +455,54 @@ export default function HomePage() {
       </div>
 
       {/* Date Navigation */}
-      <div className="bg-white border-b sticky top-[60px] z-30">
+      <div className="bg-[var(--bg-primary)] border-b border-[var(--border)] sticky top-[60px] z-30">
         <div className="flex items-center justify-between max-w-2xl mx-auto px-4 py-2">
           <button
             onClick={goToPreviousDay}
-            className="p-2 hover:bg-gray-100 rounded-full"
+            className="p-2 hover:bg-[var(--bg-tertiary)] rounded-full"
           >
-            <ChevronLeft className="w-5 h-5 text-gray-600" />
+            <ChevronLeft className="w-5 h-5 text-[var(--text-secondary)]" />
           </button>
           <button
             onClick={goToToday}
-            className="flex items-center gap-2 px-3 py-1.5 hover:bg-gray-100 rounded-lg"
+            className="flex items-center gap-2 px-3 py-1.5 hover:bg-[var(--bg-tertiary)] rounded-lg"
           >
-            <Calendar className="w-4 h-4 text-gray-500" />
-            <span className="font-medium text-gray-900">{formatDateDisplay(currentDate)}</span>
+            <Calendar className="w-4 h-4 text-[var(--text-muted)]" />
+            <span className="font-medium text-[var(--text-primary)]">{formatDateDisplay(currentDate)}</span>
             {!isToday && (
-              <span className="text-xs text-blue-600 font-medium ml-1">Go to today</span>
+              <span className="text-xs text-blue-600 dark:text-blue-400 font-medium ml-1">Go to today</span>
             )}
           </button>
           <button
             onClick={goToNextDay}
             disabled={isToday}
-            className="p-2 hover:bg-gray-100 rounded-full disabled:opacity-30"
+            className="p-2 hover:bg-[var(--bg-tertiary)] rounded-full disabled:opacity-30"
           >
-            <ChevronRight className="w-5 h-5 text-gray-600" />
+            <ChevronRight className="w-5 h-5 text-[var(--text-secondary)]" />
           </button>
         </div>
       </div>
 
       {/* Batch Processing Bar */}
       {batchMode && (
-        <div className="bg-amber-50 border-b border-amber-200 sticky top-[108px] z-20">
+        <div className="bg-amber-50 dark:bg-amber-950/50 border-b border-amber-200 dark:border-amber-800 sticky top-[108px] z-20">
           <div className="flex items-center justify-between max-w-2xl mx-auto px-4 py-2">
             <div className="flex items-center gap-2 text-sm">
-              <span className="font-medium text-amber-800">
+              <span className="font-medium text-amber-800 dark:text-amber-300">
                 {selectedPatients.size > 0
                   ? `${selectedPatients.size} selected`
                   : 'Select patients'}
               </span>
               <button
                 onClick={selectAll}
-                className="text-amber-600 underline text-xs"
+                className="text-amber-600 dark:text-amber-400 underline text-xs"
               >
                 Select All
               </button>
             </div>
             <div className="flex items-center gap-2">
               {batchProcessing ? (
-                <span className="text-sm text-amber-700 flex items-center gap-1">
+                <span className="text-sm text-amber-700 dark:text-amber-300 flex items-center gap-1">
                   <Loader2 className="w-4 h-4 animate-spin" />
                   {batchProgress.current}/{batchProgress.total}
                 </span>
@@ -516,7 +518,7 @@ export default function HomePage() {
                   </button>
                   <button
                     onClick={exitBatchMode}
-                    className="px-3 py-1.5 bg-gray-200 text-gray-700 rounded-lg text-sm font-medium"
+                    className="px-3 py-1.5 bg-[var(--bg-tertiary)] text-[var(--text-secondary)] rounded-lg text-sm font-medium"
                   >
                     Cancel
                   </button>
@@ -531,17 +533,17 @@ export default function HomePage() {
       <main className="max-w-2xl mx-auto px-4 py-4">
         {loading ? (
           <div className="flex items-center justify-center py-12">
-            <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+            <Loader2 className="w-8 h-8 animate-spin text-blue-600 dark:text-blue-400" />
           </div>
         ) : patients.length === 0 ? (
-          <div className="text-center py-12">
-            <p className="text-gray-500 mb-4">
+          <div className="text-center py-12 animate-fadeIn">
+            <p className="text-[var(--text-muted)] mb-4">
               {isToday ? 'No patients yet today' : `No patients on ${sheetName}`}
             </p>
             {isToday && (
               <button
                 onClick={() => setShowParseModal(true)}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg"
+                className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 active:scale-[0.97] transition-all"
               >
                 <Plus className="w-4 h-4" />
                 Add First Patient
@@ -549,30 +551,30 @@ export default function HomePage() {
             )}
           </div>
         ) : (
-          <div className="space-y-6">
+          <div className="space-y-6 animate-fadeIn">
             {/* Search & Sort Bar */}
             <div className="flex items-center gap-2">
               <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-muted)]" />
                 <input
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Search patients..."
-                  className="w-full pl-9 pr-8 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full pl-9 pr-8 py-2 border border-[var(--input-border)] rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)]"
                 />
                 {searchQuery && (
                   <button
                     onClick={() => setSearchQuery('')}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 hover:bg-gray-100 rounded"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 hover:bg-[var(--bg-tertiary)] rounded"
                   >
-                    <X className="w-3.5 h-3.5 text-gray-400" />
+                    <X className="w-3.5 h-3.5 text-[var(--text-muted)]" />
                   </button>
                 )}
               </div>
               <button
                 onClick={() => setSortBy(prev => prev === 'time' ? 'name' : 'time')}
-                className="flex items-center gap-1.5 px-3 py-2 border rounded-lg text-sm text-gray-600 hover:bg-gray-50 flex-shrink-0"
+                className="flex items-center gap-1.5 px-3 py-2 border border-[var(--border)] rounded-lg text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] flex-shrink-0"
                 title={`Sort by ${sortBy === 'time' ? 'name' : 'time'}`}
               >
                 <ArrowUpDown className="w-3.5 h-3.5" />
@@ -584,7 +586,7 @@ export default function HomePage() {
             {hasPending && !batchMode && (
               <button
                 onClick={() => setBatchMode(true)}
-                className="w-full py-3 bg-amber-100 text-amber-800 rounded-xl font-medium flex items-center justify-center gap-2 border border-amber-200"
+                className="w-full py-3 bg-amber-100 dark:bg-amber-950/50 text-amber-800 dark:text-amber-300 rounded-xl font-medium flex items-center justify-center gap-2 border border-amber-200 dark:border-amber-800 hover:bg-amber-200 dark:hover:bg-amber-900/50 active:scale-[0.99] transition-all"
               >
                 <Play className="w-4 h-4" />
                 Batch Process ({pendingPatients.length} pending)
@@ -594,7 +596,7 @@ export default function HomePage() {
             {/* Ready to Process */}
             {pendingPatients.length > 0 && (
               <section>
-                <h2 className="text-sm font-semibold text-amber-700 uppercase tracking-wide mb-2">
+                <h2 className="text-sm font-semibold text-amber-700 dark:text-amber-400 uppercase tracking-wide mb-2">
                   Ready to Process ({pendingPatients.length})
                 </h2>
                 <div className="space-y-2">
@@ -606,9 +608,9 @@ export default function HomePage() {
                           className="flex-shrink-0 p-1 mt-3"
                         >
                           {selectedPatients.has(patient.rowIndex) ? (
-                            <CheckSquare className="w-5 h-5 text-amber-600" />
+                            <CheckSquare className="w-5 h-5 text-amber-600 dark:text-amber-400" />
                           ) : (
-                            <Square className="w-5 h-5 text-gray-400" />
+                            <Square className="w-5 h-5 text-[var(--text-muted)]" />
                           )}
                         </button>
                       )}
@@ -624,7 +626,7 @@ export default function HomePage() {
             {/* New */}
             {newPatients.length > 0 && (
               <section>
-                <h2 className="text-sm font-semibold text-blue-700 uppercase tracking-wide mb-2">
+                <h2 className="text-sm font-semibold text-blue-700 dark:text-blue-400 uppercase tracking-wide mb-2">
                   New ({newPatients.length})
                 </h2>
                 <div className="space-y-2">
@@ -636,7 +638,7 @@ export default function HomePage() {
             {/* Processed */}
             {processedPatients.length > 0 && (
               <section>
-                <h2 className="text-sm font-semibold text-green-700 uppercase tracking-wide mb-2">
+                <h2 className="text-sm font-semibold text-green-700 dark:text-green-400 uppercase tracking-wide mb-2">
                   Processed ({processedPatients.length})
                 </h2>
                 <div className="space-y-2">
@@ -652,7 +654,7 @@ export default function HomePage() {
       {isToday && (
         <button
           onClick={() => setShowParseModal(true)}
-          className="fixed bottom-6 right-6 w-14 h-14 bg-blue-600 text-white rounded-full shadow-lg flex items-center justify-center hover:bg-blue-700 transition-colors"
+          className="fixed bottom-6 right-6 w-14 h-14 bg-blue-600 text-white rounded-full shadow-lg flex items-center justify-center hover:bg-blue-700 active:scale-[0.93] transition-all duration-200"
         >
           <Plus className="w-6 h-6" />
         </button>
@@ -677,24 +679,24 @@ export default function HomePage() {
 
       {/* Delete Confirmation */}
       {deleteConfirm && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center px-4">
-          <div className="bg-white rounded-2xl p-6 max-w-sm w-full space-y-4">
-            <h3 className="text-lg font-semibold">Delete Patient?</h3>
-            <p className="text-sm text-gray-600">
+        <div className="fixed inset-0 bg-[var(--overlay)] z-50 flex items-center justify-center px-4">
+          <div className="bg-[var(--card-bg)] rounded-2xl p-6 max-w-sm w-full space-y-4 animate-scaleIn">
+            <h3 className="text-lg font-semibold text-[var(--text-primary)]">Delete Patient?</h3>
+            <p className="text-sm text-[var(--text-secondary)]">
               Remove <strong>{deleteConfirm.name || 'this patient'}</strong> from the list? This clears all data for this row.
             </p>
             <div className="flex gap-2">
               <button
                 onClick={() => handleDeletePatient(deleteConfirm)}
                 disabled={deleting}
-                className="flex-1 py-2.5 bg-red-600 text-white rounded-lg font-medium disabled:opacity-50 flex items-center justify-center gap-2"
+                className="flex-1 py-2.5 bg-red-600 text-white rounded-lg font-medium disabled:opacity-50 flex items-center justify-center gap-2 active:scale-[0.97] transition-all"
               >
                 {deleting ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
                 Delete
               </button>
               <button
                 onClick={() => setDeleteConfirm(null)}
-                className="flex-1 py-2.5 bg-gray-200 text-gray-700 rounded-lg font-medium"
+                className="flex-1 py-2.5 bg-[var(--bg-tertiary)] text-[var(--text-secondary)] rounded-lg font-medium active:scale-[0.97] transition-all"
               >
                 Cancel
               </button>

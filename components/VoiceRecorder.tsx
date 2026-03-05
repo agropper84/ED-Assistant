@@ -134,7 +134,7 @@ export function VoiceRecorder({ onTranscript, disabled }: VoiceRecorderProps) {
 
   if (state === 'error') {
     return (
-      <span className="inline-flex items-center gap-1 text-xs text-red-600">
+      <span className="inline-flex items-center gap-1 text-xs text-red-600 dark:text-red-400">
         {errorMsg}
       </span>
     );
@@ -142,7 +142,7 @@ export function VoiceRecorder({ onTranscript, disabled }: VoiceRecorderProps) {
 
   if (state === 'transcribing') {
     return (
-      <span className="inline-flex items-center gap-1.5 text-xs text-blue-600">
+      <span className="inline-flex items-center gap-1.5 text-xs text-blue-600 dark:text-blue-400">
         <Loader2 className="w-3.5 h-3.5 animate-spin" />
         Transcribing...
       </span>
@@ -154,7 +154,7 @@ export function VoiceRecorder({ onTranscript, disabled }: VoiceRecorderProps) {
       <button
         type="button"
         onClick={stopRecording}
-        className="inline-flex items-center gap-1.5 px-2 py-1 bg-red-50 text-red-700 rounded-lg text-xs font-medium hover:bg-red-100 transition-colors"
+        className="inline-flex items-center gap-1.5 px-2 py-1 bg-red-50 dark:bg-red-950/50 text-red-700 dark:text-red-300 rounded-lg text-xs font-medium hover:bg-red-100 dark:hover:bg-red-900/50 transition-colors"
       >
         <span className="relative flex h-2.5 w-2.5">
           <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75" />
@@ -172,7 +172,7 @@ export function VoiceRecorder({ onTranscript, disabled }: VoiceRecorderProps) {
       type="button"
       onClick={startRecording}
       disabled={disabled}
-      className="inline-flex items-center gap-1 px-2 py-1 text-xs text-gray-600 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+      className="inline-flex items-center gap-1 px-2 py-1 text-xs text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
       title="Record audio"
     >
       <Mic className="w-3.5 h-3.5" />

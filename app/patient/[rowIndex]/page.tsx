@@ -238,7 +238,7 @@ export default function PatientPage() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+        <Loader2 className="w-8 h-8 animate-spin text-blue-600 dark:text-blue-400" />
       </div>
     );
   }
@@ -246,7 +246,7 @@ export default function PatientPage() {
   if (!patient) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <p className="text-gray-500">Patient not found</p>
+        <p className="text-[var(--text-muted)]">Patient not found</p>
       </div>
     );
   }
@@ -254,11 +254,11 @@ export default function PatientPage() {
   return (
     <div className="min-h-screen pb-24">
       {/* Header */}
-      <header className="bg-blue-600 text-white px-4 py-4 sticky top-0 z-40">
+      <header className="bg-[var(--header-bg)] text-[var(--header-text)] px-4 py-4 sticky top-0 z-40">
         <div className="flex items-center gap-3 max-w-2xl mx-auto">
           <button
             onClick={() => router.push('/')}
-            className="p-2 hover:bg-blue-500 rounded-full -ml-2"
+            className="p-2 hover:bg-white/10 rounded-full -ml-2"
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
@@ -266,7 +266,7 @@ export default function PatientPage() {
             <h1 className="font-semibold truncate">
               {patient.name || 'Unknown'}
             </h1>
-            <p className="text-blue-100 text-sm">
+            <p className="text-white/70 text-sm">
               {patient.age && `${patient.age} `}
               {patient.gender && `${patient.gender} `}
               {patient.timestamp && `• ${patient.timestamp}`}
@@ -275,30 +275,30 @@ export default function PatientPage() {
         </div>
       </header>
 
-      <main className="max-w-2xl mx-auto px-4 py-4 space-y-4">
+      <main className="max-w-2xl mx-auto px-4 py-4 space-y-4 animate-fadeIn">
         {/* Patient Info Card */}
-        <div className="bg-white rounded-xl shadow-sm border p-4">
+        <div className="bg-[var(--card-bg)] rounded-xl shadow-sm border border-[var(--card-border)] p-4">
           <div className="grid grid-cols-2 gap-3 text-sm">
             <div className="flex items-center gap-2">
-              <Calendar className="w-4 h-4 text-gray-400" />
-              <span className="text-gray-600">DOB:</span>
-              <span className="font-medium">{patient.birthday || '—'}</span>
+              <Calendar className="w-4 h-4 text-[var(--text-muted)]" />
+              <span className="text-[var(--text-secondary)]">DOB:</span>
+              <span className="font-medium text-[var(--text-primary)]">{patient.birthday || '—'}</span>
             </div>
             <div className="flex items-center gap-2">
-              <CreditCard className="w-4 h-4 text-gray-400" />
-              <span className="text-gray-600">HCN:</span>
-              <span className="font-medium">{patient.hcn || '—'}</span>
+              <CreditCard className="w-4 h-4 text-[var(--text-muted)]" />
+              <span className="text-[var(--text-secondary)]">HCN:</span>
+              <span className="font-medium text-[var(--text-primary)]">{patient.hcn || '—'}</span>
             </div>
             <div className="flex items-center gap-2">
-              <User className="w-4 h-4 text-gray-400" />
-              <span className="text-gray-600">MRN:</span>
-              <span className="font-medium">{patient.mrn || '—'}</span>
+              <User className="w-4 h-4 text-[var(--text-muted)]" />
+              <span className="text-[var(--text-secondary)]">MRN:</span>
+              <span className="font-medium text-[var(--text-primary)]">{patient.mrn || '—'}</span>
             </div>
             {patient.diagnosis && (
               <div className="flex items-center gap-2">
-                <FileText className="w-4 h-4 text-gray-400" />
-                <span className="text-gray-600">Dx:</span>
-                <span className="font-medium">{patient.diagnosis}</span>
+                <FileText className="w-4 h-4 text-[var(--text-muted)]" />
+                <span className="text-[var(--text-secondary)]">Dx:</span>
+                <span className="font-medium text-[var(--text-primary)]">{patient.diagnosis}</span>
               </div>
             )}
           </div>
@@ -309,7 +309,7 @@ export default function PatientPage() {
           <button
             onClick={() => handleProcess()}
             disabled={processing}
-            className="w-full py-4 bg-green-600 text-white rounded-xl font-semibold flex items-center justify-center gap-2 disabled:opacity-50"
+            className="w-full py-4 bg-green-600 text-white rounded-xl font-semibold flex items-center justify-center gap-2 disabled:opacity-50 hover:bg-green-700 active:scale-[0.99] transition-all"
           >
             {processing ? (
               <>
@@ -327,7 +327,7 @@ export default function PatientPage() {
 
         {/* Process Error */}
         {processError && (
-          <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-red-700 text-sm">
+          <div className="bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-800 rounded-xl p-4 text-red-700 dark:text-red-300 text-sm">
             <p className="font-medium">Processing failed</p>
             <p className="mt-1">{processError}</p>
           </div>
@@ -337,7 +337,7 @@ export default function PatientPage() {
         {patient.hasOutput && (
           <>
             {/* Tab Bar */}
-            <div className="flex bg-white rounded-xl shadow-sm border overflow-hidden">
+            <div className="flex bg-[var(--card-bg)] rounded-xl shadow-sm border border-[var(--card-border)] overflow-hidden">
               {(['encounter', 'ddx', 'referral'] as const).map((tab) => (
                 <button
                   key={tab}
@@ -345,7 +345,7 @@ export default function PatientPage() {
                   className={`flex-1 py-3 text-sm font-medium transition-colors ${
                     activeTab === tab
                       ? 'bg-blue-600 text-white'
-                      : 'text-gray-600 hover:bg-gray-50'
+                      : 'text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)]'
                   }`}
                 >
                   {tab === 'encounter' ? 'Encounter Note' : tab === 'ddx' ? 'DDx & Workup' : 'Referral'}
@@ -357,7 +357,7 @@ export default function PatientPage() {
             <div className="flex gap-2">
               <button
                 onClick={copyFullNote}
-                className="flex-1 py-3 bg-blue-600 text-white rounded-xl font-medium flex items-center justify-center gap-2"
+                className="flex-1 py-3 bg-blue-600 text-white rounded-xl font-medium flex items-center justify-center gap-2 hover:bg-blue-700 active:scale-[0.97] transition-all"
               >
                 {copied === 'full' ? (
                   <>
@@ -373,14 +373,14 @@ export default function PatientPage() {
               </button>
               <button
                 onClick={() => setShowModify(!showModify)}
-                className="py-3 px-4 bg-amber-500 text-white rounded-xl font-medium flex items-center justify-center gap-2"
+                className="py-3 px-4 bg-amber-500 text-white rounded-xl font-medium flex items-center justify-center gap-2 hover:bg-amber-600 active:scale-[0.97] transition-all"
               >
                 <RefreshCw className="w-4 h-4" />
                 Modify
               </button>
               <button
                 onClick={() => setShowReferralModal(true)}
-                className="py-3 px-4 bg-purple-600 text-white rounded-xl font-medium flex items-center justify-center gap-2"
+                className="py-3 px-4 bg-purple-600 text-white rounded-xl font-medium flex items-center justify-center gap-2 hover:bg-purple-700 active:scale-[0.97] transition-all"
               >
                 <Send className="w-4 h-4" />
                 Refer
@@ -389,19 +389,19 @@ export default function PatientPage() {
 
             {/* Modification Panel */}
             {showModify && (
-              <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 space-y-3">
-                <h3 className="font-semibold text-amber-900">Modify & Regenerate</h3>
+              <div className="bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800 rounded-xl p-4 space-y-3 animate-slideUp">
+                <h3 className="font-semibold text-amber-900 dark:text-amber-200">Modify & Regenerate</h3>
                 <textarea
                   value={modifications}
                   onChange={(e) => setModifications(e.target.value)}
                   placeholder="Describe what changes you want (e.g., 'Add chest pain to HPI', 'Change diagnosis to pneumonia')..."
-                  className="w-full h-24 p-3 border border-amber-300 rounded-lg text-sm resize-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
+                  className="w-full h-24 p-3 border border-amber-300 dark:border-amber-700 rounded-lg text-sm resize-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 bg-[var(--input-bg)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)]"
                 />
                 <div className="flex gap-2">
                   <button
                     onClick={() => handleProcess(modifications)}
                     disabled={processing || !modifications.trim()}
-                    className="flex-1 py-2.5 bg-amber-600 text-white rounded-lg font-medium disabled:opacity-50 flex items-center justify-center gap-2"
+                    className="flex-1 py-2.5 bg-amber-600 text-white rounded-lg font-medium disabled:opacity-50 flex items-center justify-center gap-2 active:scale-[0.97] transition-all"
                   >
                     {processing ? (
                       <Loader2 className="w-4 h-4 animate-spin" />
@@ -412,7 +412,7 @@ export default function PatientPage() {
                   </button>
                   <button
                     onClick={() => { setShowModify(false); setModifications(''); }}
-                    className="py-2.5 px-4 bg-gray-200 text-gray-700 rounded-lg font-medium"
+                    className="py-2.5 px-4 bg-[var(--bg-tertiary)] text-[var(--text-secondary)] rounded-lg font-medium active:scale-[0.97] transition-all"
                   >
                     Cancel
                   </button>
@@ -513,11 +513,11 @@ export default function PatientPage() {
                     onSave={(value) => handleSaveField('referral', value)}
                   />
                 ) : (
-                  <div className="bg-white rounded-xl shadow-sm border p-6 text-center">
-                    <p className="text-gray-500 mb-3">No referral generated yet</p>
+                  <div className="bg-[var(--card-bg)] rounded-xl shadow-sm border border-[var(--card-border)] p-6 text-center">
+                    <p className="text-[var(--text-muted)] mb-3">No referral generated yet</p>
                     <button
                       onClick={() => setShowReferralModal(true)}
-                      className="inline-flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg font-medium"
+                      className="inline-flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg font-medium hover:bg-purple-700 active:scale-[0.97] transition-all"
                     >
                       <Send className="w-4 h-4" />
                       Generate Referral
@@ -540,9 +540,9 @@ export default function PatientPage() {
         />
 
         {/* Input Data (Triage, Transcript) */}
-        <div className="mt-6 pt-6 border-t">
+        <div className="mt-6 pt-6 border-t border-[var(--border)]">
           <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">
+            <h3 className="text-sm font-semibold text-[var(--text-muted)] uppercase tracking-wide">
               Source Data
             </h3>
             <VoiceRecorder
@@ -634,8 +634,8 @@ function OutputSection({
 
   if (!content && !editing && !onSave) return null;
 
-  const bgColor = variant === 'muted' ? 'bg-gray-50' : 'bg-white';
-  const borderColor = variant === 'muted' ? 'border-gray-200' : 'border-gray-100';
+  const bgClass = variant === 'muted' ? 'bg-[var(--bg-tertiary)]' : 'bg-[var(--card-bg)]';
+  const borderClass = variant === 'muted' ? 'border-[var(--border-light)]' : 'border-[var(--card-border)]';
 
   const handleStartEdit = () => {
     setEditValue(content);
@@ -672,9 +672,9 @@ function OutputSection({
   };
 
   return (
-    <div className={`${bgColor} rounded-xl shadow-sm border ${borderColor} overflow-hidden`}>
+    <div className={`${bgClass} rounded-xl shadow-sm border ${borderClass} overflow-hidden`}>
       <div className="flex items-center justify-between p-4 cursor-pointer" onClick={onToggle}>
-        <h3 className="font-semibold text-gray-900">{title}</h3>
+        <h3 className="font-semibold text-[var(--text-primary)]">{title}</h3>
         <div className="flex items-center gap-1">
           {onSaveStyle && (
             <button
@@ -682,13 +682,13 @@ function OutputSection({
                 e.stopPropagation();
                 onSaveStyle();
               }}
-              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              className="p-2 hover:bg-[var(--bg-tertiary)] rounded-lg transition-colors"
               title="Save as style example"
             >
               {styleSaved ? (
-                <Check className="w-4 h-4 text-green-600" />
+                <Check className="w-4 h-4 text-green-600 dark:text-green-400" />
               ) : (
-                <Bookmark className="w-4 h-4 text-gray-400" />
+                <Bookmark className="w-4 h-4 text-[var(--text-muted)]" />
               )}
             </button>
           )}
@@ -698,9 +698,9 @@ function OutputSection({
                 e.stopPropagation();
                 handleStartEdit();
               }}
-              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              className="p-2 hover:bg-[var(--bg-tertiary)] rounded-lg transition-colors"
             >
-              <Pencil className="w-4 h-4 text-gray-400" />
+              <Pencil className="w-4 h-4 text-[var(--text-muted)]" />
             </button>
           )}
           <button
@@ -708,18 +708,18 @@ function OutputSection({
               e.stopPropagation();
               onCopy();
             }}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            className="p-2 hover:bg-[var(--bg-tertiary)] rounded-lg transition-colors"
           >
             {copied ? (
-              <Check className="w-4 h-4 text-green-600" />
+              <Check className="w-4 h-4 text-green-600 dark:text-green-400" />
             ) : (
-              <Copy className="w-4 h-4 text-gray-400" />
+              <Copy className="w-4 h-4 text-[var(--text-muted)]" />
             )}
           </button>
           {expanded ? (
-            <ChevronUp className="w-5 h-5 text-gray-400" />
+            <ChevronUp className="w-5 h-5 text-[var(--text-muted)]" />
           ) : (
-            <ChevronDown className="w-5 h-5 text-gray-400" />
+            <ChevronDown className="w-5 h-5 text-[var(--text-muted)]" />
           )}
         </div>
       </div>
@@ -741,12 +741,12 @@ function OutputSection({
               <textarea
                 value={editValue}
                 onChange={(e) => setEditValue(e.target.value)}
-                className="w-full h-40 p-3 border rounded-lg text-sm resize-y focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full h-40 p-3 border border-[var(--input-border)] rounded-lg text-sm resize-y focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)]"
               />
               <div className="flex gap-2">
                 <button
                   onClick={handleSaveEdit}
-                  className="flex items-center gap-1 px-3 py-1.5 bg-green-600 text-white rounded-lg text-sm font-medium"
+                  className="flex items-center gap-1 px-3 py-1.5 bg-green-600 text-white rounded-lg text-sm font-medium active:scale-[0.97] transition-all"
                 >
                   <Save className="w-3.5 h-3.5" />
                   Save
@@ -755,7 +755,7 @@ function OutputSection({
                   <button
                     onClick={handleSaveAndRegenerate}
                     disabled={regenerating}
-                    className="flex items-center gap-1 px-3 py-1.5 bg-amber-500 text-white rounded-lg text-sm font-medium disabled:opacity-50"
+                    className="flex items-center gap-1 px-3 py-1.5 bg-amber-500 text-white rounded-lg text-sm font-medium disabled:opacity-50 active:scale-[0.97] transition-all"
                   >
                     {regenerating ? (
                       <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -767,7 +767,7 @@ function OutputSection({
                 )}
                 <button
                   onClick={handleCancelEdit}
-                  className="flex items-center gap-1 px-3 py-1.5 bg-gray-200 text-gray-700 rounded-lg text-sm font-medium"
+                  className="flex items-center gap-1 px-3 py-1.5 bg-[var(--bg-tertiary)] text-[var(--text-secondary)] rounded-lg text-sm font-medium active:scale-[0.97] transition-all"
                 >
                   <X className="w-3.5 h-3.5" />
                   Cancel
@@ -777,7 +777,7 @@ function OutputSection({
           ) : interactiveEdit && onSave ? (
             <InteractiveContent content={content} onSave={onSave} />
           ) : (
-            <p className="text-gray-700 whitespace-pre-wrap text-sm leading-relaxed">
+            <p className="text-[var(--text-secondary)] whitespace-pre-wrap text-sm leading-relaxed">
               {content}
             </p>
           )}
@@ -938,7 +938,7 @@ function InteractiveContent({
   const hasSelection = selected.size > 0;
 
   return (
-    <div className="text-gray-700 text-sm leading-relaxed">
+    <div className="text-[var(--text-secondary)] text-sm leading-relaxed">
       {parts.map((part, idx) => {
         if (part.type === 'break') return <br key={idx} />;
 
@@ -949,8 +949,8 @@ function InteractiveContent({
             <span
               className={`relative transition-colors duration-150 cursor-pointer rounded-sm px-0.5 -mx-0.5 ${
                 isSelected
-                  ? 'bg-purple-200'
-                  : 'hover:bg-purple-100'
+                  ? 'bg-purple-200 dark:bg-purple-800/50'
+                  : 'hover:bg-purple-100 dark:hover:bg-purple-900/30'
               }`}
               onClick={(e) => { e.stopPropagation(); toggleSelect(idx); }}
             >
@@ -963,35 +963,35 @@ function InteractiveContent({
 
       {/* Selection action bar */}
       {hasSelection && !addingDetail && (
-        <div className="flex items-center gap-2 mt-3 p-2 bg-purple-50 border border-purple-200 rounded-lg">
-          <span className="text-xs text-purple-700 font-medium">
+        <div className="flex items-center gap-2 mt-3 p-2 bg-purple-50 dark:bg-purple-950/50 border border-purple-200 dark:border-purple-800 rounded-lg">
+          <span className="text-xs text-purple-700 dark:text-purple-300 font-medium">
             {selected.size} selected
           </span>
           <div className="flex-1" />
           <button
             onClick={handleRemoveSelected}
-            className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-red-600 hover:bg-red-50 rounded transition-colors"
+            className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/50 rounded transition-colors"
           >
             <X className="w-3 h-3" />
             Remove
           </button>
           <button
             onClick={() => { setAddingDetail(true); setDetailText(''); }}
-            className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-blue-600 hover:bg-blue-50 rounded transition-colors"
+            className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/50 rounded transition-colors"
           >
             <Plus className="w-3 h-3" />
             Add Detail
           </button>
           <button
             onClick={handleShortenSelected}
-            className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-amber-600 hover:bg-amber-50 rounded transition-colors"
+            className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/50 rounded transition-colors"
           >
             <Scissors className="w-3 h-3" />
             Shorten
           </button>
           <button
             onClick={() => setSelected(new Set())}
-            className="px-2 py-1 text-xs text-gray-500 hover:bg-gray-100 rounded transition-colors"
+            className="px-2 py-1 text-xs text-[var(--text-muted)] hover:bg-[var(--bg-tertiary)] rounded transition-colors"
           >
             Clear
           </button>
@@ -1000,7 +1000,7 @@ function InteractiveContent({
 
       {/* Add detail input */}
       {addingDetail && (
-        <div className="flex items-center gap-1 mt-2 p-2 bg-blue-50 border border-blue-200 rounded-lg">
+        <div className="flex items-center gap-1 mt-2 p-2 bg-blue-50 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-800 rounded-lg">
           <input
             type="text"
             value={detailText}
@@ -1011,18 +1011,18 @@ function InteractiveContent({
             }}
             placeholder="Type detail to add..."
             autoFocus
-            className="flex-1 p-1.5 border rounded text-xs focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+            className="flex-1 p-1.5 border border-[var(--input-border)] rounded text-xs focus:ring-1 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)]"
             onClick={(e) => e.stopPropagation()}
           />
           <button
             onClick={(e) => { e.stopPropagation(); handleAddDetailToSelection(); }}
-            className="text-xs text-blue-600 font-medium px-2.5 py-1.5 hover:bg-blue-100 rounded"
+            className="text-xs text-blue-600 dark:text-blue-400 font-medium px-2.5 py-1.5 hover:bg-blue-100 dark:hover:bg-blue-900/50 rounded"
           >
             Add
           </button>
           <button
             onClick={(e) => { e.stopPropagation(); setAddingDetail(false); setDetailText(''); }}
-            className="text-xs text-gray-500 px-2.5 py-1.5 hover:bg-gray-100 rounded"
+            className="text-xs text-[var(--text-muted)] px-2.5 py-1.5 hover:bg-[var(--bg-tertiary)] rounded"
           >
             Cancel
           </button>
@@ -1031,4 +1031,3 @@ function InteractiveContent({
     </div>
   );
 }
-

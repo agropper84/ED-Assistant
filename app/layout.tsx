@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next'
 import './globals.css'
+import { ThemeProvider } from '@/lib/theme'
 
 export const metadata: Metadata = {
   title: 'ED Documentation',
@@ -26,12 +27,30 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <head>
         <link rel="apple-touch-icon" href="/icon-192.png" />
+        {/* Anti-FOUC: set dark class before first paint */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                try {
+                  var t = localStorage.getItem('theme');
+                  if (t === 'dark' || (!t && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                    document.documentElement.classList.add('dark');
+                  }
+                  document.documentElement.classList.add('no-transitions');
+                } catch(e) {}
+              })();
+            `,
+          }}
+        />
       </head>
-      <body className="min-h-screen bg-gray-50">
-        {children}
+      <body className="min-h-screen">
+        <ThemeProvider>
+          {children}
+        </ThemeProvider>
       </body>
     </html>
   )

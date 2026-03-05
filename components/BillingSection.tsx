@@ -22,27 +22,27 @@ export function BillingSection({
   const total = calculateTotal(billingItems);
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
+    <div className="bg-[var(--card-bg)] rounded-xl shadow-sm border border-[var(--card-border)] overflow-hidden">
       <button
         onClick={() => setShowBilling(!showBilling)}
         className="w-full flex items-center justify-between p-4 cursor-pointer"
       >
         <div className="flex items-center gap-2">
-          <DollarSign className="w-5 h-5 text-gray-400" />
-          <h3 className="font-semibold text-gray-900">Billing</h3>
+          <DollarSign className="w-5 h-5 text-[var(--text-muted)]" />
+          <h3 className="font-semibold text-[var(--text-primary)]">Billing</h3>
           {billingItems.length > 0 && (
-            <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">
+            <span className="text-xs bg-green-100 dark:bg-green-950/50 text-green-700 dark:text-green-300 px-2 py-0.5 rounded-full">
               {billingItems.length} item{billingItems.length !== 1 ? 's' : ''}
             </span>
           )}
           {total && (
-            <span className="text-sm font-semibold text-green-700">${total}</span>
+            <span className="text-sm font-semibold text-green-700 dark:text-green-400">${total}</span>
           )}
         </div>
         {showBilling ? (
-          <ChevronUp className="w-5 h-5 text-gray-400" />
+          <ChevronUp className="w-5 h-5 text-[var(--text-muted)]" />
         ) : (
-          <ChevronDown className="w-5 h-5 text-gray-400" />
+          <ChevronDown className="w-5 h-5 text-[var(--text-muted)]" />
         )}
       </button>
       {showBilling && (
@@ -69,7 +69,7 @@ export function InlineBilling({
   onSaveComments: (comments: string) => void;
 }) {
   return (
-    <div className="bg-gray-50 border rounded-xl p-4 space-y-3" onClick={(e) => e.stopPropagation()}>
+    <div className="bg-[var(--bg-tertiary)] border border-[var(--border)] rounded-xl p-4 space-y-3" onClick={(e) => e.stopPropagation()}>
       <BillingBody
         billingItems={billingItems}
         comments={comments}
@@ -162,13 +162,13 @@ function BillingBody({
       {/* Current Items */}
       {billingItems.length > 0 && (
         <div>
-          <label className="block text-xs font-medium text-gray-500 mb-1">Current Items</label>
-          <div className="border rounded-lg divide-y bg-white">
+          <label className="block text-xs font-medium text-[var(--text-muted)] mb-1">Current Items</label>
+          <div className="border border-[var(--border)] rounded-lg divide-y divide-[var(--border)] bg-[var(--card-bg)]">
             {billingItems.map((item, idx) => (
               <div key={`${item.code}-${idx}`} className="flex items-center justify-between px-3 py-2 text-sm">
                 <div className="flex-1 min-w-0">
-                  <span className="font-medium">{item.code}</span>
-                  <span className="text-gray-500 ml-2 truncate">{item.description}</span>
+                  <span className="font-medium text-[var(--text-primary)]">{item.code}</span>
+                  <span className="text-[var(--text-muted)] ml-2 truncate">{item.description}</span>
                 </div>
                 <div className="flex items-center gap-2 flex-shrink-0">
                   <input
@@ -176,13 +176,13 @@ function BillingBody({
                     min="1"
                     value={item.unit || '1'}
                     onChange={(e) => updateItemUnit(idx, e.target.value)}
-                    className="w-12 p-1 border rounded text-xs text-center focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-12 p-1 border border-[var(--input-border)] rounded text-xs text-center focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)]"
                     title="Units"
                   />
-                  {item.fee && <span className="text-gray-700">${item.fee}</span>}
+                  {item.fee && <span className="text-[var(--text-secondary)]">${item.fee}</span>}
                   <button
                     onClick={() => removeItem(idx)}
-                    className="p-1 hover:bg-red-50 rounded text-gray-400 hover:text-red-500"
+                    className="p-1 hover:bg-red-50 dark:hover:bg-red-900/30 rounded text-[var(--text-muted)] hover:text-red-500 dark:hover:text-red-400"
                   >
                     <X className="w-3.5 h-3.5" />
                   </button>
@@ -192,7 +192,7 @@ function BillingBody({
           </div>
           {total && (
             <div className="flex justify-end mt-1">
-              <span className="text-sm font-bold text-gray-900">Total: ${total}</span>
+              <span className="text-sm font-bold text-[var(--text-primary)]">Total: ${total}</span>
             </div>
           )}
         </div>
@@ -200,12 +200,12 @@ function BillingBody({
 
       {/* Visit Type Toggle */}
       <div>
-        <label className="block text-xs font-medium text-gray-500 mb-1">Visit Type</label>
+        <label className="block text-xs font-medium text-[var(--text-muted)] mb-1">Visit Type</label>
         <div className="flex gap-2">
           <button
             onClick={() => setCategoryItem('visitType', { code: '1100', description: 'ED Visit', fee: '50.90', unit: '1', category: 'visitType' })}
             className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-              currentVisit?.code === '1100' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              currentVisit?.code === '1100' ? 'bg-blue-600 text-white' : 'bg-[var(--bg-tertiary)] text-[var(--text-secondary)] hover:bg-[var(--border)]'
             }`}
           >
             ED Visit ($50.90)
@@ -213,7 +213,7 @@ function BillingBody({
           <button
             onClick={() => setCategoryItem('visitType', { code: '1101', description: 'Complete examination', fee: '111.50', unit: '1', category: 'visitType' })}
             className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-              currentVisit?.code === '1101' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              currentVisit?.code === '1101' ? 'bg-blue-600 text-white' : 'bg-[var(--bg-tertiary)] text-[var(--text-secondary)] hover:bg-[var(--border)]'
             }`}
           >
             Complete ($111.50)
@@ -221,7 +221,7 @@ function BillingBody({
           <button
             onClick={() => setCategoryItem('visitType', { code: '0081', description: 'Critical Care', fee: '147.10', unit: '1', category: 'visitType' })}
             className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-              currentVisit?.code === '0081' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              currentVisit?.code === '0081' ? 'bg-blue-600 text-white' : 'bg-[var(--bg-tertiary)] text-[var(--text-secondary)] hover:bg-[var(--border)]'
             }`}
           >
             Critical ($147.10)
@@ -231,12 +231,12 @@ function BillingBody({
 
       {/* Premium Toggle */}
       <div>
-        <label className="block text-xs font-medium text-gray-500 mb-1">Time Premium</label>
+        <label className="block text-xs font-medium text-[var(--text-muted)] mb-1">Time Premium</label>
         <div className="flex gap-2">
           <button
             onClick={() => setCategoryItem('premium', null)}
             className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-              !currentPremium ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              !currentPremium ? 'bg-blue-600 text-white' : 'bg-[var(--bg-tertiary)] text-[var(--text-secondary)] hover:bg-[var(--border)]'
             }`}
           >
             None
@@ -244,7 +244,7 @@ function BillingBody({
           <button
             onClick={() => setCategoryItem('premium', { code: '1153', description: 'Evening/Weekend premium', fee: '50.00', unit: '1', category: 'premium' })}
             className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-              currentPremium?.code === '1153' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              currentPremium?.code === '1153' ? 'bg-blue-600 text-white' : 'bg-[var(--bg-tertiary)] text-[var(--text-secondary)] hover:bg-[var(--border)]'
             }`}
           >
             Eve/Wknd ($50)
@@ -252,7 +252,7 @@ function BillingBody({
           <button
             onClick={() => setCategoryItem('premium', { code: '1154', description: 'Night (2300-0759) premium', fee: '107.40', unit: '1', category: 'premium' })}
             className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-              currentPremium?.code === '1154' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              currentPremium?.code === '1154' ? 'bg-blue-600 text-white' : 'bg-[var(--bg-tertiary)] text-[var(--text-secondary)] hover:bg-[var(--border)]'
             }`}
           >
             Night ($107.40)
@@ -262,29 +262,29 @@ function BillingBody({
 
       {/* Additional Fees */}
       <div>
-        <label className="block text-xs font-medium text-gray-500 mb-1">Additional Fees</label>
+        <label className="block text-xs font-medium text-[var(--text-muted)] mb-1">Additional Fees</label>
         {/* Search */}
         <div className="relative mb-1">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[var(--text-muted)]" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search fees..."
-            className="w-full pl-8 pr-8 py-1.5 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            className="w-full pl-8 pr-8 py-1.5 border border-[var(--input-border)] rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)]"
           />
           {searchQuery && (
             <button
               onClick={() => setSearchQuery('')}
-              className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 text-gray-400 hover:text-gray-600"
+              className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 text-[var(--text-muted)] hover:text-[var(--text-secondary)]"
             >
               <X className="w-3.5 h-3.5" />
             </button>
           )}
         </div>
-        <div className="max-h-40 overflow-y-auto border rounded-lg divide-y bg-white">
+        <div className="max-h-40 overflow-y-auto border border-[var(--border)] rounded-lg divide-y divide-[var(--border)] bg-[var(--card-bg)]">
           {filteredCodes.length === 0 ? (
-            <div className="px-3 py-2 text-sm text-gray-400 italic">
+            <div className="px-3 py-2 text-sm text-[var(--text-muted)] italic">
               {searchQuery ? 'No matching fees' : 'No billing codes available'}
             </div>
           ) : (
@@ -298,11 +298,11 @@ function BillingBody({
                   }}
                   disabled={isAdded}
                   className={`w-full text-left px-3 py-2 text-sm flex justify-between items-center ${
-                    isAdded ? 'bg-green-50 text-green-700' : 'hover:bg-blue-50'
+                    isAdded ? 'bg-green-50 dark:bg-green-950/30 text-green-700 dark:text-green-400' : 'hover:bg-blue-50 dark:hover:bg-blue-950/30 text-[var(--text-primary)]'
                   }`}
                 >
                   <span className="truncate">{item.description}</span>
-                  <span className="text-gray-500 flex-shrink-0 ml-2 text-xs">
+                  <span className="text-[var(--text-muted)] flex-shrink-0 ml-2 text-xs">
                     {item.code} {item.fee && `• $${item.fee}`}
                     {isAdded && ' (added)'}
                   </span>
@@ -313,7 +313,7 @@ function BillingBody({
         </div>
         <button
           onClick={() => setShowAddCode(!showAddCode)}
-          className="mt-1 text-xs text-blue-600 font-medium"
+          className="mt-1 text-xs text-blue-600 dark:text-blue-400 font-medium"
         >
           + Add custom code
         </button>
@@ -321,21 +321,21 @@ function BillingBody({
 
       {/* Add Custom Code */}
       {showAddCode && (
-        <div className="bg-gray-50 rounded-lg p-3 space-y-2">
+        <div className="bg-[var(--bg-tertiary)] rounded-lg p-3 space-y-2">
           <div className="grid grid-cols-3 gap-2">
             <input
               type="text"
               value={newCode}
               onChange={(e) => setNewCode(e.target.value)}
               placeholder="Code"
-              className="p-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="p-2 border border-[var(--input-border)] rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)]"
             />
             <input
               type="text"
               value={newDesc}
               onChange={(e) => setNewDesc(e.target.value)}
               placeholder="Description"
-              className="col-span-2 p-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="col-span-2 p-2 border border-[var(--input-border)] rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)]"
             />
           </div>
           <div className="flex gap-2">
@@ -344,7 +344,7 @@ function BillingBody({
               value={newFee}
               onChange={(e) => setNewFee(e.target.value)}
               placeholder="Fee (e.g. 50.00)"
-              className="flex-1 p-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="flex-1 p-2 border border-[var(--input-border)] rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)]"
             />
             <button
               onClick={handleAddCustomCode}
@@ -355,7 +355,7 @@ function BillingBody({
             </button>
             <button
               onClick={() => setShowAddCode(false)}
-              className="px-3 py-2 bg-gray-200 text-gray-700 rounded-lg text-sm font-medium"
+              className="px-3 py-2 bg-[var(--bg-primary)] text-[var(--text-secondary)] rounded-lg text-sm font-medium"
             >
               Cancel
             </button>
@@ -365,13 +365,13 @@ function BillingBody({
 
       {/* Comments */}
       <div>
-        <label className="block text-xs font-medium text-gray-500 mb-1">Comments</label>
+        <label className="block text-xs font-medium text-[var(--text-muted)] mb-1">Comments</label>
         <input
           type="text"
           value={comments}
           onChange={(e) => onSaveComments(e.target.value)}
           onBlur={(e) => onSaveComments(e.target.value)}
-          className="w-full p-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          className="w-full p-2 border border-[var(--input-border)] rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)]"
         />
       </div>
     </div>
