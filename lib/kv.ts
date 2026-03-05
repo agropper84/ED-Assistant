@@ -24,3 +24,33 @@ export async function getUserSpreadsheetId(userId: string): Promise<string | nul
 export async function setUserSpreadsheetId(userId: string, spreadsheetId: string): Promise<void> {
   await getRedis().set(userKey(userId), spreadsheetId);
 }
+
+// --- User status & info for approval system ---
+
+function statusKey(userId: string): string {
+  return `user:${userId}:status`;
+}
+
+function infoKey(userId: string): string {
+  return `user:${userId}:info`;
+}
+
+export async function getUserStatus(userId: string): Promise<'approved' | 'pending' | null> {
+  const val = await getRedis().get(statusKey(userId));
+  if (val === 'approved' || val === 'pending') return val;
+  return null;
+}
+
+export async function setUserStatus(userId: string, status: 'approved' | 'pending'): Promise<void> {
+  await getRedis().set(statusKey(userId), status);
+}
+
+export async function setUserInfo(userId: string, info: { email: string; name: string }): Promise<void> {
+  await getRedis().set(infoKey(userId), JSON.stringify(info));
+}
+
+export async function getUserInfo(userId: string): Promise<{ email: string; name: string } | null> {
+  const val = await getRedis().get(infoKey(userId));
+  if (!val) return null;
+  return JSON.parse(val);
+}

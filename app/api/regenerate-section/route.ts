@@ -93,6 +93,9 @@ Respond with ONLY the regenerated section content. No headers, labels, or extra 
     return NextResponse.json({ success: true, content: regenerated });
   } catch (error: any) {
     console.error('Error regenerating section:', error);
+    if (error?.message?.includes('Not approved')) {
+      return NextResponse.json({ error: 'Not approved' }, { status: 403 });
+    }
     if (error?.message?.includes('Not authenticated') || error?.message?.includes('re-login')) {
       return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
     }

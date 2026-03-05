@@ -31,6 +31,9 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ patients, sheetName, shiftTimes });
   } catch (error: any) {
     console.error('Error fetching patients:', error);
+    if (error?.message?.includes('Not approved')) {
+      return NextResponse.json({ error: 'Not approved' }, { status: 403 });
+    }
     if (error?.message?.includes('Not authenticated') || error?.message?.includes('re-login')) {
       return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
     }
@@ -62,6 +65,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: true, rowIndex, sheetName });
   } catch (error: any) {
     console.error('Error creating patient:', error);
+    if (error?.message?.includes('Not approved')) {
+      return NextResponse.json({ error: 'Not approved' }, { status: 403 });
+    }
     if (error?.message?.includes('Not authenticated') || error?.message?.includes('re-login')) {
       return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
     }
@@ -84,6 +90,9 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ success: true, shiftTimes });
   } catch (error: any) {
     console.error('Error updating shift times:', error);
+    if (error?.message?.includes('Not approved')) {
+      return NextResponse.json({ error: 'Not approved' }, { status: 403 });
+    }
     if (error?.message?.includes('Not authenticated') || error?.message?.includes('re-login')) {
       return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
     }

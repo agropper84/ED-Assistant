@@ -9,6 +9,7 @@ export interface SessionData {
   accessToken: string;
   refreshToken: string;
   tokenExpiry: number;
+  approved: boolean;
 }
 
 const sessionOptions = {

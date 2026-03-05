@@ -11,6 +11,9 @@ export async function GET() {
     return NextResponse.json(codes);
   } catch (error: any) {
     console.error('Error fetching billing codes:', error);
+    if (error?.message?.includes('Not approved')) {
+      return NextResponse.json({ error: 'Not approved' }, { status: 403 });
+    }
     if (error?.message?.includes('Not authenticated') || error?.message?.includes('re-login')) {
       return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
     }

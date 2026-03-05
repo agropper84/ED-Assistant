@@ -52,6 +52,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: true, referral: referralText });
   } catch (error: any) {
     console.error('Error generating referral:', error);
+    if (error?.message?.includes('Not approved')) {
+      return NextResponse.json({ error: 'Not approved' }, { status: 403 });
+    }
     if (error?.message?.includes('Not authenticated') || error?.message?.includes('re-login')) {
       return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
     }

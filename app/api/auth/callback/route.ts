@@ -3,8 +3,9 @@ import { cookies } from 'next/headers';
 import { google } from 'googleapis';
 import { exchangeCode, getOAuth2Client } from '@/lib/oauth';
 import { getSessionFromCookies } from '@/lib/session';
-import { getUserSpreadsheetId, setUserSpreadsheetId } from '@/lib/kv';
+import { getUserSpreadsheetId, setUserSpreadsheetId, getUserStatus, setUserStatus, setUserInfo } from '@/lib/kv';
 import { createUserSpreadsheet } from '@/lib/setup-sheet';
+import { generateApproveUrl, sendApprovalEmail } from '@/lib/email';
 
 export async function GET(request: NextRequest) {
   const url = request.nextUrl;
@@ -47,14 +48,10 @@ export async function GET(request: NextRequest) {
       return NextResponse.redirect(new URL('/login?error=no_user_info', url.origin));
     }
 
-    // Check/create spreadsheet
-    let spreadsheetId = await getUserSpreadsheetId(userId);
-    if (!spreadsheetId) {
-      spreadsheetId = await createUserSpreadsheet(oauth2Client, email);
-      await setUserSpreadsheetId(userId, spreadsheetId);
-    }
+    const adminEmail = process.env.ADMIN_EMAIL || '';
+    const status = await getUserStatus(userId);
 
-    // Create session
+    // Create session (shared across all branches)
     const session = await getSessionFromCookies();
     session.userId = userId;
     session.email = email;
@@ -62,9 +59,58 @@ export async function GET(request: NextRequest) {
     session.accessToken = tokens.access_token;
     session.refreshToken = tokens.refresh_token;
     session.tokenExpiry = tokens.expiry_date || Date.now() + 3600 * 1000;
-    await session.save();
 
-    return NextResponse.redirect(new URL('/', url.origin));
+    if (status === 'approved') {
+      // Already approved — ensure spreadsheet exists
+      let spreadsheetId = await getUserSpreadsheetId(userId);
+      if (!spreadsheetId) {
+        spreadsheetId = await createUserSpreadsheet(oauth2Client, email);
+        await setUserSpreadsheetId(userId, spreadsheetId);
+      }
+      session.approved = true;
+      await session.save();
+      return NextResponse.redirect(new URL('/', url.origin));
+    }
+
+    if (status === 'pending') {
+      // Still pending — redirect to waiting page
+      session.approved = false;
+      await session.save();
+      return NextResponse.redirect(new URL('/pending', url.origin));
+    }
+
+    // First login (status === null)
+    if (email.toLowerCase() === adminEmail.toLowerCase()) {
+      // Admin auto-approved
+      await setUserStatus(userId, 'approved');
+      await setUserInfo(userId, { email, name: name || email });
+      let spreadsheetId = await getUserSpreadsheetId(userId);
+      if (!spreadsheetId) {
+        spreadsheetId = await createUserSpreadsheet(oauth2Client, email);
+        await setUserSpreadsheetId(userId, spreadsheetId);
+      }
+      session.approved = true;
+      await session.save();
+      return NextResponse.redirect(new URL('/', url.origin));
+    }
+
+    // New non-admin user — set pending & notify admin
+    await setUserStatus(userId, 'pending');
+    await setUserInfo(userId, { email, name: name || email });
+
+    if (adminEmail) {
+      try {
+        const approveUrl = generateApproveUrl(userId);
+        await sendApprovalEmail(adminEmail, name || email, email, approveUrl);
+      } catch (emailErr) {
+        console.error('Failed to send approval email:', emailErr);
+        // Don't block login flow if email fails
+      }
+    }
+
+    session.approved = false;
+    await session.save();
+    return NextResponse.redirect(new URL('/pending', url.origin));
   } catch (err: any) {
     console.error('OAuth callback error:', err);
     return NextResponse.redirect(new URL('/login?error=callback_failed', url.origin));

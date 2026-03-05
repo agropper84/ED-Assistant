@@ -76,6 +76,7 @@ export default function PatientPage() {
     try {
       const sheetParam = sheetName ? `?sheet=${encodeURIComponent(sheetName)}` : '';
       const res = await fetch(`/api/patients/${rowIndex}${sheetParam}`);
+      if (res.status === 403) { window.location.href = '/pending'; return; }
       if (res.status === 401) { window.location.href = '/login'; return; }
       const data = await res.json();
       setPatient(data.patient);

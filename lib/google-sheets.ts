@@ -4,7 +4,7 @@ import { BillingItem, BillingCode, calculateTotal } from '@/lib/billing';
 import type { StyleGuide } from '@/lib/style-guide';
 import { getSessionFromCookies } from '@/lib/session';
 import { getOAuth2Client, refreshAccessToken } from '@/lib/oauth';
-import { getUserSpreadsheetId } from '@/lib/kv';
+import { getUserSpreadsheetId, getUserStatus } from '@/lib/kv';
 
 // --- SheetsContext: per-user authenticated Sheets client ---
 
@@ -23,6 +23,12 @@ export async function getSheetsContext(): Promise<SheetsContext> {
 
   if (!session.userId || !session.accessToken) {
     throw new Error('Not authenticated');
+  }
+
+  // Check approval status
+  const status = await getUserStatus(session.userId);
+  if (status !== 'approved') {
+    throw new Error('Not approved');
   }
 
   // Refresh token if expired (with 5-min buffer)
