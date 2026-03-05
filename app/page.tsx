@@ -388,97 +388,111 @@ export default function HomePage() {
   return (
     <div className="min-h-screen pb-24">
       {/* Header */}
-      <header className="glass-header px-4 py-4 sticky top-0 z-40">
+      <header className="dash-header px-4 py-4 sticky top-0 z-40">
         <div className="flex items-center justify-between max-w-2xl mx-auto">
-          <h1 className="text-xl font-bold text-[var(--text-primary)]">My ER Dashboard</h1>
+          <h1 className="text-xl font-bold">My ER Dashboard</h1>
           <div className="flex items-center gap-1">
             {userEmail && (
-              <span className="text-xs text-[var(--text-muted)] hidden sm:block mr-1 max-w-[120px] truncate" title={userEmail}>
+              <span className="text-xs hidden sm:block mr-1 max-w-[120px] truncate" style={{ color: 'var(--dash-text-muted)' }} title={userEmail}>
                 {userName || userEmail}
               </span>
             )}
             <button
               onClick={() => setAnonymize(!anonymize)}
-              className="p-2 hover:bg-black/5 dark:hover:bg-white/10 rounded-full transition-colors"
+              className="p-2 rounded-full transition-colors"
+              style={{ color: 'var(--dash-text-sub)' }}
+              onMouseEnter={e => e.currentTarget.style.background = 'var(--dash-hover)'}
+              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
               title={anonymize ? 'Show names' : 'Anonymize names'}
             >
-              {anonymize ? <EyeOff className="w-5 h-5 text-[var(--text-secondary)]" /> : <Eye className="w-5 h-5 text-[var(--text-secondary)]" />}
+              {anonymize ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
             </button>
             <button
               onClick={() => router.push('/settings')}
-              className="p-2 hover:bg-black/5 dark:hover:bg-white/10 rounded-full transition-colors"
+              className="p-2 rounded-full transition-colors"
+              style={{ color: 'var(--dash-text-sub)' }}
+              onMouseEnter={e => e.currentTarget.style.background = 'var(--dash-hover)'}
+              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
             >
-              <Settings className="w-5 h-5 text-[var(--text-secondary)]" />
+              <Settings className="w-5 h-5" />
             </button>
             <button
               onClick={() => fetchPatients(true)}
               disabled={refreshing}
-              className="p-2 hover:bg-black/5 dark:hover:bg-white/10 rounded-full transition-colors"
+              className="p-2 rounded-full transition-colors"
+              style={{ color: 'var(--dash-text-sub)' }}
+              onMouseEnter={e => e.currentTarget.style.background = 'var(--dash-hover)'}
+              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
             >
-              <RefreshCw className={`w-5 h-5 text-[var(--text-secondary)] ${refreshing ? 'animate-spin' : ''}`} />
+              <RefreshCw className={`w-5 h-5 ${refreshing ? 'animate-spin' : ''}`} />
             </button>
             <button
               onClick={handleLogout}
-              className="p-2 hover:bg-black/5 dark:hover:bg-white/10 rounded-full transition-colors"
+              className="p-2 rounded-full transition-colors"
+              style={{ color: 'var(--dash-text-sub)' }}
+              onMouseEnter={e => e.currentTarget.style.background = 'var(--dash-hover)'}
+              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
               title="Sign out"
             >
-              <LogOut className="w-5 h-5 text-[var(--text-secondary)]" />
+              <LogOut className="w-5 h-5" />
             </button>
           </div>
         </div>
       </header>
 
       {/* Shift Times */}
-      <div className="bg-[var(--bg-primary)] border-b border-[var(--border)]">
+      <div className="dash-shift">
         <div className="max-w-2xl mx-auto px-4 py-2 space-y-2">
           <div className="flex items-center gap-3">
-            <Clock className="w-4 h-4 text-[var(--text-muted)] flex-shrink-0" />
-            <span className="text-sm text-[var(--text-secondary)] flex-shrink-0">Shift:</span>
+            <Clock className="w-4 h-4 flex-shrink-0" style={{ color: 'var(--dash-text-muted)' }} />
+            <span className="text-sm flex-shrink-0" style={{ color: 'var(--dash-text-sub)' }}>Shift:</span>
             <select
               value={shiftStart}
               onChange={(e) => { setShiftStart(e.target.value); handleShiftTimeSave({ start: e.target.value }); }}
-              className="flex-1 p-1.5 border border-[var(--input-border)] rounded-lg text-sm text-center focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)]"
+              className="flex-1 p-1.5 rounded-lg text-sm text-center focus:ring-2 focus:ring-white/30 focus:outline-none"
+              style={{ background: 'var(--dash-input-bg)', border: '1px solid var(--dash-input-border)', color: 'var(--dash-text)' }}
             >
-              <option value="">Start</option>
-              <option value="08:00">8:00 AM</option>
-              <option value="11:00">11:00 AM</option>
-              <option value="13:00">1:00 PM</option>
-              <option value="18:00">6:00 PM</option>
-              <option value="23:00">11:00 PM</option>
+              <option value="" style={{ color: '#333', background: '#fff' }}>Start</option>
+              <option value="08:00" style={{ color: '#333', background: '#fff' }}>8:00 AM</option>
+              <option value="11:00" style={{ color: '#333', background: '#fff' }}>11:00 AM</option>
+              <option value="13:00" style={{ color: '#333', background: '#fff' }}>1:00 PM</option>
+              <option value="18:00" style={{ color: '#333', background: '#fff' }}>6:00 PM</option>
+              <option value="23:00" style={{ color: '#333', background: '#fff' }}>11:00 PM</option>
             </select>
-            <span className="text-[var(--text-muted)]">—</span>
+            <span style={{ color: 'var(--dash-text-muted)' }}>—</span>
             <select
               value={shiftEnd}
               onChange={(e) => { setShiftEnd(e.target.value); handleShiftTimeSave({ end: e.target.value }); }}
-              className="flex-1 p-1.5 border border-[var(--input-border)] rounded-lg text-sm text-center focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)]"
+              className="flex-1 p-1.5 rounded-lg text-sm text-center focus:ring-2 focus:ring-white/30 focus:outline-none"
+              style={{ background: 'var(--dash-input-bg)', border: '1px solid var(--dash-input-border)', color: 'var(--dash-text)' }}
             >
-              <option value="">End</option>
-              <option value="15:00">3:00 PM</option>
-              <option value="18:00">6:00 PM</option>
-              <option value="21:00">9:00 PM</option>
-              <option value="01:00">1:00 AM</option>
-              <option value="08:00">8:00 AM</option>
+              <option value="" style={{ color: '#333', background: '#fff' }}>End</option>
+              <option value="15:00" style={{ color: '#333', background: '#fff' }}>3:00 PM</option>
+              <option value="18:00" style={{ color: '#333', background: '#fff' }}>6:00 PM</option>
+              <option value="21:00" style={{ color: '#333', background: '#fff' }}>9:00 PM</option>
+              <option value="01:00" style={{ color: '#333', background: '#fff' }}>1:00 AM</option>
+              <option value="08:00" style={{ color: '#333', background: '#fff' }}>8:00 AM</option>
             </select>
           </div>
           {(shiftHours || shiftFeeType) && (
             <div className="flex items-center gap-3 pl-7 flex-wrap">
               {shiftHours && (
-                <span className="text-sm text-[var(--text-secondary)]">
-                  <span className="text-[var(--text-muted)]">Hours:</span> {shiftHours}h
+                <span className="text-sm" style={{ color: 'var(--dash-text-sub)' }}>
+                  <span style={{ color: 'var(--dash-text-muted)' }}>Hours:</span> {shiftHours}h
                 </span>
               )}
               {shiftFeeType && (
-                <span className="text-sm text-[var(--text-secondary)]">
-                  <span className="text-[var(--text-muted)]">Fee Type:</span> {shiftFeeType}
+                <span className="text-sm" style={{ color: 'var(--dash-text-sub)' }}>
+                  <span style={{ color: 'var(--dash-text-muted)' }}>Fee Type:</span> {shiftFeeType}
                 </span>
               )}
               {shiftCode && (
-                <span className="text-xs font-mono bg-[var(--bg-tertiary)] px-1.5 py-0.5 rounded text-[var(--text-secondary)]">
+                <span className="text-xs font-mono px-1.5 py-0.5 rounded" style={{ background: 'var(--dash-input-bg)', color: 'var(--dash-text-sub)' }}>
                   {shiftCode}
                 </span>
               )}
               {shiftTotal && (
-                <span className="text-sm font-semibold text-green-600 dark:text-green-400">
+                <span className="text-sm font-semibold" style={{ color: 'var(--accent-green)' }}>
                   Total: ${shiftTotal}
                 </span>
               )}
@@ -488,30 +502,38 @@ export default function HomePage() {
       </div>
 
       {/* Date Navigation */}
-      <div className="bg-[var(--bg-primary)] border-b border-[var(--border)] sticky top-[60px] z-30">
+      <div className="dash-date sticky top-[60px] z-30">
         <div className="flex items-center justify-between max-w-2xl mx-auto px-4 py-2">
           <button
             onClick={goToPreviousDay}
-            className="p-2 hover:bg-[var(--bg-tertiary)] rounded-full"
+            className="p-2 rounded-full transition-colors"
+            style={{ color: 'var(--dash-text-sub)' }}
+            onMouseEnter={e => e.currentTarget.style.background = 'var(--dash-hover)'}
+            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
           >
-            <ChevronLeft className="w-5 h-5 text-[var(--text-secondary)]" />
+            <ChevronLeft className="w-5 h-5" />
           </button>
           <button
             onClick={goToToday}
-            className="flex items-center gap-2 px-3 py-1.5 hover:bg-[var(--bg-tertiary)] rounded-lg"
+            className="flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors"
+            onMouseEnter={e => e.currentTarget.style.background = 'var(--dash-hover)'}
+            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
           >
-            <Calendar className="w-4 h-4 text-[var(--text-muted)]" />
-            <span className="font-medium text-[var(--text-primary)]">{formatDateDisplay(currentDate)}</span>
+            <Calendar className="w-4 h-4" style={{ color: 'var(--dash-text-muted)' }} />
+            <span className="font-medium" style={{ color: 'var(--dash-text)' }}>{formatDateDisplay(currentDate)}</span>
             {!isToday && (
-              <span className="text-xs text-blue-600 dark:text-blue-400 font-medium ml-1">Go to today</span>
+              <span className="text-xs font-medium ml-1" style={{ color: 'var(--accent-orange)' }}>Go to today</span>
             )}
           </button>
           <button
             onClick={goToNextDay}
             disabled={isToday}
-            className="p-2 hover:bg-[var(--bg-tertiary)] rounded-full disabled:opacity-30"
+            className="p-2 rounded-full transition-colors disabled:opacity-30"
+            style={{ color: 'var(--dash-text-sub)' }}
+            onMouseEnter={e => e.currentTarget.style.background = 'var(--dash-hover)'}
+            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
           >
-            <ChevronRight className="w-5 h-5 text-[var(--text-secondary)]" />
+            <ChevronRight className="w-5 h-5" />
           </button>
         </div>
       </div>
