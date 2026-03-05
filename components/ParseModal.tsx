@@ -118,13 +118,13 @@ export function ParseModal({ isOpen, onClose, onSave }: ParseModalProps) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center">
-      <div className="bg-white w-full sm:max-w-lg sm:rounded-2xl rounded-t-2xl max-h-[90vh] overflow-hidden flex flex-col">
+    <div className="fixed inset-0 bg-[var(--overlay)] z-50 flex items-end sm:items-center justify-center">
+      <div className="bg-[var(--card-bg)] w-full sm:max-w-lg sm:rounded-2xl rounded-t-2xl max-h-[90vh] overflow-hidden flex flex-col animate-slideUp">
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b">
-          <h2 className="text-lg font-semibold">Add Patient</h2>
-          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full">
-            <X className="w-5 h-5" />
+        <div className="flex items-center justify-between p-4 border-b border-[var(--border)]">
+          <h2 className="text-lg font-semibold text-[var(--text-primary)]">Add Patient</h2>
+          <button onClick={onClose} className="p-2 hover:bg-[var(--bg-tertiary)] rounded-full">
+            <X className="w-5 h-5 text-[var(--text-muted)]" />
           </button>
         </div>
 
@@ -132,19 +132,19 @@ export function ParseModal({ isOpen, onClose, onSave }: ParseModalProps) {
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
           {/* Paste Area */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">
               Paste Meditech Data
             </label>
             <textarea
               value={pasteText}
               onChange={(e) => setPasteText(e.target.value)}
               placeholder="Paste patient info from Meditech..."
-              className="w-full h-32 p-3 border rounded-lg text-sm font-mono resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full h-32 p-3 border border-[var(--input-border)] rounded-lg text-sm font-mono resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)]"
             />
             <button
               onClick={handleParse}
               disabled={loading || !pasteText.trim()}
-              className="mt-2 w-full py-2.5 bg-blue-600 text-white rounded-lg font-medium disabled:opacity-50 flex items-center justify-center gap-2"
+              className="mt-2 w-full py-2.5 bg-blue-600 text-white rounded-lg font-medium disabled:opacity-50 flex items-center justify-center gap-2 active:scale-[0.97] transition-all"
             >
               {loading ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
@@ -157,58 +157,58 @@ export function ParseModal({ isOpen, onClose, onSave }: ParseModalProps) {
 
           {/* Parsed Result */}
           {parsedData && (
-            <div className="bg-green-50 border border-green-200 rounded-lg p-3">
-              <div className="flex items-center gap-2 text-green-700 font-medium mb-2">
+            <div className="bg-green-50 dark:bg-green-950/50 border border-green-200 dark:border-green-800 rounded-lg p-3 animate-fadeIn">
+              <div className="flex items-center gap-2 text-green-700 dark:text-green-300 font-medium mb-2">
                 <Check className="w-4 h-4" />
                 Parsed Successfully
               </div>
               <div className="grid grid-cols-2 gap-2 text-sm">
-                <div><span className="text-gray-500">Name:</span> {parsedData.name}</div>
-                <div><span className="text-gray-500">Age:</span> {parsedData.age} {parsedData.gender}</div>
-                <div><span className="text-gray-500">DOB:</span> {parsedData.birthday}</div>
-                <div><span className="text-gray-500">HCN:</span> {parsedData.hcn}</div>
-                <div><span className="text-gray-500">MRN:</span> {parsedData.mrn}</div>
-                <div><span className="text-gray-500">Time:</span> {encounterTime || parsedData.timestamp}</div>
+                <div><span className="text-[var(--text-muted)]">Name:</span> <span className="text-[var(--text-primary)]">{parsedData.name}</span></div>
+                <div><span className="text-[var(--text-muted)]">Age:</span> <span className="text-[var(--text-primary)]">{parsedData.age} {parsedData.gender}</span></div>
+                <div><span className="text-[var(--text-muted)]">DOB:</span> <span className="text-[var(--text-primary)]">{parsedData.birthday}</span></div>
+                <div><span className="text-[var(--text-muted)]">HCN:</span> <span className="text-[var(--text-primary)]">{parsedData.hcn}</span></div>
+                <div><span className="text-[var(--text-muted)]">MRN:</span> <span className="text-[var(--text-primary)]">{parsedData.mrn}</span></div>
+                <div><span className="text-[var(--text-muted)]">Time:</span> <span className="text-[var(--text-primary)]">{encounterTime || parsedData.timestamp}</span></div>
               </div>
             </div>
           )}
 
           {error && (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-red-700 text-sm">
+            <div className="bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-800 rounded-lg p-3 text-red-700 dark:text-red-300 text-sm">
               {error}
             </div>
           )}
 
           {/* Encounter Time Override */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">
               Encounter Time (optional override)
             </label>
             <input
               type="time"
               value={encounterTime}
               onChange={(e) => setEncounterTime(e.target.value)}
-              className="w-full p-3 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full p-3 border border-[var(--input-border)] rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)]"
             />
           </div>
 
           {/* Triage Notes */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">
               Triage Notes & Vitals (optional)
             </label>
             <textarea
               value={triageVitals}
               onChange={(e) => setTriageVitals(e.target.value)}
               placeholder="Chief complaint, vitals, triage assessment..."
-              className="w-full h-24 p-3 border rounded-lg text-sm resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full h-24 p-3 border border-[var(--input-border)] rounded-lg text-sm resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)]"
             />
           </div>
 
           {/* Transcript */}
           <div>
             <div className="flex items-center justify-between mb-1">
-              <label className="text-sm font-medium text-gray-700">
+              <label className="text-sm font-medium text-[var(--text-secondary)]">
                 Transcript (optional)
               </label>
               <VoiceRecorder
@@ -219,26 +219,26 @@ export function ParseModal({ isOpen, onClose, onSave }: ParseModalProps) {
               value={transcript}
               onChange={(e) => setTranscript(e.target.value)}
               placeholder="Audio transcript or dictation..."
-              className="w-full h-28 p-3 border rounded-lg text-sm resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full h-28 p-3 border border-[var(--input-border)] rounded-lg text-sm resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)]"
             />
           </div>
 
           {/* Encounter Notes */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">
               Encounter Notes (optional)
             </label>
             <textarea
               value={encounterNotes}
               onChange={(e) => setEncounterNotes(e.target.value)}
               placeholder="Physician notes, clinical observations, plan..."
-              className="w-full h-28 p-3 border rounded-lg text-sm resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full h-28 p-3 border border-[var(--input-border)] rounded-lg text-sm resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)]"
             />
           </div>
 
           {/* Additional Findings */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">
               Additional Findings (optional)
             </label>
             <ExamToggles value={additional} onChange={setAdditional} />
@@ -246,30 +246,30 @@ export function ParseModal({ isOpen, onClose, onSave }: ParseModalProps) {
               value={additional}
               onChange={(e) => setAdditional(e.target.value)}
               placeholder="Exam findings, investigations, plan notes..."
-              className="w-full h-24 p-3 border rounded-lg text-sm resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full h-24 p-3 border border-[var(--input-border)] rounded-lg text-sm resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)]"
             />
           </div>
 
           {/* Past Documentation */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">
               Past Documentation (optional)
             </label>
             <textarea
               value={pastDocs}
               onChange={(e) => setPastDocs(e.target.value)}
               placeholder="Previous visit notes, relevant history..."
-              className="w-full h-24 p-3 border rounded-lg text-sm resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full h-24 p-3 border border-[var(--input-border)] rounded-lg text-sm resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)]"
             />
           </div>
         </div>
 
         {/* Footer */}
-        <div className="p-4 border-t bg-gray-50">
+        <div className="p-4 border-t border-[var(--border)] bg-[var(--bg-tertiary)]">
           <button
             onClick={handleSave}
             disabled={!parsedData}
-            className="w-full py-3 bg-green-600 text-white rounded-lg font-medium disabled:opacity-50 disabled:bg-gray-300"
+            className="w-full py-3 bg-green-600 text-white rounded-lg font-medium disabled:opacity-50 disabled:bg-gray-400 dark:disabled:bg-gray-600 active:scale-[0.97] transition-all"
           >
             Save Patient
           </button>

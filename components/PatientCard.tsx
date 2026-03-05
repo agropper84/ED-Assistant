@@ -30,13 +30,13 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
   const [timeValue, setTimeValue] = useState(patient.timestamp || '');
   const [noteCopied, setNoteCopied] = useState(false);
 
-  const statusColors = {
-    new: 'bg-blue-100 text-blue-800',
-    pending: 'bg-amber-100 text-amber-800',
-    processed: 'bg-green-100 text-green-800',
+  const statusColors: Record<string, string> = {
+    new: 'bg-blue-100 text-blue-800 dark:bg-blue-950/50 dark:text-blue-300 dark:border dark:border-blue-800',
+    pending: 'bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300 dark:border dark:border-amber-800',
+    processed: 'bg-green-100 text-green-800 dark:bg-green-950/50 dark:text-green-300 dark:border dark:border-green-800',
   };
 
-  const statusLabels = {
+  const statusLabels: Record<string, string> = {
     new: 'New',
     pending: 'Ready to Process',
     processed: 'Processed',
@@ -52,13 +52,13 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
   };
 
   return (
-    <div className="patient-card flex items-center gap-4">
+    <div className="patient-card flex items-center gap-4 hover:-translate-y-0.5 hover:shadow-md">
       <button
         onClick={onClick}
         className="flex-1 min-w-0 text-left"
       >
         <div className="flex items-center gap-2 mb-1">
-          <span className="font-semibold text-gray-900 truncate">
+          <span className="font-semibold text-[var(--text-primary)] truncate">
             {displayName}
           </span>
           {patient.status === 'processed' && onViewNote ? (
@@ -68,9 +68,9 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
                   e.stopPropagation();
                   onViewNote();
                 }}
-                className="p-0.5 hover:bg-green-100 rounded transition-colors cursor-pointer inline-flex"
+                className="p-0.5 hover:bg-green-100 dark:hover:bg-green-900/50 rounded transition-colors cursor-pointer inline-flex"
               >
-                <FileText className="w-4 h-4 text-green-600" />
+                <FileText className="w-4 h-4 text-green-600 dark:text-green-400" />
               </span>
               <div
                 className="absolute left-0 top-full mt-1 z-50 hidden group-hover/note:block w-80 max-h-64 overflow-y-auto p-3 bg-gray-900 text-gray-100 text-xs rounded-lg shadow-lg"
@@ -114,17 +114,17 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
 
         {patient.triageVitals && (
           <div className="relative group/triage inline-flex mb-1">
-            <MessageSquare className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
+            <MessageSquare className="w-3.5 h-3.5 text-[var(--text-muted)] flex-shrink-0" />
             <div className="absolute left-0 top-full mt-1 z-50 hidden group-hover/triage:block w-72 max-h-48 overflow-y-auto p-3 bg-gray-900 text-gray-100 text-xs rounded-lg shadow-lg whitespace-pre-wrap leading-relaxed">
               {patient.triageVitals}
             </div>
           </div>
         )}
 
-        <div className="flex items-center gap-4 text-sm text-gray-500">
+        <div className="flex items-center gap-4 text-sm text-[var(--text-muted)]">
           {patient.timestamp && !editingTime && (
             <span
-              className="flex items-center gap-1 hover:text-blue-600 cursor-pointer"
+              className="flex items-center gap-1 hover:text-blue-600 dark:hover:text-blue-400 cursor-pointer"
               onClick={(e) => {
                 e.stopPropagation();
                 setTimeValue(patient.timestamp);
@@ -163,7 +163,7 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
             onBlur={handleTimeSave}
             onKeyDown={(e) => { if (e.key === 'Enter') handleTimeSave(); }}
             autoFocus
-            className="w-24 p-1 border rounded text-sm text-center focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            className="w-24 p-1 border border-[var(--input-border)] rounded text-sm text-center focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)]"
           />
         </div>
       )}
@@ -174,15 +174,15 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
             e.stopPropagation();
             onBillingToggle();
           }}
-          className="p-2 hover:bg-green-50 rounded-lg transition-colors flex-shrink-0"
+          className="p-2 hover:bg-green-50 dark:hover:bg-green-900/30 rounded-lg transition-colors flex-shrink-0"
           title="Billing"
         >
           {billingCodes ? (
-            <span className="text-xs font-medium text-green-700 whitespace-nowrap">
+            <span className="text-xs font-medium text-green-700 dark:text-green-400 whitespace-nowrap">
               {billingCodes}
             </span>
           ) : (
-            <DollarSign className="w-4 h-4 text-gray-400 hover:text-green-600" />
+            <DollarSign className="w-4 h-4 text-[var(--text-muted)] hover:text-green-600 dark:hover:text-green-400" />
           )}
         </button>
       )}
@@ -193,13 +193,13 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
             e.stopPropagation();
             onDelete();
           }}
-          className="p-2 hover:bg-red-50 rounded-lg transition-colors flex-shrink-0"
+          className="p-2 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-colors flex-shrink-0"
         >
-          <Trash2 className="w-4 h-4 text-gray-400 hover:text-red-500" />
+          <Trash2 className="w-4 h-4 text-[var(--text-muted)] hover:text-red-500 dark:hover:text-red-400" />
         </button>
       )}
 
-      <ChevronRight className="w-5 h-5 text-gray-400 flex-shrink-0" />
+      <ChevronRight className="w-5 h-5 text-[var(--text-muted)] flex-shrink-0" />
     </div>
   );
 }
