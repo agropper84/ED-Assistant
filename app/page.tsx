@@ -391,7 +391,7 @@ export default function HomePage() {
       {/* Header */}
       <header className="bg-[var(--header-bg)] text-[var(--header-text)] px-4 py-4 sticky top-0 z-40">
         <div className="flex items-center justify-between max-w-2xl mx-auto">
-          <h1 className="text-xl font-bold">ED Dashboard</h1>
+          <h1 className="text-xl font-bold">My ER Dashboard</h1>
           <div className="flex items-center gap-1">
             {userEmail && (
               <span className="text-xs text-white/60 hidden sm:block mr-1 max-w-[120px] truncate" title={userEmail}>
