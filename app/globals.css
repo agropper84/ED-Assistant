@@ -14,7 +14,7 @@
   --card-bg: #ffffff;
   --card-border: #e5e7eb;
   --card-shadow: 0 1px 2px rgba(0,0,0,0.04), 0 2px 8px rgba(0,0,0,0.06);
-  --card-shadow-hover: 0 2px 4px rgba(0,0,0,0.04), 0 8px 24px rgba(0,0,0,0.08);
+  --card-shadow-hover: 0 4px 12px rgba(37,99,235,0.08), 0 8px 24px rgba(0,0,0,0.06);
   --card-shadow-elevated: 0 4px 12px rgba(0,0,0,0.06), 0 16px 40px rgba(0,0,0,0.1);
   --input-bg: #ffffff;
   --input-border: #cbd5e1;
@@ -24,17 +24,20 @@
   --overlay: rgba(0,0,0,0.4);
   --accent: #2563eb;
   --accent-light: #eff6ff;
-  --accent-green: #10b981;
-  --accent-orange: #f59e0b;
-  --accent-red: #ef4444;
-  --accent-purple: #8b5cf6;
+  --accent-green: #0d9488;
+  --accent-orange: #d97706;
+  --accent-red: #dc2626;
+  --accent-purple: #6366f1;
   --fab-shadow: 0 4px 14px rgba(37,99,235,0.35);
   --page-px: 1rem;
+  --row-hover: rgba(37,99,235,0.04);
+  --card-hover-border: rgba(37,99,235,0.18);
 
   /* Dashboard header gradient — light blue palette */
   --dash-header-from: #1d4ed8;
   --dash-header-via: #2563eb;
   --dash-header-to: #4a8fe8;
+  --dash-header-hover: linear-gradient(135deg, #2556d4 0%, #3b7af0 50%, #5c9ef0 100%);
   --dash-text: #ffffff;
   --dash-text-sub: rgba(255,255,255,0.8);
   --dash-text-muted: rgba(255,255,255,0.55);
@@ -58,7 +61,7 @@
   --card-bg: #141416;
   --card-border: #232327;
   --card-shadow: 0 1px 2px rgba(0,0,0,0.2), 0 2px 8px rgba(0,0,0,0.25);
-  --card-shadow-hover: 0 2px 4px rgba(0,0,0,0.2), 0 8px 24px rgba(0,0,0,0.3);
+  --card-shadow-hover: 0 4px 12px rgba(59,130,246,0.1), 0 8px 24px rgba(0,0,0,0.25);
   --card-shadow-elevated: 0 4px 12px rgba(0,0,0,0.3), 0 16px 40px rgba(0,0,0,0.4);
   --input-bg: #1a1a1e;
   --input-border: #3f3f46;
@@ -68,16 +71,19 @@
   --overlay: rgba(0,0,0,0.6);
   --accent: #3b82f6;
   --accent-light: rgba(59,130,246,0.1);
-  --accent-green: #34d399;
+  --accent-green: #2dd4bf;
   --accent-orange: #fbbf24;
   --accent-red: #f87171;
-  --accent-purple: #a78bfa;
+  --accent-purple: #818cf8;
   --fab-shadow: 0 4px 14px rgba(59,130,246,0.3);
+  --row-hover: rgba(59,130,246,0.06);
+  --card-hover-border: rgba(59,130,246,0.25);
 
   /* Dashboard header gradient — deep navy palette */
   --dash-header-from: #060e24;
   --dash-header-via: #0c1e4a;
   --dash-header-to: #142d6b;
+  --dash-header-hover: linear-gradient(135deg, #0a1530 0%, #122a5e 50%, #1a3878 100%);
   --dash-text: #e0e8ff;
   --dash-text-sub: rgba(200,215,255,0.75);
   --dash-text-muted: rgba(160,180,230,0.5);
@@ -120,6 +126,19 @@ button, .btn {
 .dash-header {
   background: linear-gradient(135deg, var(--dash-header-from) 0%, var(--dash-header-via) 50%, var(--dash-header-to) 100%);
   color: var(--dash-text);
+  transition: background 0.4s ease;
+}
+.dash-header:hover {
+  background: var(--dash-header-hover);
+}
+
+/* Dashboard sub-rows (date, shift) — subtle hover glow */
+.dash-row {
+  background: var(--bg-primary);
+  transition: background-color 0.2s ease, box-shadow 0.2s ease;
+}
+.dash-row:hover {
+  background: var(--row-hover);
 }
 
 /* Modal overlay with blur */
@@ -138,6 +157,7 @@ button, .btn {
 }
 .patient-card:hover {
   box-shadow: var(--card-shadow-hover);
+  border-color: var(--card-hover-border);
 }
 .patient-card:active {
   background: var(--bg-tertiary);

@@ -430,7 +430,7 @@ export default function HomePage() {
       </header>
 
       {/* Date Navigation */}
-      <div className="bg-[var(--bg-primary)] border-b border-[var(--border)] sticky top-[76px] z-30">
+      <div className="dash-row sticky top-[76px] z-30">
         <div className="flex items-center justify-between max-w-2xl mx-auto px-4 h-11">
           <button
             onClick={goToPreviousDay}
@@ -459,7 +459,7 @@ export default function HomePage() {
       </div>
 
       {/* Shift Times */}
-      <div className="bg-[var(--bg-primary)] border-b border-[var(--border)]">
+      <div className="dash-row border-b border-[var(--border)]">
         <div className="max-w-2xl mx-auto px-4 flex items-center gap-3 h-11">
           <Clock className="w-4 h-4 text-[var(--text-muted)] flex-shrink-0" />
           <span className="text-sm text-[var(--text-secondary)] flex-shrink-0">Shift:</span>
