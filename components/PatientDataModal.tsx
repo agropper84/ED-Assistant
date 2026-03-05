@@ -88,10 +88,10 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
   };
 
   return (
-    <div className="fixed inset-0 bg-[var(--overlay)] z-50 flex items-end sm:items-center justify-center">
-      <div className="bg-[var(--card-bg)] w-full sm:max-w-lg sm:rounded-2xl rounded-t-2xl max-h-[90vh] overflow-hidden flex flex-col animate-slideUp">
+    <div className="fixed inset-0 modal-overlay z-50 flex items-end sm:items-center justify-center">
+      <div className="bg-[var(--card-bg)] w-full sm:max-w-lg sm:rounded-3xl rounded-t-3xl max-h-[90vh] overflow-hidden flex flex-col animate-slideUp" style={{ boxShadow: 'var(--card-shadow-elevated)' }}>
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-[var(--border)]">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border)]">
           <div className="min-w-0">
             <h2 className="text-lg font-semibold text-[var(--text-primary)] truncate">
               {patient.name || 'Unknown'}
@@ -116,7 +116,7 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
           {/* Triage Notes */}
           <div>
             <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">
@@ -190,7 +190,7 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
         </div>
 
         {/* Footer */}
-        <div className="p-4 border-t border-[var(--border)] bg-[var(--bg-tertiary)] flex gap-2">
+        <div className="px-5 py-4 border-t border-[var(--border)] bg-[var(--bg-tertiary)] flex gap-2">
           <button
             onClick={handleSave}
             disabled={saving || regenerating || !hasChanges}

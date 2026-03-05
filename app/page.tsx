@@ -388,41 +388,41 @@ export default function HomePage() {
   return (
     <div className="min-h-screen pb-24">
       {/* Header */}
-      <header className="bg-[var(--header-bg)] text-[var(--header-text)] px-4 py-4 sticky top-0 z-40">
+      <header className="glass-header px-4 py-4 sticky top-0 z-40">
         <div className="flex items-center justify-between max-w-2xl mx-auto">
-          <h1 className="text-xl font-bold">My ER Dashboard</h1>
+          <h1 className="text-xl font-bold text-[var(--text-primary)]">My ER Dashboard</h1>
           <div className="flex items-center gap-1">
             {userEmail && (
-              <span className="text-xs text-white/60 hidden sm:block mr-1 max-w-[120px] truncate" title={userEmail}>
+              <span className="text-xs text-[var(--text-muted)] hidden sm:block mr-1 max-w-[120px] truncate" title={userEmail}>
                 {userName || userEmail}
               </span>
             )}
             <button
               onClick={() => setAnonymize(!anonymize)}
-              className="p-2 hover:bg-white/10 rounded-full transition-colors"
+              className="p-2 hover:bg-black/5 dark:hover:bg-white/10 rounded-full transition-colors"
               title={anonymize ? 'Show names' : 'Anonymize names'}
             >
-              {anonymize ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+              {anonymize ? <EyeOff className="w-5 h-5 text-[var(--text-secondary)]" /> : <Eye className="w-5 h-5 text-[var(--text-secondary)]" />}
             </button>
             <button
               onClick={() => router.push('/settings')}
-              className="p-2 hover:bg-white/10 rounded-full transition-colors"
+              className="p-2 hover:bg-black/5 dark:hover:bg-white/10 rounded-full transition-colors"
             >
-              <Settings className="w-5 h-5" />
+              <Settings className="w-5 h-5 text-[var(--text-secondary)]" />
             </button>
             <button
               onClick={() => fetchPatients(true)}
               disabled={refreshing}
-              className="p-2 hover:bg-white/10 rounded-full transition-colors"
+              className="p-2 hover:bg-black/5 dark:hover:bg-white/10 rounded-full transition-colors"
             >
-              <RefreshCw className={`w-5 h-5 ${refreshing ? 'animate-spin' : ''}`} />
+              <RefreshCw className={`w-5 h-5 text-[var(--text-secondary)] ${refreshing ? 'animate-spin' : ''}`} />
             </button>
             <button
               onClick={handleLogout}
-              className="p-2 hover:bg-white/10 rounded-full transition-colors"
+              className="p-2 hover:bg-black/5 dark:hover:bg-white/10 rounded-full transition-colors"
               title="Sign out"
             >
-              <LogOut className="w-5 h-5" />
+              <LogOut className="w-5 h-5 text-[var(--text-secondary)]" />
             </button>
           </div>
         </div>
@@ -563,7 +563,7 @@ export default function HomePage() {
       )}
 
       {/* Content */}
-      <main className="max-w-2xl mx-auto px-4 py-4">
+      <main className="max-w-2xl mx-auto px-[var(--page-px)] py-4">
         {loading ? (
           <div className="flex items-center justify-center py-12">
             <Loader2 className="w-8 h-8 animate-spin text-blue-600 dark:text-blue-400" />
@@ -629,10 +629,10 @@ export default function HomePage() {
             {/* Ready to Process */}
             {pendingPatients.length > 0 && (
               <section>
-                <h2 className="text-sm font-semibold text-amber-700 dark:text-amber-400 uppercase tracking-wide mb-2">
+                <h2 className="text-sm font-semibold text-amber-700 dark:text-amber-400 uppercase tracking-wide mb-3">
                   Ready to Process ({pendingPatients.length})
                 </h2>
-                <div className="space-y-2">
+                <div className="space-y-3">
                   {pendingPatients.map((patient) => (
                     <div key={patient.rowIndex} className="flex items-start gap-2">
                       {batchMode && (
@@ -659,10 +659,10 @@ export default function HomePage() {
             {/* New */}
             {newPatients.length > 0 && (
               <section>
-                <h2 className="text-sm font-semibold text-blue-700 dark:text-blue-400 uppercase tracking-wide mb-2">
+                <h2 className="text-sm font-semibold text-blue-700 dark:text-blue-400 uppercase tracking-wide mb-3">
                   New ({newPatients.length})
                 </h2>
-                <div className="space-y-2">
+                <div className="space-y-3">
                   {newPatients.map((patient) => renderPatientWithBilling(patient))}
                 </div>
               </section>
@@ -671,10 +671,10 @@ export default function HomePage() {
             {/* Processed */}
             {processedPatients.length > 0 && (
               <section>
-                <h2 className="text-sm font-semibold text-green-700 dark:text-green-400 uppercase tracking-wide mb-2">
+                <h2 className="text-sm font-semibold text-green-700 dark:text-green-400 uppercase tracking-wide mb-3">
                   Processed ({processedPatients.length})
                 </h2>
-                <div className="space-y-2">
+                <div className="space-y-3">
                   {processedPatients.map((patient) => renderPatientWithBilling(patient))}
                 </div>
               </section>
@@ -687,7 +687,8 @@ export default function HomePage() {
       {isToday && (
         <button
           onClick={() => setShowParseModal(true)}
-          className="fixed bottom-6 right-6 w-14 h-14 bg-blue-600 text-white rounded-full shadow-lg flex items-center justify-center hover:bg-blue-700 active:scale-[0.93] transition-all duration-200"
+          className="fixed bottom-6 right-6 w-14 h-14 bg-[var(--accent)] text-white rounded-2xl flex items-center justify-center hover:brightness-110 active:scale-[0.93] transition-all duration-200"
+          style={{ boxShadow: 'var(--fab-shadow)' }}
         >
           <Plus className="w-6 h-6" />
         </button>
@@ -712,8 +713,8 @@ export default function HomePage() {
 
       {/* Delete Confirmation */}
       {deleteConfirm && (
-        <div className="fixed inset-0 bg-[var(--overlay)] z-50 flex items-center justify-center px-4">
-          <div className="bg-[var(--card-bg)] rounded-2xl p-6 max-w-sm w-full space-y-4 animate-scaleIn">
+        <div className="fixed inset-0 modal-overlay z-50 flex items-center justify-center px-4">
+          <div className="bg-[var(--card-bg)] rounded-2xl p-6 max-w-sm w-full space-y-4 animate-scaleIn" style={{ boxShadow: 'var(--card-shadow-elevated)' }}>
             <h3 className="text-lg font-semibold text-[var(--text-primary)]">Delete Patient?</h3>
             <p className="text-sm text-[var(--text-secondary)]">
               Remove <strong>{deleteConfirm.name || 'this patient'}</strong> from the list? This clears all data for this row.

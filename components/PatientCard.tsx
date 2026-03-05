@@ -51,8 +51,14 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
     setEditingTime(false);
   };
 
+  const borderAccent: Record<string, string> = {
+    new: 'border-l-blue-500',
+    pending: 'border-l-amber-500',
+    processed: 'border-l-emerald-500',
+  };
+
   return (
-    <div className="patient-card flex items-center gap-4 hover:-translate-y-0.5 hover:shadow-md">
+    <div className={`patient-card flex items-center gap-4 hover:-translate-y-0.5 border-l-[3px] ${borderAccent[patient.status] || 'border-l-transparent'}`}>
       <button
         onClick={onClick}
         className="flex-1 min-w-0 text-left"
@@ -199,7 +205,7 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
         </button>
       )}
 
-      <ChevronRight className="w-5 h-5 text-[var(--text-muted)] flex-shrink-0" />
+      <ChevronRight className="w-5 h-5 text-[var(--text-muted)] opacity-40 flex-shrink-0" />
     </div>
   );
 }

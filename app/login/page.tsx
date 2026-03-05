@@ -24,7 +24,7 @@ function LoginContent() {
 
       <div className="w-full max-w-[380px] animate-fadeIn relative">
         {/* Card */}
-        <div className="bg-[var(--card-bg)] border border-[var(--card-border)] rounded-2xl shadow-xl dark:shadow-2xl dark:shadow-black/20 p-8 space-y-7">
+        <div className="bg-[var(--card-bg)] border border-[var(--card-border)] rounded-2xl p-8 space-y-7" style={{ boxShadow: 'var(--card-shadow-elevated)' }}>
           {/* Logo / Title */}
           <div className="text-center space-y-4">
             <div className="w-16 h-16 bg-gradient-to-br from-[#5ba3c4] to-[#3d8aab] rounded-full flex items-center justify-center mx-auto shadow-lg shadow-[#5ba3c4]/25 dark:shadow-[#5ba3c4]/15">
