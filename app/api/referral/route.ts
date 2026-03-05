@@ -1,15 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { generateReferral } from '@/lib/claude';
-import { getPatient, updatePatientFields } from '@/lib/google-sheets';
+import { getSheetsContext, getPatient, updatePatientFields } from '@/lib/google-sheets';
 
 export const maxDuration = 60;
 
 // POST /api/referral - Generate referral letter
 export async function POST(request: NextRequest) {
   try {
+    const ctx = await getSheetsContext();
     const { rowIndex, sheetName, specialty, urgency, reason } = await request.json();
 
-    const patient = await getPatient(rowIndex, sheetName);
+    const patient = await getPatient(ctx, rowIndex, sheetName);
     if (!patient) {
       return NextResponse.json({ error: 'Patient not found' }, { status: 404 });
     }
@@ -46,11 +47,14 @@ export async function POST(request: NextRequest) {
     );
 
     // Save referral to sheet
-    await updatePatientFields(rowIndex, { referral: referralText }, sheetName);
+    await updatePatientFields(ctx, rowIndex, { referral: referralText }, sheetName);
 
     return NextResponse.json({ success: true, referral: referralText });
   } catch (error: any) {
     console.error('Error generating referral:', error);
+    if (error?.message?.includes('Not authenticated') || error?.message?.includes('re-login')) {
+      return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
+    }
     return NextResponse.json(
       { error: 'Failed to generate referral', detail: error?.message || String(error) },
       { status: 500 }

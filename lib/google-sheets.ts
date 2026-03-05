@@ -1,6 +1,63 @@
-import { google } from 'googleapis';
+import { google, type sheets_v4 } from 'googleapis';
+import { NextRequest } from 'next/server';
 import { BillingItem, BillingCode, calculateTotal } from '@/lib/billing';
 import type { StyleGuide } from '@/lib/style-guide';
+import { getSessionFromCookies } from '@/lib/session';
+import { getOAuth2Client, refreshAccessToken } from '@/lib/oauth';
+import { getUserSpreadsheetId } from '@/lib/kv';
+
+// --- SheetsContext: per-user authenticated Sheets client ---
+
+export interface SheetsContext {
+  sheets: sheets_v4.Sheets;
+  spreadsheetId: string;
+}
+
+/**
+ * Build a SheetsContext from the current user's session.
+ * Reads OAuth tokens from the session, refreshes if expired,
+ * and looks up the user's spreadsheetId from KV.
+ */
+export async function getSheetsContext(): Promise<SheetsContext> {
+  const session = await getSessionFromCookies();
+
+  if (!session.userId || !session.accessToken) {
+    throw new Error('Not authenticated');
+  }
+
+  // Refresh token if expired (with 5-min buffer)
+  const BUFFER_MS = 5 * 60 * 1000;
+  if (session.tokenExpiry && Date.now() > session.tokenExpiry - BUFFER_MS) {
+    try {
+      const newCreds = await refreshAccessToken(session.refreshToken);
+      session.accessToken = newCreds.access_token || session.accessToken;
+      if (newCreds.expiry_date) {
+        session.tokenExpiry = newCreds.expiry_date;
+      }
+      await session.save();
+    } catch (err) {
+      console.error('Token refresh failed:', err);
+      throw new Error('Token refresh failed - please re-login');
+    }
+  }
+
+  // Create OAuth2 client with user's tokens
+  const oauth2Client = getOAuth2Client();
+  oauth2Client.setCredentials({
+    access_token: session.accessToken,
+    refresh_token: session.refreshToken,
+  });
+
+  const sheets = google.sheets({ version: 'v4', auth: oauth2Client });
+
+  // Get user's spreadsheet ID from KV
+  const spreadsheetId = await getUserSpreadsheetId(session.userId);
+  if (!spreadsheetId) {
+    throw new Error('No spreadsheet found for user - please re-login');
+  }
+
+  return { sheets, spreadsheetId };
+}
 
 // Column mappings matching the Apps Script CONFIG
 export const COLUMNS = {
@@ -70,34 +127,6 @@ export interface Patient {
   status: 'new' | 'pending' | 'processed';
 }
 
-// Initialize Google Sheets client
-function getAuthClient() {
-  if (process.env.GOOGLE_CREDENTIALS) {
-    const credentials = JSON.parse(process.env.GOOGLE_CREDENTIALS);
-    return new google.auth.GoogleAuth({
-      credentials,
-      scopes: ['https://www.googleapis.com/auth/spreadsheets'],
-    });
-  }
-
-  return new google.auth.GoogleAuth({
-    credentials: {
-      client_email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
-      private_key: process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
-    },
-    scopes: ['https://www.googleapis.com/auth/spreadsheets'],
-  });
-}
-
-function getSheets() {
-  const auth = getAuthClient();
-  return google.sheets({ version: 'v4', auth });
-}
-
-function getSpreadsheetId() {
-  return process.env.GOOGLE_SHEETS_ID!;
-}
-
 // --- Timezone helper ---
 
 /** The local timezone for all date operations (defaults to America/Toronto) */
@@ -127,9 +156,8 @@ export function getTodaySheetName(): string {
 }
 
 /** List all date sheets (excluding Template and other non-date sheets) */
-export async function getDateSheets(): Promise<string[]> {
-  const sheets = getSheets();
-  const spreadsheetId = getSpreadsheetId();
+export async function getDateSheets(ctx: SheetsContext): Promise<string[]> {
+  const { sheets, spreadsheetId } = ctx;
 
   const spreadsheet = await sheets.spreadsheets.get({ spreadsheetId });
   const allSheets = spreadsheet.data.sheets || [];
@@ -144,10 +172,9 @@ export async function getDateSheets(): Promise<string[]> {
 }
 
 /** Get or create a sheet for the given date by copying Template */
-export async function getOrCreateDateSheet(date?: Date): Promise<string> {
+export async function getOrCreateDateSheet(ctx: SheetsContext, date?: Date): Promise<string> {
   const sheetName = date ? dateToSheetName(date) : getTodaySheetName();
-  const sheets = getSheets();
-  const spreadsheetId = getSpreadsheetId();
+  const { sheets, spreadsheetId } = ctx;
 
   // Check if sheet already exists
   const spreadsheet = await sheets.spreadsheets.get({ spreadsheetId });
@@ -223,9 +250,8 @@ export async function getOrCreateDateSheet(date?: Date): Promise<string> {
 }
 
 /** Ensure a sheet has at least the required number of columns */
-async function ensureColumnCount(sheetName: string, requiredColumns: number): Promise<void> {
-  const sheets = getSheets();
-  const spreadsheetId = getSpreadsheetId();
+async function ensureColumnCount(ctx: SheetsContext, sheetName: string, requiredColumns: number): Promise<void> {
+  const { sheets, spreadsheetId } = ctx;
 
   const spreadsheet = await sheets.spreadsheets.get({ spreadsheetId });
   const sheetMeta = spreadsheet.data.sheets?.find(
@@ -316,10 +342,9 @@ function normalizeTime(val: string): string {
 }
 
 /** Get shift data from row 5 (A5:F5) */
-export async function getShiftTimes(sheetName?: string): Promise<ShiftTimes> {
+export async function getShiftTimes(ctx: SheetsContext, sheetName?: string): Promise<ShiftTimes> {
   const sheet = sheetName || getTodaySheetName();
-  const sheets = getSheets();
-  const spreadsheetId = getSpreadsheetId();
+  const { sheets, spreadsheetId } = ctx;
 
   try {
     const response = await sheets.spreadsheets.values.get({
@@ -343,12 +368,12 @@ export async function getShiftTimes(sheetName?: string): Promise<ShiftTimes> {
 
 /** Set shift times in row 5 and auto-populate fee type, code, and total */
 export async function setShiftTimes(
+  ctx: SheetsContext,
   sheetName: string,
   start: string,
   end: string,
 ): Promise<ShiftTimes> {
-  const sheets = getSheets();
-  const spreadsheetId = getSpreadsheetId();
+  const { sheets, spreadsheetId } = ctx;
 
   const feeInfo = getShiftFeeType(start);
   const hours = computeShiftHours(start, end);
@@ -370,9 +395,8 @@ export async function setShiftTimes(
 // --- Multi-row billing helpers ---
 
 /** Get the numeric sheetId for a given sheet name (needed for insert/delete row operations) */
-async function getSheetIdByName(sheetName: string): Promise<number> {
-  const sheets = getSheets();
-  const spreadsheetId = getSpreadsheetId();
+async function getSheetIdByName(ctx: SheetsContext, sheetName: string): Promise<number> {
+  const { sheets, spreadsheetId } = ctx;
   const spreadsheet = await sheets.spreadsheets.get({ spreadsheetId });
   const sheetMeta = spreadsheet.data.sheets?.find(
     (s: any) => s.properties.title === sheetName
@@ -382,9 +406,8 @@ async function getSheetIdByName(sheetName: string): Promise<number> {
 }
 
 /** Count continuation rows below a patient row (rows with billing data but no name/transcript) */
-async function countContinuationRows(rowIndex: number, sheetName: string): Promise<number> {
-  const sheets = getSheets();
-  const spreadsheetId = getSpreadsheetId();
+async function countContinuationRows(ctx: SheetsContext, rowIndex: number, sheetName: string): Promise<number> {
+  const { sheets, spreadsheetId } = ctx;
   const startRow = rowIndex + 1;
 
   try {
@@ -413,21 +436,21 @@ async function countContinuationRows(rowIndex: number, sheetName: string): Promi
 
 /** Save billing items as multi-row data (first item on patient row, rest on continuation rows below) */
 export async function saveBillingRows(
+  ctx: SheetsContext,
   rowIndex: number,
   items: BillingItem[],
   sheetName?: string
 ): Promise<void> {
   const sheet = sheetName || getTodaySheetName();
-  const sheets = getSheets();
-  const spreadsheetId = getSpreadsheetId();
+  const { sheets, spreadsheetId } = ctx;
 
-  const existingCont = await countContinuationRows(rowIndex, sheet);
+  const existingCont = await countContinuationRows(ctx, rowIndex, sheet);
   const neededCont = Math.max(0, items.length - 1);
 
   // Insert or delete continuation rows to match
   if (neededCont > existingCont) {
     const toInsert = neededCont - existingCont;
-    const sheetId = await getSheetIdByName(sheet);
+    const sheetId = await getSheetIdByName(ctx, sheet);
     await sheets.spreadsheets.batchUpdate({
       spreadsheetId,
       requestBody: {
@@ -446,7 +469,7 @@ export async function saveBillingRows(
     });
   } else if (neededCont < existingCont) {
     const toDelete = existingCont - neededCont;
-    const sheetId = await getSheetIdByName(sheet);
+    const sheetId = await getSheetIdByName(ctx, sheet);
     await sheets.spreadsheets.batchUpdate({
       spreadsheetId,
       requestBody: {
@@ -501,17 +524,17 @@ export async function saveBillingRows(
 
 /** Clear all data in a patient row and delete any continuation rows below */
 export async function clearPatientRow(
+  ctx: SheetsContext,
   rowIndex: number,
   sheetName?: string
 ): Promise<void> {
   const sheet = sheetName || getTodaySheetName();
-  const sheets = getSheets();
-  const spreadsheetId = getSpreadsheetId();
+  const { sheets, spreadsheetId } = ctx;
 
   // Delete continuation rows first
-  const contCount = await countContinuationRows(rowIndex, sheet);
+  const contCount = await countContinuationRows(ctx, rowIndex, sheet);
   if (contCount > 0) {
-    const sheetId = await getSheetIdByName(sheet);
+    const sheetId = await getSheetIdByName(ctx, sheet);
     await sheets.spreadsheets.batchUpdate({
       spreadsheetId,
       requestBody: {
@@ -538,10 +561,9 @@ export async function clearPatientRow(
 // --- Patient CRUD operations (now date-sheet aware) ---
 
 /** Fetch all patients from a specific date sheet (merges continuation rows for multi-row billing) */
-export async function getPatients(sheetName?: string): Promise<Patient[]> {
+export async function getPatients(ctx: SheetsContext, sheetName?: string): Promise<Patient[]> {
   const sheet = sheetName || getTodaySheetName();
-  const sheets = getSheets();
-  const spreadsheetId = getSpreadsheetId();
+  const { sheets, spreadsheetId } = ctx;
 
   // Check if the sheet exists first
   const spreadsheet = await sheets.spreadsheets.get({ spreadsheetId });
@@ -584,10 +606,9 @@ export async function getPatients(sheetName?: string): Promise<Patient[]> {
 }
 
 /** Get a single patient by row index and sheet name (includes continuation rows for billing) */
-export async function getPatient(rowIndex: number, sheetName?: string): Promise<Patient | null> {
+export async function getPatient(ctx: SheetsContext, rowIndex: number, sheetName?: string): Promise<Patient | null> {
   const sheet = sheetName || getTodaySheetName();
-  const sheets = getSheets();
-  const spreadsheetId = getSpreadsheetId();
+  const { sheets, spreadsheetId } = ctx;
 
   // Read patient row + up to 20 continuation rows below
   const response = await sheets.spreadsheets.values.get({
@@ -625,13 +646,13 @@ export async function getPatient(rowIndex: number, sheetName?: string): Promise<
 
 /** Update specific columns for a patient */
 export async function updatePatientFields(
+  ctx: SheetsContext,
   rowIndex: number,
   fields: Record<string, string>,
   sheetName?: string
 ): Promise<void> {
   const sheet = sheetName || getTodaySheetName();
-  const sheets = getSheets();
-  const spreadsheetId = getSpreadsheetId();
+  const { sheets, spreadsheetId } = ctx;
 
   const columnMap: Record<string, string> = {
     patientNum: 'A', name: 'C', age: 'D', gender: 'E', birthday: 'F',
@@ -656,7 +677,7 @@ export async function updatePatientFields(
   // If writing to columns beyond Z, ensure the sheet has enough columns
   const needsExpand = data.some(d => d.range.includes('!AA'));
   if (needsExpand) {
-    await ensureColumnCount(sheet, 27);
+    await ensureColumnCount(ctx, sheet, 27);
   }
 
   await sheets.spreadsheets.values.batchUpdate({
@@ -669,10 +690,9 @@ export async function updatePatientFields(
 }
 
 /** Find the next empty row in a sheet (skips continuation rows) */
-export async function getNextEmptyRow(sheetName?: string): Promise<number> {
+export async function getNextEmptyRow(ctx: SheetsContext, sheetName?: string): Promise<number> {
   const sheet = sheetName || getTodaySheetName();
-  const sheets = getSheets();
-  const spreadsheetId = getSpreadsheetId();
+  const { sheets, spreadsheetId } = ctx;
 
   const response = await sheets.spreadsheets.values.get({
     spreadsheetId,
@@ -695,10 +715,9 @@ export async function getNextEmptyRow(sheetName?: string): Promise<number> {
 }
 
 /** Get the count of patients in a sheet (for auto-numbering) */
-export async function getPatientCount(sheetName?: string): Promise<number> {
+export async function getPatientCount(ctx: SheetsContext, sheetName?: string): Promise<number> {
   const sheet = sheetName || getTodaySheetName();
-  const sheets = getSheets();
-  const spreadsheetId = getSpreadsheetId();
+  const { sheets, spreadsheetId } = ctx;
 
   const response = await sheets.spreadsheets.values.get({
     spreadsheetId,
@@ -764,9 +783,8 @@ function rowToPatient(row: string[], rowIndex: number, sheetName: string): Patie
 const BILLING_SHEET_NAME = 'Billing Codes';
 
 /** Read billing codes from the "Billing Codes" sheet tab. Columns: A=Code, B=Description, C=Fee */
-export async function getBillingCodes(): Promise<BillingCode[]> {
-  const sheets = getSheets();
-  const spreadsheetId = getSpreadsheetId();
+export async function getBillingCodes(ctx: SheetsContext): Promise<BillingCode[]> {
+  const { sheets, spreadsheetId } = ctx;
 
   // Check if the sheet exists
   const spreadsheet = await sheets.spreadsheets.get({ spreadsheetId });
@@ -802,9 +820,8 @@ const DEFAULT_STYLE_GUIDE: StyleGuide = {
 };
 
 /** Read the style guide JSON blob from the "Style Guide" tab B2. Returns default if missing. */
-export async function getStyleGuideFromSheet(): Promise<StyleGuide> {
-  const sheets = getSheets();
-  const spreadsheetId = getSpreadsheetId();
+export async function getStyleGuideFromSheet(ctx: SheetsContext): Promise<StyleGuide> {
+  const { sheets, spreadsheetId } = ctx;
 
   try {
     const spreadsheet = await sheets.spreadsheets.get({ spreadsheetId });
@@ -832,9 +849,8 @@ export async function getStyleGuideFromSheet(): Promise<StyleGuide> {
 }
 
 /** Save style guide as JSON blob to "Style Guide" tab B2. Auto-creates the tab if needed. */
-export async function saveStyleGuideToSheet(guide: StyleGuide): Promise<void> {
-  const sheets = getSheets();
-  const spreadsheetId = getSpreadsheetId();
+export async function saveStyleGuideToSheet(ctx: SheetsContext, guide: StyleGuide): Promise<void> {
+  const { sheets, spreadsheetId } = ctx;
 
   // Check if tab exists, create if not
   const spreadsheet = await sheets.spreadsheets.get({ spreadsheetId });
