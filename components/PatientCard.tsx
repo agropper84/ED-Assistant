@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Patient } from '@/lib/google-sheets';
-import { Clock, User, FileText, ChevronRight, Trash2, MessageSquare, DollarSign, Stethoscope } from 'lucide-react';
+import { Clock, User, FileText, ChevronRight, Trash2, MessageSquare, DollarSign, Stethoscope, Copy, Check } from 'lucide-react';
 
 interface PatientCardProps {
   patient: Patient;
@@ -28,6 +28,7 @@ function toInitials(name: string): string {
 export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChange, onBillingToggle, billingCodes, onViewNote }: PatientCardProps) {
   const [editingTime, setEditingTime] = useState(false);
   const [timeValue, setTimeValue] = useState(patient.timestamp || '');
+  const [noteCopied, setNoteCopied] = useState(false);
 
   const statusColors = {
     new: 'bg-blue-100 text-blue-800',
@@ -61,16 +62,49 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
             {displayName}
           </span>
           {patient.status === 'processed' && onViewNote ? (
-            <span
-              onClick={(e) => {
-                e.stopPropagation();
-                onViewNote();
-              }}
-              className="flex-shrink-0 p-0.5 hover:bg-green-100 rounded transition-colors cursor-pointer"
-              title="View note"
-            >
-              <FileText className="w-4 h-4 text-green-600" />
-            </span>
+            <div className="relative group/note flex-shrink-0">
+              <span
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onViewNote();
+                }}
+                className="p-0.5 hover:bg-green-100 rounded transition-colors cursor-pointer inline-flex"
+              >
+                <FileText className="w-4 h-4 text-green-600" />
+              </span>
+              <div
+                className="absolute left-0 top-full mt-1 z-50 hidden group-hover/note:block w-80 max-h-64 overflow-y-auto p-3 bg-gray-900 text-gray-100 text-xs rounded-lg shadow-lg"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="flex items-center justify-between mb-2 sticky top-0 bg-gray-900 pb-1">
+                  <span className="text-gray-400 font-medium">Encounter Note</span>
+                  <button
+                    onClick={async (e) => {
+                      e.stopPropagation();
+                      const fullNote = `HPI:\n${patient.hpi}\n\nOBJECTIVE:\n${patient.objective}\n\nASSESSMENT & PLAN:\n${patient.assessmentPlan}`;
+                      await navigator.clipboard.writeText(fullNote);
+                      setNoteCopied(true);
+                      setTimeout(() => setNoteCopied(false), 2000);
+                    }}
+                    className="flex items-center gap-1 px-2 py-0.5 bg-gray-700 hover:bg-gray-600 rounded text-xs text-gray-200 transition-colors"
+                  >
+                    {noteCopied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+                    {noteCopied ? 'Copied' : 'Copy'}
+                  </button>
+                </div>
+                <div className="whitespace-pre-wrap leading-relaxed space-y-2">
+                  {patient.hpi && (
+                    <div><span className="text-green-400 font-medium">HPI:</span> {patient.hpi}</div>
+                  )}
+                  {patient.objective && (
+                    <div><span className="text-green-400 font-medium">Objective:</span> {patient.objective}</div>
+                  )}
+                  {patient.assessmentPlan && (
+                    <div><span className="text-green-400 font-medium">A&P:</span> {patient.assessmentPlan}</div>
+                  )}
+                </div>
+              </div>
+            </div>
           ) : (
             <span className={`badge ${statusColors[patient.status]}`}>
               {statusLabels[patient.status]}
