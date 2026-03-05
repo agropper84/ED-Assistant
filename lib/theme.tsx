@@ -2,63 +2,92 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 
-type Theme = 'light' | 'dark';
+type ThemeMode = 'light' | 'dark' | 'system';
+type ResolvedTheme = 'light' | 'dark';
 
 interface ThemeContextValue {
-  theme: Theme;
+  mode: ThemeMode;
+  theme: ResolvedTheme;
+  setMode: (mode: ThemeMode) => void;
   toggleTheme: () => void;
-  setTheme: (theme: Theme) => void;
+  setTheme: (theme: ResolvedTheme) => void;
 }
 
 const ThemeContext = createContext<ThemeContextValue>({
+  mode: 'system',
   theme: 'light',
+  setMode: () => {},
   toggleTheme: () => {},
   setTheme: () => {},
 });
 
+function getSystemTheme(): ResolvedTheme {
+  if (typeof window === 'undefined') return 'light';
+  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+}
+
+function applyTheme(t: ResolvedTheme) {
+  if (t === 'dark') {
+    document.documentElement.classList.add('dark');
+  } else {
+    document.documentElement.classList.remove('dark');
+  }
+}
+
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [theme, setThemeState] = useState<Theme>('light');
-  const [mounted, setMounted] = useState(false);
+  const [mode, setModeState] = useState<ThemeMode>('system');
+  const [resolved, setResolved] = useState<ResolvedTheme>('light');
 
   useEffect(() => {
-    // Read from localStorage or system preference
-    const stored = localStorage.getItem('theme') as Theme | null;
-    if (stored === 'light' || stored === 'dark') {
-      setThemeState(stored);
-      applyTheme(stored);
-    } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
-      setThemeState('dark');
-      applyTheme('dark');
+    const stored = localStorage.getItem('theme') as ThemeMode | null;
+    if (stored === 'light' || stored === 'dark' || stored === 'system') {
+      setModeState(stored);
+      const r = stored === 'system' ? getSystemTheme() : stored;
+      setResolved(r);
+      applyTheme(r);
+    } else {
+      // No preference stored — default to system
+      const r = getSystemTheme();
+      setResolved(r);
+      applyTheme(r);
     }
 
-    // Remove no-transitions class after initial paint
     requestAnimationFrame(() => {
       document.documentElement.classList.remove('no-transitions');
     });
-
-    setMounted(true);
   }, []);
 
-  const applyTheme = (t: Theme) => {
-    if (t === 'dark') {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
+  // Listen for system theme changes when in system mode
+  useEffect(() => {
+    if (mode !== 'system') return;
+    const mq = window.matchMedia('(prefers-color-scheme: dark)');
+    const handler = (e: MediaQueryListEvent) => {
+      const r = e.matches ? 'dark' : 'light';
+      setResolved(r);
+      applyTheme(r);
+    };
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
+  }, [mode]);
+
+  const setMode = (m: ThemeMode) => {
+    setModeState(m);
+    localStorage.setItem('theme', m);
+    const r = m === 'system' ? getSystemTheme() : m;
+    setResolved(r);
+    applyTheme(r);
   };
 
-  const setTheme = (t: Theme) => {
-    setThemeState(t);
-    localStorage.setItem('theme', t);
-    applyTheme(t);
+  const setTheme = (t: ResolvedTheme) => {
+    setMode(t);
   };
 
   const toggleTheme = () => {
-    setTheme(theme === 'light' ? 'dark' : 'light');
+    setMode(resolved === 'light' ? 'dark' : 'light');
   };
 
   return (
-    <ThemeContext.Provider value={{ theme, toggleTheme, setTheme }}>
+    <ThemeContext.Provider value={{ mode, theme: resolved, setMode, toggleTheme, setTheme }}>
       {children}
     </ThemeContext.Provider>
   );

@@ -2,8 +2,8 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Trash2, Plus, Pencil, RotateCcw, Loader2, X } from 'lucide-react';
-import { ThemeToggle } from '@/components/ThemeToggle';
+import { ArrowLeft, Trash2, Plus, Pencil, RotateCcw, Loader2, X, Sun, Moon, Monitor } from 'lucide-react';
+import { useTheme } from '@/lib/theme';
 import {
   StyleGuide,
   fetchStyleGuide,
@@ -20,6 +20,7 @@ type Tab = 'style' | 'settings';
 
 export default function SettingsPage() {
   const router = useRouter();
+  const { mode, setMode } = useTheme();
   const [activeTab, setActiveTab] = useState<Tab>('style');
   const [styleGuide, setStyleGuide] = useState<StyleGuide | null>(null);
   const [styleLoading, setStyleLoading] = useState(true);
@@ -187,7 +188,26 @@ export default function SettingsPage() {
             <ArrowLeft className="w-5 h-5" />
           </button>
           <h1 className="text-lg font-semibold flex-1">Settings</h1>
-          <ThemeToggle className="hover:bg-white/10" />
+          <div className="flex items-center bg-white/10 rounded-lg p-0.5 gap-0.5">
+            {([
+              { value: 'light' as const, icon: Sun, label: 'Light' },
+              { value: 'dark' as const, icon: Moon, label: 'Dark' },
+              { value: 'system' as const, icon: Monitor, label: 'System' },
+            ]).map(({ value, icon: Icon, label }) => (
+              <button
+                key={value}
+                onClick={() => setMode(value)}
+                className={`p-1.5 rounded-md transition-all ${
+                  mode === value
+                    ? 'bg-white/20 text-white'
+                    : 'text-white/50 hover:text-white/80'
+                }`}
+                title={label}
+              >
+                <Icon className="w-4 h-4" />
+              </button>
+            ))}
+          </div>
         </div>
       </header>
 
