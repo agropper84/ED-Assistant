@@ -44,14 +44,15 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST /api/patients - Create new patient (auto-creates today's date sheet)
+// POST /api/patients - Create new patient (auto-creates date sheet)
 export async function POST(request: NextRequest) {
   try {
     const ctx = await getSheetsContext();
     const body = await request.json();
 
-    // Ensure today's date sheet exists
-    const sheetName = await getOrCreateDateSheet(ctx);
+    // Use specified sheet or default to today
+    const sheetName = await getOrCreateDateSheet(ctx, body._sheetName || undefined);
+    delete body._sheetName;
 
     // Get next empty row and patient count for numbering
     const rowIndex = await getNextEmptyRow(ctx, sheetName);

@@ -178,8 +178,10 @@ export async function getDateSheets(ctx: SheetsContext): Promise<string[]> {
 }
 
 /** Get or create a sheet for the given date by copying Template */
-export async function getOrCreateDateSheet(ctx: SheetsContext, date?: Date): Promise<string> {
-  const sheetName = date ? dateToSheetName(date) : getTodaySheetName();
+export async function getOrCreateDateSheet(ctx: SheetsContext, dateOrName?: Date | string): Promise<string> {
+  const sheetName = typeof dateOrName === 'string'
+    ? dateOrName
+    : dateOrName ? dateToSheetName(dateOrName) : getTodaySheetName();
   const { sheets, spreadsheetId } = ctx;
 
   // Check if sheet already exists
@@ -238,7 +240,7 @@ export async function getOrCreateDateSheet(ctx: SheetsContext, date?: Date): Pro
   // A3: "TIME BASED FEE" header
   // A4:F4: START, END, HOURS, FEE TYPE, CODE, TOTAL
   // A5:F5: values (auto-populated from shift times)
-  const today = date || localNow();
+  const today = dateOrName instanceof Date ? dateOrName : localNow();
   const dateStr = `${today.getMonth() + 1}/${today.getDate()}/${today.getFullYear()}`;
   await sheets.spreadsheets.values.batchUpdate({
     spreadsheetId,
