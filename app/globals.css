@@ -31,18 +31,13 @@
   --fab-shadow: 0 4px 14px rgba(37,99,235,0.35);
   --page-px: 1rem;
 
-  /* Dashboard header zone — light blue palette */
-  --dash-header-from: #2563eb;
-  --dash-header-to: #3b82f6;
-  --dash-shift-bg: #4a8fe8;
-  --dash-date-bg: #5a9ef2;
+  /* Dashboard header gradient — light blue palette */
+  --dash-header-from: #1d4ed8;
+  --dash-header-via: #2563eb;
+  --dash-header-to: #4a8fe8;
   --dash-text: #ffffff;
-  --dash-text-sub: rgba(255,255,255,0.75);
+  --dash-text-sub: rgba(255,255,255,0.8);
   --dash-text-muted: rgba(255,255,255,0.55);
-  --dash-hover: rgba(255,255,255,0.12);
-  --dash-border: rgba(255,255,255,0.12);
-  --dash-input-bg: rgba(255,255,255,0.15);
-  --dash-input-border: rgba(255,255,255,0.2);
 }
 
 @media (min-width: 640px) {
@@ -79,18 +74,13 @@
   --accent-purple: #a78bfa;
   --fab-shadow: 0 4px 14px rgba(59,130,246,0.3);
 
-  /* Dashboard header zone — deep navy palette */
-  --dash-header-from: #0a1535;
-  --dash-header-to: #0c1e4a;
-  --dash-shift-bg: #0e2158;
-  --dash-date-bg: #102565;
-  --dash-text: #e8eeff;
-  --dash-text-sub: rgba(200,215,255,0.7);
+  /* Dashboard header gradient — deep navy palette */
+  --dash-header-from: #060e24;
+  --dash-header-via: #0c1e4a;
+  --dash-header-to: #142d6b;
+  --dash-text: #e0e8ff;
+  --dash-text-sub: rgba(200,215,255,0.75);
   --dash-text-muted: rgba(160,180,230,0.5);
-  --dash-hover: rgba(255,255,255,0.08);
-  --dash-border: rgba(100,140,255,0.12);
-  --dash-input-bg: rgba(255,255,255,0.06);
-  --dash-input-border: rgba(100,140,255,0.2);
 }
 
 body {
@@ -126,19 +116,9 @@ button, .btn {
   color: var(--header-text);
 }
 
-/* Dashboard colored header zone */
+/* Dashboard colored header */
 .dash-header {
-  background: linear-gradient(135deg, var(--dash-header-from), var(--dash-header-to));
-  color: var(--dash-text);
-}
-.dash-shift {
-  background: var(--dash-shift-bg);
-  border-bottom: 1px solid var(--dash-border);
-  color: var(--dash-text);
-}
-.dash-date {
-  background: var(--dash-date-bg);
-  border-bottom: 1px solid var(--dash-border);
+  background: linear-gradient(135deg, var(--dash-header-from) 0%, var(--dash-header-via) 50%, var(--dash-header-to) 100%);
   color: var(--dash-text);
 }
 
