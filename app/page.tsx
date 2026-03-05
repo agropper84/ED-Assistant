@@ -93,6 +93,7 @@ export default function HomePage() {
     if (showRefresh) setRefreshing(true);
     try {
       const res = await fetch(`/api/patients?sheet=${encodeURIComponent(sheetName)}`);
+      if (res.status === 403) { window.location.href = '/pending'; return; }
       if (res.status === 401) { window.location.href = '/login'; return; }
       const data = await res.json();
       setPatients(data.patients || []);

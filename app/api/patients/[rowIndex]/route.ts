@@ -19,6 +19,9 @@ export async function GET(
     return NextResponse.json({ patient });
   } catch (error: any) {
     console.error('Error fetching patient:', error);
+    if (error?.message?.includes('Not approved')) {
+      return NextResponse.json({ error: 'Not approved' }, { status: 403 });
+    }
     if (error?.message?.includes('Not authenticated') || error?.message?.includes('re-login')) {
       return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
     }
@@ -60,6 +63,9 @@ export async function PATCH(
     return NextResponse.json({ success: true });
   } catch (error: any) {
     console.error('Error updating patient:', error);
+    if (error?.message?.includes('Not approved')) {
+      return NextResponse.json({ error: 'Not approved' }, { status: 403 });
+    }
     if (error?.message?.includes('Not authenticated') || error?.message?.includes('re-login')) {
       return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
     }
@@ -85,6 +91,9 @@ export async function DELETE(
     return NextResponse.json({ success: true });
   } catch (error: any) {
     console.error('Error deleting patient:', error);
+    if (error?.message?.includes('Not approved')) {
+      return NextResponse.json({ error: 'Not approved' }, { status: 403 });
+    }
     if (error?.message?.includes('Not authenticated') || error?.message?.includes('re-login')) {
       return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
     }

@@ -10,6 +10,9 @@ export async function GET() {
     return NextResponse.json(guide);
   } catch (error: any) {
     console.error('Error reading style guide:', error);
+    if (error?.message?.includes('Not approved')) {
+      return NextResponse.json({ error: 'Not approved' }, { status: 403 });
+    }
     if (error?.message?.includes('Not authenticated') || error?.message?.includes('re-login')) {
       return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
     }
@@ -28,6 +31,9 @@ export async function PUT(request: NextRequest) {
     return NextResponse.json({ success: true });
   } catch (error: any) {
     console.error('Error saving style guide:', error);
+    if (error?.message?.includes('Not approved')) {
+      return NextResponse.json({ error: 'Not approved' }, { status: 403 });
+    }
     if (error?.message?.includes('Not authenticated') || error?.message?.includes('re-login')) {
       return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
     }
