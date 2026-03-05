@@ -630,8 +630,6 @@ function OutputSection({
 }) {
   const [editing, setEditing] = useState(false);
   const [editValue, setEditValue] = useState(content);
-  const [regenInput, setRegenInput] = useState('');
-  const [showRegen, setShowRegen] = useState(false);
   const [regenerating, setRegenerating] = useState(false);
 
   if (!content && !editing && !onSave) return null;
@@ -656,13 +654,18 @@ function OutputSection({
     setEditing(false);
   };
 
-  const handleRegenerate = async () => {
-    if (!onRegenerate || !regenInput.trim()) return;
+  const handleSaveAndRegenerate = async () => {
+    if (!onRegenerate) return;
     setRegenerating(true);
     try {
-      await onRegenerate(regenInput.trim());
-      setRegenInput('');
-      setShowRegen(false);
+      // Save edits first so the API sees updated content
+      if (onSave && editValue !== content) {
+        onSave(editValue);
+      }
+      // Regenerate using the edited text as context for updates
+      const diff = editValue !== content ? editValue : '';
+      await onRegenerate(diff);
+      setEditing(false);
     } finally {
       setRegenerating(false);
     }
@@ -748,6 +751,20 @@ function OutputSection({
                   <Save className="w-3.5 h-3.5" />
                   Save
                 </button>
+                {onRegenerate && (
+                  <button
+                    onClick={handleSaveAndRegenerate}
+                    disabled={regenerating}
+                    className="flex items-center gap-1 px-3 py-1.5 bg-amber-500 text-white rounded-lg text-sm font-medium disabled:opacity-50"
+                  >
+                    {regenerating ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      <RefreshCw className="w-3.5 h-3.5" />
+                    )}
+                    Regenerate
+                  </button>
+                )}
                 <button
                   onClick={handleCancelEdit}
                   className="flex items-center gap-1 px-3 py-1.5 bg-gray-200 text-gray-700 rounded-lg text-sm font-medium"
@@ -765,57 +782,6 @@ function OutputSection({
             </p>
           )}
 
-          {/* Regenerate bar */}
-          {onRegenerate && !editing && (
-            <div className="mt-3 pt-3 border-t border-gray-100">
-              {showRegen ? (
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-medium text-amber-700">Updates for regeneration</span>
-                    <VoiceRecorder
-                      onTranscript={(text) => setRegenInput(prev => prev ? `${prev} ${text}` : text)}
-                      disabled={regenerating}
-                    />
-                  </div>
-                  <textarea
-                    value={regenInput}
-                    onChange={(e) => setRegenInput(e.target.value)}
-                    placeholder="Type or dictate changes (e.g. 'add chest pain to history', 'patient also had nausea')..."
-                    className="w-full h-20 p-3 border border-amber-300 rounded-lg text-sm resize-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 bg-amber-50"
-                    autoFocus
-                  />
-                  <div className="flex gap-2">
-                    <button
-                      onClick={handleRegenerate}
-                      disabled={regenerating || !regenInput.trim()}
-                      className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-500 text-white rounded-lg text-sm font-medium disabled:opacity-50"
-                    >
-                      {regenerating ? (
-                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                      ) : (
-                        <RefreshCw className="w-3.5 h-3.5" />
-                      )}
-                      Regenerate
-                    </button>
-                    <button
-                      onClick={() => { setShowRegen(false); setRegenInput(''); }}
-                      className="px-3 py-1.5 bg-gray-200 text-gray-700 rounded-lg text-sm font-medium"
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <button
-                  onClick={() => setShowRegen(true)}
-                  className="flex items-center gap-1.5 text-xs text-amber-600 hover:text-amber-700 font-medium"
-                >
-                  <RefreshCw className="w-3 h-3" />
-                  Regenerate with updates
-                </button>
-              )}
-            </div>
-          )}
         </div>
       )}
     </div>
