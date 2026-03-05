@@ -460,13 +460,12 @@ export default function HomePage() {
 
       {/* Shift Times */}
       <div className="dash-row border-b border-[var(--border)]">
-        <div className="max-w-2xl mx-auto px-4 flex items-center gap-3 h-11">
-          <Clock className="w-4 h-4 text-[var(--text-muted)] flex-shrink-0" />
-          <span className="text-sm text-[var(--text-secondary)] flex-shrink-0">Shift:</span>
+        <div className="max-w-2xl mx-auto px-4 flex items-center gap-2.5 h-8">
+          <Clock className="w-3.5 h-3.5 text-[var(--text-muted)] flex-shrink-0" />
           <select
             value={shiftStart}
             onChange={(e) => { setShiftStart(e.target.value); handleShiftTimeSave({ start: e.target.value }); }}
-            className="flex-1 p-1.5 border border-[var(--input-border)] rounded-lg text-sm text-center focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)]"
+            className="flex-1 py-0.5 px-1.5 rounded text-xs text-center bg-transparent border-none text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] focus:bg-[var(--bg-tertiary)] focus:ring-1 focus:ring-[var(--accent)]/30 focus:outline-none transition-colors cursor-pointer"
           >
             <option value="">Start</option>
             <option value="08:00">8:00 AM</option>
@@ -475,11 +474,11 @@ export default function HomePage() {
             <option value="18:00">6:00 PM</option>
             <option value="23:00">11:00 PM</option>
           </select>
-          <span className="text-[var(--text-muted)]">—</span>
+          <span className="text-xs text-[var(--text-muted)]">–</span>
           <select
             value={shiftEnd}
             onChange={(e) => { setShiftEnd(e.target.value); handleShiftTimeSave({ end: e.target.value }); }}
-            className="flex-1 p-1.5 border border-[var(--input-border)] rounded-lg text-sm text-center focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)]"
+            className="flex-1 py-0.5 px-1.5 rounded text-xs text-center bg-transparent border-none text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] focus:bg-[var(--bg-tertiary)] focus:ring-1 focus:ring-[var(--accent)]/30 focus:outline-none transition-colors cursor-pointer"
           >
             <option value="">End</option>
             <option value="15:00">3:00 PM</option>
@@ -489,19 +488,13 @@ export default function HomePage() {
             <option value="08:00">8:00 AM</option>
           </select>
           {shiftHours && (
-            <span className="text-sm text-[var(--text-secondary)] flex-shrink-0">
-              <span className="text-[var(--text-muted)]">Hrs:</span> {shiftHours}h
-            </span>
+            <span className="text-xs text-[var(--text-muted)] flex-shrink-0">{shiftHours}h</span>
           )}
           {shiftCode && (
-            <span className="text-xs font-mono bg-[var(--bg-tertiary)] px-1.5 py-0.5 rounded text-[var(--text-secondary)] flex-shrink-0">
-              {shiftCode}
-            </span>
+            <span className="text-[10px] font-mono text-[var(--text-muted)] flex-shrink-0">{shiftCode}</span>
           )}
           {shiftTotal && (
-            <span className="text-sm font-semibold flex-shrink-0" style={{ color: 'var(--accent-green)' }}>
-              ${shiftTotal}
-            </span>
+            <span className="text-xs font-semibold flex-shrink-0" style={{ color: 'var(--accent-green)' }}>${shiftTotal}</span>
           )}
         </div>
       </div>
