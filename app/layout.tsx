@@ -3,13 +3,13 @@ import './globals.css'
 import { ThemeProvider } from '@/lib/theme'
 
 export const metadata: Metadata = {
-  title: 'ED Documentation',
+  title: 'ER Dashboard',
   description: 'Emergency Department Documentation System',
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
-    title: 'ED Docs',
+    title: 'ER Dashboard',
   },
 }
 
