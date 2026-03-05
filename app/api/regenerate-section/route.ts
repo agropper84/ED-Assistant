@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
-import { getPatient, updatePatientFields, getStyleGuideFromSheet } from '@/lib/google-sheets';
+import { getSheetsContext, getPatient, updatePatientFields, getStyleGuideFromSheet } from '@/lib/google-sheets';
 
 export const maxDuration = 60;
 
@@ -22,13 +22,14 @@ const SECTION_INSTRUCTIONS: Record<string, string> = {
 
 export async function POST(request: NextRequest) {
   try {
+    const ctx = await getSheetsContext();
     const { rowIndex, sheetName, section, updates } = await request.json();
 
     if (!section || !SECTION_LABELS[section]) {
       return NextResponse.json({ error: 'Invalid section' }, { status: 400 });
     }
 
-    const patient = await getPatient(rowIndex, sheetName);
+    const patient = await getPatient(ctx, rowIndex, sheetName);
     if (!patient) {
       return NextResponse.json({ error: 'Patient not found' }, { status: 404 });
     }
@@ -36,7 +37,7 @@ export async function POST(request: NextRequest) {
     // Build style guidance from sheet
     let styleSection = '';
     try {
-      const guide = await getStyleGuideFromSheet();
+      const guide = await getStyleGuideFromSheet(ctx);
       const parts: string[] = [];
       const sectionExamples = guide.examples[section as keyof typeof guide.examples];
       if (sectionExamples?.length > 0) {
@@ -56,7 +57,6 @@ export async function POST(request: NextRequest) {
     // Get settings
     let model = 'claude-sonnet-4-20250514';
     let temperature = 0.3;
-    // We could read settings from request but keeping it simple
 
     const prompt = `You are an AI assistant helping an emergency department physician update one section of their encounter documentation.
 
@@ -88,11 +88,14 @@ Respond with ONLY the regenerated section content. No headers, labels, or extra 
     const regenerated = text.trim();
 
     // Save to sheet
-    await updatePatientFields(rowIndex, { [section]: regenerated }, sheetName);
+    await updatePatientFields(ctx, rowIndex, { [section]: regenerated }, sheetName);
 
     return NextResponse.json({ success: true, content: regenerated });
   } catch (error: any) {
     console.error('Error regenerating section:', error);
+    if (error?.message?.includes('Not authenticated') || error?.message?.includes('re-login')) {
+      return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
+    }
     return NextResponse.json(
       { error: 'Failed to regenerate section', detail: error?.message || String(error) },
       { status: 500 }

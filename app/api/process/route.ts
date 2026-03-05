@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { processEncounter, ProcessedNote } from '@/lib/claude';
-import { getPatient, updatePatientFields, saveBillingRows, getStyleGuideFromSheet } from '@/lib/google-sheets';
+import { getSheetsContext, getPatient, updatePatientFields, saveBillingRows, getStyleGuideFromSheet } from '@/lib/google-sheets';
 import { getAutoBilling, BillingItem } from '@/lib/billing';
 
 // Allow longer execution for Claude API calls
@@ -9,10 +9,11 @@ export const maxDuration = 60;
 // POST /api/process - Process patient encounter with Claude
 export async function POST(request: NextRequest) {
   try {
+    const ctx = await getSheetsContext();
     const { rowIndex, sheetName, modifications, styleGuidance, settings } = await request.json();
 
     // Get patient data
-    const patient = await getPatient(rowIndex, sheetName);
+    const patient = await getPatient(ctx, rowIndex, sheetName);
     if (!patient) {
       return NextResponse.json({ error: 'Patient not found' }, { status: 404 });
     }
@@ -36,7 +37,7 @@ export async function POST(request: NextRequest) {
     let effectiveStyleGuidance = styleGuidance;
     if (!effectiveStyleGuidance) {
       try {
-        const guide = await getStyleGuideFromSheet();
+        const guide = await getStyleGuideFromSheet(ctx);
         const hasExamples = Object.values(guide.examples).some(arr => arr.length > 0);
         if (hasExamples || guide.customGuidance || guide.extractedFeatures.length > 0) {
           const parts: string[] = [];
@@ -91,7 +92,7 @@ export async function POST(request: NextRequest) {
     };
 
     // Update the sheet with clinical notes
-    await updatePatientFields(rowIndex, fieldsToUpdate, sheetName);
+    await updatePatientFields(ctx, rowIndex, fieldsToUpdate, sheetName);
 
     // Auto-assign billing if not already set (only on fresh processing, not modifications)
     if (!modifications && !patient.procCode) {
@@ -117,12 +118,15 @@ export async function POST(request: NextRequest) {
         { code: '1100', description: 'ED Visit', fee: '50.90', unit: '1', category: 'visitType' },
       ];
 
-      await saveBillingRows(rowIndex, billingItems, sheetName);
+      await saveBillingRows(ctx, rowIndex, billingItems, sheetName);
     }
 
     return NextResponse.json({ success: true, result });
   } catch (error: any) {
     console.error('Error processing encounter:', error);
+    if (error?.message?.includes('Not authenticated') || error?.message?.includes('re-login')) {
+      return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
+    }
     return NextResponse.json(
       { error: 'Failed to process encounter', detail: error?.message || String(error) },
       { status: 500 }

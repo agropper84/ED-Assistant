@@ -15,7 +15,7 @@ import {
 import {
   Plus, RefreshCw, Loader2, ChevronLeft, ChevronRight,
   Calendar, Settings, CheckSquare, Square, Play, Clock, EyeOff, Eye,
-  Search, ArrowUpDown, X
+  Search, ArrowUpDown, X, LogOut
 } from 'lucide-react';
 
 function formatDateForSheet(date: Date): string {
@@ -78,6 +78,10 @@ export default function HomePage() {
   // Dashboard billing
   const [billingPatientIdx, setBillingPatientIdx] = useState<number | null>(null);
 
+  // User info
+  const [userEmail, setUserEmail] = useState('');
+  const [userName, setUserName] = useState('');
+
   // Search and sort
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<'time' | 'name'>('time');
@@ -89,6 +93,7 @@ export default function HomePage() {
     if (showRefresh) setRefreshing(true);
     try {
       const res = await fetch(`/api/patients?sheet=${encodeURIComponent(sheetName)}`);
+      if (res.status === 401) { window.location.href = '/login'; return; }
       const data = await res.json();
       setPatients(data.patients || []);
       if (data.shiftTimes) {
@@ -122,6 +127,18 @@ export default function HomePage() {
     fetchPatients();
     fetchSheets();
   }, [sheetName]);
+
+  useEffect(() => {
+    fetch('/api/auth/me')
+      .then(res => res.ok ? res.json() : null)
+      .then(data => {
+        if (data) {
+          setUserEmail(data.email || '');
+          setUserName(data.name || '');
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   const handleSavePatient = async (data: any) => {
     try {
@@ -353,6 +370,11 @@ export default function HomePage() {
     );
   };
 
+  const handleLogout = async () => {
+    await fetch('/api/auth/logout', { method: 'POST' });
+    window.location.href = '/login';
+  };
+
   const handlePatientClick = (patient: Patient) => {
     if (batchMode) return;
     setDataModalPatient(patient);
@@ -370,6 +392,11 @@ export default function HomePage() {
         <div className="flex items-center justify-between max-w-2xl mx-auto">
           <h1 className="text-xl font-bold">ED Dashboard</h1>
           <div className="flex items-center gap-1">
+            {userEmail && (
+              <span className="text-xs text-white/60 hidden sm:block mr-1 max-w-[120px] truncate" title={userEmail}>
+                {userName || userEmail}
+              </span>
+            )}
             <ThemeToggle className="hover:bg-white/10" />
             <button
               onClick={() => setAnonymize(!anonymize)}
@@ -390,6 +417,13 @@ export default function HomePage() {
               className="p-2 hover:bg-white/10 rounded-full transition-colors"
             >
               <RefreshCw className={`w-5 h-5 ${refreshing ? 'animate-spin' : ''}`} />
+            </button>
+            <button
+              onClick={handleLogout}
+              className="p-2 hover:bg-white/10 rounded-full transition-colors"
+              title="Sign out"
+            >
+              <LogOut className="w-5 h-5" />
             </button>
           </div>
         </div>

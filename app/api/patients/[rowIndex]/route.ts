@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getPatient, updatePatientFields, clearPatientRow, saveBillingRows } from '@/lib/google-sheets';
+import { getSheetsContext, getPatient, updatePatientFields, clearPatientRow, saveBillingRows } from '@/lib/google-sheets';
 
 // GET /api/patients/[rowIndex]?sheet=Mar+03,+2026
 export async function GET(
@@ -7,9 +7,10 @@ export async function GET(
   { params }: { params: { rowIndex: string } }
 ) {
   try {
+    const ctx = await getSheetsContext();
     const rowIndex = parseInt(params.rowIndex);
     const sheetName = request.nextUrl.searchParams.get('sheet') || undefined;
-    const patient = await getPatient(rowIndex, sheetName);
+    const patient = await getPatient(ctx, rowIndex, sheetName);
 
     if (!patient) {
       return NextResponse.json({ error: 'Patient not found' }, { status: 404 });
@@ -18,6 +19,9 @@ export async function GET(
     return NextResponse.json({ patient });
   } catch (error: any) {
     console.error('Error fetching patient:', error);
+    if (error?.message?.includes('Not authenticated') || error?.message?.includes('re-login')) {
+      return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
+    }
     return NextResponse.json(
       { error: 'Failed to fetch patient', detail: error?.message || String(error) },
       { status: 500 }
@@ -31,13 +35,14 @@ export async function PATCH(
   { params }: { params: { rowIndex: string } }
 ) {
   try {
+    const ctx = await getSheetsContext();
     const rowIndex = parseInt(params.rowIndex);
     const body = await request.json();
     const { _sheetName, _billingItems, ...fields } = body;
 
     if (_billingItems) {
       // Multi-row billing save
-      await saveBillingRows(rowIndex, _billingItems, _sheetName || undefined);
+      await saveBillingRows(ctx, rowIndex, _billingItems, _sheetName || undefined);
       // Also save non-billing fields (like comments)
       const nonBillingFields = { ...fields };
       delete nonBillingFields.visitProcedure;
@@ -46,15 +51,18 @@ export async function PATCH(
       delete nonBillingFields.unit;
       delete nonBillingFields.total;
       if (Object.keys(nonBillingFields).length > 0) {
-        await updatePatientFields(rowIndex, nonBillingFields, _sheetName || undefined);
+        await updatePatientFields(ctx, rowIndex, nonBillingFields, _sheetName || undefined);
       }
     } else {
-      await updatePatientFields(rowIndex, fields, _sheetName || undefined);
+      await updatePatientFields(ctx, rowIndex, fields, _sheetName || undefined);
     }
 
     return NextResponse.json({ success: true });
   } catch (error: any) {
     console.error('Error updating patient:', error);
+    if (error?.message?.includes('Not authenticated') || error?.message?.includes('re-login')) {
+      return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
+    }
     return NextResponse.json(
       { error: 'Failed to update patient', detail: error?.message || String(error) },
       { status: 500 }
@@ -68,14 +76,18 @@ export async function DELETE(
   { params }: { params: { rowIndex: string } }
 ) {
   try {
+    const ctx = await getSheetsContext();
     const rowIndex = parseInt(params.rowIndex);
     const sheetName = request.nextUrl.searchParams.get('sheet') || undefined;
 
-    await clearPatientRow(rowIndex, sheetName);
+    await clearPatientRow(ctx, rowIndex, sheetName);
 
     return NextResponse.json({ success: true });
   } catch (error: any) {
     console.error('Error deleting patient:', error);
+    if (error?.message?.includes('Not authenticated') || error?.message?.includes('re-login')) {
+      return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
+    }
     return NextResponse.json(
       { error: 'Failed to delete patient', detail: error?.message || String(error) },
       { status: 500 }
