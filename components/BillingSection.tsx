@@ -221,7 +221,7 @@ function BillingBody({
           <button
             onClick={() => setCategoryItem('visitType', { code: '0081', description: 'Critical Care', fee: '147.10', unit: '1', category: 'visitType' })}
             className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-              currentVisit?.code === '0081' ? 'bg-blue-600 text-white' : 'bg-[var(--bg-tertiary)] text-[var(--text-secondary)] hover:bg-[var(--border)]'
+              currentVisit?.code === '0081' ? 'bg-red-600 text-white ring-2 ring-red-300 dark:ring-red-500/50' : 'bg-[var(--bg-tertiary)] text-[var(--text-secondary)] hover:bg-[var(--border)]'
             }`}
           >
             Critical ($147.10)
