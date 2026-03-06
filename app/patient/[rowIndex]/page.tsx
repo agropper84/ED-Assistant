@@ -241,30 +241,19 @@ export default function PatientPage() {
   const handleUpdateAnalysis = async () => {
     setUpdatingAnalysis(true);
     try {
-      // Regenerate synopsis
-      await fetch('/api/synopsis', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ rowIndex: parseInt(rowIndex), sheetName }),
-      });
-
-      // Re-process to refresh management & evidence
-      let settings: any;
-      try {
-        const stored = localStorage.getItem('ed-app-settings');
-        if (stored) settings = JSON.parse(stored);
-      } catch {}
-
-      await fetch('/api/process', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          rowIndex: parseInt(rowIndex),
-          sheetName,
-          modifications: '',
-          settings,
+      // Regenerate synopsis and DDx/management/evidence in parallel
+      await Promise.all([
+        fetch('/api/synopsis', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ rowIndex: parseInt(rowIndex), sheetName }),
         }),
-      });
+        fetch('/api/analysis', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ rowIndex: parseInt(rowIndex), sheetName }),
+        }),
+      ]);
 
       await fetchPatient();
     } catch (error) {
@@ -420,8 +409,7 @@ export default function PatientPage() {
           ) : (
             <button
               onClick={handleGenerateSynopsis}
-              disabled={generatingSynopsis || !patient.hasOutput}
-              title={!patient.hasOutput ? 'Process encounter first' : undefined}
+              disabled={generatingSynopsis}
               className="w-full py-2.5 border border-dashed border-[var(--border)] text-[var(--text-muted)] rounded-xl text-sm font-medium flex items-center justify-center gap-2 hover:bg-[var(--bg-tertiary)] active:scale-[0.99] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {generatingSynopsis ? (
@@ -439,74 +427,24 @@ export default function PatientPage() {
           )}
         </div>
 
-        {/* Standalone Management & Evidence Cards */}
-        {patient.management && (
-          <OutputSection
-            title="Recommended Management"
-            content={patient.management}
-            field="management"
-            expanded={expandedSections.has('management-standalone')}
-            onToggle={() => toggleSection('management-standalone')}
-            onCopy={() => copyToClipboard(patient.management, 'management')}
-            copied={copied === 'management'}
-            onSave={(value) => handleSaveField('management', value)}
-          />
-        )}
-
-        {patient.evidence && (
-          <OutputSection
-            title="Pertinent Evidence"
-            content={patient.evidence}
-            field="evidence"
-            expanded={expandedSections.has('evidence-standalone')}
-            onToggle={() => toggleSection('evidence-standalone')}
-            onCopy={() => copyToClipboard(patient.evidence, 'evidence')}
-            copied={copied === 'evidence'}
-            onSave={(value) => handleSaveField('evidence', value)}
-          />
-        )}
-
         {/* Update AI Analysis Button */}
-        {patient.hasOutput && (
-          <button
-            onClick={handleUpdateAnalysis}
-            disabled={updatingAnalysis}
-            className="w-full py-3 border border-[var(--border)] text-[var(--text-secondary)] rounded-2xl font-medium flex items-center justify-center gap-2 hover:bg-[var(--bg-tertiary)] active:scale-[0.99] transition-all disabled:opacity-50"
-          >
-            {updatingAnalysis ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                Updating Analysis...
-              </>
-            ) : (
-              <>
-                <RefreshCw className="w-4 h-4" />
-                Update AI Analysis
-              </>
-            )}
-          </button>
-        )}
-
-        {/* Process Button */}
-        {!patient.hasOutput && (
-          <button
-            onClick={() => handleProcess()}
-            disabled={processing}
-            className="w-full py-4 bg-green-600 text-white rounded-xl font-semibold flex items-center justify-center gap-2 disabled:opacity-50 hover:bg-green-700 active:scale-[0.99] transition-all"
-          >
-            {processing ? (
-              <>
-                <Loader2 className="w-5 h-5 animate-spin" />
-                Processing...
-              </>
-            ) : (
-              <>
-                <Play className="w-5 h-5" />
-                Generate Encounter Note
-              </>
-            )}
-          </button>
-        )}
+        <button
+          onClick={handleUpdateAnalysis}
+          disabled={updatingAnalysis}
+          className="w-full py-3 border border-[var(--border)] text-[var(--text-secondary)] rounded-2xl font-medium flex items-center justify-center gap-2 hover:bg-[var(--bg-tertiary)] active:scale-[0.99] transition-all disabled:opacity-50"
+        >
+          {updatingAnalysis ? (
+            <>
+              <Loader2 className="w-4 h-4 animate-spin" />
+              Updating Analysis...
+            </>
+          ) : (
+            <>
+              <RefreshCw className="w-4 h-4" />
+              Update AI Analysis
+            </>
+          )}
+        </button>
 
         {/* Process Error */}
         {processError && (
@@ -516,96 +454,95 @@ export default function PatientPage() {
           </div>
         )}
 
-        {/* Output Sections */}
-        {patient.hasOutput && (
+        {/* Tab Bar — always visible */}
+        <div className="flex gap-1 bg-[var(--bg-tertiary)] rounded-2xl p-1" style={{ boxShadow: 'var(--card-shadow)' }}>
+          {(['encounter', 'ddx', 'referral'] as const).map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={`flex-1 py-2.5 text-sm font-medium rounded-xl transition-all ${
+                activeTab === tab
+                  ? 'bg-[var(--accent)] text-white shadow-sm'
+                  : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+              }`}
+            >
+              {tab === 'encounter' ? 'Encounter Note' : tab === 'ddx' ? 'DDx & Management' : 'Referral'}
+            </button>
+          ))}
+        </div>
+
+        {/* Encounter Note Tab */}
+        {activeTab === 'encounter' && (
           <>
-            {/* Tab Bar */}
-            <div className="flex gap-1 bg-[var(--bg-tertiary)] rounded-2xl p-1" style={{ boxShadow: 'var(--card-shadow)' }}>
-              {(['encounter', 'ddx', 'referral'] as const).map((tab) => (
-                <button
-                  key={tab}
-                  onClick={() => setActiveTab(tab)}
-                  className={`flex-1 py-2.5 text-sm font-medium rounded-xl transition-all ${
-                    activeTab === tab
-                      ? 'bg-[var(--accent)] text-white shadow-sm'
-                      : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
-                  }`}
-                >
-                  {tab === 'encounter' ? 'Encounter Note' : tab === 'ddx' ? 'DDx & Workup' : 'Referral'}
-                </button>
-              ))}
-            </div>
-
-            {/* Action Buttons */}
-            <div className="flex gap-2">
-              <button
-                onClick={copyFullNote}
-                className="flex-1 py-3 bg-[var(--accent)] text-white rounded-2xl font-medium flex items-center justify-center gap-2 hover:brightness-110 active:scale-[0.97] transition-all"
-              >
-                {copied === 'full' ? (
-                  <>
-                    <Check className="w-4 h-4" />
-                    Copied!
-                  </>
-                ) : (
-                  <>
-                    <Copy className="w-4 h-4" />
-                    Copy Full Note
-                  </>
-                )}
-              </button>
-              <button
-                onClick={() => setShowModify(!showModify)}
-                className="py-3 px-4 border border-[var(--border)] text-[var(--text-secondary)] rounded-2xl font-medium flex items-center justify-center gap-2 hover:bg-[var(--bg-tertiary)] active:scale-[0.97] transition-all"
-              >
-                <RefreshCw className="w-4 h-4" />
-                Modify
-              </button>
-              <button
-                onClick={() => setShowReferralModal(true)}
-                className="py-3 px-4 border border-[var(--border)] text-[var(--text-secondary)] rounded-2xl font-medium flex items-center justify-center gap-2 hover:bg-[var(--bg-tertiary)] active:scale-[0.97] transition-all"
-              >
-                <Send className="w-4 h-4" />
-                Refer
-              </button>
-            </div>
-
-            {/* Modification Panel */}
-            {showModify && (
-              <div className="bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800 rounded-xl p-4 space-y-3 animate-slideUp">
-                <h3 className="font-semibold text-amber-900 dark:text-amber-200">Modify & Regenerate</h3>
-                <textarea
-                  value={modifications}
-                  onChange={(e) => setModifications(e.target.value)}
-                  placeholder="Describe what changes you want (e.g., 'Add chest pain to HPI', 'Change diagnosis to pneumonia')..."
-                  className="w-full h-24 p-3 border border-amber-300 dark:border-amber-700 rounded-lg text-sm resize-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 bg-[var(--input-bg)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)]"
-                />
+            {patient.hasOutput ? (
+              <>
+                {/* Action Buttons */}
                 <div className="flex gap-2">
                   <button
-                    onClick={() => handleProcess(modifications)}
-                    disabled={processing || !modifications.trim()}
-                    className="flex-1 py-2.5 bg-amber-600 text-white rounded-lg font-medium disabled:opacity-50 flex items-center justify-center gap-2 active:scale-[0.97] transition-all"
+                    onClick={copyFullNote}
+                    className="flex-1 py-3 bg-[var(--accent)] text-white rounded-2xl font-medium flex items-center justify-center gap-2 hover:brightness-110 active:scale-[0.97] transition-all"
                   >
-                    {processing ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
+                    {copied === 'full' ? (
+                      <>
+                        <Check className="w-4 h-4" />
+                        Copied!
+                      </>
                     ) : (
-                      <RefreshCw className="w-4 h-4" />
+                      <>
+                        <Copy className="w-4 h-4" />
+                        Copy Full Note
+                      </>
                     )}
-                    Regenerate
                   </button>
                   <button
-                    onClick={() => { setShowModify(false); setModifications(''); }}
-                    className="py-2.5 px-4 bg-[var(--bg-tertiary)] text-[var(--text-secondary)] rounded-lg font-medium active:scale-[0.97] transition-all"
+                    onClick={() => setShowModify(!showModify)}
+                    className="py-3 px-4 border border-[var(--border)] text-[var(--text-secondary)] rounded-2xl font-medium flex items-center justify-center gap-2 hover:bg-[var(--bg-tertiary)] active:scale-[0.97] transition-all"
                   >
-                    Cancel
+                    <RefreshCw className="w-4 h-4" />
+                    Modify
+                  </button>
+                  <button
+                    onClick={() => setShowReferralModal(true)}
+                    className="py-3 px-4 border border-[var(--border)] text-[var(--text-secondary)] rounded-2xl font-medium flex items-center justify-center gap-2 hover:bg-[var(--bg-tertiary)] active:scale-[0.97] transition-all"
+                  >
+                    <Send className="w-4 h-4" />
+                    Refer
                   </button>
                 </div>
-              </div>
-            )}
 
-            {/* Encounter Note Tab */}
-            {activeTab === 'encounter' && (
-              <>
+                {/* Modification Panel */}
+                {showModify && (
+                  <div className="bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800 rounded-xl p-4 space-y-3 animate-slideUp">
+                    <h3 className="font-semibold text-amber-900 dark:text-amber-200">Modify & Regenerate</h3>
+                    <textarea
+                      value={modifications}
+                      onChange={(e) => setModifications(e.target.value)}
+                      placeholder="Describe what changes you want (e.g., 'Add chest pain to HPI', 'Change diagnosis to pneumonia')..."
+                      className="w-full h-24 p-3 border border-amber-300 dark:border-amber-700 rounded-lg text-sm resize-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 bg-[var(--input-bg)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)]"
+                    />
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => handleProcess(modifications)}
+                        disabled={processing || !modifications.trim()}
+                        className="flex-1 py-2.5 bg-amber-600 text-white rounded-lg font-medium disabled:opacity-50 flex items-center justify-center gap-2 active:scale-[0.97] transition-all"
+                      >
+                        {processing ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <RefreshCw className="w-4 h-4" />
+                        )}
+                        Regenerate
+                      </button>
+                      <button
+                        onClick={() => { setShowModify(false); setModifications(''); }}
+                        className="py-2.5 px-4 bg-[var(--bg-tertiary)] text-[var(--text-secondary)] rounded-lg font-medium active:scale-[0.97] transition-all"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                )}
+
                 <OutputSection
                   title="HPI"
                   content={patient.hpi}
@@ -652,84 +589,102 @@ export default function PatientPage() {
                   onRegenerate={(updates) => handleRegenerateSection('assessmentPlan', updates)}
                 />
               </>
-            )}
-
-            {/* DDx & Workup Tab */}
-            {activeTab === 'ddx' && (
-              <>
-                <OutputSection
-                  title="Differential Diagnosis"
-                  content={patient.ddx}
-                  field="ddx"
-                  expanded={expandedSections.has('ddx')}
-                  onToggle={() => toggleSection('ddx')}
-                  onCopy={() => copyToClipboard(patient.ddx, 'ddx')}
-                  copied={copied === 'ddx'}
-                  onSave={(value) => handleSaveField('ddx', value)}
-                />
-
-                <OutputSection
-                  title="Recommended Investigations"
-                  content={patient.investigations}
-                  field="investigations"
-                  expanded={expandedSections.has('investigations')}
-                  onToggle={() => toggleSection('investigations')}
-                  onCopy={() => copyToClipboard(patient.investigations, 'investigations')}
-                  copied={copied === 'investigations'}
-                  onSave={(value) => handleSaveField('investigations', value)}
-                />
-
-                <OutputSection
-                  title="Recommended Management"
-                  content={patient.management}
-                  field="management"
-                  expanded={expandedSections.has('management')}
-                  onToggle={() => toggleSection('management')}
-                  onCopy={() => copyToClipboard(patient.management, 'management')}
-                  copied={copied === 'management'}
-                  onSave={(value) => handleSaveField('management', value)}
-                />
-
-                <OutputSection
-                  title="Pertinent Evidence"
-                  content={patient.evidence}
-                  field="evidence"
-                  expanded={expandedSections.has('evidence')}
-                  onToggle={() => toggleSection('evidence')}
-                  onCopy={() => copyToClipboard(patient.evidence, 'evidence')}
-                  copied={copied === 'evidence'}
-                  onSave={(value) => handleSaveField('evidence', value)}
-                />
-              </>
-            )}
-
-            {/* Referral Tab */}
-            {activeTab === 'referral' && (
-              <>
-                {patient.referral ? (
-                  <OutputSection
-                    title="Referral Letter"
-                    content={patient.referral}
-                    field="referral"
-                    expanded={expandedSections.has('referral')}
-                    onToggle={() => toggleSection('referral')}
-                    onCopy={() => copyToClipboard(patient.referral, 'referral')}
-                    copied={copied === 'referral'}
-                    onSave={(value) => handleSaveField('referral', value)}
-                  />
+            ) : (
+              <button
+                onClick={() => handleProcess()}
+                disabled={processing}
+                className="w-full py-4 bg-green-600 text-white rounded-xl font-semibold flex items-center justify-center gap-2 disabled:opacity-50 hover:bg-green-700 active:scale-[0.99] transition-all"
+              >
+                {processing ? (
+                  <>
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    Processing...
+                  </>
                 ) : (
-                  <div className="bg-[var(--card-bg)] rounded-2xl border border-[var(--card-border)] p-6 text-center" style={{ boxShadow: 'var(--card-shadow)' }}>
-                    <p className="text-[var(--text-muted)] mb-3">No referral generated yet</p>
-                    <button
-                      onClick={() => setShowReferralModal(true)}
-                      className="inline-flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg font-medium hover:bg-purple-700 active:scale-[0.97] transition-all"
-                    >
-                      <Send className="w-4 h-4" />
-                      Generate Referral
-                    </button>
-                  </div>
+                  <>
+                    <Play className="w-5 h-5" />
+                    Generate Encounter Note
+                  </>
                 )}
-              </>
+              </button>
+            )}
+          </>
+        )}
+
+        {/* DDx & Management Tab */}
+        {activeTab === 'ddx' && (
+          <>
+            <OutputSection
+              title="Differential Diagnosis"
+              content={patient.ddx}
+              field="ddx"
+              expanded={expandedSections.has('ddx')}
+              onToggle={() => toggleSection('ddx')}
+              onCopy={() => copyToClipboard(patient.ddx, 'ddx')}
+              copied={copied === 'ddx'}
+              onSave={(value) => handleSaveField('ddx', value)}
+            />
+
+            <OutputSection
+              title="Recommended Investigations"
+              content={patient.investigations}
+              field="investigations"
+              expanded={expandedSections.has('investigations')}
+              onToggle={() => toggleSection('investigations')}
+              onCopy={() => copyToClipboard(patient.investigations, 'investigations')}
+              copied={copied === 'investigations'}
+              onSave={(value) => handleSaveField('investigations', value)}
+            />
+
+            <OutputSection
+              title="Recommended Management"
+              content={patient.management}
+              field="management"
+              expanded={expandedSections.has('management')}
+              onToggle={() => toggleSection('management')}
+              onCopy={() => copyToClipboard(patient.management, 'management')}
+              copied={copied === 'management'}
+              onSave={(value) => handleSaveField('management', value)}
+            />
+
+            <OutputSection
+              title="Pertinent Evidence"
+              content={patient.evidence}
+              field="evidence"
+              expanded={expandedSections.has('evidence')}
+              onToggle={() => toggleSection('evidence')}
+              onCopy={() => copyToClipboard(patient.evidence, 'evidence')}
+              copied={copied === 'evidence'}
+              onSave={(value) => handleSaveField('evidence', value)}
+            />
+          </>
+        )}
+
+        {/* Referral Tab */}
+        {activeTab === 'referral' && (
+          <>
+            {patient.referral ? (
+              <OutputSection
+                title="Referral Letter"
+                content={patient.referral}
+                field="referral"
+                expanded={expandedSections.has('referral')}
+                onToggle={() => toggleSection('referral')}
+                onCopy={() => copyToClipboard(patient.referral, 'referral')}
+                copied={copied === 'referral'}
+                onSave={(value) => handleSaveField('referral', value)}
+              />
+            ) : (
+              <div className="bg-[var(--card-bg)] rounded-2xl border border-[var(--card-border)] p-6 text-center" style={{ boxShadow: 'var(--card-shadow)' }}>
+                <p className="text-[var(--text-muted)] mb-3">No referral generated yet</p>
+                <button
+                  onClick={() => setShowReferralModal(true)}
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg font-medium hover:bg-purple-700 active:scale-[0.97] transition-all"
+                >
+                  <Send className="w-4 h-4" />
+                  Generate Referral
+                </button>
+              </div>
             )}
           </>
         )}

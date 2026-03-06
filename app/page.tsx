@@ -172,6 +172,12 @@ export default function HomePage() {
         const { rowIndex, sheetName: savedSheet } = await res.json();
         fetchPatients();
         router.push(`/patient/${rowIndex}?sheet=${encodeURIComponent(savedSheet)}`);
+
+        // Fire-and-forget: auto-generate synopsis and DDx/management/evidence
+        const body = JSON.stringify({ rowIndex, sheetName: savedSheet });
+        const headers = { 'Content-Type': 'application/json' };
+        fetch('/api/synopsis', { method: 'POST', headers, body }).catch(() => {});
+        fetch('/api/analysis', { method: 'POST', headers, body }).catch(() => {});
       }
     } catch (error) {
       console.error('Failed to save patient:', error);

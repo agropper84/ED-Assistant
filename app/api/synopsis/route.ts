@@ -18,16 +18,22 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Patient not found' }, { status: 404 });
     }
 
-    if (!patient.hasOutput) {
-      return NextResponse.json({ error: 'Patient has no processed output yet' }, { status: 400 });
-    }
-
-    // Build context from available clinical data
+    // Build context from available clinical data (processed or raw)
     const parts: string[] = [];
     if (patient.hpi) parts.push(`HPI: ${patient.hpi}`);
     if (patient.objective) parts.push(`Objective: ${patient.objective}`);
     if (patient.assessmentPlan) parts.push(`Assessment & Plan: ${patient.assessmentPlan}`);
     if (patient.diagnosis) parts.push(`Diagnosis: ${patient.diagnosis}`);
+    // Fall back to raw data if no processed output
+    if (!patient.hasOutput) {
+      if (patient.triageVitals) parts.push(`Triage Notes: ${patient.triageVitals}`);
+      if (patient.transcript) parts.push(`Transcript: ${patient.transcript}`);
+      if (patient.additional) parts.push(`Additional Findings: ${patient.additional}`);
+    }
+
+    if (parts.length === 0) {
+      return NextResponse.json({ error: 'No clinical data available' }, { status: 400 });
+    }
 
     const response = await anthropic.messages.create({
       model: 'claude-haiku-4-5-20251001',
