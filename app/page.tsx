@@ -379,6 +379,16 @@ export default function HomePage() {
           billingCodes={codes}
           onViewNote={() => router.push(`/patient/${patient.rowIndex}?sheet=${encodeURIComponent(patient.sheetName)}`)}
           onNavigate={() => router.push(`/patient/${patient.rowIndex}?sheet=${encodeURIComponent(patient.sheetName)}`)}
+          onProcess={async () => {
+            let settings: any;
+            try { const s = localStorage.getItem('ed-app-settings'); if (s) settings = JSON.parse(s); } catch {}
+            const res = await fetch('/api/process', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ rowIndex: patient.rowIndex, sheetName: patient.sheetName, settings }),
+            });
+            if (res.ok) fetchPatients();
+          }}
         />
         {isBillingOpen && (
           <div className="mt-1 ml-0">
