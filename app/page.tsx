@@ -6,6 +6,7 @@ import { Patient } from '@/lib/google-sheets';
 import { PatientCard } from '@/components/PatientCard';
 import { ParseModal } from '@/components/ParseModal';
 import { PatientDataModal } from '@/components/PatientDataModal';
+import { BatchTranscribeModal } from '@/components/BatchTranscribeModal';
 import { InlineBilling } from '@/components/BillingSection';
 import {
   BillingItem,
@@ -14,7 +15,7 @@ import {
 import {
   Plus, RefreshCw, Loader2, ChevronLeft, ChevronRight,
   Calendar, Settings, CheckSquare, Square, Play, Clock, EyeOff, Eye,
-  Search, ArrowUpDown, X, LogOut
+  Search, ArrowUpDown, X, LogOut, Upload
 } from 'lucide-react';
 
 function formatDateForSheet(date: Date): string {
@@ -80,6 +81,9 @@ export default function HomePage() {
   // User info
   const [userEmail, setUserEmail] = useState('');
   const [userName, setUserName] = useState('');
+
+  // Batch transcribe
+  const [showBatchTranscribe, setShowBatchTranscribe] = useState(false);
 
   // Search and sort
   const [searchQuery, setSearchQuery] = useState('');
@@ -412,6 +416,14 @@ export default function HomePage() {
                 <Settings className="w-[18px] h-[18px]" />
               </button>
               <button
+                onClick={() => setShowBatchTranscribe(true)}
+                className="p-2 hover:bg-white/10 rounded-full transition-colors"
+                style={{ color: 'var(--dash-text-sub)' }}
+                title="Upload audio for multiple patients"
+              >
+                <Upload className="w-[18px] h-[18px]" />
+              </button>
+              <button
                 onClick={() => fetchPatients(true)}
                 disabled={refreshing}
                 className="p-2 hover:bg-white/10 rounded-full transition-colors"
@@ -691,6 +703,15 @@ export default function HomePage() {
         onSaved={() => fetchPatients()}
         onNavigate={() => dataModalPatient && navigateToPatient(dataModalPatient)}
         onRegenerate={() => fetchPatients()}
+      />
+
+      {/* Batch Transcribe Modal */}
+      <BatchTranscribeModal
+        isOpen={showBatchTranscribe}
+        onClose={() => setShowBatchTranscribe(false)}
+        patients={patients}
+        sheetName={sheetName}
+        onSaved={() => fetchPatients()}
       />
 
       {/* Delete Confirmation */}
