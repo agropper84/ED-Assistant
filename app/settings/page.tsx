@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Trash2, Plus, Pencil, RotateCcw, Loader2, X, Sun, Moon, Monitor } from 'lucide-react';
+import { ArrowLeft, Trash2, Plus, Pencil, RotateCcw, Loader2, X, Sun, Moon, Monitor, Search, ChevronRight, Check } from 'lucide-react';
 import { useTheme } from '@/lib/theme';
 import {
   StyleGuide,
@@ -15,8 +15,17 @@ import {
 } from '@/lib/style-guide';
 import { getSettings, saveSettings, AppSettings, DEFAULT_SETTINGS } from '@/lib/settings';
 import { getExamPresets, saveExamPresets, resetExamPresets, ExamPreset } from '@/lib/exam-presets';
+import {
+  BillingCode, BillingGroup,
+  BILLING_REGIONS, BILLING_GROUPS,
+  getRegion, saveRegion,
+  getDefaultCodesForRegion, getBillingGroups,
+  addBillingCode, deleteBillingCode, isCodeDeleted,
+  resetBillingCodes, resetDeletedCodes,
+  getAllBillingCodes,
+} from '@/lib/billing';
 
-type Tab = 'style' | 'settings';
+type Tab = 'style' | 'settings' | 'billing';
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -34,6 +43,20 @@ export default function SettingsPage() {
   const [presetText, setPresetText] = useState('');
   const [extracting, setExtracting] = useState(false);
   const [saving, setSaving] = useState(false);
+
+  // Billing tab state
+  const [billingRegion, setBillingRegion] = useState('yukon');
+  const [billingCodes, setBillingCodes] = useState<(BillingCode & { group: BillingGroup })[]>([]);
+  const [billingSearch, setBillingSearch] = useState('');
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
+  const [editingCode, setEditingCode] = useState<string | null>(null);
+  const [editDesc, setEditDesc] = useState('');
+  const [editFee, setEditFee] = useState('');
+  const [addingCode, setAddingCode] = useState(false);
+  const [newBillingCode, setNewBillingCode] = useState('');
+  const [newBillingDesc, setNewBillingDesc] = useState('');
+  const [newBillingFee, setNewBillingFee] = useState('');
+  const [newBillingGroup, setNewBillingGroup] = useState<BillingGroup>('Other');
 
   // Debounce timer for guidance textarea
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -84,7 +107,35 @@ export default function SettingsPage() {
     })();
     setSettings(getSettings());
     setExamPresets(getExamPresets());
+    // Billing
+    const r = getRegion();
+    setBillingRegion(r);
+    loadBillingCodes(r);
   }, []);
+
+  const loadBillingCodes = (region: string) => {
+    const codes = getDefaultCodesForRegion(region);
+    // Merge custom overrides and filter deleted
+    const all = getAllBillingCodes();
+    const allMap = new Map(all.map(c => [c.code, c]));
+    // Build merged list: start from region defaults (for group info), apply overrides, filter deleted
+    const merged = codes
+      .filter(c => !isCodeDeleted(c.code))
+      .map(c => {
+        const override = allMap.get(c.code);
+        return override
+          ? { ...c, description: override.description, fee: override.fee }
+          : c;
+      });
+    // Add custom codes that aren't in defaults
+    const defaultCodes = new Set(codes.map(c => c.code));
+    for (const c of all) {
+      if (!defaultCodes.has(c.code)) {
+        merged.push({ ...c, group: 'Other' as BillingGroup });
+      }
+    }
+    setBillingCodes(merged);
+  };
 
   const handleAddExample = async (section: 'hpi' | 'objective' | 'assessmentPlan') => {
     if (!newExample.trim() || !styleGuide) return;
@@ -214,17 +265,21 @@ export default function SettingsPage() {
       {/* Tab Bar */}
       <div className="bg-[var(--bg-primary)] border-b border-[var(--border)] sticky top-[60px] z-30">
         <div className="flex max-w-2xl mx-auto">
-          {(['style', 'settings'] as const).map((tab) => (
+          {([
+            { id: 'style' as const, label: 'Style Guide' },
+            { id: 'settings' as const, label: 'Processing' },
+            { id: 'billing' as const, label: 'Billing Codes' },
+          ]).map(({ id, label }) => (
             <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
+              key={id}
+              onClick={() => setActiveTab(id)}
               className={`flex-1 py-3 text-sm font-medium border-b-2 transition-colors ${
-                activeTab === tab
+                activeTab === id
                   ? 'border-blue-600 text-blue-600 dark:text-blue-400 dark:border-blue-400'
                   : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)]'
               }`}
             >
-              {tab === 'style' ? 'Style Guide' : 'Processing Settings'}
+              {label}
             </button>
           ))}
         </div>
@@ -559,6 +614,268 @@ export default function SettingsPage() {
               </div>
             </div>
           </div>
+        )}
+
+        {/* Billing Tab */}
+        {activeTab === 'billing' && (
+          <>
+            {/* Region selector */}
+            <div className="bg-[var(--card-bg)] rounded-2xl border border-[var(--card-border)] p-5 space-y-3" style={{ boxShadow: 'var(--card-shadow)' }}>
+              <div className="flex items-center justify-between">
+                <h3 className="font-semibold text-[var(--text-primary)]">Fee Region</h3>
+                <button
+                  onClick={() => {
+                    resetBillingCodes();
+                    loadBillingCodes(billingRegion);
+                  }}
+                  className="flex items-center gap-1 px-2.5 py-1.5 text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] rounded-lg text-xs font-medium transition-colors"
+                  title="Reset all billing codes to defaults"
+                >
+                  <RotateCcw className="w-3.5 h-3.5" />
+                  Reset
+                </button>
+              </div>
+              <select
+                value={billingRegion}
+                onChange={(e) => {
+                  const r = e.target.value;
+                  setBillingRegion(r);
+                  saveRegion(r);
+                  loadBillingCodes(r);
+                }}
+                className="w-full p-3 border border-[var(--input-border)] rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)]"
+              >
+                {BILLING_REGIONS.map(r => (
+                  <option key={r.id} value={r.id}>{r.label}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Search + Add */}
+            <div className="flex gap-2">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-muted)]" />
+                <input
+                  type="text"
+                  value={billingSearch}
+                  onChange={(e) => setBillingSearch(e.target.value)}
+                  placeholder="Search codes..."
+                  className="w-full pl-9 pr-8 py-2.5 border border-[var(--input-border)] rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)]"
+                />
+                {billingSearch && (
+                  <button
+                    onClick={() => setBillingSearch('')}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 p-0.5 text-[var(--text-muted)] hover:text-[var(--text-secondary)]"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+              <button
+                onClick={() => {
+                  setAddingCode(true);
+                  setNewBillingCode('');
+                  setNewBillingDesc('');
+                  setNewBillingFee('');
+                  setNewBillingGroup('Other');
+                }}
+                className="flex items-center gap-1 px-4 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-medium flex-shrink-0"
+              >
+                <Plus className="w-4 h-4" />
+                Add
+              </button>
+            </div>
+
+            {/* Add Custom Code Form */}
+            {addingCode && (
+              <div className="bg-[var(--card-bg)] rounded-2xl border border-[var(--card-border)] p-4 space-y-3" style={{ boxShadow: 'var(--card-shadow)' }}>
+                <h4 className="text-sm font-semibold text-[var(--text-primary)]">Add Custom Code</h4>
+                <div className="grid grid-cols-3 gap-2">
+                  <input
+                    type="text"
+                    value={newBillingCode}
+                    onChange={(e) => setNewBillingCode(e.target.value)}
+                    placeholder="Code"
+                    className="p-2 border border-[var(--input-border)] rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)]"
+                    autoFocus
+                  />
+                  <input
+                    type="text"
+                    value={newBillingDesc}
+                    onChange={(e) => setNewBillingDesc(e.target.value)}
+                    placeholder="Description"
+                    className="col-span-2 p-2 border border-[var(--input-border)] rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)]"
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={newBillingFee}
+                    onChange={(e) => setNewBillingFee(e.target.value)}
+                    placeholder="Fee (e.g. 50.00)"
+                    className="flex-1 p-2 border border-[var(--input-border)] rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)]"
+                  />
+                  <select
+                    value={newBillingGroup}
+                    onChange={(e) => setNewBillingGroup(e.target.value as BillingGroup)}
+                    className="flex-1 p-2 border border-[var(--input-border)] rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)]"
+                  >
+                    {BILLING_GROUPS.map(g => (
+                      <option key={g} value={g}>{g}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => {
+                      if (!newBillingCode.trim() || !newBillingDesc.trim()) return;
+                      addBillingCode(newBillingCode.trim(), newBillingDesc.trim(), newBillingFee.trim());
+                      loadBillingCodes(billingRegion);
+                      setAddingCode(false);
+                    }}
+                    disabled={!newBillingCode.trim() || !newBillingDesc.trim()}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium disabled:opacity-50"
+                  >
+                    Save
+                  </button>
+                  <button
+                    onClick={() => setAddingCode(false)}
+                    className="px-4 py-2 bg-[var(--bg-tertiary)] text-[var(--text-secondary)] rounded-lg text-sm font-medium"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Grouped code list */}
+            {(() => {
+              const query = billingSearch.toLowerCase().trim();
+              const filtered = query
+                ? billingCodes.filter(c =>
+                    c.code.toLowerCase().includes(query) ||
+                    c.description.toLowerCase().includes(query)
+                  )
+                : billingCodes;
+
+              const groups = getBillingGroups(billingRegion);
+              // When searching, auto-expand all groups
+              const effectiveExpanded = query ? new Set(groups) : expandedGroups;
+
+              return groups.map(group => {
+                const groupCodes = filtered.filter(c => c.group === group);
+                if (groupCodes.length === 0) return null;
+                const isExpanded = effectiveExpanded.has(group);
+
+                return (
+                  <div key={group} className="bg-[var(--card-bg)] rounded-2xl border border-[var(--card-border)] overflow-hidden" style={{ boxShadow: 'var(--card-shadow)' }}>
+                    <button
+                      onClick={() => {
+                        const next = new Set(expandedGroups);
+                        if (next.has(group)) next.delete(group);
+                        else next.add(group);
+                        setExpandedGroups(next);
+                      }}
+                      className="w-full flex items-center justify-between px-5 py-3 hover:bg-[var(--bg-tertiary)] transition-colors"
+                    >
+                      <div className="flex items-center gap-2">
+                        <ChevronRight className={`w-4 h-4 text-[var(--text-muted)] transition-transform ${isExpanded ? 'rotate-90' : ''}`} />
+                        <h3 className="font-semibold text-sm text-[var(--text-primary)]">{group}</h3>
+                        <span className="text-xs text-[var(--text-muted)] bg-[var(--bg-tertiary)] px-2 py-0.5 rounded-full">
+                          {groupCodes.length}
+                        </span>
+                      </div>
+                    </button>
+
+                    {isExpanded && (
+                      <div className="border-t border-[var(--border)] divide-y divide-[var(--border)]">
+                        {groupCodes.map(item => (
+                          <div key={item.code} className="px-5 py-2.5 group">
+                            {editingCode === item.code ? (
+                              <div className="space-y-2">
+                                <div className="flex items-center gap-2">
+                                  <span className="px-2 py-0.5 bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 rounded text-xs font-mono font-semibold flex-shrink-0">
+                                    {item.code}
+                                  </span>
+                                  <input
+                                    type="text"
+                                    value={editDesc}
+                                    onChange={(e) => setEditDesc(e.target.value)}
+                                    className="flex-1 p-1.5 border border-[var(--input-border)] rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)]"
+                                    autoFocus
+                                  />
+                                  <input
+                                    type="text"
+                                    value={editFee}
+                                    onChange={(e) => setEditFee(e.target.value)}
+                                    placeholder="Fee"
+                                    className="w-24 p-1.5 border border-[var(--input-border)] rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)]"
+                                  />
+                                </div>
+                                <div className="flex gap-2">
+                                  <button
+                                    onClick={() => {
+                                      addBillingCode(item.code, editDesc.trim(), editFee.trim());
+                                      loadBillingCodes(billingRegion);
+                                      setEditingCode(null);
+                                    }}
+                                    className="px-3 py-1 bg-blue-600 text-white rounded-lg text-xs font-medium"
+                                  >
+                                    Save
+                                  </button>
+                                  <button
+                                    onClick={() => setEditingCode(null)}
+                                    className="px-3 py-1 bg-[var(--bg-tertiary)] text-[var(--text-secondary)] rounded-lg text-xs font-medium"
+                                  >
+                                    Cancel
+                                  </button>
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2 min-w-0 flex-1">
+                                  <span className="px-2 py-0.5 bg-[var(--bg-tertiary)] text-[var(--text-secondary)] rounded text-xs font-mono font-semibold flex-shrink-0">
+                                    {item.code}
+                                  </span>
+                                  <span className="text-sm text-[var(--text-primary)] truncate">{item.description}</span>
+                                </div>
+                                <div className="flex items-center gap-2 flex-shrink-0">
+                                  {item.fee && (
+                                    <span className="text-sm text-[var(--text-secondary)] font-medium">${item.fee}</span>
+                                  )}
+                                  <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <button
+                                      onClick={() => {
+                                        setEditingCode(item.code);
+                                        setEditDesc(item.description);
+                                        setEditFee(item.fee);
+                                      }}
+                                      className="p-1 bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400 rounded"
+                                    >
+                                      <Pencil className="w-3.5 h-3.5" />
+                                    </button>
+                                    <button
+                                      onClick={() => {
+                                        deleteBillingCode(item.code);
+                                        loadBillingCodes(billingRegion);
+                                      }}
+                                      className="p-1 bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400 rounded"
+                                    >
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              });
+            })()}
+          </>
         )}
       </main>
     </div>
