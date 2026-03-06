@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Patient } from '@/lib/google-sheets';
-import { Clock, User, FileText, ChevronRight, Trash2, MessageSquare, DollarSign, Stethoscope, Copy, Check, Brain, ClipboardList, BookOpen } from 'lucide-react';
+import { Clock, User, FileText, ChevronRight, Trash2, MessageSquare, DollarSign, Stethoscope, Copy, Check, Brain, ClipboardList, BookOpen, Play, Loader2 } from 'lucide-react';
 
 interface PatientCardProps {
   patient: Patient;
@@ -14,6 +14,7 @@ interface PatientCardProps {
   billingCodes?: string;
   onViewNote?: () => void;
   onNavigate?: () => void;
+  onProcess?: () => Promise<void>;
 }
 
 /** Convert a full name to initials, e.g. "John Smith" → "J.S." */
@@ -26,10 +27,11 @@ function toInitials(name: string): string {
     .join('');
 }
 
-export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChange, onBillingToggle, billingCodes, onViewNote, onNavigate }: PatientCardProps) {
+export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChange, onBillingToggle, billingCodes, onViewNote, onNavigate, onProcess }: PatientCardProps) {
   const [editingTime, setEditingTime] = useState(false);
   const [timeValue, setTimeValue] = useState(patient.timestamp || '');
   const [noteCopied, setNoteCopied] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const statusColors: Record<string, string> = {
     new: 'bg-blue-100 text-blue-800 dark:bg-blue-950/50 dark:text-blue-300 dark:border dark:border-blue-800',
@@ -39,7 +41,7 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
 
   const statusLabels: Record<string, string> = {
     new: 'New',
-    pending: 'Ready to Process',
+    pending: 'Create Encounter Note',
     processed: 'Processed',
   };
 
@@ -162,6 +164,27 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
                 </div>
               )}
             </>
+          ) : patient.status === 'pending' && onProcess ? (
+            <span
+              onClick={async (e) => {
+                e.stopPropagation();
+                if (isProcessing) return;
+                setIsProcessing(true);
+                try {
+                  await onProcess();
+                } finally {
+                  setIsProcessing(false);
+                }
+              }}
+              className={`badge ${statusColors[patient.status]} cursor-pointer hover:brightness-95 dark:hover:brightness-125 active:scale-[0.97] transition-all inline-flex items-center gap-1`}
+            >
+              {isProcessing ? (
+                <Loader2 className="w-3 h-3 animate-spin" />
+              ) : (
+                <Play className="w-3 h-3" />
+              )}
+              {isProcessing ? 'Processing...' : statusLabels[patient.status]}
+            </span>
           ) : (
             <span className={`badge ${statusColors[patient.status]}`}>
               {statusLabels[patient.status]}
