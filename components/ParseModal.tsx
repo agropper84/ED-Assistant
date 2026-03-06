@@ -48,6 +48,7 @@ export function ParseModal({ isOpen, onClose, onSave }: ParseModalProps) {
   const [pasteText, setPasteText] = useState('');
   const [triageVitals, setTriageVitals] = useState('');
   const [transcript, setTranscript] = useState('');
+  const [preRecordTranscript, setPreRecordTranscript] = useState('');
   const [encounterNotes, setEncounterNotes] = useState('');
   const [additional, setAdditional] = useState('');
   const [pastDocs, setPastDocs] = useState('');
@@ -212,7 +213,14 @@ export function ParseModal({ isOpen, onClose, onSave }: ParseModalProps) {
                 Transcript (optional)
               </label>
               <VoiceRecorder
-                onTranscript={(text) => setTranscript(prev => prev ? `${prev}\n\n${text}` : text)}
+                onTranscript={(text) => {
+                  const base = preRecordTranscript || transcript;
+                  setTranscript(base ? `${base}\n\n${text}` : text);
+                }}
+                onRecordingStart={() => setPreRecordTranscript(transcript)}
+                onInterimTranscript={(text) => {
+                  setTranscript(preRecordTranscript ? `${preRecordTranscript}\n\n${text}` : text);
+                }}
               />
             </div>
             <textarea

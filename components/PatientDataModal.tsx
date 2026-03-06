@@ -38,6 +38,7 @@ interface PatientDataModalProps {
 
 export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate, onRegenerate, suggestions = [] }: PatientDataModalProps) {
   const [transcript, setTranscript] = useState('');
+  const [preRecordTranscript, setPreRecordTranscript] = useState('');
   const [encounterNotes, setEncounterNotes] = useState('');
   const [triageVitals, setTriageVitals] = useState('');
   const [additional, setAdditional] = useState('');
@@ -139,7 +140,14 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
                 Transcript
               </label>
               <VoiceRecorder
-                onTranscript={(text) => setTranscript(prev => prev ? `${prev}\n\n${text}` : text)}
+                onTranscript={(text) => {
+                  const base = preRecordTranscript || transcript;
+                  setTranscript(base ? `${base}\n\n${text}` : text);
+                }}
+                onRecordingStart={() => setPreRecordTranscript(transcript)}
+                onInterimTranscript={(text) => {
+                  setTranscript(preRecordTranscript ? `${preRecordTranscript}\n\n${text}` : text);
+                }}
               />
             </div>
             <textarea
