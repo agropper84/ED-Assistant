@@ -164,34 +164,35 @@ button, .btn {
   background: var(--shift-hover);
 }
 
-/* Shift time selects — subtle bordered, no arrow */
-.shift-select {
+/* Shift time selects — plain row, centered text, wider, no arrow */
+.shift-select-plain {
   appearance: none;
   -webkit-appearance: none;
   -moz-appearance: none;
-  background: var(--shift-input-bg);
-  border: 1px solid var(--shift-input-border);
+  background: var(--input-bg);
+  border: 1px solid var(--input-border);
   border-radius: 6px;
-  color: var(--shift-text);
-  font-size: 0.75rem;
-  padding: 2px 8px;
-  min-height: 26px;
-  min-width: 26px;
-  cursor: pointer;
-  transition: background 0.2s ease, border-color 0.2s ease;
-}
-.shift-select:hover {
-  background: var(--shift-input-hover);
-  border-color: rgba(255,255,255,0.3);
-}
-.shift-select:focus {
-  outline: none;
-  border-color: rgba(255,255,255,0.4);
-  box-shadow: 0 0 0 2px rgba(255,255,255,0.1);
-}
-.shift-select option {
-  background: var(--bg-primary);
   color: var(--text-primary);
+  font-size: 0.75rem;
+  padding: 2px 4px;
+  min-height: 26px;
+  width: 100px;
+  text-align: center;
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.shift-select-plain:hover {
+  background: var(--bg-tertiary);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px rgba(37,99,235,0.1);
+}
+.shift-select-plain:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(37,99,235,0.15);
+}
+.shift-select-plain option {
+  text-align: center;
 }
 
 /* Dashboard sub-rows (date, shift) — subtle hover glow */

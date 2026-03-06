@@ -430,41 +430,41 @@ export default function HomePage() {
       </header>
 
       {/* Date Navigation */}
-      <div className="dash-row sticky top-[76px] z-30">
+      <div className="dash-shift-row sticky top-[76px] z-30">
         <div className="flex items-center justify-between max-w-2xl mx-auto px-4 h-11">
           <button
             onClick={goToPreviousDay}
-            className="p-2 hover:bg-[var(--bg-tertiary)] rounded-full"
+            className="p-2 hover:bg-white/10 rounded-full"
           >
-            <ChevronLeft className="w-5 h-5 text-[var(--text-secondary)]" />
+            <ChevronLeft className="w-5 h-5" style={{ color: 'var(--shift-text)' }} />
           </button>
           <button
             onClick={goToToday}
-            className="flex items-center gap-2 px-3 py-1.5 hover:bg-[var(--bg-tertiary)] rounded-lg"
+            className="flex items-center gap-2 px-3 py-1.5 hover:bg-white/10 rounded-lg"
           >
-            <Calendar className="w-4 h-4 text-[var(--text-muted)]" />
-            <span className="font-medium text-[var(--text-primary)]">{formatDateDisplay(currentDate)}</span>
+            <Calendar className="w-4 h-4" style={{ color: 'var(--shift-text-muted)' }} />
+            <span className="font-medium" style={{ color: 'var(--shift-text)' }}>{formatDateDisplay(currentDate)}</span>
             {!isToday && (
-              <span className="text-xs font-medium ml-1" style={{ color: 'var(--accent-orange)' }}>Go to today</span>
+              <span className="text-xs font-medium ml-1 text-amber-300">Go to today</span>
             )}
           </button>
           <button
             onClick={goToNextDay}
             disabled={isToday}
-            className="p-2 hover:bg-[var(--bg-tertiary)] rounded-full disabled:opacity-30"
+            className="p-2 hover:bg-white/10 rounded-full disabled:opacity-30"
           >
-            <ChevronRight className="w-5 h-5 text-[var(--text-secondary)]" />
+            <ChevronRight className="w-5 h-5" style={{ color: 'var(--shift-text)' }} />
           </button>
         </div>
       </div>
 
       {/* Shift Times */}
-      <div className="dash-shift-row border-b border-[var(--border)]">
-        <div className="max-w-2xl mx-auto px-4 flex items-center gap-2.5 h-8">
+      <div className="dash-row border-b border-[var(--border)]">
+        <div className="max-w-2xl mx-auto px-4 flex items-center justify-center gap-2.5 h-8">
           <select
             value={shiftStart}
             onChange={(e) => { setShiftStart(e.target.value); handleShiftTimeSave({ start: e.target.value }); }}
-            className="shift-select"
+            className="shift-select-plain"
           >
             <option value="">Start</option>
             <option value="08:00">8:00 AM</option>
@@ -473,11 +473,11 @@ export default function HomePage() {
             <option value="18:00">6:00 PM</option>
             <option value="23:00">11:00 PM</option>
           </select>
-          <span className="text-xs" style={{ color: 'var(--shift-text-muted)' }}>–</span>
+          <span className="text-xs text-[var(--text-muted)]">–</span>
           <select
             value={shiftEnd}
             onChange={(e) => { setShiftEnd(e.target.value); handleShiftTimeSave({ end: e.target.value }); }}
-            className="shift-select"
+            className="shift-select-plain"
           >
             <option value="">End</option>
             <option value="15:00">3:00 PM</option>
@@ -487,10 +487,10 @@ export default function HomePage() {
             <option value="08:00">8:00 AM</option>
           </select>
           {shiftHours && (
-            <span className="text-xs flex-shrink-0" style={{ color: 'var(--shift-text-muted)' }}>{shiftHours}h</span>
+            <span className="text-xs flex-shrink-0 text-[var(--text-muted)]">{shiftHours}h</span>
           )}
           {shiftCode && (
-            <span className="text-[10px] font-mono flex-shrink-0" style={{ color: 'var(--shift-text-muted)' }}>{shiftCode}</span>
+            <span className="text-[10px] font-mono flex-shrink-0 text-[var(--text-muted)]">{shiftCode}</span>
           )}
           {shiftTotal && (
             <span className="text-xs font-semibold flex-shrink-0" style={{ color: 'var(--accent-green)' }}>${shiftTotal}</span>
