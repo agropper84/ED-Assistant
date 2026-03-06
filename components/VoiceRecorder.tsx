@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { Mic, Square, Loader2 } from 'lucide-react';
+import { Mic, Square, Loader2, Upload } from 'lucide-react';
 
 type RecorderState = 'idle' | 'recording' | 'transcribing' | 'error';
 
@@ -18,6 +18,7 @@ export function VoiceRecorder({ onTranscript, disabled }: VoiceRecorderProps) {
   const chunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   // Clear error after 3 seconds
   useEffect(() => {
@@ -126,6 +127,38 @@ export function VoiceRecorder({ onTranscript, disabled }: VoiceRecorderProps) {
     }
   }, []);
 
+  const handleFileUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    // Reset input so the same file can be re-selected
+    e.target.value = '';
+
+    setState('transcribing');
+    try {
+      const formData = new FormData();
+      formData.append('audio', file, file.name);
+
+      const res = await fetch('/api/transcribe', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: 'Transcription failed' }));
+        throw new Error(err.error || `Failed (${res.status})`);
+      }
+
+      const { text } = await res.json();
+      if (text?.trim()) {
+        onTranscript(text.trim());
+      }
+      setState('idle');
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Transcription failed');
+      setState('error');
+    }
+  }, [onTranscript]);
+
   const formatTime = (seconds: number): string => {
     const m = Math.floor(seconds / 60);
     const s = seconds % 60;
@@ -168,15 +201,34 @@ export function VoiceRecorder({ onTranscript, disabled }: VoiceRecorderProps) {
 
   // idle
   return (
-    <button
-      type="button"
-      onClick={startRecording}
-      disabled={disabled}
-      className="inline-flex items-center gap-1 px-2 py-1 text-xs text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-      title="Record audio"
-    >
-      <Mic className="w-3.5 h-3.5" />
-      Record
-    </button>
+    <span className="inline-flex items-center gap-1">
+      <button
+        type="button"
+        onClick={startRecording}
+        disabled={disabled}
+        className="inline-flex items-center gap-1 px-2 py-1 text-xs text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        title="Record audio"
+      >
+        <Mic className="w-3.5 h-3.5" />
+        Record
+      </button>
+      <button
+        type="button"
+        onClick={() => fileInputRef.current?.click()}
+        disabled={disabled}
+        className="inline-flex items-center gap-1 px-2 py-1 text-xs text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        title="Upload audio file"
+      >
+        <Upload className="w-3.5 h-3.5" />
+        Upload
+      </button>
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="audio/*"
+        onChange={handleFileUpload}
+        className="hidden"
+      />
+    </span>
   );
 }
