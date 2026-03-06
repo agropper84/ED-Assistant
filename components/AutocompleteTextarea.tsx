@@ -2,6 +2,12 @@
 
 import { useState, useRef, useCallback, useEffect } from 'react';
 
+interface PatientContext {
+  age?: string;
+  gender?: string;
+  chiefComplaint?: string;
+}
+
 interface AutocompleteTextareaProps {
   value: string;
   onChange: (value: string) => void;
@@ -10,6 +16,7 @@ interface AutocompleteTextareaProps {
   className?: string;
   textareaClassName?: string;
   rows?: number;
+  patientContext?: PatientContext;
 }
 
 /** Find the partial text from the last sentence boundary to end of value */
@@ -38,19 +45,73 @@ export function AutocompleteTextarea({
   className,
   textareaClassName,
   rows = 7,
+  patientContext,
 }: AutocompleteTextareaProps) {
   const [ghost, setGhost] = useState('');
+  const [isAIGhost, setIsAIGhost] = useState(false);
+  const [aiLoading, setAiLoading] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const mirrorRef = useRef<HTMLDivElement>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
+
+  const fetchAICompletion = useCallback(async (partial: string, fullText: string) => {
+    // Abort any in-flight request
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+
+    setAiLoading(true);
+    try {
+      const res = await fetch('/api/autocomplete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          partial,
+          context: {
+            age: patientContext?.age,
+            gender: patientContext?.gender,
+            chiefComplaint: patientContext?.chiefComplaint,
+            textBefore: fullText,
+          },
+        }),
+        signal: controller.signal,
+      });
+
+      if (!controller.signal.aborted) {
+        const data = await res.json();
+        if (data.completion && !controller.signal.aborted) {
+          setGhost(data.completion);
+          setIsAIGhost(true);
+        }
+      }
+    } catch {
+      // Silent failure — autocomplete is non-critical
+    } finally {
+      if (!controller.signal.aborted) {
+        setAiLoading(false);
+      }
+    }
+  }, [patientContext]);
 
   // Compute ghost text whenever value or suggestions change
   const computeGhost = useCallback((currentValue: string) => {
+    // Clear pending debounce + abort in-flight AI request
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current);
+      debounceRef.current = null;
+    }
+    abortRef.current?.abort();
+    setAiLoading(false);
+    setIsAIGhost(false);
+
     const partial = getPartial(currentValue);
     if (partial.length < 3) {
       setGhost('');
       return;
     }
 
+    // Try corpus prefix match (instant)
     const lowerPartial = partial.toLowerCase();
     for (const suggestion of suggestions) {
       if (suggestion.startsWith(lowerPartial) && suggestion.length > lowerPartial.length) {
@@ -58,12 +119,27 @@ export function AutocompleteTextarea({
         return;
       }
     }
+
+    // No corpus match — schedule AI fallback if context available
     setGhost('');
-  }, [suggestions]);
+    if (patientContext) {
+      debounceRef.current = setTimeout(() => {
+        fetchAICompletion(partial, currentValue);
+      }, 800);
+    }
+  }, [suggestions, patientContext, fetchAICompletion]);
 
   useEffect(() => {
     computeGhost(value);
   }, [value, computeGhost]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+      abortRef.current?.abort();
+    };
+  }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     onChange(e.target.value);
@@ -74,8 +150,17 @@ export function AutocompleteTextarea({
       e.preventDefault();
       onChange(value + ghost);
       setGhost('');
-    } else if (e.key === 'Escape' && ghost) {
+      setIsAIGhost(false);
+      setAiLoading(false);
+    } else if (e.key === 'Escape' && (ghost || aiLoading)) {
       setGhost('');
+      setIsAIGhost(false);
+      setAiLoading(false);
+      if (debounceRef.current) {
+        clearTimeout(debounceRef.current);
+        debounceRef.current = null;
+      }
+      abortRef.current?.abort();
     }
   };
 
@@ -95,8 +180,13 @@ export function AutocompleteTextarea({
       >
         <span style={{ visibility: 'hidden' }}>{value}</span>
         {ghost && (
-          <span className="text-[var(--text-muted)]" style={{ opacity: 0.4 }}>
+          <span className="text-[var(--text-muted)]" style={{ opacity: isAIGhost ? 0.5 : 0.4 }}>
             {ghost}
+          </span>
+        )}
+        {aiLoading && !ghost && (
+          <span className="text-[var(--text-muted)] animate-pulse" style={{ opacity: 0.3 }}>
+            {' ...'}
           </span>
         )}
       </div>
