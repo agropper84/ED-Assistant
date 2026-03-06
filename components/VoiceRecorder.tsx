@@ -7,10 +7,12 @@ type RecorderState = 'idle' | 'recording' | 'transcribing' | 'error';
 
 interface VoiceRecorderProps {
   onTranscript: (text: string) => void;
+  onInterimTranscript?: (text: string) => void;
+  onRecordingStart?: () => void;
   disabled?: boolean;
 }
 
-export function VoiceRecorder({ onTranscript, disabled }: VoiceRecorderProps) {
+export function VoiceRecorder({ onTranscript, onInterimTranscript, onRecordingStart, disabled }: VoiceRecorderProps) {
   const [state, setState] = useState<RecorderState>('idle');
   const [elapsed, setElapsed] = useState(0);
   const [errorMsg, setErrorMsg] = useState('');
@@ -19,6 +21,7 @@ export function VoiceRecorder({ onTranscript, disabled }: VoiceRecorderProps) {
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const recognitionRef = useRef<any>(null);
 
   // Clear error after 3 seconds
   useEffect(() => {
@@ -34,6 +37,10 @@ export function VoiceRecorder({ onTranscript, disabled }: VoiceRecorderProps) {
       if (timerRef.current) clearInterval(timerRef.current);
       if (streamRef.current) {
         streamRef.current.getTracks().forEach(t => t.stop());
+      }
+      if (recognitionRef.current) {
+        try { recognitionRef.current.abort(); } catch {}
+        recognitionRef.current = null;
       }
     };
   }, []);
@@ -114,14 +121,59 @@ export function VoiceRecorder({ onTranscript, disabled }: VoiceRecorderProps) {
       setElapsed(0);
       setState('recording');
       timerRef.current = setInterval(() => setElapsed(s => s + 1), 1000);
+
+      // Notify caller that recording started (for snapshotting current text)
+      onRecordingStart?.();
+
+      // Start Web Speech API for live interim transcription
+      const SpeechRecognitionAPI = typeof window !== 'undefined'
+        ? (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
+        : null;
+      if (SpeechRecognitionAPI && onInterimTranscript) {
+        try {
+          const recognition = new SpeechRecognitionAPI();
+          recognition.continuous = true;
+          recognition.interimResults = true;
+          recognition.lang = 'en-US';
+
+          let finalTranscript = '';
+          recognition.onresult = (event: any) => {
+            let interim = '';
+            for (let i = event.resultIndex; i < event.results.length; i++) {
+              if (event.results[i].isFinal) {
+                finalTranscript += event.results[i][0].transcript + ' ';
+              } else {
+                interim += event.results[i][0].transcript;
+              }
+            }
+            onInterimTranscript((finalTranscript + interim).trim());
+          };
+          recognition.onerror = () => {}; // silent degradation
+          recognition.onend = () => {
+            // Auto-restart if still recording (Web Speech can stop after silence)
+            if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+              try { recognition.start(); } catch {}
+            }
+          };
+          recognition.start();
+          recognitionRef.current = recognition;
+        } catch {
+          // SpeechRecognition not available — silent fallback
+        }
+      }
     } catch (err: any) {
       // Mic permission denied or not available
       setErrorMsg(err.name === 'NotAllowedError' ? 'Microphone access denied' : 'Microphone unavailable');
       setState('error');
     }
-  }, [onTranscript]);
+  }, [onTranscript, onInterimTranscript, onRecordingStart]);
 
   const stopRecording = useCallback(() => {
+    // Stop SpeechRecognition
+    if (recognitionRef.current) {
+      try { recognitionRef.current.abort(); } catch {}
+      recognitionRef.current = null;
+    }
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
       mediaRecorderRef.current.stop();
     }

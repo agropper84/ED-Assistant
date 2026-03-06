@@ -59,6 +59,7 @@ export default function PatientPage() {
   const [showQuickAdd, setShowQuickAdd] = useState(false);
   const [quickAddText, setQuickAddText] = useState('');
   const [savingQuickAdd, setSavingQuickAdd] = useState(false);
+  const [preRecordQuickAdd, setPreRecordQuickAdd] = useState('');
 
   // Error state
   const [processError, setProcessError] = useState('');
@@ -767,7 +768,14 @@ export default function PatientPage() {
                 <div className="flex items-center justify-between">
                   <h4 className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-widest">Quick Add Note</h4>
                   <VoiceRecorder
-                    onTranscript={(text) => setQuickAddText(prev => prev ? `${prev}\n${text}` : text)}
+                    onTranscript={(text) => {
+                      const base = preRecordQuickAdd || quickAddText;
+                      setQuickAddText(base ? `${base}\n${text}` : text);
+                    }}
+                    onRecordingStart={() => setPreRecordQuickAdd(quickAddText)}
+                    onInterimTranscript={(text) => {
+                      setQuickAddText(preRecordQuickAdd ? `${preRecordQuickAdd}\n${text}` : text);
+                    }}
                   />
                 </div>
                 <textarea
@@ -853,6 +861,7 @@ function OutputSection({
   const [editing, setEditing] = useState(false);
   const [editValue, setEditValue] = useState(content);
   const [regenerating, setRegenerating] = useState(false);
+  const [preRecordText, setPreRecordText] = useState('');
 
   if (!content && !editing && !onSave) return null;
 
@@ -957,7 +966,15 @@ function OutputSection({
               )}
               <div className="flex items-center justify-between">
                 <VoiceRecorder
-                  onTranscript={(text) => setEditValue(prev => prev ? `${prev}\n\n${text}` : text)}
+                  onTranscript={(text) => {
+                    const base = preRecordText || editValue;
+                    setEditValue(base ? `${base}\n\n${text}` : text);
+                  }}
+                  onRecordingStart={() => setPreRecordText(editValue)}
+                  onInterimTranscript={(text) => {
+                    const base = preRecordText;
+                    setEditValue(base ? `${base}\n\n${text}` : text);
+                  }}
                 />
               </div>
               <textarea
