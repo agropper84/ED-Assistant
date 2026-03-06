@@ -49,6 +49,14 @@ export default function PatientPage() {
   const [billingItems, setBillingItems] = useState<BillingItem[]>([]);
   const [billingComments, setBillingComments] = useState('');
 
+  // Synopsis state
+  const [generatingSynopsis, setGeneratingSynopsis] = useState(false);
+
+  // Quick-add note state
+  const [showQuickAdd, setShowQuickAdd] = useState(false);
+  const [quickAddText, setQuickAddText] = useState('');
+  const [savingQuickAdd, setSavingQuickAdd] = useState(false);
+
   // Error state
   const [processError, setProcessError] = useState('');
 
@@ -209,6 +217,38 @@ export default function PatientPage() {
     await fetchPatient();
   };
 
+  const handleGenerateSynopsis = async () => {
+    setGeneratingSynopsis(true);
+    try {
+      const res = await fetch('/api/synopsis', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rowIndex: parseInt(rowIndex), sheetName }),
+      });
+      if (res.ok) {
+        await fetchPatient();
+      }
+    } catch (error) {
+      console.error('Failed to generate synopsis:', error);
+    } finally {
+      setGeneratingSynopsis(false);
+    }
+  };
+
+  const handleQuickAddSave = async () => {
+    if (!quickAddText.trim() || !patient) return;
+    setSavingQuickAdd(true);
+    try {
+      const current = patient.additional || '';
+      const updated = current ? `${current}\n${quickAddText.trim()}` : quickAddText.trim();
+      await handleSaveField('additional', updated);
+      setQuickAddText('');
+      setShowQuickAdd(false);
+    } finally {
+      setSavingQuickAdd(false);
+    }
+  };
+
   const handleReferralGenerated = async () => {
     await fetchPatient();
     setShowReferralModal(false);
@@ -305,6 +345,61 @@ export default function PatientPage() {
             )}
           </div>
         </div>
+
+        {/* Synopsis Card */}
+        {patient.hasOutput && (
+          <div className="bg-[var(--card-bg)] rounded-2xl border border-[var(--card-border)] p-5" style={{ boxShadow: 'var(--card-shadow)' }}>
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-widest">AI Synopsis</h3>
+              {patient.synopsis && (
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => copyToClipboard(patient.synopsis, 'synopsis')}
+                    className="p-1.5 hover:bg-[var(--bg-tertiary)] rounded-lg transition-colors"
+                  >
+                    {copied === 'synopsis' ? (
+                      <Check className="w-3.5 h-3.5 text-green-600 dark:text-green-400" />
+                    ) : (
+                      <Copy className="w-3.5 h-3.5 text-[var(--text-muted)]" />
+                    )}
+                  </button>
+                  <button
+                    onClick={handleGenerateSynopsis}
+                    disabled={generatingSynopsis}
+                    className="p-1.5 hover:bg-[var(--bg-tertiary)] rounded-lg transition-colors"
+                  >
+                    {generatingSynopsis ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin text-[var(--text-muted)]" />
+                    ) : (
+                      <RefreshCw className="w-3.5 h-3.5 text-[var(--text-muted)]" />
+                    )}
+                  </button>
+                </div>
+              )}
+            </div>
+            {patient.synopsis ? (
+              <p className="text-sm text-[var(--text-secondary)] leading-relaxed">{patient.synopsis}</p>
+            ) : (
+              <button
+                onClick={handleGenerateSynopsis}
+                disabled={generatingSynopsis}
+                className="w-full py-2.5 border border-dashed border-[var(--border)] text-[var(--text-muted)] rounded-xl text-sm font-medium flex items-center justify-center gap-2 hover:bg-[var(--bg-tertiary)] active:scale-[0.99] transition-all"
+              >
+                {generatingSynopsis ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Generating...
+                  </>
+                ) : (
+                  <>
+                    <FileText className="w-4 h-4" />
+                    Generate Synopsis
+                  </>
+                )}
+              </button>
+            )}
+          </div>
+        )}
 
         {/* Process Button */}
         {!patient.hasOutput && (
@@ -488,7 +583,7 @@ export default function PatientPage() {
                 />
 
                 <OutputSection
-                  title="Investigations"
+                  title="Recommended Investigations"
                   content={patient.investigations}
                   field="investigations"
                   expanded={expandedSections.has('investigations')}
@@ -496,6 +591,28 @@ export default function PatientPage() {
                   onCopy={() => copyToClipboard(patient.investigations, 'investigations')}
                   copied={copied === 'investigations'}
                   onSave={(value) => handleSaveField('investigations', value)}
+                />
+
+                <OutputSection
+                  title="Recommended Management"
+                  content={patient.management}
+                  field="management"
+                  expanded={expandedSections.has('management')}
+                  onToggle={() => toggleSection('management')}
+                  onCopy={() => copyToClipboard(patient.management, 'management')}
+                  copied={copied === 'management'}
+                  onSave={(value) => handleSaveField('management', value)}
+                />
+
+                <OutputSection
+                  title="Pertinent Evidence"
+                  content={patient.evidence}
+                  field="evidence"
+                  expanded={expandedSections.has('evidence')}
+                  onToggle={() => toggleSection('evidence')}
+                  onCopy={() => copyToClipboard(patient.evidence, 'evidence')}
+                  copied={copied === 'evidence'}
+                  onSave={(value) => handleSaveField('evidence', value)}
                 />
               </>
             )}
@@ -581,6 +698,68 @@ export default function PatientPage() {
             variant="muted"
             onSave={(value) => handleSaveField('transcript', value)}
           />
+
+          <OutputSection
+            title="Additional Findings"
+            content={patient.additional || ''}
+            field="additional"
+            expanded={expandedSections.has('additional')}
+            onToggle={() => toggleSection('additional')}
+            onCopy={() => copyToClipboard(patient.additional || '', 'additional')}
+            copied={copied === 'additional'}
+            variant="muted"
+            onSave={(value) => handleSaveField('additional', value)}
+          />
+
+          {/* Quick-add Note */}
+          <div className="mt-3">
+            {!showQuickAdd ? (
+              <button
+                onClick={() => setShowQuickAdd(true)}
+                className="w-full py-2.5 border border-dashed border-[var(--border)] text-[var(--text-muted)] rounded-xl text-sm font-medium flex items-center justify-center gap-2 hover:bg-[var(--bg-tertiary)] active:scale-[0.99] transition-all"
+              >
+                <Plus className="w-4 h-4" />
+                Add Note
+              </button>
+            ) : (
+              <div className="bg-[var(--bg-tertiary)] rounded-xl border border-[var(--border-light)] p-4 space-y-3 animate-slideUp">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-widest">Quick Add Note</h4>
+                  <VoiceRecorder
+                    onTranscript={(text) => setQuickAddText(prev => prev ? `${prev}\n${text}` : text)}
+                  />
+                </div>
+                <textarea
+                  value={quickAddText}
+                  onChange={(e) => setQuickAddText(e.target.value)}
+                  placeholder="Add exam findings, investigation results, or clinical notes..."
+                  className="w-full h-24 p-3 border border-[var(--input-border)] rounded-lg text-sm resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)]"
+                  autoFocus
+                />
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleQuickAddSave}
+                    disabled={savingQuickAdd || !quickAddText.trim()}
+                    className="flex items-center gap-1 px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-medium disabled:opacity-50 active:scale-[0.97] transition-all"
+                  >
+                    {savingQuickAdd ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      <Save className="w-3.5 h-3.5" />
+                    )}
+                    Save
+                  </button>
+                  <button
+                    onClick={() => { setShowQuickAdd(false); setQuickAddText(''); }}
+                    className="flex items-center gap-1 px-4 py-2 bg-[var(--bg-tertiary)] text-[var(--text-secondary)] rounded-lg text-sm font-medium border border-[var(--border)] active:scale-[0.97] transition-all"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </main>
 

@@ -30,6 +30,9 @@ const HEADERS = [
   'Assessment & Plan', // Y
   'Referral',    // Z
   'Past Docs',   // AA
+  'Synopsis',    // AB
+  'Management',  // AC
+  'Evidence',    // AD
 ];
 
 export async function createUserSpreadsheet(
@@ -50,7 +53,7 @@ export async function createUserSpreadsheet(
             title: 'Template',
             gridProperties: {
               rowCount: 200,
-              columnCount: 27, // A through AA
+              columnCount: 30, // A through AD
             },
           },
         },
@@ -64,7 +67,7 @@ export async function createUserSpreadsheet(
   // Write header row at row 7
   await sheets.spreadsheets.values.update({
     spreadsheetId,
-    range: `'Template'!A${HEADER_ROW}:AA${HEADER_ROW}`,
+    range: `'Template'!A${HEADER_ROW}:AD${HEADER_ROW}`,
     valueInputOption: 'RAW',
     requestBody: {
       values: [HEADERS],
@@ -84,7 +87,7 @@ export async function createUserSpreadsheet(
               startRowIndex: HEADER_ROW - 1, // 0-indexed
               endRowIndex: HEADER_ROW,
               startColumnIndex: 0,
-              endColumnIndex: 27,
+              endColumnIndex: 30,
             },
             cell: {
               userEnteredFormat: {

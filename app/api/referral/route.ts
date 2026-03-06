@@ -36,6 +36,8 @@ export async function POST(request: NextRequest) {
       {
         ddx: patient.ddx,
         investigations: patient.investigations,
+        management: patient.management,
+        evidence: patient.evidence,
         hpi: patient.hpi,
         objective: patient.objective,
         assessmentPlan: patient.assessmentPlan,
