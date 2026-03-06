@@ -444,3 +444,91 @@ export function filterAdditionalCodes(codes: BillingCode[]): BillingCode[] {
   ]);
   return codes.filter(c => !categoryCodes.has(c.code));
 }
+
+// --- Async API-backed functions (Google Sheet as source of truth) ---
+
+/** Fetch billing codes from API. Auto-populates sheet if empty. */
+export async function fetchBillingCodes(region?: string): Promise<(BillingCode & { group: BillingGroup })[]> {
+  const r = region || 'yukon';
+  const res = await fetch(`/api/billing-codes?region=${encodeURIComponent(r)}`);
+  if (res.status === 401) {
+    window.location.href = '/login';
+    return [];
+  }
+  if (!res.ok) throw new Error('Failed to fetch billing codes');
+  return res.json();
+}
+
+/** Add a billing code via API */
+export async function addBillingCodeAsync(
+  code: string,
+  description: string,
+  fee: string,
+  group: string
+): Promise<void> {
+  const res = await fetch('/api/billing-codes', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ code, description, fee, group }),
+  });
+  if (res.status === 401) {
+    window.location.href = '/login';
+    return;
+  }
+  if (!res.ok) throw new Error('Failed to add billing code');
+}
+
+/** Update a billing code via API */
+export async function updateBillingCodeAsync(
+  code: string,
+  description: string,
+  fee: string,
+  group: string
+): Promise<void> {
+  const res = await fetch('/api/billing-codes', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ code, description, fee, group }),
+  });
+  if (res.status === 401) {
+    window.location.href = '/login';
+    return;
+  }
+  if (!res.ok) throw new Error('Failed to update billing code');
+}
+
+/** Delete a billing code via API */
+export async function deleteBillingCodeAsync(code: string): Promise<void> {
+  const res = await fetch('/api/billing-codes', {
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ code }),
+  });
+  if (res.status === 401) {
+    window.location.href = '/login';
+    return;
+  }
+  if (!res.ok) throw new Error('Failed to delete billing code');
+}
+
+/** Reset all billing codes to defaults for region via API */
+export async function resetBillingCodesAsync(region?: string): Promise<(BillingCode & { group: BillingGroup })[]> {
+  const res = await fetch('/api/billing-codes', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action: 'reset', region: region || 'yukon' }),
+  });
+  if (res.status === 401) {
+    window.location.href = '/login';
+    return [];
+  }
+  if (!res.ok) throw new Error('Failed to reset billing codes');
+  return res.json();
+}
+
+/** Clear all localStorage billing data (sheet is now source of truth) */
+export function clearLocalBillingData(): void {
+  if (typeof window === 'undefined') return;
+  localStorage.removeItem(STORAGE_KEY);
+  localStorage.removeItem(DELETED_KEY);
+}

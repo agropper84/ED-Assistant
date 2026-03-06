@@ -1,6 +1,6 @@
 import { google, type sheets_v4 } from 'googleapis';
 import { NextRequest } from 'next/server';
-import { BillingItem, BillingCode, calculateTotal } from '@/lib/billing';
+import { BillingItem, BillingCode, BillingGroup, calculateTotal, getDefaultCodesForRegion } from '@/lib/billing';
 import type { StyleGuide } from '@/lib/style-guide';
 import { getSessionFromCookies } from '@/lib/session';
 import { getOAuth2Client, refreshAccessToken } from '@/lib/oauth';
@@ -802,8 +802,8 @@ function rowToPatient(row: string[], rowIndex: number, sheetName: string): Patie
 
 const BILLING_SHEET_NAME = 'Billing Codes';
 
-/** Read billing codes from the "Billing Codes" sheet tab. Columns: A=Code, B=Description, C=Fee */
-export async function getBillingCodes(ctx: SheetsContext): Promise<BillingCode[]> {
+/** Read billing codes from the "Billing Codes" sheet tab. Columns: A=Code, B=Description, C=Fee, D=Group */
+export async function getBillingCodes(ctx: SheetsContext): Promise<(BillingCode & { group: string })[]> {
   const { sheets, spreadsheetId } = ctx;
 
   // Check if the sheet exists
@@ -815,7 +815,7 @@ export async function getBillingCodes(ctx: SheetsContext): Promise<BillingCode[]
 
   const response = await sheets.spreadsheets.values.get({
     spreadsheetId,
-    range: `'${BILLING_SHEET_NAME}'!A2:C500`,
+    range: `'${BILLING_SHEET_NAME}'!A2:D500`,
   });
 
   const rows = response.data.values || [];
@@ -825,8 +825,151 @@ export async function getBillingCodes(ctx: SheetsContext): Promise<BillingCode[]
       code: row[0]?.toString().trim() || '',
       description: row[1]?.toString().trim() || '',
       fee: row[2]?.toString().trim() || '',
+      group: row[3]?.toString().trim() || 'Other',
     }))
-    .sort((a: BillingCode, b: BillingCode) => a.description.localeCompare(b.description));
+    .sort((a, b) => a.description.localeCompare(b.description));
+}
+
+/** Ensure the "Billing Codes" tab exists, creating it if needed. Returns the sheetId. */
+async function ensureBillingSheet(ctx: SheetsContext): Promise<number> {
+  const { sheets, spreadsheetId } = ctx;
+  const spreadsheet = await sheets.spreadsheets.get({ spreadsheetId });
+  const existing = spreadsheet.data.sheets?.find(
+    (s: any) => s.properties.title === BILLING_SHEET_NAME
+  );
+  if (existing) return existing.properties!.sheetId!;
+
+  const addRes = await sheets.spreadsheets.batchUpdate({
+    spreadsheetId,
+    requestBody: {
+      requests: [{ addSheet: { properties: { title: BILLING_SHEET_NAME } } }],
+    },
+  });
+  return addRes.data.replies![0].addSheet!.properties!.sheetId!;
+}
+
+/** Bulk-write all billing codes (initial population & reset). Clears existing data, writes header + rows. */
+export async function saveBillingCodesToSheet(
+  ctx: SheetsContext,
+  codes: { code: string; description: string; fee: string; group: string }[]
+): Promise<void> {
+  const { sheets, spreadsheetId } = ctx;
+  await ensureBillingSheet(ctx);
+
+  // Clear existing data
+  await sheets.spreadsheets.values.clear({
+    spreadsheetId,
+    range: `'${BILLING_SHEET_NAME}'!A1:D500`,
+  });
+
+  // Write header + all rows
+  const values = [
+    ['Code', 'Description', 'Fee', 'Group'],
+    ...codes.map(c => [c.code, c.description, c.fee, c.group]),
+  ];
+
+  await sheets.spreadsheets.values.update({
+    spreadsheetId,
+    range: `'${BILLING_SHEET_NAME}'!A1`,
+    valueInputOption: 'RAW',
+    requestBody: { values },
+  });
+}
+
+/** Append a single billing code row */
+export async function addBillingCodeToSheet(
+  ctx: SheetsContext,
+  code: { code: string; description: string; fee: string; group: string }
+): Promise<void> {
+  const { sheets, spreadsheetId } = ctx;
+  await ensureBillingSheet(ctx);
+
+  await sheets.spreadsheets.values.append({
+    spreadsheetId,
+    range: `'${BILLING_SHEET_NAME}'!A:D`,
+    valueInputOption: 'RAW',
+    requestBody: {
+      values: [[code.code, code.description, code.fee, code.group]],
+    },
+  });
+}
+
+/** Update an existing billing code row by matching on code in column A */
+export async function updateBillingCodeInSheet(
+  ctx: SheetsContext,
+  codeId: string,
+  update: { description: string; fee: string; group: string }
+): Promise<boolean> {
+  const { sheets, spreadsheetId } = ctx;
+
+  const response = await sheets.spreadsheets.values.get({
+    spreadsheetId,
+    range: `'${BILLING_SHEET_NAME}'!A2:D500`,
+  });
+
+  const rows = response.data.values || [];
+  const rowIndex = rows.findIndex(
+    (row: any[]) => row[0]?.toString().trim() === codeId
+  );
+  if (rowIndex === -1) return false;
+
+  const sheetRow = rowIndex + 2; // +1 for header, +1 for 1-indexed
+  await sheets.spreadsheets.values.update({
+    spreadsheetId,
+    range: `'${BILLING_SHEET_NAME}'!A${sheetRow}:D${sheetRow}`,
+    valueInputOption: 'RAW',
+    requestBody: {
+      values: [[codeId, update.description, update.fee, update.group]],
+    },
+  });
+  return true;
+}
+
+/** Delete a billing code row by matching on code in column A */
+export async function deleteBillingCodeFromSheet(
+  ctx: SheetsContext,
+  codeId: string
+): Promise<boolean> {
+  const { sheets, spreadsheetId } = ctx;
+
+  // Get sheet ID
+  const spreadsheet = await sheets.spreadsheets.get({ spreadsheetId });
+  const sheet = spreadsheet.data.sheets?.find(
+    (s: any) => s.properties.title === BILLING_SHEET_NAME
+  );
+  if (!sheet) return false;
+  const sheetId = sheet.properties!.sheetId!;
+
+  // Find the row
+  const response = await sheets.spreadsheets.values.get({
+    spreadsheetId,
+    range: `'${BILLING_SHEET_NAME}'!A2:A500`,
+  });
+
+  const rows = response.data.values || [];
+  const rowIndex = rows.findIndex(
+    (row: any[]) => row[0]?.toString().trim() === codeId
+  );
+  if (rowIndex === -1) return false;
+
+  const sheetRow = rowIndex + 1; // +1 for header (0-indexed for deleteDimension)
+
+  await sheets.spreadsheets.batchUpdate({
+    spreadsheetId,
+    requestBody: {
+      requests: [{
+        deleteDimension: {
+          range: {
+            sheetId,
+            dimension: 'ROWS',
+            startIndex: sheetRow,
+            endIndex: sheetRow + 1,
+          },
+        },
+      }],
+    },
+  });
+  return true;
 }
 
 // --- Style Guide Sheet ---
