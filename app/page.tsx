@@ -385,122 +385,126 @@ export default function HomePage() {
   return (
     <div className="min-h-screen pb-24">
       {/* Header */}
-      <header className="dash-header px-4 py-6 sticky top-0 z-40">
-        <div className="flex items-center justify-between max-w-2xl mx-auto">
-          <h1 className="text-2xl font-bold">My ER Dashboard</h1>
-          <div className="flex items-center gap-1">
-            {userEmail && (
-              <span className="text-xs hidden sm:block mr-1 max-w-[120px] truncate" style={{ color: 'var(--dash-text-muted)' }} title={userEmail}>
-                {userName || userEmail}
-              </span>
-            )}
-            <button
-              onClick={() => setAnonymize(!anonymize)}
-              className="p-2 hover:bg-white/10 rounded-full transition-colors"
-              style={{ color: 'var(--dash-text-sub)' }}
-              title={anonymize ? 'Show names' : 'Anonymize names'}
-            >
-              {anonymize ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-            </button>
-            <button
-              onClick={() => router.push('/settings')}
-              className="p-2 hover:bg-white/10 rounded-full transition-colors"
-              style={{ color: 'var(--dash-text-sub)' }}
-            >
-              <Settings className="w-5 h-5" />
-            </button>
-            <button
-              onClick={() => fetchPatients(true)}
-              disabled={refreshing}
-              className="p-2 hover:bg-white/10 rounded-full transition-colors"
-              style={{ color: 'var(--dash-text-sub)' }}
-            >
-              <RefreshCw className={`w-5 h-5 ${refreshing ? 'animate-spin' : ''}`} />
-            </button>
-            <button
-              onClick={handleLogout}
-              className="p-2 hover:bg-white/10 rounded-full transition-colors"
-              style={{ color: 'var(--dash-text-sub)' }}
-              title="Sign out"
-            >
-              <LogOut className="w-5 h-5" />
-            </button>
+      <header className="dash-header sticky top-0 z-40">
+        <div className="max-w-2xl mx-auto px-4">
+          {/* Top row: title + actions */}
+          <div className="flex items-center justify-between pt-3 pb-2">
+            <h1 className="text-xl font-bold tracking-tight">My ER Dashboard</h1>
+            <div className="flex items-center gap-0.5">
+              {userEmail && (
+                <span className="text-[11px] hidden sm:block mr-1.5 max-w-[120px] truncate" style={{ color: 'var(--dash-text-muted)' }} title={userEmail}>
+                  {userName || userEmail}
+                </span>
+              )}
+              <button
+                onClick={() => setAnonymize(!anonymize)}
+                className="p-2 hover:bg-white/10 rounded-full transition-colors"
+                style={{ color: 'var(--dash-text-sub)' }}
+                title={anonymize ? 'Show names' : 'Anonymize names'}
+              >
+                {anonymize ? <EyeOff className="w-[18px] h-[18px]" /> : <Eye className="w-[18px] h-[18px]" />}
+              </button>
+              <button
+                onClick={() => router.push('/settings')}
+                className="p-2 hover:bg-white/10 rounded-full transition-colors"
+                style={{ color: 'var(--dash-text-sub)' }}
+              >
+                <Settings className="w-[18px] h-[18px]" />
+              </button>
+              <button
+                onClick={() => fetchPatients(true)}
+                disabled={refreshing}
+                className="p-2 hover:bg-white/10 rounded-full transition-colors"
+                style={{ color: 'var(--dash-text-sub)' }}
+              >
+                <RefreshCw className={`w-[18px] h-[18px] ${refreshing ? 'animate-spin' : ''}`} />
+              </button>
+              <button
+                onClick={handleLogout}
+                className="p-2 hover:bg-white/10 rounded-full transition-colors"
+                style={{ color: 'var(--dash-text-sub)' }}
+                title="Sign out"
+              >
+                <LogOut className="w-[18px] h-[18px]" />
+              </button>
+            </div>
+          </div>
+
+          {/* Bottom row: date nav + shift times */}
+          <div className="flex items-center justify-between border-t border-white/10 pt-1.5 pb-2">
+            {/* Date navigation */}
+            <div className="flex items-center">
+              <button
+                onClick={goToPreviousDay}
+                className="p-1.5 hover:bg-white/10 rounded-full transition-colors"
+                style={{ color: 'var(--dash-text-sub)' }}
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              <button
+                onClick={goToToday}
+                className="flex items-center gap-1.5 px-2 py-1 hover:bg-white/10 rounded-lg transition-colors"
+              >
+                <Calendar className="w-3.5 h-3.5" style={{ color: 'var(--dash-text-muted)' }} />
+                <span className="text-sm font-medium" style={{ color: 'var(--dash-text)' }}>{formatDateDisplay(currentDate)}</span>
+                {!isToday && (
+                  <span className="text-[10px] font-medium ml-0.5 text-amber-300">today</span>
+                )}
+              </button>
+              <button
+                onClick={goToNextDay}
+                disabled={isToday}
+                className="p-1.5 hover:bg-white/10 rounded-full transition-colors disabled:opacity-30"
+                style={{ color: 'var(--dash-text-sub)' }}
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Shift times */}
+            <div className="flex items-center gap-1.5">
+              <select
+                value={shiftStart}
+                onChange={(e) => { setShiftStart(e.target.value); handleShiftTimeSave({ start: e.target.value }); }}
+                className="shift-select-header"
+              >
+                <option value="">Start</option>
+                <option value="08:00">8:00 AM</option>
+                <option value="11:00">11:00 AM</option>
+                <option value="13:00">1:00 PM</option>
+                <option value="18:00">6:00 PM</option>
+                <option value="23:00">11:00 PM</option>
+              </select>
+              <span className="text-[10px]" style={{ color: 'var(--dash-text-muted)' }}>–</span>
+              <select
+                value={shiftEnd}
+                onChange={(e) => { setShiftEnd(e.target.value); handleShiftTimeSave({ end: e.target.value }); }}
+                className="shift-select-header"
+              >
+                <option value="">End</option>
+                <option value="15:00">3:00 PM</option>
+                <option value="18:00">6:00 PM</option>
+                <option value="21:00">9:00 PM</option>
+                <option value="01:00">1:00 AM</option>
+                <option value="08:00">8:00 AM</option>
+              </select>
+              {shiftHours && (
+                <span className="text-[10px] flex-shrink-0 hidden sm:inline" style={{ color: 'var(--dash-text-muted)' }}>{shiftHours}h</span>
+              )}
+              {shiftCode && (
+                <span className="text-[9px] font-mono flex-shrink-0 hidden sm:inline" style={{ color: 'var(--dash-text-muted)' }}>{shiftCode}</span>
+              )}
+              {shiftTotal && (
+                <span className="text-[11px] font-semibold flex-shrink-0" style={{ color: '#34d399' }}>${shiftTotal}</span>
+              )}
+            </div>
           </div>
         </div>
       </header>
 
-      {/* Date Navigation */}
-      <div className="dash-shift-row sticky top-[76px] z-30">
-        <div className="flex items-center justify-between max-w-2xl mx-auto px-4 h-11">
-          <button
-            onClick={goToPreviousDay}
-            className="p-2 hover:bg-white/10 rounded-full"
-          >
-            <ChevronLeft className="w-5 h-5" style={{ color: 'var(--shift-text)' }} />
-          </button>
-          <button
-            onClick={goToToday}
-            className="flex items-center gap-2 px-3 py-1.5 hover:bg-white/10 rounded-lg"
-          >
-            <Calendar className="w-4 h-4" style={{ color: 'var(--shift-text-muted)' }} />
-            <span className="font-medium" style={{ color: 'var(--shift-text)' }}>{formatDateDisplay(currentDate)}</span>
-            {!isToday && (
-              <span className="text-xs font-medium ml-1 text-amber-300">Go to today</span>
-            )}
-          </button>
-          <button
-            onClick={goToNextDay}
-            disabled={isToday}
-            className="p-2 hover:bg-white/10 rounded-full disabled:opacity-30"
-          >
-            <ChevronRight className="w-5 h-5" style={{ color: 'var(--shift-text)' }} />
-          </button>
-        </div>
-      </div>
-
-      {/* Shift Times */}
-      <div className="dash-row border-b border-[var(--border)]">
-        <div className="max-w-2xl mx-auto px-4 flex items-center justify-center gap-2.5 h-8">
-          <select
-            value={shiftStart}
-            onChange={(e) => { setShiftStart(e.target.value); handleShiftTimeSave({ start: e.target.value }); }}
-            className="shift-select-plain"
-          >
-            <option value="">Start</option>
-            <option value="08:00">8:00 AM</option>
-            <option value="11:00">11:00 AM</option>
-            <option value="13:00">1:00 PM</option>
-            <option value="18:00">6:00 PM</option>
-            <option value="23:00">11:00 PM</option>
-          </select>
-          <span className="text-xs text-[var(--text-muted)]">–</span>
-          <select
-            value={shiftEnd}
-            onChange={(e) => { setShiftEnd(e.target.value); handleShiftTimeSave({ end: e.target.value }); }}
-            className="shift-select-plain"
-          >
-            <option value="">End</option>
-            <option value="15:00">3:00 PM</option>
-            <option value="18:00">6:00 PM</option>
-            <option value="21:00">9:00 PM</option>
-            <option value="01:00">1:00 AM</option>
-            <option value="08:00">8:00 AM</option>
-          </select>
-          {shiftHours && (
-            <span className="text-xs flex-shrink-0 text-[var(--text-muted)]">{shiftHours}h</span>
-          )}
-          {shiftCode && (
-            <span className="text-[10px] font-mono flex-shrink-0 text-[var(--text-muted)]">{shiftCode}</span>
-          )}
-          {shiftTotal && (
-            <span className="text-xs font-semibold flex-shrink-0" style={{ color: 'var(--accent-green)' }}>${shiftTotal}</span>
-          )}
-        </div>
-      </div>
-
       {/* Batch Processing Bar */}
       {batchMode && (
-        <div className="bg-amber-50 dark:bg-amber-950/50 border-b border-amber-200 dark:border-amber-800 sticky top-[120px] z-20">
+        <div className="bg-amber-50 dark:bg-amber-950/50 border-b border-amber-200 dark:border-amber-800 sticky top-[92px] z-20">
           <div className="flex items-center justify-between max-w-2xl mx-auto px-4 py-2">
             <div className="flex items-center gap-2 text-sm">
               <span className="font-medium text-amber-800 dark:text-amber-300">

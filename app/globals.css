@@ -42,16 +42,6 @@
   --dash-text-sub: rgba(255,255,255,0.8);
   --dash-text-muted: rgba(255,255,255,0.55);
 
-  /* Shift row gradient — light purple palette */
-  --shift-from: #7c3aed;
-  --shift-via: #6d28d9;
-  --shift-to: #5b21b6;
-  --shift-hover: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 50%, #6d28d9 100%);
-  --shift-text: #ffffff;
-  --shift-text-muted: rgba(255,255,255,0.6);
-  --shift-input-bg: rgba(255,255,255,0.12);
-  --shift-input-border: rgba(255,255,255,0.18);
-  --shift-input-hover: rgba(255,255,255,0.2);
 }
 
 @media (min-width: 640px) {
@@ -99,16 +89,6 @@
   --dash-text-sub: rgba(200,215,255,0.75);
   --dash-text-muted: rgba(160,180,230,0.5);
 
-  /* Shift row gradient — deep purple palette */
-  --shift-from: #1e1040;
-  --shift-via: #2d1b69;
-  --shift-to: #3b2480;
-  --shift-hover: linear-gradient(135deg, #261450 0%, #352075 50%, #442c90 100%);
-  --shift-text: #d8d0f0;
-  --shift-text-muted: rgba(200,190,240,0.55);
-  --shift-input-bg: rgba(255,255,255,0.08);
-  --shift-input-border: rgba(255,255,255,0.12);
-  --shift-input-hover: rgba(255,255,255,0.15);
 }
 
 body {
@@ -154,45 +134,36 @@ button, .btn {
   background: var(--dash-header-hover);
 }
 
-/* Dashboard shift row — purple gradient separator */
-.dash-shift-row {
-  background: linear-gradient(135deg, var(--shift-from) 0%, var(--shift-via) 50%, var(--shift-to) 100%);
-  color: var(--shift-text);
-  transition: background 0.4s ease;
-}
-.dash-shift-row:hover {
-  background: var(--shift-hover);
-}
-
-/* Shift time selects — plain row, centered text, wider, no arrow */
-.shift-select-plain {
+/* Shift time selects — translucent, inside header gradient */
+.shift-select-header {
   appearance: none;
   -webkit-appearance: none;
   -moz-appearance: none;
-  background: var(--input-bg);
-  border: 1px solid var(--input-border);
+  background: rgba(255,255,255,0.1);
+  border: 1px solid rgba(255,255,255,0.15);
   border-radius: 6px;
-  color: var(--text-primary);
-  font-size: 0.75rem;
+  color: inherit;
+  font-size: 0.6875rem;
   padding: 2px 4px;
-  min-height: 26px;
-  width: 100px;
+  min-height: 24px;
+  min-width: 24px;
+  width: 78px;
   text-align: center;
   cursor: pointer;
-  transition: background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+  transition: background 0.2s ease, border-color 0.2s ease;
 }
-.shift-select-plain:hover {
-  background: var(--bg-tertiary);
-  border-color: var(--accent);
-  box-shadow: 0 0 0 1px rgba(37,99,235,0.1);
+.shift-select-header:hover {
+  background: rgba(255,255,255,0.18);
+  border-color: rgba(255,255,255,0.3);
 }
-.shift-select-plain:focus {
+.shift-select-header:focus {
   outline: none;
-  border-color: var(--accent);
-  box-shadow: 0 0 0 2px rgba(37,99,235,0.15);
+  border-color: rgba(255,255,255,0.4);
+  box-shadow: 0 0 0 2px rgba(255,255,255,0.1);
 }
-.shift-select-plain option {
-  text-align: center;
+.shift-select-header option {
+  background: var(--bg-primary);
+  color: var(--text-primary);
 }
 
 /* Dashboard sub-rows (date, shift) — subtle hover glow */
