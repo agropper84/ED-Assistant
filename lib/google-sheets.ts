@@ -94,6 +94,9 @@ export const COLUMNS = {
   ASSESSMENT_PLAN: 24, // Y
   REFERRAL: 25,      // Z
   PAST_DOCS: 26,     // AA
+  SYNOPSIS: 27,      // AB
+  MANAGEMENT: 28,    // AC
+  EVIDENCE: 29,      // AD
 };
 
 export const DATA_START_ROW = 8; // Row 8 in spreadsheet (0-indexed: 7)
@@ -128,6 +131,9 @@ export interface Patient {
   assessmentPlan: string;
   referral: string;
   pastDocs: string;
+  synopsis: string;
+  management: string;
+  evidence: string;
   // Computed
   hasOutput: boolean;
   status: 'new' | 'pending' | 'processed';
@@ -211,7 +217,7 @@ export async function getOrCreateDateSheet(ctx: SheetsContext, dateOrName?: Date
 
   const newSheetId = dupResponse.data.sheetId;
 
-  // Rename the duplicated sheet and ensure it has enough columns (27 = AA)
+  // Rename the duplicated sheet and ensure it has enough columns (30 = AD)
   await sheets.spreadsheets.batchUpdate({
     spreadsheetId,
     requestBody: {
@@ -226,7 +232,7 @@ export async function getOrCreateDateSheet(ctx: SheetsContext, dateOrName?: Date
           updateSheetProperties: {
             properties: {
               sheetId: newSheetId,
-              gridProperties: { columnCount: 27 },
+              gridProperties: { columnCount: 30 },
             },
             fields: 'gridProperties.columnCount',
           },
@@ -562,7 +568,7 @@ export async function clearPatientRow(
 
   await sheets.spreadsheets.values.clear({
     spreadsheetId,
-    range: `'${sheet}'!A${rowIndex}:Z${rowIndex}`,
+    range: `'${sheet}'!A${rowIndex}:AD${rowIndex}`,
   });
 }
 
@@ -582,7 +588,7 @@ export async function getPatients(ctx: SheetsContext, sheetName?: string): Promi
 
   const response = await sheets.spreadsheets.values.get({
     spreadsheetId,
-    range: `'${sheet}'!A${DATA_START_ROW}:AA200`,
+    range: `'${sheet}'!A${DATA_START_ROW}:AD200`,
   });
 
   const rows = response.data.values || [];
@@ -621,7 +627,7 @@ export async function getPatient(ctx: SheetsContext, rowIndex: number, sheetName
   // Read patient row + up to 20 continuation rows below
   const response = await sheets.spreadsheets.values.get({
     spreadsheetId,
-    range: `'${sheet}'!A${rowIndex}:AA${rowIndex + 20}`,
+    range: `'${sheet}'!A${rowIndex}:AD${rowIndex + 20}`,
   });
 
   const rows = response.data.values || [];
@@ -671,6 +677,9 @@ export async function updatePatientFields(
     ddx: 'U', investigations: 'V', hpi: 'W',
     objective: 'X', assessmentPlan: 'Y', referral: 'Z',
     pastDocs: 'AA',
+    synopsis: 'AB',
+    management: 'AC',
+    evidence: 'AD',
   };
 
   const data = Object.entries(fields)
@@ -683,9 +692,9 @@ export async function updatePatientFields(
   if (data.length === 0) return;
 
   // If writing to columns beyond Z, ensure the sheet has enough columns
-  const needsExpand = data.some(d => d.range.includes('!AA'));
+  const needsExpand = data.some(d => /![A-Z]{2,}/.test(d.range));
   if (needsExpand) {
-    await ensureColumnCount(ctx, sheet, 27);
+    await ensureColumnCount(ctx, sheet, 30);
   }
 
   await sheets.spreadsheets.values.batchUpdate({
@@ -781,6 +790,9 @@ function rowToPatient(row: string[], rowIndex: number, sheetName: string): Patie
     assessmentPlan: getValue(COLUMNS.ASSESSMENT_PLAN),
     referral: getValue(COLUMNS.REFERRAL),
     pastDocs: getValue(COLUMNS.PAST_DOCS),
+    synopsis: getValue(COLUMNS.SYNOPSIS),
+    management: getValue(COLUMNS.MANAGEMENT),
+    evidence: getValue(COLUMNS.EVIDENCE),
     hasOutput: !!(hpi || assessmentPlan),
     status,
   };

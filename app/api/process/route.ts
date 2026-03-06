@@ -24,6 +24,8 @@ export async function POST(request: NextRequest) {
       existingOutput = {
         ddx: patient.ddx,
         investigations: patient.investigations,
+        management: patient.management,
+        evidence: patient.evidence,
         hpi: patient.hpi,
         objective: patient.objective,
         assessmentPlan: patient.assessmentPlan,
@@ -83,6 +85,8 @@ export async function POST(request: NextRequest) {
     const fieldsToUpdate: Record<string, string> = {
       ddx: result.ddx,
       investigations: result.investigations,
+      management: result.management,
+      evidence: result.evidence,
       hpi: result.hpi,
       objective: result.objective,
       assessmentPlan: result.assessmentPlan,

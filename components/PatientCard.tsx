@@ -13,6 +13,7 @@ interface PatientCardProps {
   onBillingToggle?: () => void;
   billingCodes?: string;
   onViewNote?: () => void;
+  onNavigate?: () => void;
 }
 
 /** Convert a full name to initials, e.g. "John Smith" → "J.S." */
@@ -25,7 +26,7 @@ function toInitials(name: string): string {
     .join('');
 }
 
-export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChange, onBillingToggle, billingCodes, onViewNote }: PatientCardProps) {
+export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChange, onBillingToggle, billingCodes, onViewNote, onNavigate }: PatientCardProps) {
   const [editingTime, setEditingTime] = useState(false);
   const [timeValue, setTimeValue] = useState(patient.timestamp || '');
   const [noteCopied, setNoteCopied] = useState(false);
@@ -205,7 +206,16 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
         </button>
       )}
 
-      <ChevronRight className="w-5 h-5 text-[var(--text-muted)] opacity-40 flex-shrink-0" />
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          onNavigate?.();
+        }}
+        className="p-2 hover:bg-[var(--bg-tertiary)] rounded-lg transition-colors flex-shrink-0"
+        title="Open full view"
+      >
+        <ChevronRight className="w-5 h-5 text-[var(--text-muted)]" />
+      </button>
     </div>
   );
 }

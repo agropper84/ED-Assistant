@@ -7,6 +7,8 @@ const anthropic = new Anthropic({
 export interface ProcessedNote {
   ddx: string;
   investigations: string;
+  management: string;
+  evidence: string;
   hpi: string;
   objective: string;
   assessmentPlan: string;
@@ -91,6 +93,12 @@ ${options.existingOutput.ddx}
 ===INVESTIGATIONS===
 ${options.existingOutput.investigations}
 
+===MANAGEMENT===
+${options.existingOutput.management}
+
+===EVIDENCE===
+${options.existingOutput.evidence}
+
 ===HPI===
 ${options.existingOutput.hpi}
 
@@ -140,7 +148,7 @@ PATIENT INFORMATION:
 ${dataSection}
 ${modificationSection}${styleSection}---
 
-${baseInstruction} You must provide ALL five sections below.
+${baseInstruction} You must provide ALL seven sections below.
 
 IMPORTANT RULES:
 - Do NOT assume, infer, or make up information not explicitly stated in the provided data
@@ -157,7 +165,13 @@ Respond in EXACTLY this format with these exact headers:
 [Provide differential diagnosis based on presentation. List most likely diagnosis first, followed by other considerations. Use narrative form.]
 
 ===INVESTIGATIONS===
-[Recommend appropriate investigations and management considerations based on the presentation. Include labs, imaging, treatments as applicable. Use narrative form.]
+[Recommend appropriate investigations based on the presentation. Include labs, imaging, and other diagnostic tests as applicable. Use narrative form.]
+
+===MANAGEMENT===
+[Recommend management and treatment plan based on the presentation and differential. Include medications, procedures, disposition planning, and follow-up. Use narrative form.]
+
+===EVIDENCE===
+[Cite pertinent evidence, clinical guidelines, or decision rules supporting the workup and management (e.g., Ottawa Ankle Rules, HEART score, Wells criteria). Include brief rationale for key decisions. Use narrative form.]
 
 ===HPI===
 [Narrative summary of patient's presentation. Thoroughly document the history and features supporting the working diagnosis. Document that appropriate red flags have been ruled out. Professional, concise ED physician language.]
@@ -189,6 +203,8 @@ function parseClaudeResponse(response: string): ProcessedNote {
   const sections: ProcessedNote = {
     ddx: '',
     investigations: '',
+    management: '',
+    evidence: '',
     hpi: '',
     objective: '',
     assessmentPlan: '',
@@ -199,6 +215,8 @@ function parseClaudeResponse(response: string): ProcessedNote {
 
   const ddxMatch = response.match(/===DDX===\s*([\s\S]*?)(?====|$)/);
   const invMatch = response.match(/===INVESTIGATIONS===\s*([\s\S]*?)(?====|$)/);
+  const mgmtMatch = response.match(/===MANAGEMENT===\s*([\s\S]*?)(?====|$)/);
+  const evidMatch = response.match(/===EVIDENCE===\s*([\s\S]*?)(?====|$)/);
   const hpiMatch = response.match(/===HPI===\s*([\s\S]*?)(?====|$)/);
   const objMatch = response.match(/===OBJECTIVE===\s*([\s\S]*?)(?====|$)/);
   const apMatch = response.match(/===ASSESSMENT_PLAN===\s*([\s\S]*?)(?====|$)/);
@@ -208,6 +226,8 @@ function parseClaudeResponse(response: string): ProcessedNote {
 
   if (ddxMatch) sections.ddx = ddxMatch[1].trim();
   if (invMatch) sections.investigations = invMatch[1].trim();
+  if (mgmtMatch) sections.management = mgmtMatch[1].trim();
+  if (evidMatch) sections.evidence = evidMatch[1].trim();
   if (hpiMatch) sections.hpi = hpiMatch[1].trim();
   if (objMatch) sections.objective = objMatch[1].trim();
   if (apMatch) sections.assessmentPlan = apMatch[1].trim();
