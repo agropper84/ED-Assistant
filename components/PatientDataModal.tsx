@@ -5,6 +5,7 @@ import { Patient } from '@/lib/google-sheets';
 import { X, Loader2, Save, ExternalLink, RefreshCw } from 'lucide-react';
 import { ExamToggles } from '@/components/ExamToggles';
 import { VoiceRecorder } from '@/components/VoiceRecorder';
+import { AutocompleteTextarea } from '@/components/AutocompleteTextarea';
 
 /** Combine transcript + encounter notes into one string for storage */
 function combineTranscriptAndNotes(transcript: string, encounterNotes: string): string {
@@ -32,9 +33,10 @@ interface PatientDataModalProps {
   onSaved: () => void;
   onNavigate: () => void;
   onRegenerate?: () => void;
+  suggestions?: string[];
 }
 
-export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate, onRegenerate }: PatientDataModalProps) {
+export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate, onRegenerate, suggestions = [] }: PatientDataModalProps) {
   const [transcript, setTranscript] = useState('');
   const [encounterNotes, setEncounterNotes] = useState('');
   const [triageVitals, setTriageVitals] = useState('');
@@ -153,11 +155,12 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
             <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">
               Encounter Notes
             </label>
-            <textarea
+            <AutocompleteTextarea
               value={encounterNotes}
-              onChange={(e) => setEncounterNotes(e.target.value)}
+              onChange={setEncounterNotes}
+              suggestions={suggestions}
               placeholder="Physician notes, clinical observations, plan..."
-              className="w-full h-28 p-3 border border-[var(--input-border)] rounded-lg text-sm resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)]"
+              textareaClassName="w-full h-28 p-3 border border-[var(--input-border)] rounded-lg text-sm resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)]"
             />
           </div>
 
