@@ -4,7 +4,7 @@ export interface BillingCode {
   fee: string;
 }
 
-export type BillingCategory = 'visitType' | 'premium' | 'additional';
+export type BillingCategory = 'visitType' | 'acuteCare' | 'premium' | 'additional';
 
 export interface BillingItem {
   code: string;
@@ -172,7 +172,8 @@ const REGION_CODES: Record<string, Record<string, BillingCodeEntry>> = {
 
 // Category definitions for UI grouping (patient billing page)
 export const BILLING_CATEGORIES: Record<BillingCategory, { label: string; codes: string[] }> = {
-  visitType: { label: 'Visit Type', codes: ['1100', '1101', '0081'] },
+  visitType: { label: 'Visit Type', codes: ['1100', '1101'] },
+  acuteCare: { label: 'Acute Care', codes: ['0080', '0081', '0082', '0083'] },
   premium: { label: 'Time Premium', codes: ['1153', '1154'] },
   additional: { label: 'Additional', codes: [] }, // everything else
 };
@@ -329,6 +330,7 @@ export function resetBillingCodes(): void {
 /** Determine billing category for a given code */
 export function getCategoryForCode(code: string): BillingCategory {
   if (BILLING_CATEGORIES.visitType.codes.includes(code)) return 'visitType';
+  if (BILLING_CATEGORIES.acuteCare.codes.includes(code)) return 'acuteCare';
   if (BILLING_CATEGORIES.premium.codes.includes(code)) return 'premium';
   return 'additional';
 }
@@ -427,10 +429,11 @@ export function calculateTotal(items: BillingItem[]): string {
   return total > 0 ? total.toFixed(2) : '';
 }
 
-/** Get additional codes (everything not in visitType/premium) from local defaults */
+/** Get additional codes (everything not in visitType/acuteCare/premium) from local defaults */
 export function getAdditionalCodes(): BillingCode[] {
   const categoryCodes = new Set([
     ...BILLING_CATEGORIES.visitType.codes,
+    ...BILLING_CATEGORIES.acuteCare.codes,
     ...BILLING_CATEGORIES.premium.codes,
   ]);
   return getAllBillingCodes().filter(c => !categoryCodes.has(c.code));
@@ -440,6 +443,7 @@ export function getAdditionalCodes(): BillingCode[] {
 export function filterAdditionalCodes(codes: BillingCode[]): BillingCode[] {
   const categoryCodes = new Set([
     ...BILLING_CATEGORIES.visitType.codes,
+    ...BILLING_CATEGORIES.acuteCare.codes,
     ...BILLING_CATEGORIES.premium.codes,
   ]);
   return codes.filter(c => !categoryCodes.has(c.code));

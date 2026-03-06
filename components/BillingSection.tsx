@@ -118,6 +118,7 @@ function BillingBody({
 
   // Use code-based category lookup (source of truth) rather than the mutable .category property
   const currentVisit = billingItems.find(i => getCategoryForCode(i.code) === 'visitType');
+  const currentAcuteCare = billingItems.find(i => getCategoryForCode(i.code) === 'acuteCare');
   const currentPremium = billingItems.find(i => getCategoryForCode(i.code) === 'premium');
   const additionalItems = billingItems.filter(i => getCategoryForCode(i.code) === 'additional');
 
@@ -134,6 +135,22 @@ function BillingBody({
     const filtered = billingItems.filter(i => getCategoryForCode(i.code) !== category);
     const updated = item ? [...filtered, item] : filtered;
     onSave(updated);
+  };
+
+  /** Select acute care fee: replaces any existing acute care, and by default removes visit type */
+  const handleAcuteCareSelect = (item: BillingItem) => {
+    // If already selected, toggle it off
+    if (currentAcuteCare?.code === item.code) {
+      const filtered = billingItems.filter(i => getCategoryForCode(i.code) !== 'acuteCare');
+      onSave(filtered);
+      return;
+    }
+    // Remove existing acute care AND visit type
+    const filtered = billingItems.filter(i => {
+      const cat = getCategoryForCode(i.code);
+      return cat !== 'acuteCare' && cat !== 'visitType';
+    });
+    onSave([...filtered, item]);
   };
 
   const addItem = (code: string, description: string, fee: string) => {
@@ -206,7 +223,7 @@ function BillingBody({
         <label className="block text-xs font-medium text-[var(--text-muted)] mb-1">Visit Type</label>
         <div className="flex gap-2">
           <button
-            onClick={() => setCategoryItem('visitType', { code: '1100', description: 'ED Visit', fee: '50.90', unit: '1', category: 'visitType' })}
+            onClick={() => setCategoryItem('visitType', currentVisit?.code === '1100' ? null : { code: '1100', description: 'ED Visit', fee: '50.90', unit: '1', category: 'visitType' })}
             className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
               currentVisit?.code === '1100' ? 'bg-blue-600 text-white' : 'bg-[var(--bg-tertiary)] text-[var(--text-secondary)] hover:bg-[var(--border)]'
             }`}
@@ -214,20 +231,51 @@ function BillingBody({
             ED Visit ($50.90)
           </button>
           <button
-            onClick={() => setCategoryItem('visitType', { code: '1101', description: 'Complete examination', fee: '111.50', unit: '1', category: 'visitType' })}
+            onClick={() => setCategoryItem('visitType', currentVisit?.code === '1101' ? null : { code: '1101', description: 'Complete Examination', fee: '111.50', unit: '1', category: 'visitType' })}
             className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
               currentVisit?.code === '1101' ? 'bg-blue-600 text-white' : 'bg-[var(--bg-tertiary)] text-[var(--text-secondary)] hover:bg-[var(--border)]'
             }`}
           >
-            Complete ($111.50)
+            Complete Examination ($111.50)
           </button>
+        </div>
+      </div>
+
+      {/* Acute Care Fees */}
+      <div>
+        <label className="block text-xs font-medium text-[var(--text-muted)] mb-1">Acute Care</label>
+        <div className="grid grid-cols-2 gap-2">
           <button
-            onClick={() => setCategoryItem('visitType', { code: '0081', description: 'Critical Care', fee: '147.10', unit: '1', category: 'visitType' })}
-            className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-              currentVisit?.code === '0081' ? 'bg-red-600 text-white ring-2 ring-red-300 dark:ring-red-500/50' : 'bg-[var(--bg-tertiary)] text-[var(--text-secondary)] hover:bg-[var(--border)]'
+            onClick={() => handleAcuteCareSelect({ code: '0081', description: 'Prolonged ED care (day)', fee: '147.10', unit: '1', category: 'acuteCare' })}
+            className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+              currentAcuteCare?.code === '0081' ? 'bg-red-600 text-white' : 'bg-[var(--bg-tertiary)] text-[var(--text-secondary)] hover:bg-[var(--border)]'
             }`}
           >
-            Critical ($147.10)
+            Prolonged EC Day ($147.10)
+          </button>
+          <button
+            onClick={() => handleAcuteCareSelect({ code: '0080', description: 'Prolonged ED care (night)', fee: '230.60', unit: '1', category: 'acuteCare' })}
+            className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+              currentAcuteCare?.code === '0080' ? 'bg-red-600 text-white' : 'bg-[var(--bg-tertiary)] text-[var(--text-secondary)] hover:bg-[var(--border)]'
+            }`}
+          >
+            Prolonged EC Night ($230.60)
+          </button>
+          <button
+            onClick={() => handleAcuteCareSelect({ code: '0082', description: 'Acute Care Detention', fee: '118.50', unit: '1', category: 'acuteCare' })}
+            className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+              currentAcuteCare?.code === '0082' ? 'bg-red-600 text-white' : 'bg-[var(--bg-tertiary)] text-[var(--text-secondary)] hover:bg-[var(--border)]'
+            }`}
+          >
+            Acute Care Detention ($118.50)
+          </button>
+          <button
+            onClick={() => handleAcuteCareSelect({ code: '0083', description: 'Personal/Family Crisis', fee: '107.30', unit: '1', category: 'acuteCare' })}
+            className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+              currentAcuteCare?.code === '0083' ? 'bg-red-600 text-white' : 'bg-[var(--bg-tertiary)] text-[var(--text-secondary)] hover:bg-[var(--border)]'
+            }`}
+          >
+            Crisis Intervention ($107.30)
           </button>
         </div>
       </div>
