@@ -5,6 +5,7 @@ import { X, ChevronDown, ChevronUp, DollarSign, Search } from 'lucide-react';
 import {
   BillingItem, BillingCategory, BillingCode,
   addBillingCode, calculateTotal, getAdditionalCodes, filterAdditionalCodes,
+  getCategoryForCode, BILLING_CATEGORIES,
 } from '@/lib/billing';
 
 interface BillingSectionProps {
@@ -115,9 +116,10 @@ function BillingBody({
 
   const total = calculateTotal(billingItems);
 
-  const currentVisit = billingItems.find(i => i.category === 'visitType');
-  const currentPremium = billingItems.find(i => i.category === 'premium');
-  const additionalItems = billingItems.filter(i => i.category === 'additional');
+  // Use code-based category lookup (source of truth) rather than the mutable .category property
+  const currentVisit = billingItems.find(i => getCategoryForCode(i.code) === 'visitType');
+  const currentPremium = billingItems.find(i => getCategoryForCode(i.code) === 'premium');
+  const additionalItems = billingItems.filter(i => getCategoryForCode(i.code) === 'additional');
 
   // Filter additional codes by search query
   const filteredCodes = searchQuery.trim()
@@ -128,7 +130,8 @@ function BillingBody({
     : additionalCodes;
 
   const setCategoryItem = (category: BillingCategory, item: BillingItem | null) => {
-    const filtered = billingItems.filter(i => i.category !== category);
+    // Filter by code-based category lookup, not the .category property
+    const filtered = billingItems.filter(i => getCategoryForCode(i.code) !== category);
     const updated = item ? [...filtered, item] : filtered;
     onSave(updated);
   };

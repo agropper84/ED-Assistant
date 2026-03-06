@@ -19,10 +19,12 @@ import {
   BillingCode, BillingGroup,
   BILLING_REGIONS, BILLING_GROUPS,
   getRegion, saveRegion,
-  getDefaultCodesForRegion, getBillingGroups,
-  addBillingCode, deleteBillingCode, isCodeDeleted,
-  resetBillingCodes, resetDeletedCodes,
-  getAllBillingCodes,
+  fetchBillingCodes,
+  addBillingCodeAsync,
+  updateBillingCodeAsync,
+  deleteBillingCodeAsync,
+  resetBillingCodesAsync,
+  clearLocalBillingData,
 } from '@/lib/billing';
 
 type Tab = 'style' | 'settings' | 'billing';
@@ -47,11 +49,13 @@ export default function SettingsPage() {
   // Billing tab state
   const [billingRegion, setBillingRegion] = useState('yukon');
   const [billingCodes, setBillingCodes] = useState<(BillingCode & { group: BillingGroup })[]>([]);
+  const [billingLoading, setBillingLoading] = useState(false);
   const [billingSearch, setBillingSearch] = useState('');
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
   const [editingCode, setEditingCode] = useState<string | null>(null);
   const [editDesc, setEditDesc] = useState('');
   const [editFee, setEditFee] = useState('');
+  const [editGroup, setEditGroup] = useState<BillingGroup>('Other');
   const [addingCode, setAddingCode] = useState(false);
   const [newBillingCode, setNewBillingCode] = useState('');
   const [newBillingDesc, setNewBillingDesc] = useState('');
@@ -107,34 +111,23 @@ export default function SettingsPage() {
     })();
     setSettings(getSettings());
     setExamPresets(getExamPresets());
-    // Billing
+    // Billing — clear localStorage (sheet is source of truth) and load from API
+    clearLocalBillingData();
     const r = getRegion();
     setBillingRegion(r);
     loadBillingCodes(r);
   }, []);
 
-  const loadBillingCodes = (region: string) => {
-    const codes = getDefaultCodesForRegion(region);
-    // Merge custom overrides and filter deleted
-    const all = getAllBillingCodes();
-    const allMap = new Map(all.map(c => [c.code, c]));
-    // Build merged list: start from region defaults (for group info), apply overrides, filter deleted
-    const merged = codes
-      .filter(c => !isCodeDeleted(c.code))
-      .map(c => {
-        const override = allMap.get(c.code);
-        return override
-          ? { ...c, description: override.description, fee: override.fee }
-          : c;
-      });
-    // Add custom codes that aren't in defaults
-    const defaultCodes = new Set(codes.map(c => c.code));
-    for (const c of all) {
-      if (!defaultCodes.has(c.code)) {
-        merged.push({ ...c, group: 'Other' as BillingGroup });
-      }
+  const loadBillingCodes = async (region: string) => {
+    setBillingLoading(true);
+    try {
+      const codes = await fetchBillingCodes(region);
+      setBillingCodes(codes as (BillingCode & { group: BillingGroup })[]);
+    } catch (err) {
+      console.error('Failed to load billing codes:', err);
+    } finally {
+      setBillingLoading(false);
     }
-    setBillingCodes(merged);
   };
 
   const handleAddExample = async (section: 'hpi' | 'objective' | 'assessmentPlan') => {
@@ -624,24 +617,32 @@ export default function SettingsPage() {
               <div className="flex items-center justify-between">
                 <h3 className="font-semibold text-[var(--text-primary)]">Fee Region</h3>
                 <button
-                  onClick={() => {
-                    resetBillingCodes();
-                    loadBillingCodes(billingRegion);
+                  onClick={async () => {
+                    setBillingLoading(true);
+                    try {
+                      const codes = await resetBillingCodesAsync(billingRegion);
+                      setBillingCodes(codes as (BillingCode & { group: BillingGroup })[]);
+                    } catch (err) {
+                      console.error('Failed to reset billing codes:', err);
+                    } finally {
+                      setBillingLoading(false);
+                    }
                   }}
-                  className="flex items-center gap-1 px-2.5 py-1.5 text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] rounded-lg text-xs font-medium transition-colors"
+                  disabled={billingLoading}
+                  className="flex items-center gap-1 px-2.5 py-1.5 text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] rounded-lg text-xs font-medium transition-colors disabled:opacity-50"
                   title="Reset all billing codes to defaults"
                 >
-                  <RotateCcw className="w-3.5 h-3.5" />
+                  <RotateCcw className={`w-3.5 h-3.5 ${billingLoading ? 'animate-spin' : ''}`} />
                   Reset
                 </button>
               </div>
               <select
                 value={billingRegion}
-                onChange={(e) => {
+                onChange={async (e) => {
                   const r = e.target.value;
                   setBillingRegion(r);
                   saveRegion(r);
-                  loadBillingCodes(r);
+                  await loadBillingCodes(r);
                 }}
                 className="w-full p-3 border border-[var(--input-border)] rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)]"
               >
@@ -727,11 +728,20 @@ export default function SettingsPage() {
                 </div>
                 <div className="flex gap-2">
                   <button
-                    onClick={() => {
+                    onClick={async () => {
                       if (!newBillingCode.trim() || !newBillingDesc.trim()) return;
-                      addBillingCode(newBillingCode.trim(), newBillingDesc.trim(), newBillingFee.trim());
-                      loadBillingCodes(billingRegion);
-                      setAddingCode(false);
+                      try {
+                        await addBillingCodeAsync(
+                          newBillingCode.trim(),
+                          newBillingDesc.trim(),
+                          newBillingFee.trim(),
+                          newBillingGroup
+                        );
+                        await loadBillingCodes(billingRegion);
+                        setAddingCode(false);
+                      } catch (err) {
+                        console.error('Failed to add billing code:', err);
+                      }
                     }}
                     disabled={!newBillingCode.trim() || !newBillingDesc.trim()}
                     className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium disabled:opacity-50"
@@ -748,8 +758,16 @@ export default function SettingsPage() {
               </div>
             )}
 
+            {/* Loading spinner */}
+            {billingLoading && (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="w-6 h-6 animate-spin text-blue-600 dark:text-blue-400" />
+                <span className="ml-2 text-[var(--text-muted)] text-sm">Loading billing codes...</span>
+              </div>
+            )}
+
             {/* Grouped code list */}
-            {(() => {
+            {!billingLoading && (() => {
               const query = billingSearch.toLowerCase().trim();
               const filtered = query
                 ? billingCodes.filter(c =>
@@ -758,7 +776,13 @@ export default function SettingsPage() {
                   )
                 : billingCodes;
 
-              const groups = getBillingGroups(billingRegion);
+              // Derive groups from the data; use canonical order when possible
+              const dataGroups = new Set(billingCodes.map(c => c.group));
+              const groups = BILLING_GROUPS.filter(g => dataGroups.has(g));
+              // Add any non-standard groups that might be in the data
+              Array.from(dataGroups).forEach(g => {
+                if (!groups.includes(g as BillingGroup)) groups.push(g as BillingGroup);
+              });
               // When searching, auto-expand all groups
               const effectiveExpanded = query ? new Set(groups) : expandedGroups;
 
@@ -812,12 +836,30 @@ export default function SettingsPage() {
                                     className="w-24 p-1.5 border border-[var(--input-border)] rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)]"
                                   />
                                 </div>
-                                <div className="flex gap-2">
+                                <div className="flex gap-2 items-center">
+                                  <select
+                                    value={editGroup}
+                                    onChange={(e) => setEditGroup(e.target.value as BillingGroup)}
+                                    className="p-1.5 border border-[var(--input-border)] rounded-lg text-xs focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)]"
+                                  >
+                                    {BILLING_GROUPS.map(g => (
+                                      <option key={g} value={g}>{g}</option>
+                                    ))}
+                                  </select>
                                   <button
-                                    onClick={() => {
-                                      addBillingCode(item.code, editDesc.trim(), editFee.trim());
-                                      loadBillingCodes(billingRegion);
-                                      setEditingCode(null);
+                                    onClick={async () => {
+                                      try {
+                                        await updateBillingCodeAsync(
+                                          item.code,
+                                          editDesc.trim(),
+                                          editFee.trim(),
+                                          editGroup
+                                        );
+                                        await loadBillingCodes(billingRegion);
+                                        setEditingCode(null);
+                                      } catch (err) {
+                                        console.error('Failed to update billing code:', err);
+                                      }
                                     }}
                                     className="px-3 py-1 bg-blue-600 text-white rounded-lg text-xs font-medium"
                                   >
@@ -849,15 +891,20 @@ export default function SettingsPage() {
                                         setEditingCode(item.code);
                                         setEditDesc(item.description);
                                         setEditFee(item.fee);
+                                        setEditGroup(item.group);
                                       }}
                                       className="p-1 bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400 rounded"
                                     >
                                       <Pencil className="w-3.5 h-3.5" />
                                     </button>
                                     <button
-                                      onClick={() => {
-                                        deleteBillingCode(item.code);
-                                        loadBillingCodes(billingRegion);
+                                      onClick={async () => {
+                                        try {
+                                          await deleteBillingCodeAsync(item.code);
+                                          await loadBillingCodes(billingRegion);
+                                        } catch (err) {
+                                          console.error('Failed to delete billing code:', err);
+                                        }
                                       }}
                                       className="p-1 bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400 rounded"
                                     >
