@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Patient } from '@/lib/google-sheets';
-import { Clock, User, FileText, ChevronRight, Trash2, MessageSquare, DollarSign, Stethoscope, Copy, Check } from 'lucide-react';
+import { Clock, User, FileText, ChevronRight, Trash2, MessageSquare, DollarSign, Stethoscope, Copy, Check, Brain, ClipboardList, BookOpen } from 'lucide-react';
 
 interface PatientCardProps {
   patient: Patient;
@@ -69,49 +69,99 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
             {displayName}
           </span>
           {patient.status === 'processed' && onViewNote ? (
-            <div className="relative group/note flex-shrink-0">
-              <span
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onViewNote();
-                }}
-                className="p-0.5 hover:bg-green-100 dark:hover:bg-green-900/50 rounded transition-colors cursor-pointer inline-flex"
-              >
-                <FileText className="w-4 h-4 text-green-600 dark:text-green-400" />
-              </span>
-              <div
-                className="absolute left-0 top-full mt-1 z-50 hidden group-hover/note:block w-80 max-h-64 overflow-y-auto p-3 bg-gray-900 text-gray-100 text-xs rounded-lg shadow-lg"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <div className="flex items-center justify-between mb-2 sticky top-0 bg-gray-900 pb-1">
-                  <span className="text-gray-400 font-medium">Encounter Note</span>
-                  <button
-                    onClick={async (e) => {
-                      e.stopPropagation();
-                      const fullNote = `HPI:\n${patient.hpi}\n\nOBJECTIVE:\n${patient.objective}\n\nASSESSMENT & PLAN:\n${patient.assessmentPlan}`;
-                      await navigator.clipboard.writeText(fullNote);
-                      setNoteCopied(true);
-                      setTimeout(() => setNoteCopied(false), 2000);
-                    }}
-                    className="flex items-center gap-1 px-2 py-0.5 bg-gray-700 hover:bg-gray-600 rounded text-xs text-gray-200 transition-colors"
-                  >
-                    {noteCopied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
-                    {noteCopied ? 'Copied' : 'Copy'}
-                  </button>
-                </div>
-                <div className="whitespace-pre-wrap leading-relaxed space-y-2">
-                  {patient.hpi && (
-                    <div><span className="text-green-400 font-medium">HPI:</span> {patient.hpi}</div>
-                  )}
-                  {patient.objective && (
-                    <div><span className="text-green-400 font-medium">Objective:</span> {patient.objective}</div>
-                  )}
-                  {patient.assessmentPlan && (
-                    <div><span className="text-green-400 font-medium">A&P:</span> {patient.assessmentPlan}</div>
-                  )}
+            <>
+              <div className="relative group/note flex-shrink-0">
+                <span
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onViewNote();
+                  }}
+                  className="p-0.5 hover:bg-green-100 dark:hover:bg-green-900/50 rounded transition-colors cursor-pointer inline-flex"
+                >
+                  <FileText className="w-4 h-4 text-green-600 dark:text-green-400" />
+                </span>
+                <div
+                  className="absolute left-0 top-full mt-1 z-50 hidden group-hover/note:block w-80 max-h-64 overflow-y-auto p-3 bg-gray-900 text-gray-100 text-xs rounded-lg shadow-lg"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div className="flex items-center justify-between mb-2 sticky top-0 bg-gray-900 pb-1">
+                    <span className="text-gray-400 font-medium">Encounter Note</span>
+                    <button
+                      onClick={async (e) => {
+                        e.stopPropagation();
+                        const fullNote = `HPI:\n${patient.hpi}\n\nOBJECTIVE:\n${patient.objective}\n\nASSESSMENT & PLAN:\n${patient.assessmentPlan}`;
+                        await navigator.clipboard.writeText(fullNote);
+                        setNoteCopied(true);
+                        setTimeout(() => setNoteCopied(false), 2000);
+                      }}
+                      className="flex items-center gap-1 px-2 py-0.5 bg-gray-700 hover:bg-gray-600 rounded text-xs text-gray-200 transition-colors"
+                    >
+                      {noteCopied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+                      {noteCopied ? 'Copied' : 'Copy'}
+                    </button>
+                  </div>
+                  <div className="whitespace-pre-wrap leading-relaxed space-y-2">
+                    {patient.hpi && (
+                      <div><span className="text-green-400 font-medium">HPI:</span> {patient.hpi}</div>
+                    )}
+                    {patient.objective && (
+                      <div><span className="text-green-400 font-medium">Objective:</span> {patient.objective}</div>
+                    )}
+                    {patient.assessmentPlan && (
+                      <div><span className="text-green-400 font-medium">A&P:</span> {patient.assessmentPlan}</div>
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
+
+              {/* Synopsis hover icon */}
+              {patient.synopsis && (
+                <div className="relative group/synopsis flex-shrink-0">
+                  <span className="p-0.5 hover:bg-blue-100 dark:hover:bg-blue-900/50 rounded transition-colors cursor-pointer inline-flex">
+                    <Brain className="w-4 h-4 text-blue-500 dark:text-blue-400" />
+                  </span>
+                  <div
+                    className="absolute left-0 top-full mt-1 z-50 hidden group-hover/synopsis:block w-72 max-h-48 overflow-y-auto p-3 bg-gray-900 text-gray-100 text-xs rounded-lg shadow-lg"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <span className="text-blue-400 font-medium block mb-1">Synopsis</span>
+                    <p className="whitespace-pre-wrap leading-relaxed">{patient.synopsis}</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Management hover icon */}
+              {patient.management && (
+                <div className="relative group/mgmt flex-shrink-0">
+                  <span className="p-0.5 hover:bg-purple-100 dark:hover:bg-purple-900/50 rounded transition-colors cursor-pointer inline-flex">
+                    <ClipboardList className="w-4 h-4 text-purple-500 dark:text-purple-400" />
+                  </span>
+                  <div
+                    className="absolute left-0 top-full mt-1 z-50 hidden group-hover/mgmt:block w-72 max-h-48 overflow-y-auto p-3 bg-gray-900 text-gray-100 text-xs rounded-lg shadow-lg"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <span className="text-purple-400 font-medium block mb-1">Management</span>
+                    <p className="whitespace-pre-wrap leading-relaxed">{patient.management}</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Evidence hover icon */}
+              {patient.evidence && (
+                <div className="relative group/evidence flex-shrink-0">
+                  <span className="p-0.5 hover:bg-amber-100 dark:hover:bg-amber-900/50 rounded transition-colors cursor-pointer inline-flex">
+                    <BookOpen className="w-4 h-4 text-amber-500 dark:text-amber-400" />
+                  </span>
+                  <div
+                    className="absolute left-0 top-full mt-1 z-50 hidden group-hover/evidence:block w-72 max-h-48 overflow-y-auto p-3 bg-gray-900 text-gray-100 text-xs rounded-lg shadow-lg"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <span className="text-amber-400 font-medium block mb-1">Evidence</span>
+                    <p className="whitespace-pre-wrap leading-relaxed">{patient.evidence}</p>
+                  </div>
+                </div>
+              )}
+            </>
           ) : (
             <span className={`badge ${statusColors[patient.status]}`}>
               {statusLabels[patient.status]}

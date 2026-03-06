@@ -52,6 +52,9 @@ export default function PatientPage() {
   // Synopsis state
   const [generatingSynopsis, setGeneratingSynopsis] = useState(false);
 
+  // Update analysis state
+  const [updatingAnalysis, setUpdatingAnalysis] = useState(false);
+
   // Quick-add note state
   const [showQuickAdd, setShowQuickAdd] = useState(false);
   const [quickAddText, setQuickAddText] = useState('');
@@ -235,6 +238,42 @@ export default function PatientPage() {
     }
   };
 
+  const handleUpdateAnalysis = async () => {
+    setUpdatingAnalysis(true);
+    try {
+      // Regenerate synopsis
+      await fetch('/api/synopsis', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rowIndex: parseInt(rowIndex), sheetName }),
+      });
+
+      // Re-process to refresh management & evidence
+      let settings: any;
+      try {
+        const stored = localStorage.getItem('ed-app-settings');
+        if (stored) settings = JSON.parse(stored);
+      } catch {}
+
+      await fetch('/api/process', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          rowIndex: parseInt(rowIndex),
+          sheetName,
+          modifications: '',
+          settings,
+        }),
+      });
+
+      await fetchPatient();
+    } catch (error) {
+      console.error('Failed to update analysis:', error);
+    } finally {
+      setUpdatingAnalysis(false);
+    }
+  };
+
   const handleQuickAddSave = async () => {
     if (!quickAddText.trim() || !patient) return;
     setSavingQuickAdd(true);
@@ -346,59 +385,106 @@ export default function PatientPage() {
           </div>
         </div>
 
-        {/* Synopsis Card */}
-        {patient.hasOutput && (
-          <div className="bg-[var(--card-bg)] rounded-2xl border border-[var(--card-border)] p-5" style={{ boxShadow: 'var(--card-shadow)' }}>
-            <div className="flex items-center justify-between mb-2">
-              <h3 className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-widest">AI Synopsis</h3>
-              {patient.synopsis && (
-                <div className="flex items-center gap-1">
-                  <button
-                    onClick={() => copyToClipboard(patient.synopsis, 'synopsis')}
-                    className="p-1.5 hover:bg-[var(--bg-tertiary)] rounded-lg transition-colors"
-                  >
-                    {copied === 'synopsis' ? (
-                      <Check className="w-3.5 h-3.5 text-green-600 dark:text-green-400" />
-                    ) : (
-                      <Copy className="w-3.5 h-3.5 text-[var(--text-muted)]" />
-                    )}
-                  </button>
-                  <button
-                    onClick={handleGenerateSynopsis}
-                    disabled={generatingSynopsis}
-                    className="p-1.5 hover:bg-[var(--bg-tertiary)] rounded-lg transition-colors"
-                  >
-                    {generatingSynopsis ? (
-                      <Loader2 className="w-3.5 h-3.5 animate-spin text-[var(--text-muted)]" />
-                    ) : (
-                      <RefreshCw className="w-3.5 h-3.5 text-[var(--text-muted)]" />
-                    )}
-                  </button>
-                </div>
-              )}
-            </div>
-            {patient.synopsis ? (
-              <p className="text-sm text-[var(--text-secondary)] leading-relaxed">{patient.synopsis}</p>
-            ) : (
-              <button
-                onClick={handleGenerateSynopsis}
-                disabled={generatingSynopsis}
-                className="w-full py-2.5 border border-dashed border-[var(--border)] text-[var(--text-muted)] rounded-xl text-sm font-medium flex items-center justify-center gap-2 hover:bg-[var(--bg-tertiary)] active:scale-[0.99] transition-all"
-              >
-                {generatingSynopsis ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    Generating...
-                  </>
-                ) : (
-                  <>
-                    <FileText className="w-4 h-4" />
-                    Generate Synopsis
-                  </>
-                )}
-              </button>
+        {/* Synopsis Card — always visible */}
+        <div className="bg-[var(--card-bg)] rounded-2xl border border-[var(--card-border)] p-5" style={{ boxShadow: 'var(--card-shadow)' }}>
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-widest">AI Synopsis</h3>
+            {patient.synopsis && (
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => copyToClipboard(patient.synopsis, 'synopsis')}
+                  className="p-1.5 hover:bg-[var(--bg-tertiary)] rounded-lg transition-colors"
+                >
+                  {copied === 'synopsis' ? (
+                    <Check className="w-3.5 h-3.5 text-green-600 dark:text-green-400" />
+                  ) : (
+                    <Copy className="w-3.5 h-3.5 text-[var(--text-muted)]" />
+                  )}
+                </button>
+                <button
+                  onClick={handleGenerateSynopsis}
+                  disabled={generatingSynopsis}
+                  className="p-1.5 hover:bg-[var(--bg-tertiary)] rounded-lg transition-colors"
+                >
+                  {generatingSynopsis ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin text-[var(--text-muted)]" />
+                  ) : (
+                    <RefreshCw className="w-3.5 h-3.5 text-[var(--text-muted)]" />
+                  )}
+                </button>
+              </div>
             )}
           </div>
+          {patient.synopsis ? (
+            <p className="text-sm text-[var(--text-secondary)] leading-relaxed">{patient.synopsis}</p>
+          ) : (
+            <button
+              onClick={handleGenerateSynopsis}
+              disabled={generatingSynopsis || !patient.hasOutput}
+              title={!patient.hasOutput ? 'Process encounter first' : undefined}
+              className="w-full py-2.5 border border-dashed border-[var(--border)] text-[var(--text-muted)] rounded-xl text-sm font-medium flex items-center justify-center gap-2 hover:bg-[var(--bg-tertiary)] active:scale-[0.99] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {generatingSynopsis ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Generating...
+                </>
+              ) : (
+                <>
+                  <FileText className="w-4 h-4" />
+                  Generate Synopsis
+                </>
+              )}
+            </button>
+          )}
+        </div>
+
+        {/* Standalone Management & Evidence Cards */}
+        {patient.management && (
+          <OutputSection
+            title="Recommended Management"
+            content={patient.management}
+            field="management"
+            expanded={expandedSections.has('management-standalone')}
+            onToggle={() => toggleSection('management-standalone')}
+            onCopy={() => copyToClipboard(patient.management, 'management')}
+            copied={copied === 'management'}
+            onSave={(value) => handleSaveField('management', value)}
+          />
+        )}
+
+        {patient.evidence && (
+          <OutputSection
+            title="Pertinent Evidence"
+            content={patient.evidence}
+            field="evidence"
+            expanded={expandedSections.has('evidence-standalone')}
+            onToggle={() => toggleSection('evidence-standalone')}
+            onCopy={() => copyToClipboard(patient.evidence, 'evidence')}
+            copied={copied === 'evidence'}
+            onSave={(value) => handleSaveField('evidence', value)}
+          />
+        )}
+
+        {/* Update AI Analysis Button */}
+        {patient.hasOutput && (
+          <button
+            onClick={handleUpdateAnalysis}
+            disabled={updatingAnalysis}
+            className="w-full py-3 border border-[var(--border)] text-[var(--text-secondary)] rounded-2xl font-medium flex items-center justify-center gap-2 hover:bg-[var(--bg-tertiary)] active:scale-[0.99] transition-all disabled:opacity-50"
+          >
+            {updatingAnalysis ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Updating Analysis...
+              </>
+            ) : (
+              <>
+                <RefreshCw className="w-4 h-4" />
+                Update AI Analysis
+              </>
+            )}
+          </button>
         )}
 
         {/* Process Button */}
