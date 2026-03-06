@@ -161,6 +161,11 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
               suggestions={suggestions}
               placeholder="Physician notes, clinical observations, plan..."
               textareaClassName="w-full h-28 p-3 border border-[var(--input-border)] rounded-lg text-sm resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)]"
+              patientContext={{
+                age: patient.age,
+                gender: patient.gender,
+                chiefComplaint: triageVitals.split('\n')[0] || '',
+              }}
             />
           </div>
 
