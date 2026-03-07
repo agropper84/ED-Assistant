@@ -263,10 +263,10 @@ export function VoiceRecorder({ onTranscript, onInterimTranscript, onRecordingSt
         onClick={startRecording}
         disabled={disabled}
         className="inline-flex items-center gap-1 px-2 py-1 text-xs text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-        title="Record audio"
+        title={mode === 'dictation' ? 'Dictate' : 'Record encounter'}
       >
         <Mic className="w-3.5 h-3.5" />
-        Record
+        {mode === 'dictation' ? 'Dictate' : 'Record'}
       </button>
       <button
         type="button"
