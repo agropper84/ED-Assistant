@@ -213,6 +213,7 @@ export function ParseModal({ isOpen, onClose, onSave }: ParseModalProps) {
                 Transcript (optional)
               </label>
               <VoiceRecorder
+                mode="encounter"
                 onTranscript={(text) => {
                   const base = preRecordTranscript || transcript;
                   setTranscript(base ? `${base}\n\n${text}` : text);

@@ -709,6 +709,7 @@ export default function PatientPage() {
               Source Data
             </h3>
             <VoiceRecorder
+              mode="encounter"
               onTranscript={(text) => {
                 const current = patient.transcript || '';
                 const updated = current ? `${current}\n\n${text}` : text;
