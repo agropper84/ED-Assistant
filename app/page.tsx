@@ -47,7 +47,16 @@ export default function HomePage() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [showParseModal, setShowParseModal] = useState(false);
-  const [currentDate, setCurrentDate] = useState(new Date());
+  const [currentDate, setCurrentDate] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const saved = sessionStorage.getItem('ed-app-current-date');
+      if (saved) {
+        const d = new Date(saved);
+        if (!isNaN(d.getTime())) return d;
+      }
+    }
+    return new Date();
+  });
   const [availableSheets, setAvailableSheets] = useState<string[]>([]);
 
   // Shift time state
@@ -284,20 +293,25 @@ export default function HomePage() {
     }
   };
 
+  const changeDate = (date: Date) => {
+    setCurrentDate(date);
+    sessionStorage.setItem('ed-app-current-date', date.toISOString());
+  };
+
   const goToPreviousDay = () => {
     const prev = new Date(currentDate);
     prev.setDate(prev.getDate() - 1);
-    setCurrentDate(prev);
+    changeDate(prev);
   };
 
   const goToNextDay = () => {
     const next = new Date(currentDate);
     next.setDate(next.getDate() + 1);
-    setCurrentDate(next);
+    changeDate(next);
   };
 
   const goToToday = () => {
-    setCurrentDate(new Date());
+    changeDate(new Date());
   };
 
   // Filter and sort patients
