@@ -100,3 +100,13 @@ export async function getShortcutTranscript(id: string): Promise<{ transcript: s
 export async function deleteShortcutTranscript(id: string): Promise<void> {
   await getRedis().del(`shortcut-transcript:${id}`);
 }
+
+// --- User refresh token for external device access ---
+
+export async function setUserRefreshToken(userId: string, refreshToken: string): Promise<void> {
+  await getRedis().set(`user:${userId}:refresh-token`, refreshToken);
+}
+
+export async function getUserRefreshToken(userId: string): Promise<string | null> {
+  return getRedis().get(`user:${userId}:refresh-token`);
+}

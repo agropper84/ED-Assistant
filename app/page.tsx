@@ -16,7 +16,7 @@ import {
 import {
   Plus, RefreshCw, Loader2, ChevronLeft, ChevronRight,
   Calendar, Settings, CheckSquare, Square, Play, Clock, EyeOff, Eye,
-  Search, ArrowUpDown, X, LogOut, Upload, Shield, Monitor
+  Search, ArrowUpDown, X, LogOut, Upload, Shield, Monitor, RotateCcw
 } from 'lucide-react';
 
 function formatDateForSheet(date: Date): string {
@@ -134,6 +134,12 @@ export default function HomePage() {
 
   // Batch transcribe
   const [showBatchTranscribe, setShowBatchTranscribe] = useState(false);
+
+  // Draggable FAB
+  const [fabPos, setFabPos] = useState<{ x: number; y: number } | null>(null);
+  const fabDragging = useRef(false);
+  const fabDragStart = useRef({ x: 0, y: 0, startX: 0, startY: 0 });
+  const fabMoved = useRef(false);
   const [sharedFile, setSharedFile] = useState<File | undefined>(undefined);
   const [sharedTranscript, setSharedTranscript] = useState<string | undefined>(undefined);
 
@@ -686,14 +692,6 @@ export default function HomePage() {
                 <Settings className="w-[18px] h-[18px]" />
               </button>
               <button
-                onClick={() => setShowBatchTranscribe(true)}
-                className="p-2 hover:bg-white/10 rounded-full transition-colors"
-                style={{ color: 'var(--dash-text-sub)' }}
-                title="Upload audio for multiple patients"
-              >
-                <Upload className="w-[18px] h-[18px]" />
-              </button>
-              <button
                 onClick={() => fetchPatients(true)}
                 disabled={refreshing}
                 className="p-2 hover:bg-white/10 rounded-full transition-colors"
@@ -949,16 +947,74 @@ export default function HomePage() {
             )}
           </div>
         )}
+
+        {/* Batch upload button below patient list */}
+        <button
+          onClick={() => setShowBatchTranscribe(true)}
+          className="w-full mt-6 py-3 flex items-center justify-center gap-2 text-sm font-medium text-[var(--text-muted)] hover:text-[var(--text-secondary)] bg-[var(--card-bg)] border border-dashed border-[var(--border)] rounded-2xl hover:border-[var(--text-muted)] transition-colors"
+        >
+          <Upload className="w-4 h-4" />
+          Upload Batch Transcript for {sheetName}
+        </button>
       </main>
 
-      {/* FAB - Add Patient */}
-      <button
-        onClick={() => setShowParseModal(true)}
-        className="fixed bottom-6 right-6 w-14 h-14 bg-[var(--accent)] text-white rounded-2xl flex items-center justify-center hover:brightness-110 active:scale-[0.93] transition-all duration-200"
-        style={{ boxShadow: 'var(--fab-shadow)' }}
+      {/* FAB - Add Patient (draggable) */}
+      <div
+        className="fixed z-50"
+        style={fabPos
+          ? { left: fabPos.x, top: fabPos.y }
+          : { bottom: 24, right: 24 }
+        }
       >
-        <Plus className="w-6 h-6" />
-      </button>
+        {fabPos && (
+          <button
+            onClick={() => setFabPos(null)}
+            className="absolute -top-2 -left-2 w-5 h-5 bg-[var(--card-bg)] border border-[var(--border)] rounded-full flex items-center justify-center shadow-md hover:bg-[var(--bg-tertiary)] transition-colors"
+            title="Reset position"
+          >
+            <RotateCcw className="w-2.5 h-2.5 text-[var(--text-muted)]" />
+          </button>
+        )}
+        <button
+          onPointerDown={(e) => {
+            fabDragging.current = true;
+            fabMoved.current = false;
+            const rect = (e.currentTarget.parentElement as HTMLElement).getBoundingClientRect();
+            fabDragStart.current = {
+              x: e.clientX,
+              y: e.clientY,
+              startX: rect.left,
+              startY: rect.top,
+            };
+            (e.currentTarget.parentElement as HTMLElement).setPointerCapture(e.pointerId);
+          }}
+          onPointerMove={(e) => {
+            if (!fabDragging.current) return;
+            const dx = e.clientX - fabDragStart.current.x;
+            const dy = e.clientY - fabDragStart.current.y;
+            if (Math.abs(dx) > 3 || Math.abs(dy) > 3) {
+              fabMoved.current = true;
+            }
+            if (fabMoved.current) {
+              setFabPos({
+                x: Math.max(0, Math.min(window.innerWidth - 56, fabDragStart.current.startX + dx)),
+                y: Math.max(0, Math.min(window.innerHeight - 56, fabDragStart.current.startY + dy)),
+              });
+            }
+          }}
+          onPointerUp={(e) => {
+            (e.currentTarget.parentElement as HTMLElement).releasePointerCapture(e.pointerId);
+            fabDragging.current = false;
+            if (!fabMoved.current) {
+              setShowParseModal(true);
+            }
+          }}
+          className="w-14 h-14 bg-[var(--accent)] text-white rounded-2xl flex items-center justify-center hover:brightness-110 active:scale-[0.93] transition-all duration-200 touch-none select-none cursor-grab active:cursor-grabbing"
+          style={{ boxShadow: 'var(--fab-shadow)' }}
+        >
+          <Plus className="w-6 h-6 pointer-events-none" />
+        </button>
+      </div>
 
       {/* Parse Modal */}
       <ParseModal

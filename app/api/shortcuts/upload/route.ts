@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createHash, randomBytes } from 'crypto';
 import OpenAI from 'openai';
 import { getShortcutTokenUser, setShortcutTranscript } from '@/lib/kv';
+import { getSheetsContextForUser, updatePatientFields } from '@/lib/google-sheets';
 
 export const maxDuration = 60;
 
@@ -55,6 +56,17 @@ export async function POST(request: NextRequest) {
       prompt: MEDICAL_PROMPT,
       language: 'en',
     });
+
+    // If rowIndex provided, assign directly to patient
+    const rowIndexStr = formData.get('rowIndex');
+    const sheetName = formData.get('sheetName') as string | null;
+
+    if (rowIndexStr) {
+      const rowIndex = parseInt(rowIndexStr as string, 10);
+      const ctx = await getSheetsContextForUser(userId);
+      await updatePatientFields(ctx, rowIndex, { transcript: transcription.text }, sheetName || undefined);
+      return NextResponse.json({ transcript: transcription.text, assigned: true, rowIndex });
+    }
 
     // Store transcript in KV with 10 min TTL
     const id = randomBytes(16).toString('hex');
