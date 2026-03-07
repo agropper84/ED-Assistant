@@ -280,43 +280,44 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
                 )}
               </div>
 
-              {/* Clinical Q&A chat icon */}
-              {onClinicalChat && (
-                <div className="relative group/qa flex-shrink-0">
-                  <span
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onClinicalChat();
-                    }}
-                    className="p-0.5 hover:bg-teal-100 dark:hover:bg-teal-900/50 rounded transition-colors cursor-pointer inline-flex"
-                    title="Clinical questions"
-                  >
-                    <MessageCircleQuestion className={`w-4 h-4 ${patient.clinicalQA ? 'text-teal-500 dark:text-teal-400' : 'text-gray-300 dark:text-gray-600'}`} />
-                  </span>
-                  {patient.clinicalQA && (() => {
-                    try {
-                      const qa = JSON.parse(patient.clinicalQA);
-                      if (!Array.isArray(qa) || qa.length < 2) return null;
-                      const lastQ = qa[qa.length - 2];
-                      const lastA = qa[qa.length - 1];
-                      return (
-                        <>
-                          <div className="absolute left-0 top-full h-2 w-72 hidden group-hover/qa:block" />
-                          <div
-                            className="absolute left-0 top-full mt-2 z-50 hidden group-hover/qa:block w-72 max-h-48 overflow-y-auto p-3 bg-gray-900 text-gray-100 text-xs rounded-lg shadow-xl ring-1 ring-white/10"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            <span className="text-teal-400 font-medium block mb-1">Last Q&A</span>
-                            <p className="text-blue-300 mb-1"><strong>Q:</strong> {lastQ?.content}</p>
-                            <p className="whitespace-pre-wrap leading-relaxed"><strong>A:</strong> {lastA?.content?.slice(0, 200)}{lastA?.content?.length > 200 ? '...' : ''}</p>
-                          </div>
-                        </>
-                      );
-                    } catch { return null; }
-                  })()}
-                </div>
-              )}
             </>
+          )}
+
+          {/* Clinical Q&A chat icon — always visible */}
+          {onClinicalChat && (
+            <div className="relative group/qa flex-shrink-0">
+              <span
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onClinicalChat();
+                }}
+                className="p-0.5 hover:bg-teal-100 dark:hover:bg-teal-900/50 rounded transition-colors cursor-pointer inline-flex"
+                title="Clinical questions"
+              >
+                <MessageCircleQuestion className={`w-4 h-4 ${patient.clinicalQA ? 'text-teal-500 dark:text-teal-400' : 'text-gray-300 dark:text-gray-600'}`} />
+              </span>
+              {patient.clinicalQA && (() => {
+                try {
+                  const qa = JSON.parse(patient.clinicalQA);
+                  if (!Array.isArray(qa) || qa.length < 2) return null;
+                  const lastQ = qa[qa.length - 2];
+                  const lastA = qa[qa.length - 1];
+                  return (
+                    <>
+                      <div className="absolute left-0 top-full h-2 w-72 hidden group-hover/qa:block" />
+                      <div
+                        className="absolute left-0 top-full mt-2 z-50 hidden group-hover/qa:block w-72 max-h-48 overflow-y-auto p-3 bg-gray-900 text-gray-100 text-xs rounded-lg shadow-xl ring-1 ring-white/10"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <span className="text-teal-400 font-medium block mb-1">Last Q&A</span>
+                        <p className="text-blue-300 mb-1"><strong>Q:</strong> {lastQ?.content}</p>
+                        <p className="whitespace-pre-wrap leading-relaxed"><strong>A:</strong> {lastA?.content?.slice(0, 200)}{lastA?.content?.length > 200 ? '...' : ''}</p>
+                      </div>
+                    </>
+                  );
+                } catch { return null; }
+              })()}
+            </div>
           )}
         </div>
 
