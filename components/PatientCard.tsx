@@ -74,7 +74,7 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
   };
 
   return (
-    <div className={`patient-card relative flex items-center gap-4 hover:-translate-y-0.5 border-l-[3px] ${borderAccent[patient.status] || 'border-l-transparent'}`}>
+    <div className={`patient-card relative flex items-center gap-4 hover:-translate-y-0.5 hover:z-10 border-l-[3px] ${borderAccent[patient.status] || 'border-l-transparent'}`}>
       <button
         onClick={onClick}
         className="flex-1 min-w-0 text-left"
