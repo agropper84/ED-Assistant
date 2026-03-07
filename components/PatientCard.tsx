@@ -15,6 +15,7 @@ interface PatientCardProps {
   onViewNote?: () => void;
   onNavigate?: () => void;
   onProcess?: () => Promise<void>;
+  onGenerateAnalysis?: () => Promise<void>;
 }
 
 /** Convert a full name to initials, e.g. "John Smith" → "J.S." */
@@ -27,11 +28,12 @@ function toInitials(name: string): string {
     .join('');
 }
 
-export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChange, onBillingToggle, billingCodes, onViewNote, onNavigate, onProcess }: PatientCardProps) {
+export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChange, onBillingToggle, billingCodes, onViewNote, onNavigate, onProcess, onGenerateAnalysis }: PatientCardProps) {
   const [editingTime, setEditingTime] = useState(false);
   const [timeValue, setTimeValue] = useState(patient.timestamp || '');
   const [noteCopied, setNoteCopied] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
 
   const statusColors: Record<string, string> = {
     new: 'bg-blue-100 text-blue-800 dark:bg-blue-950/50 dark:text-blue-300 dark:border dark:border-blue-800',
@@ -117,11 +119,25 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
               </div>
 
               {/* Synopsis hover icon */}
-              {patient.synopsis && (
-                <div className="relative group/synopsis flex-shrink-0">
-                  <span className="p-0.5 hover:bg-blue-100 dark:hover:bg-blue-900/50 rounded transition-colors cursor-pointer inline-flex">
-                    <Brain className="w-4 h-4 text-blue-500 dark:text-blue-400" />
-                  </span>
+              <div className="relative group/synopsis flex-shrink-0">
+                <span
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (!patient.synopsis && onGenerateAnalysis && !isGenerating) {
+                      setIsGenerating(true);
+                      onGenerateAnalysis().finally(() => setIsGenerating(false));
+                    }
+                  }}
+                  className={`p-0.5 rounded transition-colors inline-flex ${patient.synopsis ? 'hover:bg-blue-100 dark:hover:bg-blue-900/50 cursor-pointer' : onGenerateAnalysis ? 'hover:bg-blue-100 dark:hover:bg-blue-900/50 cursor-pointer' : ''}`}
+                  title={patient.synopsis ? '' : 'Generate synopsis & analysis'}
+                >
+                  {isGenerating ? (
+                    <Loader2 className="w-4 h-4 text-blue-400 animate-spin" />
+                  ) : (
+                    <Brain className={`w-4 h-4 ${patient.synopsis ? 'text-blue-500 dark:text-blue-400' : 'text-gray-300 dark:text-gray-600'}`} />
+                  )}
+                </span>
+                {patient.synopsis && (
                   <div
                     className="absolute left-0 top-full mt-1 z-50 hidden group-hover/synopsis:block w-72 max-h-48 overflow-y-auto p-3 bg-gray-900 text-gray-100 text-xs rounded-lg shadow-lg"
                     onClick={(e) => e.stopPropagation()}
@@ -129,15 +145,29 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
                     <span className="text-blue-400 font-medium block mb-1">Synopsis</span>
                     <p className="whitespace-pre-wrap leading-relaxed">{patient.synopsis}</p>
                   </div>
-                </div>
-              )}
+                )}
+              </div>
 
               {/* Management hover icon */}
-              {patient.management && (
-                <div className="relative group/mgmt flex-shrink-0">
-                  <span className="p-0.5 hover:bg-purple-100 dark:hover:bg-purple-900/50 rounded transition-colors cursor-pointer inline-flex">
-                    <ClipboardList className="w-4 h-4 text-purple-500 dark:text-purple-400" />
-                  </span>
+              <div className="relative group/mgmt flex-shrink-0">
+                <span
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (!patient.management && onGenerateAnalysis && !isGenerating) {
+                      setIsGenerating(true);
+                      onGenerateAnalysis().finally(() => setIsGenerating(false));
+                    }
+                  }}
+                  className={`p-0.5 rounded transition-colors inline-flex ${patient.management || onGenerateAnalysis ? 'hover:bg-purple-100 dark:hover:bg-purple-900/50 cursor-pointer' : ''}`}
+                  title={patient.management ? '' : 'Generate synopsis & analysis'}
+                >
+                  {isGenerating ? (
+                    <Loader2 className="w-4 h-4 text-purple-400 animate-spin" />
+                  ) : (
+                    <ClipboardList className={`w-4 h-4 ${patient.management ? 'text-purple-500 dark:text-purple-400' : 'text-gray-300 dark:text-gray-600'}`} />
+                  )}
+                </span>
+                {patient.management && (
                   <div
                     className="absolute left-0 top-full mt-1 z-50 hidden group-hover/mgmt:block w-72 max-h-48 overflow-y-auto p-3 bg-gray-900 text-gray-100 text-xs rounded-lg shadow-lg"
                     onClick={(e) => e.stopPropagation()}
@@ -145,15 +175,29 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
                     <span className="text-purple-400 font-medium block mb-1">Management</span>
                     <p className="whitespace-pre-wrap leading-relaxed">{patient.management}</p>
                   </div>
-                </div>
-              )}
+                )}
+              </div>
 
               {/* Evidence hover icon */}
-              {patient.evidence && (
-                <div className="relative group/evidence flex-shrink-0">
-                  <span className="p-0.5 hover:bg-amber-100 dark:hover:bg-amber-900/50 rounded transition-colors cursor-pointer inline-flex">
-                    <BookOpen className="w-4 h-4 text-amber-500 dark:text-amber-400" />
-                  </span>
+              <div className="relative group/evidence flex-shrink-0">
+                <span
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (!patient.evidence && onGenerateAnalysis && !isGenerating) {
+                      setIsGenerating(true);
+                      onGenerateAnalysis().finally(() => setIsGenerating(false));
+                    }
+                  }}
+                  className={`p-0.5 rounded transition-colors inline-flex ${patient.evidence || onGenerateAnalysis ? 'hover:bg-amber-100 dark:hover:bg-amber-900/50 cursor-pointer' : ''}`}
+                  title={patient.evidence ? '' : 'Generate synopsis & analysis'}
+                >
+                  {isGenerating ? (
+                    <Loader2 className="w-4 h-4 text-amber-400 animate-spin" />
+                  ) : (
+                    <BookOpen className={`w-4 h-4 ${patient.evidence ? 'text-amber-500 dark:text-amber-400' : 'text-gray-300 dark:text-gray-600'}`} />
+                  )}
+                </span>
+                {patient.evidence && (
                   <div
                     className="absolute left-0 top-full mt-1 z-50 hidden group-hover/evidence:block w-72 max-h-48 overflow-y-auto p-3 bg-gray-900 text-gray-100 text-xs rounded-lg shadow-lg"
                     onClick={(e) => e.stopPropagation()}
@@ -161,8 +205,8 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
                     <span className="text-amber-400 font-medium block mb-1">Evidence</span>
                     <p className="whitespace-pre-wrap leading-relaxed">{patient.evidence}</p>
                   </div>
-                </div>
-              )}
+                )}
+              </div>
             </>
           ) : patient.status === 'pending' && onProcess ? (
             <span
