@@ -456,6 +456,14 @@ export default function HomePage() {
             ]);
             fetchPatients();
           }}
+          onUpdateFields={async (fields) => {
+            await fetch(`/api/patients/${patient.rowIndex}`, {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ ...fields, _sheetName: patient.sheetName }),
+            });
+            fetchPatients();
+          }}
         />
         {isBillingOpen && (
           <div className="mt-1 ml-0">

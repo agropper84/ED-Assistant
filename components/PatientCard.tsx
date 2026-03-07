@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Patient } from '@/lib/google-sheets';
-import { Clock, User, FileText, ChevronRight, Trash2, DollarSign, Stethoscope, Copy, Check, Brain, ClipboardList, BookOpen, Play, Loader2 } from 'lucide-react';
+import { Clock, User, FileText, ChevronRight, Trash2, DollarSign, Stethoscope, Copy, Check, Brain, ClipboardList, BookOpen, Play, Loader2, X } from 'lucide-react';
 
 interface PatientCardProps {
   patient: Patient;
@@ -15,6 +15,7 @@ interface PatientCardProps {
   onNavigate?: () => void;
   onProcess?: () => Promise<void>;
   onGenerateAnalysis?: () => Promise<void>;
+  onUpdateFields?: (fields: Record<string, string>) => Promise<void>;
 }
 
 /** Convert a full name to initials, e.g. "John Smith" → "J.S." */
@@ -27,12 +28,18 @@ function toInitials(name: string): string {
     .join('');
 }
 
-export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChange, onBillingToggle, billingCodes, onNavigate, onProcess, onGenerateAnalysis }: PatientCardProps) {
+export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChange, onBillingToggle, billingCodes, onNavigate, onProcess, onGenerateAnalysis, onUpdateFields }: PatientCardProps) {
   const [editingTime, setEditingTime] = useState(false);
   const [timeValue, setTimeValue] = useState(patient.timestamp || '');
   const [noteCopied, setNoteCopied] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [editingDemo, setEditingDemo] = useState(false);
+  const [editName, setEditName] = useState('');
+  const [editAge, setEditAge] = useState('');
+  const [editGender, setEditGender] = useState('');
+  const [editBirthday, setEditBirthday] = useState('');
+  const [savingDemo, setSavingDemo] = useState(false);
 
   const hasEncounterNote = !!(patient.hpi || patient.objective || patient.assessmentPlan);
   const hasAnalysis = !!(patient.synopsis || patient.management || patient.evidence);
@@ -67,13 +74,24 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
   };
 
   return (
-    <div className={`patient-card flex items-center gap-4 hover:-translate-y-0.5 border-l-[3px] ${borderAccent[patient.status] || 'border-l-transparent'}`}>
+    <div className={`patient-card relative flex items-center gap-4 hover:-translate-y-0.5 border-l-[3px] ${borderAccent[patient.status] || 'border-l-transparent'}`}>
       <button
         onClick={onClick}
         className="flex-1 min-w-0 text-left"
       >
         <div className="flex items-center gap-2 mb-1">
-          <span className="font-semibold text-[var(--text-primary)] truncate">
+          <span
+            className={`font-semibold text-[var(--text-primary)] truncate ${onUpdateFields ? 'hover:text-blue-600 dark:hover:text-blue-400 cursor-pointer' : ''}`}
+            onClick={onUpdateFields ? (e) => {
+              e.stopPropagation();
+              e.preventDefault();
+              setEditName(patient.name || '');
+              setEditAge(patient.age || '');
+              setEditGender(patient.gender || '');
+              setEditBirthday(patient.birthday || '');
+              setEditingDemo(true);
+            } : undefined}
+          >
             {displayName}
           </span>
           {/* Status badge / process button */}
@@ -292,6 +310,93 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
           )}
         </div>
       </button>
+
+      {/* Inline demographics editor */}
+      {editingDemo && (
+        <div
+          className="absolute left-0 right-0 top-0 z-40 bg-[var(--card-bg)] border border-[var(--card-border)] rounded-2xl p-4 shadow-xl"
+          onClick={(e) => e.stopPropagation()}
+          style={{ boxShadow: 'var(--card-shadow)' }}
+        >
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-sm font-semibold text-[var(--text-primary)]">Edit Patient Info</span>
+            <button
+              onClick={() => setEditingDemo(false)}
+              className="p-1 hover:bg-[var(--bg-tertiary)] rounded-full transition-colors"
+            >
+              <X className="w-4 h-4 text-[var(--text-muted)]" />
+            </button>
+          </div>
+          <div className="space-y-2">
+            <input
+              type="text"
+              value={editName}
+              onChange={(e) => setEditName(e.target.value)}
+              placeholder="Patient name"
+              autoFocus
+              className="w-full p-2 border border-[var(--input-border)] rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)]"
+            />
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={editAge}
+                onChange={(e) => setEditAge(e.target.value)}
+                placeholder="Age"
+                className="w-20 p-2 border border-[var(--input-border)] rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)]"
+              />
+              <select
+                value={editGender}
+                onChange={(e) => setEditGender(e.target.value)}
+                className="flex-1 p-2 border border-[var(--input-border)] rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)]"
+              >
+                <option value="">Gender</option>
+                <option value="M">Male</option>
+                <option value="F">Female</option>
+                <option value="Other">Other</option>
+              </select>
+              <input
+                type="text"
+                value={editBirthday}
+                onChange={(e) => setEditBirthday(e.target.value)}
+                placeholder="DOB"
+                className="w-28 p-2 border border-[var(--input-border)] rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)]"
+              />
+            </div>
+            <div className="flex gap-2 pt-1">
+              <button
+                onClick={async () => {
+                  if (!onUpdateFields) return;
+                  setSavingDemo(true);
+                  try {
+                    await onUpdateFields({
+                      name: editName.trim(),
+                      age: editAge.trim(),
+                      gender: editGender,
+                      birthday: editBirthday.trim(),
+                    });
+                    setEditingDemo(false);
+                  } catch (err) {
+                    console.error('Failed to update patient info:', err);
+                  } finally {
+                    setSavingDemo(false);
+                  }
+                }}
+                disabled={savingDemo}
+                className="px-3 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-medium disabled:opacity-50 flex items-center gap-1.5"
+              >
+                {savingDemo && <Loader2 className="w-3 h-3 animate-spin" />}
+                Save
+              </button>
+              <button
+                onClick={() => setEditingDemo(false)}
+                className="px-3 py-1.5 bg-[var(--bg-tertiary)] text-[var(--text-secondary)] rounded-lg text-xs font-medium"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Inline time editor */}
       {editingTime && (
