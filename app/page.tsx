@@ -8,6 +8,7 @@ import { PatientCard } from '@/components/PatientCard';
 import { ParseModal } from '@/components/ParseModal';
 import { PatientDataModal } from '@/components/PatientDataModal';
 import { BatchTranscribeModal } from '@/components/BatchTranscribeModal';
+import { ClinicalChatModal } from '@/components/ClinicalChatModal';
 import { InlineBilling } from '@/components/BillingSection';
 import {
   BillingItem,
@@ -134,6 +135,9 @@ export default function HomePage() {
 
   // Batch transcribe
   const [showBatchTranscribe, setShowBatchTranscribe] = useState(false);
+
+  // Clinical chat
+  const [chatPatient, setChatPatient] = useState<Patient | null>(null);
 
   // Draggable FAB
   const [fabPos, setFabPos] = useState<{ x: number; y: number } | null>(null);
@@ -609,6 +613,7 @@ export default function HomePage() {
             });
             fetchPatients();
           }}
+          onClinicalChat={patient.hasOutput ? () => setChatPatient(patient) : undefined}
         />
         {isBillingOpen && (
           <div className="mt-1 ml-0">
@@ -1053,6 +1058,16 @@ export default function HomePage() {
         initialFile={sharedFile}
         initialTranscript={sharedTranscript}
       />
+
+      {/* Clinical Chat Modal */}
+      {chatPatient && (
+        <ClinicalChatModal
+          isOpen={!!chatPatient}
+          onClose={() => setChatPatient(null)}
+          patient={chatPatient}
+          onUpdate={() => fetchPatients()}
+        />
+      )}
 
       {/* Delete Confirmation */}
       {deleteConfirm && (
