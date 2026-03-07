@@ -4,7 +4,7 @@ import { BillingItem, BillingCode, BillingGroup, calculateTotal, getDefaultCodes
 import type { StyleGuide } from '@/lib/style-guide';
 import { getSessionFromCookies } from '@/lib/session';
 import { getOAuth2Client, refreshAccessToken } from '@/lib/oauth';
-import { getUserSpreadsheetId, getUserStatus } from '@/lib/kv';
+import { getUserSpreadsheetId, getUserStatus, getUserRefreshToken } from '@/lib/kv';
 
 // --- SheetsContext: per-user authenticated Sheets client ---
 
@@ -60,6 +60,38 @@ export async function getSheetsContext(): Promise<SheetsContext> {
   const spreadsheetId = await getUserSpreadsheetId(session.userId);
   if (!spreadsheetId) {
     throw new Error('No spreadsheet found for user - please re-login');
+  }
+
+  return { sheets, spreadsheetId };
+}
+
+/**
+ * Build a SheetsContext for a given userId (for token-auth endpoints like watch app).
+ * Uses refresh token stored in KV instead of session cookies.
+ */
+export async function getSheetsContextForUser(userId: string): Promise<SheetsContext> {
+  const status = await getUserStatus(userId);
+  if (status !== 'approved') {
+    throw new Error('Not approved');
+  }
+
+  const refreshToken = await getUserRefreshToken(userId);
+  if (!refreshToken) {
+    throw new Error('No refresh token found - please regenerate your device token');
+  }
+
+  const newCreds = await refreshAccessToken(refreshToken);
+  const oauth2Client = getOAuth2Client();
+  oauth2Client.setCredentials({
+    access_token: newCreds.access_token,
+    refresh_token: refreshToken,
+  });
+
+  const sheets = google.sheets({ version: 'v4', auth: oauth2Client });
+
+  const spreadsheetId = await getUserSpreadsheetId(userId);
+  if (!spreadsheetId) {
+    throw new Error('No spreadsheet found for user');
   }
 
   return { sheets, spreadsheetId };

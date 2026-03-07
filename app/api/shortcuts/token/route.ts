@@ -7,6 +7,7 @@ import {
   setUserShortcutTokenHash,
   getUserShortcutTokenHash,
   deleteUserShortcutTokenHash,
+  setUserRefreshToken,
 } from '@/lib/kv';
 
 function sha256(input: string): string {
@@ -35,7 +36,14 @@ export async function POST() {
   await setShortcutTokenHash(hash, session.userId);
   await setUserShortcutTokenHash(session.userId, hash);
 
-  return NextResponse.json({ token: rawToken });
+  // Store refresh token for device API access
+  if (session.refreshToken) {
+    await setUserRefreshToken(session.userId, session.refreshToken);
+  } else {
+    console.warn('No refresh token in session for user', session.userId);
+  }
+
+  return NextResponse.json({ token: rawToken, hasRefreshToken: !!session.refreshToken });
 }
 
 // GET — Check if user has a token
