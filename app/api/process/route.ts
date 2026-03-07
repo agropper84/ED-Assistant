@@ -10,7 +10,7 @@ export const maxDuration = 60;
 export async function POST(request: NextRequest) {
   try {
     const ctx = await getSheetsContext();
-    const { rowIndex, sheetName, modifications, styleGuidance, settings } = await request.json();
+    const { rowIndex, sheetName, modifications, styleGuidance, settings, promptTemplates } = await request.json();
 
     // Get patient data
     const patient = await getPatient(ctx, rowIndex, sheetName);
@@ -78,6 +78,7 @@ export async function POST(request: NextRequest) {
         existingOutput,
         styleGuidance: effectiveStyleGuidance,
         settings,
+        promptTemplates,
       }
     );
 

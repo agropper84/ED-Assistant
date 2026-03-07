@@ -6,6 +6,7 @@ import { X, Loader2, Save, ExternalLink, RefreshCw } from 'lucide-react';
 import { ExamToggles } from '@/components/ExamToggles';
 import { VoiceRecorder } from '@/components/VoiceRecorder';
 import { AutocompleteTextarea } from '@/components/AutocompleteTextarea';
+import { getPromptTemplates } from '@/lib/settings';
 
 /** Combine transcript + encounter notes into one string for storage */
 function combineTranscriptAndNotes(transcript: string, encounterNotes: string): string {
@@ -245,6 +246,7 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
                     body: JSON.stringify({
                       rowIndex: patient.rowIndex,
                       sheetName: patient.sheetName,
+                      promptTemplates: getPromptTemplates(),
                     }),
                   });
                   if (res.ok) {
