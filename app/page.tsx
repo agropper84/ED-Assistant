@@ -519,7 +519,7 @@ export default function HomePage() {
             <div className="flex items-center gap-0.5">
               {userEmail && (
                 <span className="text-[11px] hidden sm:block mr-1.5 max-w-[120px] truncate" style={{ color: 'var(--dash-text-muted)' }} title={userEmail}>
-                  {userName || userEmail}
+                  {userName ? `Dr. ${userName.trim().split(/\s+/).pop()}` : userEmail}
                 </span>
               )}
               <button
