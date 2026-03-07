@@ -613,7 +613,7 @@ export default function HomePage() {
             });
             fetchPatients();
           }}
-          onClinicalChat={patient.hasOutput ? () => setChatPatient(patient) : undefined}
+          onClinicalChat={() => setChatPatient(patient)}
         />
         {isBillingOpen && (
           <div className="mt-1 ml-0">
