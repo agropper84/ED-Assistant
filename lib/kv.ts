@@ -54,3 +54,49 @@ export async function getUserInfo(userId: string): Promise<{ email: string; name
   if (!val) return null;
   return JSON.parse(val);
 }
+
+// --- Shortcut token helpers ---
+
+export async function setShortcutTokenHash(hash: string, userId: string): Promise<void> {
+  await getRedis().set(`shortcut-token:${hash}`, userId);
+}
+
+export async function getShortcutTokenUser(hash: string): Promise<string | null> {
+  return getRedis().get(`shortcut-token:${hash}`);
+}
+
+export async function deleteShortcutTokenHash(hash: string): Promise<void> {
+  await getRedis().del(`shortcut-token:${hash}`);
+}
+
+export async function setUserShortcutTokenHash(userId: string, hash: string): Promise<void> {
+  await getRedis().set(`user:${userId}:shortcut-token`, hash);
+}
+
+export async function getUserShortcutTokenHash(userId: string): Promise<string | null> {
+  return getRedis().get(`user:${userId}:shortcut-token`);
+}
+
+export async function deleteUserShortcutTokenHash(userId: string): Promise<void> {
+  await getRedis().del(`user:${userId}:shortcut-token`);
+}
+
+// --- Shortcut transcript helpers ---
+
+export async function setShortcutTranscript(
+  id: string,
+  data: { transcript: string; userId: string },
+  ttlSeconds: number
+): Promise<void> {
+  await getRedis().set(`shortcut-transcript:${id}`, JSON.stringify(data), 'EX', ttlSeconds);
+}
+
+export async function getShortcutTranscript(id: string): Promise<{ transcript: string; userId: string } | null> {
+  const val = await getRedis().get(`shortcut-transcript:${id}`);
+  if (!val) return null;
+  return JSON.parse(val);
+}
+
+export async function deleteShortcutTranscript(id: string): Promise<void> {
+  await getRedis().del(`shortcut-transcript:${id}`);
+}

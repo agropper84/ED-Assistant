@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Trash2, Plus, Pencil, RotateCcw, Loader2, X, Sun, Moon, Monitor, Search, ChevronRight, Check } from 'lucide-react';
+import { ArrowLeft, Trash2, Plus, Pencil, RotateCcw, Loader2, X, Sun, Moon, Monitor, Search, ChevronRight, Check, Smartphone, Copy, Key, AlertCircle } from 'lucide-react';
 import { useTheme } from '@/lib/theme';
 import {
   StyleGuide,
@@ -62,6 +62,12 @@ export default function SettingsPage() {
   const [newBillingFee, setNewBillingFee] = useState('');
   const [newBillingGroup, setNewBillingGroup] = useState<BillingGroup>('Other');
 
+  // Shortcut token state
+  const [shortcutHasToken, setShortcutHasToken] = useState(false);
+  const [shortcutToken, setShortcutToken] = useState('');
+  const [shortcutLoading, setShortcutLoading] = useState(false);
+  const [shortcutCopied, setShortcutCopied] = useState(false);
+
   // Debounce timer for guidance textarea
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -111,6 +117,11 @@ export default function SettingsPage() {
     })();
     setSettings(getSettings());
     setExamPresets(getExamPresets());
+    // Check shortcut token status
+    fetch('/api/shortcuts/token')
+      .then(res => res.ok ? res.json() : null)
+      .then(data => { if (data) setShortcutHasToken(data.hasToken); })
+      .catch(() => {});
     // Billing — clear localStorage (sheet is source of truth) and load from API
     clearLocalBillingData();
     const r = getRegion();
@@ -555,58 +566,180 @@ export default function SettingsPage() {
 
         {/* Settings Tab */}
         {activeTab === 'settings' && (
-          <div className="bg-[var(--card-bg)] rounded-2xl border border-[var(--card-border)] p-5 space-y-4" style={{ boxShadow: 'var(--card-shadow)' }}>
-            <div>
-              <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Model</label>
-              <select
-                value={settings.model}
-                onChange={(e) => handleSettingChange('model', e.target.value)}
-                className="w-full p-3 border border-[var(--input-border)] rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)]"
-              >
-                <option value="claude-sonnet-4-20250514">Claude Sonnet 4</option>
-                <option value="claude-haiku-4-5-20251001">Claude Haiku 4.5</option>
-                <option value="claude-opus-4-6">Claude Opus 4.6</option>
-              </select>
-            </div>
+          <>
+            <div className="bg-[var(--card-bg)] rounded-2xl border border-[var(--card-border)] p-5 space-y-4" style={{ boxShadow: 'var(--card-shadow)' }}>
+              <div>
+                <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Model</label>
+                <select
+                  value={settings.model}
+                  onChange={(e) => handleSettingChange('model', e.target.value)}
+                  className="w-full p-3 border border-[var(--input-border)] rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)]"
+                >
+                  <option value="claude-sonnet-4-20250514">Claude Sonnet 4</option>
+                  <option value="claude-haiku-4-5-20251001">Claude Haiku 4.5</option>
+                  <option value="claude-opus-4-6">Claude Opus 4.6</option>
+                </select>
+              </div>
 
-            <div>
-              <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">
-                Max Tokens: {settings.maxTokens}
-              </label>
-              <input
-                type="range"
-                min="1024"
-                max="8192"
-                step="512"
-                value={settings.maxTokens}
-                onChange={(e) => handleSettingChange('maxTokens', parseInt(e.target.value))}
-                className="w-full accent-blue-600"
-              />
-              <div className="flex justify-between text-xs text-[var(--text-muted)]">
-                <span>1024</span>
-                <span>8192</span>
+              <div>
+                <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">
+                  Max Tokens: {settings.maxTokens}
+                </label>
+                <input
+                  type="range"
+                  min="1024"
+                  max="8192"
+                  step="512"
+                  value={settings.maxTokens}
+                  onChange={(e) => handleSettingChange('maxTokens', parseInt(e.target.value))}
+                  className="w-full accent-blue-600"
+                />
+                <div className="flex justify-between text-xs text-[var(--text-muted)]">
+                  <span>1024</span>
+                  <span>8192</span>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">
+                  Temperature: {settings.temperature}
+                </label>
+                <input
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.1"
+                  value={settings.temperature}
+                  onChange={(e) => handleSettingChange('temperature', parseFloat(e.target.value))}
+                  className="w-full accent-blue-600"
+                />
+                <div className="flex justify-between text-xs text-[var(--text-muted)]">
+                  <span>0 (Precise)</span>
+                  <span>1 (Creative)</span>
+                </div>
               </div>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">
-                Temperature: {settings.temperature}
-              </label>
-              <input
-                type="range"
-                min="0"
-                max="1"
-                step="0.1"
-                value={settings.temperature}
-                onChange={(e) => handleSettingChange('temperature', parseFloat(e.target.value))}
-                className="w-full accent-blue-600"
-              />
-              <div className="flex justify-between text-xs text-[var(--text-muted)]">
-                <span>0 (Precise)</span>
-                <span>1 (Creative)</span>
+            {/* iOS Shortcut Section */}
+            <div className="bg-[var(--card-bg)] rounded-2xl border border-[var(--card-border)] p-5 space-y-4" style={{ boxShadow: 'var(--card-shadow)' }}>
+              <div className="flex items-center gap-2">
+                <Smartphone className="w-5 h-5 text-[var(--text-secondary)]" />
+                <h3 className="font-semibold text-[var(--text-primary)]">iOS Shortcut</h3>
+              </div>
+              <p className="text-xs text-[var(--text-muted)]">
+                Send voice memos directly from your iPhone to the app. Generate a token below, then build the Shortcut.
+              </p>
+
+              {/* Token status + actions */}
+              <div className="space-y-3">
+                {shortcutToken ? (
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <AlertCircle className="w-4 h-4 text-amber-500 flex-shrink-0" />
+                      <span className="text-xs text-amber-700 dark:text-amber-400 font-medium">
+                        Copy this token now — it won&apos;t be shown again
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <code className="flex-1 p-2.5 bg-[var(--bg-tertiary)] rounded-lg text-xs font-mono text-[var(--text-primary)] break-all select-all">
+                        {shortcutToken}
+                      </code>
+                      <button
+                        onClick={() => {
+                          navigator.clipboard.writeText(shortcutToken);
+                          setShortcutCopied(true);
+                          setTimeout(() => setShortcutCopied(false), 2000);
+                        }}
+                        className="p-2 bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400 rounded-lg flex-shrink-0"
+                      >
+                        {shortcutCopied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                      </button>
+                    </div>
+                  </div>
+                ) : shortcutHasToken ? (
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Key className="w-4 h-4 text-green-600 dark:text-green-400" />
+                      <span className="text-sm text-green-700 dark:text-green-400 font-medium">Token active</span>
+                    </div>
+                    <button
+                      onClick={async () => {
+                        setShortcutLoading(true);
+                        try {
+                          await fetch('/api/shortcuts/token', { method: 'DELETE' });
+                          setShortcutHasToken(false);
+                          setShortcutToken('');
+                        } catch {} finally {
+                          setShortcutLoading(false);
+                        }
+                      }}
+                      disabled={shortcutLoading}
+                      className="px-3 py-1.5 bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-300 rounded-lg text-sm font-medium disabled:opacity-50"
+                    >
+                      Revoke
+                    </button>
+                  </div>
+                ) : null}
+
+                <button
+                  onClick={async () => {
+                    setShortcutLoading(true);
+                    setShortcutToken('');
+                    try {
+                      const res = await fetch('/api/shortcuts/token', { method: 'POST' });
+                      if (res.ok) {
+                        const { token } = await res.json();
+                        setShortcutToken(token);
+                        setShortcutHasToken(true);
+                      }
+                    } catch {} finally {
+                      setShortcutLoading(false);
+                    }
+                  }}
+                  disabled={shortcutLoading}
+                  className="w-full py-2.5 bg-blue-600 text-white rounded-lg text-sm font-medium disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  {shortcutLoading ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Key className="w-4 h-4" />
+                  )}
+                  {shortcutHasToken ? 'Regenerate Token' : 'Generate Token'}
+                </button>
+              </div>
+
+              {/* Setup instructions */}
+              <div className="border-t border-[var(--border)] pt-4 space-y-3">
+                <h4 className="text-sm font-semibold text-[var(--text-primary)]">Setup Instructions</h4>
+                <ol className="space-y-2.5 text-sm text-[var(--text-secondary)]">
+                  <li className="flex gap-2.5">
+                    <span className="flex-shrink-0 w-5 h-5 rounded-full bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 text-xs font-bold flex items-center justify-center">1</span>
+                    <span>Open the <strong>Shortcuts</strong> app and create a new Shortcut</span>
+                  </li>
+                  <li className="flex gap-2.5">
+                    <span className="flex-shrink-0 w-5 h-5 rounded-full bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 text-xs font-bold flex items-center justify-center">2</span>
+                    <span>Add <strong>&quot;Receive&quot;</strong> input — set to accept <strong>Audio</strong>. Enable &quot;Show in Share Sheet&quot;</span>
+                  </li>
+                  <li className="flex gap-2.5">
+                    <span className="flex-shrink-0 w-5 h-5 rounded-full bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 text-xs font-bold flex items-center justify-center">3</span>
+                    <div>
+                      <span>Add <strong>&quot;Get Contents of URL&quot;</strong>:</span>
+                      <ul className="mt-1 ml-4 space-y-0.5 text-xs text-[var(--text-muted)]">
+                        <li>URL: <code className="bg-[var(--bg-tertiary)] px-1 rounded">{typeof window !== 'undefined' ? window.location.origin : 'https://your-app.vercel.app'}/api/shortcuts/upload</code></li>
+                        <li>Method: <strong>POST</strong></li>
+                        <li>Header: <code className="bg-[var(--bg-tertiary)] px-1 rounded">Authorization</code> = <code className="bg-[var(--bg-tertiary)] px-1 rounded">Bearer YOUR_TOKEN</code></li>
+                        <li>Request Body: <strong>Form</strong> — add field <code className="bg-[var(--bg-tertiary)] px-1 rounded">audio</code> = <strong>Shortcut Input</strong></li>
+                      </ul>
+                    </div>
+                  </li>
+                  <li className="flex gap-2.5">
+                    <span className="flex-shrink-0 w-5 h-5 rounded-full bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 text-xs font-bold flex items-center justify-center">4</span>
+                    <span>Add <strong>&quot;Get Dictionary Value&quot;</strong> for key <code className="bg-[var(--bg-tertiary)] px-1 rounded">url</code>, then add <strong>&quot;Open URL&quot;</strong></span>
+                  </li>
+                </ol>
               </div>
             </div>
-          </div>
+          </>
         )}
 
         {/* Billing Tab */}
