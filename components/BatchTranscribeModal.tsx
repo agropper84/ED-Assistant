@@ -122,6 +122,8 @@ export function BatchTranscribeModal({ isOpen, onClose, patients, sheetName, onS
   // Auto-process initialTranscript (from iOS Shortcut) — skip upload & transcription
   useEffect(() => {
     if (!isOpen || !initialTranscript || initialTranscriptProcessed.current) return;
+    // Wait for patients to load before splitting
+    if (patients.length === 0) return;
     initialTranscriptProcessed.current = true;
 
     (async () => {
@@ -161,7 +163,7 @@ export function BatchTranscribeModal({ isOpen, onClose, patients, sheetName, onS
         setState('upload');
       }
     })();
-  }, [isOpen, initialTranscript]);
+  }, [isOpen, initialTranscript, patients]);
 
   if (!isOpen) return null;
 
