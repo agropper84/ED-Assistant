@@ -11,6 +11,7 @@ interface BatchTranscribeModalProps {
   sheetName: string;
   onSaved: () => void;
   initialFile?: File;
+  initialTranscript?: string;
 }
 
 interface Segment {
@@ -22,7 +23,7 @@ interface Segment {
 
 type ModalState = 'upload' | 'splitting' | 'review';
 
-export function BatchTranscribeModal({ isOpen, onClose, patients, sheetName, onSaved, initialFile }: BatchTranscribeModalProps) {
+export function BatchTranscribeModal({ isOpen, onClose, patients, sheetName, onSaved, initialFile, initialTranscript }: BatchTranscribeModalProps) {
   const [state, setState] = useState<ModalState>('upload');
   const [transcribing, setTranscribing] = useState(false);
   const [segments, setSegments] = useState<Segment[]>([]);
@@ -31,6 +32,7 @@ export function BatchTranscribeModal({ isOpen, onClose, patients, sheetName, onS
   const [expandedIdx, setExpandedIdx] = useState<number | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const initialFileProcessed = useRef(false);
+  const initialTranscriptProcessed = useRef(false);
 
   const reset = () => {
     setState('upload');
@@ -40,6 +42,7 @@ export function BatchTranscribeModal({ isOpen, onClose, patients, sheetName, onS
     setSaving(false);
     setExpandedIdx(null);
     initialFileProcessed.current = false;
+    initialTranscriptProcessed.current = false;
   };
 
   const handleClose = () => {
@@ -115,6 +118,50 @@ export function BatchTranscribeModal({ isOpen, onClose, patients, sheetName, onS
       processFile(initialFile);
     }
   }, [isOpen, initialFile]);
+
+  // Auto-process initialTranscript (from iOS Shortcut) — skip upload & transcription
+  useEffect(() => {
+    if (!isOpen || !initialTranscript || initialTranscriptProcessed.current) return;
+    initialTranscriptProcessed.current = true;
+
+    (async () => {
+      try {
+        setState('splitting');
+        const patientNames = patients.map(p => p.name).filter(Boolean);
+
+        const splitRes = await fetch('/api/split-transcript', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ transcript: initialTranscript, patientNames }),
+        });
+
+        if (!splitRes.ok) {
+          const err = await splitRes.json();
+          throw new Error(err.error || 'Failed to split transcript');
+        }
+
+        const { segments: rawSegments } = await splitRes.json();
+
+        const mapped: Segment[] = rawSegments.map((seg: any) => {
+          const matchedPatient = patients.find(
+            p => p.name.toLowerCase() === seg.patientName.toLowerCase()
+          );
+          return {
+            patientName: seg.patientName,
+            transcript: seg.transcript,
+            matched: seg.matched,
+            assignedRowIndex: matchedPatient ? matchedPatient.rowIndex : null,
+          };
+        });
+
+        setSegments(mapped);
+        setState('review');
+      } catch (err: any) {
+        setError(err.message || 'Something went wrong');
+        setState('upload');
+      }
+    })();
+  }, [isOpen, initialTranscript]);
 
   if (!isOpen) return null;
 

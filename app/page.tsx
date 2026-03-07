@@ -85,6 +85,7 @@ export default function HomePage() {
   // Batch transcribe
   const [showBatchTranscribe, setShowBatchTranscribe] = useState(false);
   const [sharedFile, setSharedFile] = useState<File | undefined>(undefined);
+  const [sharedTranscript, setSharedTranscript] = useState<string | undefined>(undefined);
 
   // Autocomplete suggestions
   const [suggestions, setSuggestions] = useState<string[]>([]);
@@ -186,6 +187,31 @@ export default function HomePage() {
         setShowBatchTranscribe(true);
       } catch (err) {
         console.error('Failed to retrieve shared audio:', err);
+      }
+    })();
+  }, []);
+
+  // iOS Shortcut: detect ?transcript={id} and fetch pre-transcribed text
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const transcriptId = params.get('transcript');
+    if (!transcriptId) return;
+
+    // Clean up URL immediately
+    window.history.replaceState({}, '', '/');
+
+    (async () => {
+      try {
+        const res = await fetch(`/api/shortcuts/transcript/${encodeURIComponent(transcriptId)}`);
+        if (!res.ok) {
+          console.error('Failed to fetch shortcut transcript:', res.status);
+          return;
+        }
+        const { transcript } = await res.json();
+        setSharedTranscript(transcript);
+        setShowBatchTranscribe(true);
+      } catch (err) {
+        console.error('Failed to fetch shortcut transcript:', err);
       }
     })();
   }, []);
@@ -781,11 +807,12 @@ export default function HomePage() {
       {/* Batch Transcribe Modal */}
       <BatchTranscribeModal
         isOpen={showBatchTranscribe}
-        onClose={() => { setShowBatchTranscribe(false); setSharedFile(undefined); }}
+        onClose={() => { setShowBatchTranscribe(false); setSharedFile(undefined); setSharedTranscript(undefined); }}
         patients={patients}
         sheetName={sheetName}
         onSaved={() => fetchPatients()}
         initialFile={sharedFile}
+        initialTranscript={sharedTranscript}
       />
 
       {/* Delete Confirmation */}
