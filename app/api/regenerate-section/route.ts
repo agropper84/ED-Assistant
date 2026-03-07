@@ -67,7 +67,7 @@ ${patient.triageVitals ? `Triage: ${patient.triageVitals}\n` : ''}${patient.tran
 CURRENT ${SECTION_LABELS[section].toUpperCase()}:
 ${(patient as any)[section] || 'Not yet documented'}
 
-${updates ? `PHYSICIAN'S UPDATES/CORRECTIONS:\n${updates}\n` : ''}
+${updates ? `PHYSICIAN'S UPDATES/CORRECTIONS:\n${updates}\n` : ''}${section === 'assessmentPlan' && patient.apNotes ? `PHYSICIAN'S ADDITIONAL NOTES:\n${patient.apNotes}\n` : ''}
 OTHER SECTIONS FOR CONTEXT:
 ${section !== 'hpi' ? `HPI: ${patient.hpi}\n` : ''}${section !== 'objective' ? `Objective: ${patient.objective}\n` : ''}${section !== 'assessmentPlan' ? `Assessment & Plan: ${patient.assessmentPlan}\n` : ''}
 ${styleSection}
