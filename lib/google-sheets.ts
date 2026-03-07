@@ -129,6 +129,7 @@ export const COLUMNS = {
   SYNOPSIS: 27,      // AB
   MANAGEMENT: 28,    // AC
   EVIDENCE: 29,      // AD
+  AP_NOTES: 30,      // AE
 };
 
 export const DATA_START_ROW = 8; // Row 8 in spreadsheet (0-indexed: 7)
@@ -166,6 +167,7 @@ export interface Patient {
   synopsis: string;
   management: string;
   evidence: string;
+  apNotes: string;
   // Computed
   hasOutput: boolean;
   status: 'new' | 'pending' | 'processed';
@@ -600,7 +602,7 @@ export async function clearPatientRow(
 
   await sheets.spreadsheets.values.clear({
     spreadsheetId,
-    range: `'${sheet}'!A${rowIndex}:AD${rowIndex}`,
+    range: `'${sheet}'!A${rowIndex}:AE${rowIndex}`,
   });
 }
 
@@ -620,7 +622,7 @@ export async function getPatients(ctx: SheetsContext, sheetName?: string): Promi
 
   const response = await sheets.spreadsheets.values.get({
     spreadsheetId,
-    range: `'${sheet}'!A${DATA_START_ROW}:AD200`,
+    range: `'${sheet}'!A${DATA_START_ROW}:AE200`,
   });
 
   const rows = response.data.values || [];
@@ -659,7 +661,7 @@ export async function getPatient(ctx: SheetsContext, rowIndex: number, sheetName
   // Read patient row + up to 20 continuation rows below
   const response = await sheets.spreadsheets.values.get({
     spreadsheetId,
-    range: `'${sheet}'!A${rowIndex}:AD${rowIndex + 20}`,
+    range: `'${sheet}'!A${rowIndex}:AE${rowIndex + 20}`,
   });
 
   const rows = response.data.values || [];
@@ -712,6 +714,7 @@ export async function updatePatientFields(
     synopsis: 'AB',
     management: 'AC',
     evidence: 'AD',
+    apNotes: 'AE',
   };
 
   const data = Object.entries(fields)
@@ -726,7 +729,7 @@ export async function updatePatientFields(
   // If writing to columns beyond Z, ensure the sheet has enough columns
   const needsExpand = data.some(d => /![A-Z]{2,}/.test(d.range));
   if (needsExpand) {
-    await ensureColumnCount(ctx, sheet, 30);
+    await ensureColumnCount(ctx, sheet, 31);
   }
 
   await sheets.spreadsheets.values.batchUpdate({
@@ -825,6 +828,7 @@ function rowToPatient(row: string[], rowIndex: number, sheetName: string): Patie
     synopsis: getValue(COLUMNS.SYNOPSIS),
     management: getValue(COLUMNS.MANAGEMENT),
     evidence: getValue(COLUMNS.EVIDENCE),
+    apNotes: getValue(COLUMNS.AP_NOTES),
     hasOutput: !!(hpi || assessmentPlan),
     status,
   };

@@ -62,6 +62,12 @@ export default function PatientPage() {
   const [savingQuickAdd, setSavingQuickAdd] = useState(false);
   const [preRecordQuickAdd, setPreRecordQuickAdd] = useState('');
 
+  // Physician notes (A&P)
+  const [apNotes, setApNotes] = useState('');
+  const [savingApNotes, setSavingApNotes] = useState(false);
+  const [regeneratingAp, setRegeneratingAp] = useState(false);
+  const [preRecordApNotes, setPreRecordApNotes] = useState('');
+
   // Error state
   const [processError, setProcessError] = useState('');
 
@@ -71,6 +77,12 @@ export default function PatientPage() {
   useEffect(() => {
     fetchPatient();
   }, [rowIndex, sheetName]);
+
+  useEffect(() => {
+    if (patient) {
+      setApNotes(patient.apNotes || '');
+    }
+  }, [patient?.apNotes]);
 
   useEffect(() => {
     if (patient) {
@@ -591,6 +603,67 @@ export default function PatientPage() {
                   interactiveEdit
                   onRegenerate={(updates) => handleRegenerateSection('assessmentPlan', updates)}
                 />
+
+                {/* Physician Notes for A&P */}
+                <div className="rounded-xl border border-[var(--card-border)] bg-[var(--card-bg)] overflow-hidden">
+                  <div className="px-4 py-3 border-b border-[var(--card-border)] flex items-center gap-2">
+                    <FileText className="w-4 h-4 text-amber-500" />
+                    <h3 className="font-semibold text-sm text-[var(--text-primary)]">Physician Notes</h3>
+                    <span className="text-xs text-[var(--text-muted)]">— additional context for A&P</span>
+                  </div>
+                  <div className="p-4 space-y-3">
+                    <div className="flex items-center gap-2">
+                      <VoiceRecorder
+                        onTranscript={(text) => {
+                          const base = preRecordApNotes || apNotes;
+                          setApNotes(base ? `${base}\n${text}` : text);
+                        }}
+                        onRecordingStart={() => setPreRecordApNotes(apNotes)}
+                        mode="dictation"
+                      />
+                      <span className="text-xs text-[var(--text-muted)]">Dictate or type notes below</span>
+                    </div>
+                    <textarea
+                      value={apNotes}
+                      onChange={(e) => setApNotes(e.target.value)}
+                      placeholder="Add physician notes, observations, or corrections to incorporate into the Assessment & Plan..."
+                      rows={3}
+                      className="w-full rounded-lg border border-[var(--card-border)] bg-[var(--input-bg)] text-[var(--text-primary)] px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-y placeholder:text-[var(--text-muted)]"
+                    />
+                    <div className="flex gap-2">
+                      <button
+                        onClick={async () => {
+                          setSavingApNotes(true);
+                          await handleSaveField('apNotes', apNotes);
+                          setSavingApNotes(false);
+                        }}
+                        disabled={savingApNotes}
+                        className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg bg-green-600 text-white hover:bg-green-700 disabled:opacity-50 active:scale-[0.97] transition-all"
+                      >
+                        {savingApNotes ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                        Save Notes
+                      </button>
+                      <button
+                        onClick={async () => {
+                          setRegeneratingAp(true);
+                          try {
+                            await handleSaveField('apNotes', apNotes);
+                            await handleRegenerateSection('assessmentPlan', apNotes);
+                          } catch (err) {
+                            console.error('Failed to regenerate A&P with notes:', err);
+                          } finally {
+                            setRegeneratingAp(false);
+                          }
+                        }}
+                        disabled={regeneratingAp || !apNotes.trim()}
+                        className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg bg-amber-600 text-white hover:bg-amber-700 disabled:opacity-50 active:scale-[0.97] transition-all"
+                      >
+                        {regeneratingAp ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
+                        Regenerate Note
+                      </button>
+                    </div>
+                  </div>
+                </div>
               </>
             ) : (
               <button
