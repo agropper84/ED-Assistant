@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { Patient } from '@/lib/google-sheets';
+import { getPromptTemplates } from '@/lib/settings';
 import { PatientCard } from '@/components/PatientCard';
 import { ParseModal } from '@/components/ParseModal';
 import { PatientDataModal } from '@/components/PatientDataModal';
@@ -354,7 +355,7 @@ export default function HomePage() {
         const res = await fetch('/api/process', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ rowIndex: toProcess[i].rowIndex, sheetName }),
+          body: JSON.stringify({ rowIndex: toProcess[i].rowIndex, sheetName, promptTemplates: getPromptTemplates() }),
         });
         if (!res.ok) {
           const err = await res.json().catch(() => ({}));
@@ -441,7 +442,7 @@ export default function HomePage() {
             const res = await fetch('/api/process', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ rowIndex: patient.rowIndex, sheetName: patient.sheetName, settings }),
+              body: JSON.stringify({ rowIndex: patient.rowIndex, sheetName: patient.sheetName, settings, promptTemplates: getPromptTemplates() }),
             });
             if (res.ok) fetchPatients();
           }}

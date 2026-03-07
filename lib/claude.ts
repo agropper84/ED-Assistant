@@ -1,4 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk';
+import { PromptTemplates, DEFAULT_PROMPT_TEMPLATES } from './settings';
 
 const anthropic = new Anthropic({
   apiKey: process.env.CLAUDE_API_KEY,
@@ -37,6 +38,7 @@ export interface ProcessOptions {
     maxTokens?: number;
     temperature?: number;
   };
+  promptTemplates?: PromptTemplates;
 }
 
 export async function processEncounter(
@@ -137,6 +139,8 @@ Please match the writing style demonstrated above when generating documentation.
     ? 'Based on the available information and the modification instructions above, regenerate the ED documentation.'
     : 'Based on the available information, generate comprehensive ED documentation.';
 
+  const pt = options?.promptTemplates ?? DEFAULT_PROMPT_TEMPLATES;
+
   return `You are an AI assistant helping an emergency department physician create encounter documentation.
 
 PATIENT INFORMATION:
@@ -151,46 +155,33 @@ ${modificationSection}${styleSection}---
 ${baseInstruction} You must provide ALL seven sections below.
 
 IMPORTANT RULES:
-- Do NOT assume, infer, or make up information not explicitly stated in the provided data
-- Use appropriate evidence-based medicine and guidelines
-- Use professional yet concise language as a busy emergency physician would
-- Abbreviations are acceptable without explanation
-- Truncated sentences are acceptable
-- Use narrative/paragraph form, NOT bullet points or numbered lists
-- If information for a section is not available, write "Information not documented" or "Insufficient data"
+${pt.generalRules}
 
 Respond in EXACTLY this format with these exact headers:
 
 ===DDX===
-[Provide differential diagnosis based on presentation. List most likely diagnosis first, followed by other considerations. Use narrative form.]
+[${pt.ddx}]
 
 ===INVESTIGATIONS===
-[Recommend appropriate investigations based on the presentation. Include labs, imaging, and other diagnostic tests as applicable. Use narrative form.]
+[${pt.investigations}]
 
 ===MANAGEMENT===
-[Recommend management and treatment plan based on the presentation and differential. Include medications, procedures, disposition planning, and follow-up. Use narrative form.]
+[${pt.management}]
 
 ===EVIDENCE===
-[Cite pertinent evidence, clinical guidelines, or decision rules supporting the workup and management (e.g., Ottawa Ankle Rules, HEART score, Wells criteria). Include brief rationale for key decisions. Use narrative form.]
+[${pt.evidence}]
 
 ===HPI===
-[Narrative summary of patient's presentation. Thoroughly document the history and features supporting the working diagnosis. Document that appropriate red flags have been ruled out. Professional, concise ED physician language.]
+[${pt.hpi}]
 
 ===OBJECTIVE===
-[Physical examination findings ONLY. Use this format for normal exam:
-"Patient appears well, NAD. AVSS."
-Then include ONLY pertinent exam findings that were actually documented or mentioned. If no exam documented, state "Physical examination not documented."]
+[${pt.objective}]
 
 ===ASSESSMENT_PLAN===
-[Diagnosis or working diagnosis (e.g., Appendicitis, Otitis Media, Abdo Pain NYD).
-Summarize assessment leading to diagnosis. Include differential if applicable.
-Document management plan: investigations ordered, treatments given.
-Document that appropriate red flags were ruled out.
-Include return to ED instructions.
-Use paragraph/narrative form only. No bullet points.]
+[${pt.assessmentPlan}]
 
 ===DIAGNOSIS===
-[Primary diagnosis only - use common, general terms]
+[${pt.diagnosis}]
 
 ===ICD9===
 [ICD-9 code for the primary diagnosis. Code only, no description]

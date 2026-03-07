@@ -13,7 +13,7 @@ import {
   getStyleGuide,
   clearLocalStyleGuide,
 } from '@/lib/style-guide';
-import { getSettings, saveSettings, AppSettings, DEFAULT_SETTINGS } from '@/lib/settings';
+import { getSettings, saveSettings, AppSettings, DEFAULT_SETTINGS, PromptTemplates, DEFAULT_PROMPT_TEMPLATES, getPromptTemplates, savePromptTemplates } from '@/lib/settings';
 import { getExamPresets, saveExamPresets, resetExamPresets, ExamPreset } from '@/lib/exam-presets';
 import {
   BillingCode, BillingGroup,
@@ -27,7 +27,7 @@ import {
   clearLocalBillingData,
 } from '@/lib/billing';
 
-type Tab = 'style' | 'settings' | 'billing';
+type Tab = 'style' | 'settings' | 'billing' | 'prompts';
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -68,8 +68,13 @@ export default function SettingsPage() {
   const [shortcutLoading, setShortcutLoading] = useState(false);
   const [shortcutCopied, setShortcutCopied] = useState(false);
 
+  // Prompt templates state
+  const [promptTemplates, setPromptTemplates] = useState<PromptTemplates>(DEFAULT_PROMPT_TEMPLATES);
+  const [expandedPromptSections, setExpandedPromptSections] = useState<Set<string>>(new Set());
+
   // Debounce timer for guidance textarea
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const promptDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Load style guide from API on mount, migrate localStorage if needed
   useEffect(() => {
@@ -116,6 +121,7 @@ export default function SettingsPage() {
       }
     })();
     setSettings(getSettings());
+    setPromptTemplates(getPromptTemplates());
     setExamPresets(getExamPresets());
     // Check shortcut token status
     fetch('/api/shortcuts/token')
@@ -219,6 +225,19 @@ export default function SettingsPage() {
     }, 800);
   }, []);
 
+  const debouncedSavePrompts = useCallback((updated: PromptTemplates) => {
+    if (promptDebounceRef.current) clearTimeout(promptDebounceRef.current);
+    promptDebounceRef.current = setTimeout(() => {
+      savePromptTemplates(updated);
+    }, 800);
+  }, []);
+
+  const handlePromptChange = (key: keyof PromptTemplates, value: string) => {
+    const updated = { ...promptTemplates, [key]: value };
+    setPromptTemplates(updated);
+    debouncedSavePrompts(updated);
+  };
+
   const handleSettingChange = (key: keyof AppSettings, value: string | number) => {
     const newSettings = { ...settings, [key]: value };
     setSettings(newSettings);
@@ -272,6 +291,7 @@ export default function SettingsPage() {
           {([
             { id: 'style' as const, label: 'Style Guide' },
             { id: 'settings' as const, label: 'Processing' },
+            { id: 'prompts' as const, label: 'Prompts' },
             { id: 'billing' as const, label: 'Billing Codes' },
           ]).map(({ id, label }) => (
             <button
@@ -739,6 +759,101 @@ export default function SettingsPage() {
                 </ol>
               </div>
             </div>
+          </>
+        )}
+
+        {/* Prompts Tab */}
+        {activeTab === 'prompts' && (
+          <>
+            {/* Reset All */}
+            <div className="flex justify-end">
+              <button
+                onClick={() => {
+                  setPromptTemplates(DEFAULT_PROMPT_TEMPLATES);
+                  savePromptTemplates(DEFAULT_PROMPT_TEMPLATES);
+                }}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] rounded-lg text-xs font-medium transition-colors"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                Reset All to Defaults
+              </button>
+            </div>
+
+            {/* General Rules */}
+            <div className="bg-[var(--card-bg)] rounded-2xl border border-[var(--card-border)] p-5 space-y-2" style={{ boxShadow: 'var(--card-shadow)' }}>
+              <div className="flex items-center justify-between">
+                <h3 className="font-semibold text-[var(--text-primary)]">General Rules</h3>
+                <button
+                  onClick={() => handlePromptChange('generalRules', DEFAULT_PROMPT_TEMPLATES.generalRules)}
+                  className="flex items-center gap-1 px-2 py-1 text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] rounded-lg text-xs transition-colors"
+                >
+                  <RotateCcw className="w-3 h-3" />
+                  Reset
+                </button>
+              </div>
+              <p className="text-xs text-[var(--text-muted)]">
+                Overall behavior rules applied to every generated note.
+              </p>
+              <textarea
+                value={promptTemplates.generalRules}
+                onChange={(e) => handlePromptChange('generalRules', e.target.value)}
+                className="w-full h-40 p-3 border border-[var(--input-border)] rounded-lg text-sm resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)] font-mono text-xs leading-relaxed"
+              />
+            </div>
+
+            {/* Section Instructions */}
+            <h3 className="font-semibold text-[var(--text-primary)] text-sm">Section Instructions</h3>
+            {([
+              { key: 'ddx' as const, label: 'DDx (Differential Diagnosis)' },
+              { key: 'investigations' as const, label: 'Investigations' },
+              { key: 'management' as const, label: 'Management' },
+              { key: 'evidence' as const, label: 'Evidence' },
+              { key: 'hpi' as const, label: 'HPI' },
+              { key: 'objective' as const, label: 'Objective' },
+              { key: 'assessmentPlan' as const, label: 'Assessment & Plan' },
+              { key: 'diagnosis' as const, label: 'Diagnosis' },
+            ]).map(({ key, label }) => {
+              const isExpanded = expandedPromptSections.has(key);
+              return (
+                <div key={key} className="bg-[var(--card-bg)] rounded-2xl border border-[var(--card-border)] overflow-hidden" style={{ boxShadow: 'var(--card-shadow)' }}>
+                  <button
+                    onClick={() => {
+                      const next = new Set(expandedPromptSections);
+                      if (next.has(key)) next.delete(key);
+                      else next.add(key);
+                      setExpandedPromptSections(next);
+                    }}
+                    className="w-full flex items-center justify-between px-5 py-3 hover:bg-[var(--bg-tertiary)] transition-colors"
+                  >
+                    <div className="flex items-center gap-2">
+                      <ChevronRight className={`w-4 h-4 text-[var(--text-muted)] transition-transform ${isExpanded ? 'rotate-90' : ''}`} />
+                      <h4 className="font-medium text-sm text-[var(--text-primary)]">{label}</h4>
+                    </div>
+                    {promptTemplates[key] !== DEFAULT_PROMPT_TEMPLATES[key] && (
+                      <span className="text-xs text-blue-600 dark:text-blue-400 font-medium">Modified</span>
+                    )}
+                  </button>
+                  {isExpanded && (
+                    <div className="border-t border-[var(--border)] px-5 py-4 space-y-2">
+                      <textarea
+                        value={promptTemplates[key]}
+                        onChange={(e) => handlePromptChange(key, e.target.value)}
+                        className="w-full h-32 p-3 border border-[var(--input-border)] rounded-lg text-sm resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)] font-mono text-xs leading-relaxed"
+                      />
+                      <div className="flex justify-end">
+                        <button
+                          onClick={() => handlePromptChange(key, DEFAULT_PROMPT_TEMPLATES[key])}
+                          className="flex items-center gap-1 px-2 py-1 text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] rounded-lg text-xs transition-colors"
+                        >
+                          <RotateCcw className="w-3 h-3" />
+                          Reset to Default
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </>
         )}
 

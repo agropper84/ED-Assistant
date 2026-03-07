@@ -18,6 +18,7 @@ import {
   parseBillingItems,
 } from '@/lib/billing';
 import { BillingSection } from '@/components/BillingSection';
+import { getPromptTemplates } from '@/lib/settings';
 
 export default function PatientPage() {
   const router = useRouter();
@@ -119,6 +120,7 @@ export default function PatientPage() {
           sheetName,
           modifications: mods,
           settings,
+          promptTemplates: getPromptTemplates(),
         }),
       });
 
