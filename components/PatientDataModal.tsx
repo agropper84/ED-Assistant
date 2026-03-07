@@ -143,6 +143,7 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
                 Transcript
               </label>
               <VoiceRecorder
+                mode="encounter"
                 onTranscript={(text) => {
                   const base = preRecordTranscript || transcript;
                   setTranscript(base ? `${base}\n\n${text}` : text);

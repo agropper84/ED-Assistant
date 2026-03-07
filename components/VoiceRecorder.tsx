@@ -10,9 +10,11 @@ interface VoiceRecorderProps {
   onInterimTranscript?: (text: string) => void;
   onRecordingStart?: () => void;
   disabled?: boolean;
+  /** 'encounter' = doctor-patient conversation, 'dictation' = physician charting (default) */
+  mode?: 'encounter' | 'dictation';
 }
 
-export function VoiceRecorder({ onTranscript, onInterimTranscript, onRecordingStart, disabled }: VoiceRecorderProps) {
+export function VoiceRecorder({ onTranscript, onInterimTranscript, onRecordingStart, disabled, mode = 'dictation' }: VoiceRecorderProps) {
   const [state, setState] = useState<RecorderState>('idle');
   const [elapsed, setElapsed] = useState(0);
   const [errorMsg, setErrorMsg] = useState('');
@@ -95,6 +97,7 @@ export function VoiceRecorder({ onTranscript, onInterimTranscript, onRecordingSt
         try {
           const formData = new FormData();
           formData.append('audio', blob, `recording.${getFileExtension(mimeType)}`);
+          formData.append('mode', mode);
 
           const res = await fetch('/api/transcribe', {
             method: 'POST',
@@ -166,7 +169,7 @@ export function VoiceRecorder({ onTranscript, onInterimTranscript, onRecordingSt
       setErrorMsg(err.name === 'NotAllowedError' ? 'Microphone access denied' : 'Microphone unavailable');
       setState('error');
     }
-  }, [onTranscript, onInterimTranscript, onRecordingStart]);
+  }, [onTranscript, onInterimTranscript, onRecordingStart, mode]);
 
   const stopRecording = useCallback(() => {
     // Stop SpeechRecognition
@@ -189,6 +192,7 @@ export function VoiceRecorder({ onTranscript, onInterimTranscript, onRecordingSt
     try {
       const formData = new FormData();
       formData.append('audio', file, file.name);
+      formData.append('mode', mode);
 
       const res = await fetch('/api/transcribe', {
         method: 'POST',
@@ -209,7 +213,7 @@ export function VoiceRecorder({ onTranscript, onInterimTranscript, onRecordingSt
       setErrorMsg(err.message || 'Transcription failed');
       setState('error');
     }
-  }, [onTranscript]);
+  }, [onTranscript, mode]);
 
   const formatTime = (seconds: number): string => {
     const m = Math.floor(seconds / 60);
