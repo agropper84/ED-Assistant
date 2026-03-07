@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Patient } from '@/lib/google-sheets';
 import { getPromptTemplates } from '@/lib/settings';
@@ -16,7 +16,7 @@ import {
 import {
   Plus, RefreshCw, Loader2, ChevronLeft, ChevronRight,
   Calendar, Settings, CheckSquare, Square, Play, Clock, EyeOff, Eye,
-  Search, ArrowUpDown, X, LogOut, Upload
+  Search, ArrowUpDown, X, LogOut, Upload, Shield, Monitor
 } from 'lucide-react';
 
 function formatDateForSheet(date: Date): string {
@@ -80,8 +80,12 @@ export default function HomePage() {
   const [batchProcessing, setBatchProcessing] = useState(false);
   const [batchProgress, setBatchProgress] = useState({ current: 0, total: 0 });
 
-  // Anonymize toggle
+  // Privacy
   const [anonymize, setAnonymize] = useState(false);
+  const [awayScreen, setAwayScreen] = useState(false);
+  const [privacyMenuOpen, setPrivacyMenuOpen] = useState(false);
+  const [awayTime, setAwayTime] = useState('');
+  const [awayWeather, setAwayWeather] = useState<{ temp: string; desc: string; location: string } | null>(null);
 
   // Dashboard billing
   const [billingPatientIdx, setBillingPatientIdx] = useState<number | null>(null);
@@ -314,6 +318,60 @@ export default function HomePage() {
     changeDate(new Date());
   };
 
+  // Away screen: update clock every second and fetch weather
+  useEffect(() => {
+    if (!awayScreen) return;
+    const tick = () => {
+      const now = new Date();
+      setAwayTime(now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }));
+    };
+    tick();
+    const interval = setInterval(tick, 1000);
+
+    // Fetch weather
+    if (!awayWeather && navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        async (pos) => {
+          try {
+            const { latitude, longitude } = pos.coords;
+            const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,weather_code&temperature_unit=celsius&timezone=auto`);
+            if (res.ok) {
+              const data = await res.json();
+              const temp = Math.round(data.current.temperature_2m);
+              const code = data.current.weather_code;
+              const descriptions: Record<number, string> = {
+                0: 'Clear sky', 1: 'Mainly clear', 2: 'Partly cloudy', 3: 'Overcast',
+                45: 'Foggy', 48: 'Rime fog', 51: 'Light drizzle', 53: 'Drizzle', 55: 'Heavy drizzle',
+                61: 'Light rain', 63: 'Rain', 65: 'Heavy rain', 71: 'Light snow', 73: 'Snow',
+                75: 'Heavy snow', 80: 'Rain showers', 81: 'Moderate showers', 82: 'Heavy showers',
+                95: 'Thunderstorm', 96: 'Thunderstorm with hail',
+              };
+              setAwayWeather({ temp: `${temp}°C`, desc: descriptions[code] || 'Unknown', location: data.timezone?.split('/').pop()?.replace(/_/g, ' ') || '' });
+            }
+          } catch {}
+        },
+        () => {
+          setAwayWeather({ temp: '', desc: '', location: '' });
+        }
+      );
+    }
+
+    return () => clearInterval(interval);
+  }, [awayScreen, awayWeather]);
+
+  // Close privacy menu on outside click
+  const privacyRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!privacyMenuOpen) return;
+    const handleClick = (e: MouseEvent) => {
+      if (privacyRef.current && !privacyRef.current.contains(e.target as Node)) {
+        setPrivacyMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [privacyMenuOpen]);
+
   // Filter and sort patients
   const filteredPatients = searchQuery.trim()
     ? patients.filter(p => {
@@ -508,6 +566,47 @@ export default function HomePage() {
     router.push(`/patient/${patient.rowIndex}?sheet=${encodeURIComponent(patient.sheetName)}`);
   };
 
+  // Nature photo URLs (Unsplash landscape/wildlife, pre-selected for reliability)
+  const awayPhotos = [
+    'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=1920&q=80', // mountains
+    'https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?w=1920&q=80', // forest valley
+    'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=1920&q=80', // forest sunlight
+    'https://images.unsplash.com/photo-1518837695005-2083093ee35b?w=1920&q=80', // ocean waves
+    'https://images.unsplash.com/photo-1472214103451-9374bd1c798e?w=1920&q=80', // green hills
+    'https://images.unsplash.com/photo-1475924156734-496f6cac6ec1?w=1920&q=80', // mountain lake
+  ];
+  const awayPhotoUrl = awayPhotos[new Date().getDate() % awayPhotos.length];
+
+  if (awayScreen) {
+    return (
+      <div
+        className="fixed inset-0 z-[100] flex items-center justify-center cursor-pointer select-none"
+        onClick={() => setAwayScreen(false)}
+        style={{
+          backgroundImage: `url(${awayPhotoUrl})`,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+        }}
+      >
+        {/* Dark overlay for readability */}
+        <div className="absolute inset-0 bg-black/30" />
+        {/* Content */}
+        <div className="relative z-10 text-center text-white">
+          <div className="text-8xl font-thin tracking-wide mb-2" style={{ textShadow: '0 2px 20px rgba(0,0,0,0.5)' }}>
+            {awayTime}
+          </div>
+          {awayWeather && awayWeather.temp && (
+            <div className="text-2xl font-light opacity-90" style={{ textShadow: '0 1px 10px rgba(0,0,0,0.5)' }}>
+              {awayWeather.temp} &middot; {awayWeather.desc}
+              {awayWeather.location && <span className="ml-2 text-lg opacity-75">{awayWeather.location}</span>}
+            </div>
+          )}
+          <div className="mt-8 text-sm opacity-50 font-light">Click anywhere to return</div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen pb-24">
       {/* Header */}
@@ -519,17 +618,37 @@ export default function HomePage() {
             <div className="flex items-center gap-0.5">
               {userEmail && (
                 <span className="text-[11px] hidden sm:block mr-1.5 max-w-[120px] truncate" style={{ color: 'var(--dash-text-muted)' }} title={userEmail}>
-                  {userName ? `Dr. ${userName.trim().split(/\s+/).pop()}` : userEmail}
+                  {anonymize ? 'Dr. ***' : userName ? `Dr. ${userName.trim().split(/\s+/).pop()}` : userEmail}
                 </span>
               )}
-              <button
-                onClick={() => setAnonymize(!anonymize)}
-                className="p-2 hover:bg-white/10 rounded-full transition-colors"
-                style={{ color: 'var(--dash-text-sub)' }}
-                title={anonymize ? 'Show names' : 'Anonymize names'}
-              >
-                {anonymize ? <EyeOff className="w-[18px] h-[18px]" /> : <Eye className="w-[18px] h-[18px]" />}
-              </button>
+              <div className="relative" ref={privacyRef}>
+                <button
+                  onClick={() => setPrivacyMenuOpen(!privacyMenuOpen)}
+                  className={`p-2 hover:bg-white/10 rounded-full transition-colors ${anonymize ? 'text-amber-400' : ''}`}
+                  style={anonymize ? undefined : { color: 'var(--dash-text-sub)' }}
+                  title="Privacy"
+                >
+                  <Shield className="w-[18px] h-[18px]" />
+                </button>
+                {privacyMenuOpen && (
+                  <div className="absolute right-0 top-full mt-1 z-50 w-48 bg-gray-900 rounded-lg shadow-xl ring-1 ring-white/10 py-1 text-sm">
+                    <button
+                      onClick={() => { setAnonymize(!anonymize); setPrivacyMenuOpen(false); }}
+                      className="w-full flex items-center gap-2.5 px-3 py-2 text-left text-gray-100 hover:bg-white/10 transition-colors"
+                    >
+                      {anonymize ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+                      {anonymize ? 'Show Names' : 'Anonymize Names'}
+                    </button>
+                    <button
+                      onClick={() => { setAwayScreen(true); setPrivacyMenuOpen(false); }}
+                      className="w-full flex items-center gap-2.5 px-3 py-2 text-left text-gray-100 hover:bg-white/10 transition-colors"
+                    >
+                      <Monitor className="w-4 h-4" />
+                      Away Screen
+                    </button>
+                  </div>
+                )}
+              </div>
               <button
                 onClick={() => router.push('/settings')}
                 className="p-2 hover:bg-white/10 rounded-full transition-colors"
