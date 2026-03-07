@@ -40,6 +40,8 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
   const [editAge, setEditAge] = useState('');
   const [editGender, setEditGender] = useState('');
   const [editBirthday, setEditBirthday] = useState('');
+  const [editHcn, setEditHcn] = useState('');
+  const [editMrn, setEditMrn] = useState('');
   const [savingDemo, setSavingDemo] = useState(false);
 
   const hasEncounterNote = !!(patient.hpi || patient.objective || patient.assessmentPlan);
@@ -90,6 +92,8 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
               setEditAge(patient.age || '');
               setEditGender(patient.gender || '');
               setEditBirthday(patient.birthday || '');
+              setEditHcn(patient.hcn || '');
+              setEditMrn(patient.mrn || '');
               setEditingDemo(true);
             } : undefined}
           >
@@ -401,6 +405,22 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
                 className="w-28 p-2 border border-[var(--input-border)] rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)]"
               />
             </div>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={editHcn}
+                onChange={(e) => setEditHcn(e.target.value)}
+                placeholder="HCN"
+                className="flex-1 p-2 border border-[var(--input-border)] rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)]"
+              />
+              <input
+                type="text"
+                value={editMrn}
+                onChange={(e) => setEditMrn(e.target.value)}
+                placeholder="MRN"
+                className="flex-1 p-2 border border-[var(--input-border)] rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)]"
+              />
+            </div>
             <div className="flex gap-2 pt-1">
               <button
                 onClick={async () => {
@@ -412,6 +432,8 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
                       age: editAge.trim(),
                       gender: editGender,
                       birthday: editBirthday.trim(),
+                      hcn: editHcn.trim(),
+                      mrn: editMrn.trim(),
                     });
                     setEditingDemo(false);
                   } catch (err) {
