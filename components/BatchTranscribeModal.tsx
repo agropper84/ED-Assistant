@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Patient } from '@/lib/google-sheets';
 import { X, Loader2, Upload, ChevronDown, ChevronUp, AlertTriangle, Check } from 'lucide-react';
 
@@ -10,6 +10,7 @@ interface BatchTranscribeModalProps {
   patients: Patient[];
   sheetName: string;
   onSaved: () => void;
+  initialFile?: File;
 }
 
 interface Segment {
@@ -21,7 +22,7 @@ interface Segment {
 
 type ModalState = 'upload' | 'splitting' | 'review';
 
-export function BatchTranscribeModal({ isOpen, onClose, patients, sheetName, onSaved }: BatchTranscribeModalProps) {
+export function BatchTranscribeModal({ isOpen, onClose, patients, sheetName, onSaved, initialFile }: BatchTranscribeModalProps) {
   const [state, setState] = useState<ModalState>('upload');
   const [transcribing, setTranscribing] = useState(false);
   const [segments, setSegments] = useState<Segment[]>([]);
@@ -29,8 +30,7 @@ export function BatchTranscribeModal({ isOpen, onClose, patients, sheetName, onS
   const [saving, setSaving] = useState(false);
   const [expandedIdx, setExpandedIdx] = useState<number | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
-
-  if (!isOpen) return null;
+  const initialFileProcessed = useRef(false);
 
   const reset = () => {
     setState('upload');
@@ -39,6 +39,7 @@ export function BatchTranscribeModal({ isOpen, onClose, patients, sheetName, onS
     setError('');
     setSaving(false);
     setExpandedIdx(null);
+    initialFileProcessed.current = false;
   };
 
   const handleClose = () => {
@@ -46,10 +47,7 @@ export function BatchTranscribeModal({ isOpen, onClose, patients, sheetName, onS
     onClose();
   };
 
-  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
+  const processFile = async (file: File) => {
     setError('');
     setTranscribing(true);
 
@@ -108,7 +106,22 @@ export function BatchTranscribeModal({ isOpen, onClose, patients, sheetName, onS
       setTranscribing(false);
       setState('upload');
     }
+  };
 
+  // Auto-process initialFile when provided
+  useEffect(() => {
+    if (isOpen && initialFile && !initialFileProcessed.current) {
+      initialFileProcessed.current = true;
+      processFile(initialFile);
+    }
+  }, [isOpen, initialFile]);
+
+  if (!isOpen) return null;
+
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    await processFile(file);
     // Reset file input so same file can be re-selected
     if (fileRef.current) fileRef.current.value = '';
   };
