@@ -29,6 +29,34 @@ const ENCOUNTER_WHISPER_PROMPT =
   'cholecystitis, diverticulitis, pyelonephritis, UTI, cellulitis, sepsis, ' +
   'laceration, abscess, intubation, vitals, mmHg, mg, mL';
 
+/**
+ * Convert spoken punctuation commands to actual punctuation.
+ * Runs BEFORE medicalization so "comma" doesn't become "coma", etc.
+ */
+function convertSpokenPunctuation(text: string): string {
+  return text
+    // Sentence-ending: "period" / "full stop" → "."
+    .replace(/\s*\b(?:period|full stop)\b\s*/gi, '. ')
+    // Comma
+    .replace(/\s*\bcomma\b\s*/gi, ', ')
+    // Question mark
+    .replace(/\s*\b(?:question mark)\b\s*/gi, '? ')
+    // Exclamation
+    .replace(/\s*\b(?:exclamation (?:mark|point))\b\s*/gi, '! ')
+    // Colon
+    .replace(/\s*\bcolon\b\s*/gi, ': ')
+    // Semicolon
+    .replace(/\s*\bsemicolon\b\s*/gi, '; ')
+    // New line / new paragraph
+    .replace(/\s*\b(?:new line|newline|next line)\b\s*/gi, '\n')
+    .replace(/\s*\b(?:new paragraph|next paragraph)\b\s*/gi, '\n\n')
+    // Capitalize after sentence-ending punctuation
+    .replace(/([.!?]\s+)([a-z])/g, (_, punct, letter) => punct + letter.toUpperCase())
+    // Clean up extra spaces
+    .replace(/ {2,}/g, ' ')
+    .trim();
+}
+
 async function medicalize(rawText: string, mode: string): Promise<string> {
   const prompt = mode === 'encounter'
     ? `Convert this recorded doctor-patient emergency department encounter into a structured clinical transcript. Rules:
@@ -42,10 +70,11 @@ async function medicalize(rawText: string, mode: string): Promise<string> {
 
 Recording:
 ${rawText}`
-    : `Convert this voice-dictated text into proper medical documentation language. Rules:
-- Fix grammar, punctuation, and sentence structure
-- Replace colloquial terms with correct medical terminology and abbreviations
-- Keep the same meaning and all clinical details — do NOT add, infer, or remove information
+    : `Convert this voice-dictated emergency department note into proper medical documentation. Rules:
+- The text already has punctuation applied — respect the existing sentence structure
+- Replace colloquial or informal terms with correct medical terminology and standard abbreviations (e.g., "belly" → "abdomen", "heart attack" → "MI", "blood pressure" → "BP")
+- Correct any misheard medical terms based on context (e.g., "CPA tenderness" → "CVA tenderness", "tendered" → "tender/tenderness")
+- Do NOT add, infer, or remove clinical information — preserve meaning exactly
 - Use concise ED physician charting style
 - Output ONLY the converted text, nothing else
 
@@ -87,8 +116,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ text: '' });
     }
 
+    // Convert spoken punctuation ("period", "comma") to actual punctuation first
+    const punctuated = convertSpokenPunctuation(rawText);
+
     // Convert to medical language
-    const medicalText = await medicalize(rawText, mode);
+    const medicalText = await medicalize(punctuated, mode);
 
     return NextResponse.json({ text: medicalText });
   } catch (error: any) {
