@@ -128,9 +128,8 @@ Please regenerate the documentation incorporating these modifications. Preserve 
   if (options?.styleGuidance) {
     styleSection = `
 STYLE GUIDANCE:
+Closely match the tone, structure, and phrasing from the style examples first. Use the key features only to fill in gaps.
 ${options.styleGuidance}
-
-Please match the writing style demonstrated above when generating documentation.
 
 `;
   }
