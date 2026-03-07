@@ -34,8 +34,6 @@ function formatDateDisplay(date: Date): string {
   const d = new Date(date);
   d.setHours(0, 0, 0, 0);
 
-  if (d.getTime() === today.getTime()) return 'Today';
-
   const yesterday = new Date(today);
   yesterday.setDate(yesterday.getDate() - 1);
   if (d.getTime() === yesterday.getTime()) return 'Yesterday';
@@ -97,7 +95,11 @@ export default function HomePage() {
   const [sortBy, setSortBy] = useState<'time' | 'name'>('time');
 
   const sheetName = formatDateForSheet(currentDate);
-  const isToday = formatDateDisplay(currentDate) === 'Today';
+  const isToday = (() => {
+    const t = new Date(); t.setHours(0, 0, 0, 0);
+    const d = new Date(currentDate); d.setHours(0, 0, 0, 0);
+    return d.getTime() === t.getTime();
+  })();
 
   const fetchPatients = async (showRefresh = false) => {
     if (showRefresh) setRefreshing(true);
@@ -552,16 +554,18 @@ export default function HomePage() {
               >
                 <ChevronLeft className="w-4 h-4" />
               </button>
-              <button
-                onClick={goToToday}
-                className="flex items-center gap-1.5 px-2 py-1 hover:bg-white/10 rounded-lg transition-colors"
-              >
+              <span className="flex items-center gap-1.5 px-2 py-1">
                 <Calendar className="w-3.5 h-3.5" style={{ color: 'var(--dash-text-muted)' }} />
                 <span className="text-sm font-medium" style={{ color: 'var(--dash-text)' }}>{formatDateDisplay(currentDate)}</span>
-                {!isToday && (
-                  <span className="text-[10px] font-medium ml-0.5 text-amber-300">today</span>
-                )}
-              </button>
+              </span>
+              {!isToday && (
+                <button
+                  onClick={goToToday}
+                  className="text-[11px] font-medium px-1.5 py-0.5 rounded text-amber-300 hover:bg-white/10 transition-colors"
+                >
+                  Today
+                </button>
+              )}
               <button
                 onClick={goToNextDay}
                 disabled={isToday}
