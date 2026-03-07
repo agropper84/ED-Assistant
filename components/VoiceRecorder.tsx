@@ -229,7 +229,7 @@ export function VoiceRecorder({ onTranscript, onInterimTranscript, onRecordingSt
     return (
       <span className="inline-flex items-center gap-1.5 text-xs text-blue-600 dark:text-blue-400">
         <Loader2 className="w-3.5 h-3.5 animate-spin" />
-        Transcribing...
+        Processing...
       </span>
     );
   }
