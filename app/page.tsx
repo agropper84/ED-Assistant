@@ -41,6 +41,43 @@ function formatDateDisplay(date: Date): string {
   return formatDateForSheet(date);
 }
 
+// Away screen photos — landscape, wildlife, comedy wildlife (Unsplash)
+const AWAY_PHOTOS = [
+  // Landscapes
+  'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=1920&q=80', // alpine mountains
+  'https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?w=1920&q=80', // forest valley
+  'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=1920&q=80', // forest sunlight
+  'https://images.unsplash.com/photo-1518837695005-2083093ee35b?w=1920&q=80', // ocean waves
+  'https://images.unsplash.com/photo-1472214103451-9374bd1c798e?w=1920&q=80', // green rolling hills
+  'https://images.unsplash.com/photo-1475924156734-496f6cac6ec1?w=1920&q=80', // mountain lake
+  'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=1920&q=80', // tropical beach
+  'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=1920&q=80', // dramatic mountain peak
+  'https://images.unsplash.com/photo-1501785888041-af3ef285b470?w=1920&q=80', // lake sunrise
+  'https://images.unsplash.com/photo-1433086966358-54859d0ed716?w=1920&q=80', // waterfall bridge
+  'https://images.unsplash.com/photo-1505765050516-f72dcac9c60e?w=1920&q=80', // autumn forest
+  'https://images.unsplash.com/photo-1469474968028-56623f02e42e?w=1920&q=80', // sunlit valley
+  'https://images.unsplash.com/photo-1490730141103-6cac27aaab94?w=1920&q=80', // sunset silhouette
+  'https://images.unsplash.com/photo-1419242902214-272b3f66ee7a?w=1920&q=80', // starry night sky
+  'https://images.unsplash.com/photo-1509316975850-ff9c5deb0cd9?w=1920&q=80', // pine trees
+  // Wildlife
+  'https://images.unsplash.com/photo-1474511320723-9a56873571b7?w=1920&q=80', // eagle soaring
+  'https://images.unsplash.com/photo-1535338454528-1b5f0e27c1df?w=1920&q=80', // fox in snow
+  'https://images.unsplash.com/photo-1564349683136-77e08dba1ef7?w=1920&q=80', // giraffe
+  'https://images.unsplash.com/photo-1557050543-4d5f4e07ef46?w=1920&q=80', // parrot
+  'https://images.unsplash.com/photo-1484406743394-e9e29e8fc94d?w=1920&q=80', // puppy in blanket
+  'https://images.unsplash.com/photo-1425082661507-d6d2f7b7f4b7?w=1920&q=80', // deer in meadow
+  'https://images.unsplash.com/photo-1474314243412-cd4a79f02c6a?w=1920&q=80', // penguin group
+  'https://images.unsplash.com/photo-1543946207-39bd91e70ca7?w=1920&q=80', // sleeping cat
+  'https://images.unsplash.com/photo-1452857297128-d9c29adba80b?w=1920&q=80', // owl portrait
+  'https://images.unsplash.com/photo-1497752531616-c3afd9760a11?w=1920&q=80', // raccoon
+  // Comedy / fun wildlife
+  'https://images.unsplash.com/photo-1517849845537-4d257902454a?w=1920&q=80', // goofy dog close-up
+  'https://images.unsplash.com/photo-1518020382113-a7e8fc38eac9?w=1920&q=80', // pug with tongue out
+  'https://images.unsplash.com/photo-1537151625747-768eb6cf92b2?w=1920&q=80', // happy dog smiling
+  'https://images.unsplash.com/photo-1583511655857-d19b40a7a54e?w=1920&q=80', // dog with sunglasses
+  'https://images.unsplash.com/photo-1415369629372-26f2fe60c467?w=1920&q=80', // otter floating
+];
+
 export default function HomePage() {
   const router = useRouter();
   const [patients, setPatients] = useState<Patient[]>([]);
@@ -86,6 +123,7 @@ export default function HomePage() {
   const [privacyMenuOpen, setPrivacyMenuOpen] = useState(false);
   const [awayTime, setAwayTime] = useState('');
   const [awayWeather, setAwayWeather] = useState<{ temp: string; desc: string; location: string } | null>(null);
+  const [awayPhotoIndex, setAwayPhotoIndex] = useState(0);
 
   // Dashboard billing
   const [billingPatientIdx, setBillingPatientIdx] = useState<number | null>(null);
@@ -566,16 +604,7 @@ export default function HomePage() {
     router.push(`/patient/${patient.rowIndex}?sheet=${encodeURIComponent(patient.sheetName)}`);
   };
 
-  // Nature photo URLs (Unsplash landscape/wildlife, pre-selected for reliability)
-  const awayPhotos = [
-    'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=1920&q=80', // mountains
-    'https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?w=1920&q=80', // forest valley
-    'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=1920&q=80', // forest sunlight
-    'https://images.unsplash.com/photo-1518837695005-2083093ee35b?w=1920&q=80', // ocean waves
-    'https://images.unsplash.com/photo-1472214103451-9374bd1c798e?w=1920&q=80', // green hills
-    'https://images.unsplash.com/photo-1475924156734-496f6cac6ec1?w=1920&q=80', // mountain lake
-  ];
-  const awayPhotoUrl = awayPhotos[new Date().getDate() % awayPhotos.length];
+  const awayPhotoUrl = AWAY_PHOTOS[awayPhotoIndex % AWAY_PHOTOS.length];
 
   if (awayScreen) {
     return (
@@ -640,7 +669,7 @@ export default function HomePage() {
                       {anonymize ? 'Show Names' : 'Anonymize Names'}
                     </button>
                     <button
-                      onClick={() => { setAwayScreen(true); setPrivacyMenuOpen(false); }}
+                      onClick={() => { setAwayPhotoIndex(i => i + 1); setAwayScreen(true); setPrivacyMenuOpen(false); }}
                       className="w-full flex items-center gap-2.5 px-3 py-2 text-left text-gray-100 hover:bg-white/10 transition-colors"
                     >
                       <Monitor className="w-4 h-4" />
