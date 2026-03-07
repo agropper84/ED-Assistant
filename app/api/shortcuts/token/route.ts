@@ -39,11 +39,9 @@ export async function POST() {
   // Store refresh token for device API access
   if (session.refreshToken) {
     await setUserRefreshToken(session.userId, session.refreshToken);
-  } else {
-    console.warn('No refresh token in session for user', session.userId);
   }
 
-  return NextResponse.json({ token: rawToken, hasRefreshToken: !!session.refreshToken });
+  return NextResponse.json({ token: rawToken });
 }
 
 // GET — Check if user has a token
