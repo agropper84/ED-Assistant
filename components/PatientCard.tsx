@@ -122,10 +122,10 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
                   {/* Invisible bridge so mouse can travel from icon to popup */}
                   <div className="absolute left-0 top-full h-2 w-80 hidden group-hover/note:block" />
                   <div
-                    className="absolute left-0 top-full mt-2 z-50 hidden group-hover/note:block w-80 max-h-64 overflow-y-auto p-3 bg-gray-900/95 backdrop-blur-sm text-gray-100 text-xs rounded-lg shadow-xl ring-1 ring-white/10"
+                    className="absolute left-0 top-full mt-2 z-50 hidden group-hover/note:block w-80 max-h-64 overflow-y-auto p-3 bg-gray-900 text-gray-100 text-xs rounded-lg shadow-xl ring-1 ring-white/10"
                     onClick={(e) => e.stopPropagation()}
                   >
-                    <div className="flex items-center justify-between mb-2 sticky top-0 bg-gray-900/95 pb-1">
+                    <div className="flex items-center justify-between mb-2 sticky top-0 bg-gray-900 pb-1">
                       <span className="text-gray-400 font-medium">Encounter Note</span>
                       <button
                         onClick={async (e) => {
@@ -181,7 +181,7 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
                   <>
                     <div className="absolute left-0 top-full h-2 w-72 hidden group-hover/synopsis:block" />
                     <div
-                      className="absolute left-0 top-full mt-2 z-50 hidden group-hover/synopsis:block w-72 max-h-48 overflow-y-auto p-3 bg-gray-900/95 backdrop-blur-sm text-gray-100 text-xs rounded-lg shadow-xl ring-1 ring-white/10"
+                      className="absolute left-0 top-full mt-2 z-50 hidden group-hover/synopsis:block w-72 max-h-48 overflow-y-auto p-3 bg-gray-900 text-gray-100 text-xs rounded-lg shadow-xl ring-1 ring-white/10"
                       onClick={(e) => e.stopPropagation()}
                     >
                       <span className="text-blue-400 font-medium block mb-1">Synopsis</span>
@@ -216,7 +216,7 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
                   <>
                     <div className="absolute left-0 top-full h-2 w-72 hidden group-hover/mgmt:block" />
                     <div
-                      className="absolute left-0 top-full mt-2 z-50 hidden group-hover/mgmt:block w-72 max-h-48 overflow-y-auto p-3 bg-gray-900/95 backdrop-blur-sm text-gray-100 text-xs rounded-lg shadow-xl ring-1 ring-white/10"
+                      className="absolute left-0 top-full mt-2 z-50 hidden group-hover/mgmt:block w-72 max-h-48 overflow-y-auto p-3 bg-gray-900 text-gray-100 text-xs rounded-lg shadow-xl ring-1 ring-white/10"
                       onClick={(e) => e.stopPropagation()}
                     >
                       <span className="text-purple-400 font-medium block mb-1">Management</span>
@@ -251,7 +251,7 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
                   <>
                     <div className="absolute left-0 top-full h-2 w-72 hidden group-hover/evidence:block" />
                     <div
-                      className="absolute left-0 top-full mt-2 z-50 hidden group-hover/evidence:block w-72 max-h-48 overflow-y-auto p-3 bg-gray-900/95 backdrop-blur-sm text-gray-100 text-xs rounded-lg shadow-xl ring-1 ring-white/10"
+                      className="absolute left-0 top-full mt-2 z-50 hidden group-hover/evidence:block w-72 max-h-48 overflow-y-auto p-3 bg-gray-900 text-gray-100 text-xs rounded-lg shadow-xl ring-1 ring-white/10"
                       onClick={(e) => e.stopPropagation()}
                     >
                       <span className="text-amber-400 font-medium block mb-1">Evidence</span>
