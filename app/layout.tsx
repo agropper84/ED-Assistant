@@ -49,6 +49,16 @@ export default function RootLayout({
             `,
           }}
         />
+        {/* Register service worker for Web Share Target */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.register('/sw.js');
+              }
+            `,
+          }}
+        />
       </head>
       <body className="min-h-screen">
         <ThemeProvider>

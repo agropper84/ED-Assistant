@@ -35,6 +35,11 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
   const [isProcessing, setIsProcessing] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
 
+  const hasEncounterNote = !!(patient.hpi || patient.objective || patient.assessmentPlan);
+  const hasAnalysis = !!(patient.synopsis || patient.management || patient.evidence);
+  const hasInputData = !!(patient.transcript || patient.triageVitals || patient.additional || patient.diagnosis);
+  const showInfoIcons = hasEncounterNote || hasAnalysis || (hasInputData && !!onGenerateAnalysis);
+
   const statusColors: Record<string, string> = {
     new: 'bg-blue-100 text-blue-800 dark:bg-blue-950/50 dark:text-blue-300 dark:border dark:border-blue-800',
     pending: 'bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300 dark:border dark:border-amber-800',
@@ -72,51 +77,83 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
           <span className="font-semibold text-[var(--text-primary)] truncate">
             {displayName}
           </span>
-          {patient.status === 'processed' && onViewNote ? (
+          {/* Status badge / process button */}
+          {patient.status === 'pending' && onProcess ? (
+            <span
+              onClick={async (e) => {
+                e.stopPropagation();
+                if (isProcessing) return;
+                setIsProcessing(true);
+                try {
+                  await onProcess();
+                } finally {
+                  setIsProcessing(false);
+                }
+              }}
+              className={`badge ${statusColors[patient.status]} cursor-pointer hover:brightness-95 dark:hover:brightness-125 active:scale-[0.97] transition-all inline-flex items-center gap-1`}
+            >
+              {isProcessing ? (
+                <Loader2 className="w-3 h-3 animate-spin" />
+              ) : (
+                <Play className="w-3 h-3" />
+              )}
+              {isProcessing ? 'Processing...' : statusLabels[patient.status]}
+            </span>
+          ) : patient.status !== 'processed' ? (
+            <span className={`badge ${statusColors[patient.status]}`}>
+              {statusLabels[patient.status]}
+            </span>
+          ) : null}
+
+          {/* Info icons — shown when any output exists or input data available for generation */}
+          {showInfoIcons && (
             <>
-              <div className="relative group/note flex-shrink-0">
-                <span
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onViewNote();
-                  }}
-                  className="p-0.5 hover:bg-green-100 dark:hover:bg-green-900/50 rounded transition-colors cursor-pointer inline-flex"
-                >
-                  <FileText className="w-4 h-4 text-green-600 dark:text-green-400" />
-                </span>
-                <div
-                  className="absolute left-0 top-full mt-1 z-50 hidden group-hover/note:block w-80 max-h-64 overflow-y-auto p-3 bg-gray-900 text-gray-100 text-xs rounded-lg shadow-lg"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <div className="flex items-center justify-between mb-2 sticky top-0 bg-gray-900 pb-1">
-                    <span className="text-gray-400 font-medium">Encounter Note</span>
-                    <button
-                      onClick={async (e) => {
-                        e.stopPropagation();
-                        const fullNote = `HPI:\n${patient.hpi}\n\nOBJECTIVE:\n${patient.objective}\n\nASSESSMENT & PLAN:\n${patient.assessmentPlan}`;
-                        await navigator.clipboard.writeText(fullNote);
-                        setNoteCopied(true);
-                        setTimeout(() => setNoteCopied(false), 2000);
-                      }}
-                      className="flex items-center gap-1 px-2 py-0.5 bg-gray-700 hover:bg-gray-600 rounded text-xs text-gray-200 transition-colors"
-                    >
-                      {noteCopied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
-                      {noteCopied ? 'Copied' : 'Copy'}
-                    </button>
-                  </div>
-                  <div className="whitespace-pre-wrap leading-relaxed space-y-2">
-                    {patient.hpi && (
-                      <div><span className="text-green-400 font-medium">HPI:</span> {patient.hpi}</div>
-                    )}
-                    {patient.objective && (
-                      <div><span className="text-green-400 font-medium">Objective:</span> {patient.objective}</div>
-                    )}
-                    {patient.assessmentPlan && (
-                      <div><span className="text-green-400 font-medium">A&P:</span> {patient.assessmentPlan}</div>
-                    )}
+              {/* Encounter note icon */}
+              {hasEncounterNote && onViewNote && (
+                <div className="relative group/note flex-shrink-0">
+                  <span
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onViewNote();
+                    }}
+                    className="p-0.5 hover:bg-green-100 dark:hover:bg-green-900/50 rounded transition-colors cursor-pointer inline-flex"
+                  >
+                    <FileText className="w-4 h-4 text-green-600 dark:text-green-400" />
+                  </span>
+                  <div
+                    className="absolute left-0 top-full mt-1 z-50 hidden group-hover/note:block w-80 max-h-64 overflow-y-auto p-3 bg-gray-900 text-gray-100 text-xs rounded-lg shadow-lg"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <div className="flex items-center justify-between mb-2 sticky top-0 bg-gray-900 pb-1">
+                      <span className="text-gray-400 font-medium">Encounter Note</span>
+                      <button
+                        onClick={async (e) => {
+                          e.stopPropagation();
+                          const fullNote = `HPI:\n${patient.hpi}\n\nOBJECTIVE:\n${patient.objective}\n\nASSESSMENT & PLAN:\n${patient.assessmentPlan}`;
+                          await navigator.clipboard.writeText(fullNote);
+                          setNoteCopied(true);
+                          setTimeout(() => setNoteCopied(false), 2000);
+                        }}
+                        className="flex items-center gap-1 px-2 py-0.5 bg-gray-700 hover:bg-gray-600 rounded text-xs text-gray-200 transition-colors"
+                      >
+                        {noteCopied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+                        {noteCopied ? 'Copied' : 'Copy'}
+                      </button>
+                    </div>
+                    <div className="whitespace-pre-wrap leading-relaxed space-y-2">
+                      {patient.hpi && (
+                        <div><span className="text-green-400 font-medium">HPI:</span> {patient.hpi}</div>
+                      )}
+                      {patient.objective && (
+                        <div><span className="text-green-400 font-medium">Objective:</span> {patient.objective}</div>
+                      )}
+                      {patient.assessmentPlan && (
+                        <div><span className="text-green-400 font-medium">A&P:</span> {patient.assessmentPlan}</div>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
+              )}
 
               {/* Synopsis hover icon */}
               <div className="relative group/synopsis flex-shrink-0">
@@ -128,7 +165,7 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
                       onGenerateAnalysis().finally(() => setIsGenerating(false));
                     }
                   }}
-                  className={`p-0.5 rounded transition-colors inline-flex ${patient.synopsis ? 'hover:bg-blue-100 dark:hover:bg-blue-900/50 cursor-pointer' : onGenerateAnalysis ? 'hover:bg-blue-100 dark:hover:bg-blue-900/50 cursor-pointer' : ''}`}
+                  className={`p-0.5 rounded transition-colors inline-flex ${patient.synopsis || onGenerateAnalysis ? 'hover:bg-blue-100 dark:hover:bg-blue-900/50 cursor-pointer' : ''}`}
                   title={patient.synopsis ? '' : 'Generate synopsis & analysis'}
                 >
                   {isGenerating ? (
@@ -208,31 +245,6 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
                 )}
               </div>
             </>
-          ) : patient.status === 'pending' && onProcess ? (
-            <span
-              onClick={async (e) => {
-                e.stopPropagation();
-                if (isProcessing) return;
-                setIsProcessing(true);
-                try {
-                  await onProcess();
-                } finally {
-                  setIsProcessing(false);
-                }
-              }}
-              className={`badge ${statusColors[patient.status]} cursor-pointer hover:brightness-95 dark:hover:brightness-125 active:scale-[0.97] transition-all inline-flex items-center gap-1`}
-            >
-              {isProcessing ? (
-                <Loader2 className="w-3 h-3 animate-spin" />
-              ) : (
-                <Play className="w-3 h-3" />
-              )}
-              {isProcessing ? 'Processing...' : statusLabels[patient.status]}
-            </span>
-          ) : (
-            <span className={`badge ${statusColors[patient.status]}`}>
-              {statusLabels[patient.status]}
-            </span>
           )}
         </div>
 

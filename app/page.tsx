@@ -84,6 +84,7 @@ export default function HomePage() {
 
   // Batch transcribe
   const [showBatchTranscribe, setShowBatchTranscribe] = useState(false);
+  const [sharedFile, setSharedFile] = useState<File | undefined>(undefined);
 
   // Autocomplete suggestions
   const [suggestions, setSuggestions] = useState<string[]>([]);
@@ -158,6 +159,35 @@ export default function HomePage() {
         if (data?.sentences) setSuggestions(data.sentences);
       })
       .catch(() => {});
+  }, []);
+
+  // Web Share Target: detect ?share=1 and retrieve cached audio
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('share') !== '1') return;
+
+    // Clean up URL immediately
+    window.history.replaceState({}, '', '/');
+
+    (async () => {
+      try {
+        const cache = await caches.open('share-target');
+        const response = await cache.match('/shared-audio');
+        if (!response) return;
+
+        const blob = await response.blob();
+        const fileName = response.headers.get('X-File-Name') || 'shared-audio.m4a';
+        const file = new File([blob], fileName, { type: blob.type || 'audio/mp4' });
+
+        // Delete the cache entry
+        await cache.delete('/shared-audio');
+
+        setSharedFile(file);
+        setShowBatchTranscribe(true);
+      } catch (err) {
+        console.error('Failed to retrieve shared audio:', err);
+      }
+    })();
   }, []);
 
   const handleSavePatient = async (data: any) => {
@@ -751,10 +781,11 @@ export default function HomePage() {
       {/* Batch Transcribe Modal */}
       <BatchTranscribeModal
         isOpen={showBatchTranscribe}
-        onClose={() => setShowBatchTranscribe(false)}
+        onClose={() => { setShowBatchTranscribe(false); setSharedFile(undefined); }}
         patients={patients}
         sheetName={sheetName}
         onSaved={() => fetchPatients()}
+        initialFile={sharedFile}
       />
 
       {/* Delete Confirmation */}
