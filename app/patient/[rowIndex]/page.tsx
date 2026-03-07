@@ -1176,6 +1176,7 @@ function InteractiveContent({
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [addingDetail, setAddingDetail] = useState(false);
   const [detailText, setDetailText] = useState('');
+  const [aiLoading, setAiLoading] = useState(false);
 
   // Sync parts when content prop changes (after save round-trip)
   useEffect(() => {
@@ -1220,34 +1221,55 @@ function InteractiveContent({
     save(newParts);
   }
 
+  async function handleAiEdit(operation: 'expand' | 'shorten', hint?: string) {
+    if (selected.size === 0) return;
+    setAiLoading(true);
+    try {
+      const sorted = Array.from(selected).sort((a, b) => a - b);
+      const selectedText = sorted
+        .map(i => parts[i]?.text)
+        .filter(Boolean)
+        .join(' ');
+      const fullContext = partsToText(parts);
+
+      const res = await fetch('/api/edit-text', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          text: selectedText,
+          operation,
+          hint: hint || undefined,
+          context: fullContext,
+        }),
+      });
+      if (!res.ok) throw new Error('AI edit failed');
+      const { result } = await res.json();
+
+      // Replace selected sentences with AI result
+      const newParts = parts.filter((_, i) => !selected.has(i));
+      // Insert new sentences where the first selected sentence was
+      const insertAt = sorted[0];
+      const newSentenceParts = splitContent(result).filter(p => p.type === 'sentence');
+      newParts.splice(insertAt, 0, ...newSentenceParts);
+
+      setSelected(new Set());
+      setAddingDetail(false);
+      setDetailText('');
+      save(newParts);
+    } catch (err) {
+      console.error('AI edit error:', err);
+    } finally {
+      setAiLoading(false);
+    }
+  }
+
   function handleShortenSelected() {
-    const newParts = [...parts];
-    Array.from(selected).forEach(idx => {
-      if (newParts[idx]?.type === 'sentence') {
-        newParts[idx] = { ...newParts[idx], text: truncateSentence(newParts[idx].text) };
-      }
-    });
-    setSelected(new Set());
-    save(newParts);
+    handleAiEdit('shorten');
   }
 
   function handleAddDetailToSelection() {
-    if (!detailText.trim() || selected.size === 0) return;
-    const sorted = Array.from(selected).sort((a, b) => a - b);
-    const lastIdx = sorted[sorted.length - 1];
-    const text = parts[lastIdx].text;
-    let newText: string;
-    if (text.endsWith('.')) {
-      newText = text.slice(0, -1) + ', ' + detailText.trim() + '.';
-    } else {
-      newText = text + ' ' + detailText.trim();
-    }
-    const newParts = [...parts];
-    newParts[lastIdx] = { ...newParts[lastIdx], text: newText };
-    setSelected(new Set());
-    setAddingDetail(false);
-    setDetailText('');
-    save(newParts);
+    if (selected.size === 0) return;
+    handleAiEdit('expand', detailText.trim() || undefined);
   }
 
   const hasSelection = selected.size > 0;
@@ -1276,8 +1298,16 @@ function InteractiveContent({
         );
       })}
 
+      {/* AI loading indicator */}
+      {aiLoading && (
+        <div className="flex items-center gap-2 mt-3 p-2 bg-purple-50 dark:bg-purple-950/50 border border-purple-200 dark:border-purple-800 rounded-lg">
+          <Loader2 className="w-3.5 h-3.5 animate-spin text-purple-600 dark:text-purple-400" />
+          <span className="text-xs text-purple-700 dark:text-purple-300 font-medium">AI is editing...</span>
+        </div>
+      )}
+
       {/* Selection action bar */}
-      {hasSelection && !addingDetail && (
+      {hasSelection && !addingDetail && !aiLoading && (
         <div className="flex items-center gap-2 mt-3 p-2 bg-purple-50 dark:bg-purple-950/50 border border-purple-200 dark:border-purple-800 rounded-lg">
           <span className="text-xs text-purple-700 dark:text-purple-300 font-medium">
             {selected.size} selected
@@ -1314,7 +1344,7 @@ function InteractiveContent({
       )}
 
       {/* Add detail input */}
-      {addingDetail && (
+      {addingDetail && !aiLoading && (
         <div className="flex items-center gap-1 mt-2 p-2 bg-blue-50 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-800 rounded-lg">
           <input
             type="text"
@@ -1324,7 +1354,7 @@ function InteractiveContent({
               if (e.key === 'Enter') handleAddDetailToSelection();
               if (e.key === 'Escape') { setAddingDetail(false); setDetailText(''); }
             }}
-            placeholder="Type detail to add..."
+            placeholder="What detail should AI add? (optional — leave blank for general expansion)"
             autoFocus
             className="flex-1 p-1.5 border border-[var(--input-border)] rounded text-xs focus:ring-1 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)]"
             onClick={(e) => e.stopPropagation()}

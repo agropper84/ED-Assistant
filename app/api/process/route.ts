@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
             }
           }
           if (guide.extractedFeatures.length > 0) {
-            parts.push(`Detected style features: ${guide.extractedFeatures.join(', ')}`);
+            parts.push(`Key style features (secondary to examples above): ${guide.extractedFeatures.join(', ')}`);
           }
           if (guide.customGuidance) {
             parts.push(`Charting guidance from the physician:\n${guide.customGuidance}`);

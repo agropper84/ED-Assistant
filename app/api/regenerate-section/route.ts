@@ -44,13 +44,13 @@ export async function POST(request: NextRequest) {
         parts.push(`Style examples for this section:\n${sectionExamples.map((e: string, i: number) => `Example ${i + 1}:\n${e}`).join('\n\n')}`);
       }
       if (guide.extractedFeatures.length > 0) {
-        parts.push(`Style features: ${guide.extractedFeatures.join(', ')}`);
+        parts.push(`Key style features (secondary to examples above): ${guide.extractedFeatures.join(', ')}`);
       }
       if (guide.customGuidance) {
         parts.push(`Charting guidance: ${guide.customGuidance}`);
       }
       if (parts.length > 0) {
-        styleSection = `\nSTYLE GUIDANCE:\n${parts.join('\n')}\nMatch the writing style described above.\n`;
+        styleSection = `\nSTYLE GUIDANCE:\nClosely match the tone, structure, and phrasing from the style examples first. Use the key features only to fill in gaps.\n${parts.join('\n')}\n`;
       }
     } catch {}
 
