@@ -12,7 +12,6 @@ interface PatientCardProps {
   onTimeChange?: (time: string) => void;
   onBillingToggle?: () => void;
   billingCodes?: string;
-  onViewNote?: () => void;
   onNavigate?: () => void;
   onProcess?: () => Promise<void>;
   onGenerateAnalysis?: () => Promise<void>;
@@ -28,7 +27,7 @@ function toInitials(name: string): string {
     .join('');
 }
 
-export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChange, onBillingToggle, billingCodes, onViewNote, onNavigate, onProcess, onGenerateAnalysis }: PatientCardProps) {
+export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChange, onBillingToggle, billingCodes, onNavigate, onProcess, onGenerateAnalysis }: PatientCardProps) {
   const [editingTime, setEditingTime] = useState(false);
   const [timeValue, setTimeValue] = useState(patient.timestamp || '');
   const [noteCopied, setNoteCopied] = useState(false);
@@ -109,22 +108,24 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
           {showInfoIcons && (
             <>
               {/* Encounter note icon */}
-              {hasEncounterNote && onViewNote && (
+              {hasEncounterNote && onNavigate && (
                 <div className="relative group/note flex-shrink-0">
                   <span
                     onClick={(e) => {
                       e.stopPropagation();
-                      onViewNote();
+                      onNavigate();
                     }}
                     className="p-0.5 hover:bg-green-100 dark:hover:bg-green-900/50 rounded transition-colors cursor-pointer inline-flex"
                   >
                     <FileText className="w-4 h-4 text-green-600 dark:text-green-400" />
                   </span>
+                  {/* Invisible bridge so mouse can travel from icon to popup */}
+                  <div className="absolute left-0 top-full h-2 w-80 hidden group-hover/note:block" />
                   <div
-                    className="absolute left-0 top-full mt-1 z-50 hidden group-hover/note:block w-80 max-h-64 overflow-y-auto p-3 bg-gray-900 text-gray-100 text-xs rounded-lg shadow-lg"
+                    className="absolute left-0 top-full mt-2 z-50 hidden group-hover/note:block w-80 max-h-64 overflow-y-auto p-3 bg-gray-900/95 backdrop-blur-sm text-gray-100 text-xs rounded-lg shadow-xl ring-1 ring-white/10"
                     onClick={(e) => e.stopPropagation()}
                   >
-                    <div className="flex items-center justify-between mb-2 sticky top-0 bg-gray-900 pb-1">
+                    <div className="flex items-center justify-between mb-2 sticky top-0 bg-gray-900/95 pb-1">
                       <span className="text-gray-400 font-medium">Encounter Note</span>
                       <button
                         onClick={async (e) => {
@@ -163,6 +164,8 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
                     if (!patient.synopsis && onGenerateAnalysis && !isGenerating) {
                       setIsGenerating(true);
                       onGenerateAnalysis().finally(() => setIsGenerating(false));
+                    } else if (patient.synopsis && onNavigate) {
+                      onNavigate();
                     }
                   }}
                   className={`p-0.5 rounded transition-colors inline-flex ${patient.synopsis || onGenerateAnalysis ? 'hover:bg-blue-100 dark:hover:bg-blue-900/50 cursor-pointer' : ''}`}
@@ -175,13 +178,16 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
                   )}
                 </span>
                 {patient.synopsis && (
-                  <div
-                    className="absolute left-0 top-full mt-1 z-50 hidden group-hover/synopsis:block w-72 max-h-48 overflow-y-auto p-3 bg-gray-900 text-gray-100 text-xs rounded-lg shadow-lg"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <span className="text-blue-400 font-medium block mb-1">Synopsis</span>
-                    <p className="whitespace-pre-wrap leading-relaxed">{patient.synopsis}</p>
-                  </div>
+                  <>
+                    <div className="absolute left-0 top-full h-2 w-72 hidden group-hover/synopsis:block" />
+                    <div
+                      className="absolute left-0 top-full mt-2 z-50 hidden group-hover/synopsis:block w-72 max-h-48 overflow-y-auto p-3 bg-gray-900/95 backdrop-blur-sm text-gray-100 text-xs rounded-lg shadow-xl ring-1 ring-white/10"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <span className="text-blue-400 font-medium block mb-1">Synopsis</span>
+                      <p className="whitespace-pre-wrap leading-relaxed">{patient.synopsis}</p>
+                    </div>
+                  </>
                 )}
               </div>
 
@@ -193,6 +199,8 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
                     if (!patient.management && onGenerateAnalysis && !isGenerating) {
                       setIsGenerating(true);
                       onGenerateAnalysis().finally(() => setIsGenerating(false));
+                    } else if (patient.management && onNavigate) {
+                      onNavigate();
                     }
                   }}
                   className={`p-0.5 rounded transition-colors inline-flex ${patient.management || onGenerateAnalysis ? 'hover:bg-purple-100 dark:hover:bg-purple-900/50 cursor-pointer' : ''}`}
@@ -205,13 +213,16 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
                   )}
                 </span>
                 {patient.management && (
-                  <div
-                    className="absolute left-0 top-full mt-1 z-50 hidden group-hover/mgmt:block w-72 max-h-48 overflow-y-auto p-3 bg-gray-900 text-gray-100 text-xs rounded-lg shadow-lg"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <span className="text-purple-400 font-medium block mb-1">Management</span>
-                    <p className="whitespace-pre-wrap leading-relaxed">{patient.management}</p>
-                  </div>
+                  <>
+                    <div className="absolute left-0 top-full h-2 w-72 hidden group-hover/mgmt:block" />
+                    <div
+                      className="absolute left-0 top-full mt-2 z-50 hidden group-hover/mgmt:block w-72 max-h-48 overflow-y-auto p-3 bg-gray-900/95 backdrop-blur-sm text-gray-100 text-xs rounded-lg shadow-xl ring-1 ring-white/10"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <span className="text-purple-400 font-medium block mb-1">Management</span>
+                      <p className="whitespace-pre-wrap leading-relaxed">{patient.management}</p>
+                    </div>
+                  </>
                 )}
               </div>
 
@@ -223,6 +234,8 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
                     if (!patient.evidence && onGenerateAnalysis && !isGenerating) {
                       setIsGenerating(true);
                       onGenerateAnalysis().finally(() => setIsGenerating(false));
+                    } else if (patient.evidence && onNavigate) {
+                      onNavigate();
                     }
                   }}
                   className={`p-0.5 rounded transition-colors inline-flex ${patient.evidence || onGenerateAnalysis ? 'hover:bg-amber-100 dark:hover:bg-amber-900/50 cursor-pointer' : ''}`}
@@ -235,13 +248,16 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
                   )}
                 </span>
                 {patient.evidence && (
-                  <div
-                    className="absolute left-0 top-full mt-1 z-50 hidden group-hover/evidence:block w-72 max-h-48 overflow-y-auto p-3 bg-gray-900 text-gray-100 text-xs rounded-lg shadow-lg"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <span className="text-amber-400 font-medium block mb-1">Evidence</span>
-                    <p className="whitespace-pre-wrap leading-relaxed">{patient.evidence}</p>
-                  </div>
+                  <>
+                    <div className="absolute left-0 top-full h-2 w-72 hidden group-hover/evidence:block" />
+                    <div
+                      className="absolute left-0 top-full mt-2 z-50 hidden group-hover/evidence:block w-72 max-h-48 overflow-y-auto p-3 bg-gray-900/95 backdrop-blur-sm text-gray-100 text-xs rounded-lg shadow-xl ring-1 ring-white/10"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <span className="text-amber-400 font-medium block mb-1">Evidence</span>
+                      <p className="whitespace-pre-wrap leading-relaxed">{patient.evidence}</p>
+                    </div>
+                  </>
                 )}
               </div>
             </>

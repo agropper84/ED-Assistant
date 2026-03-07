@@ -436,7 +436,6 @@ export default function HomePage() {
           onTimeChange={(time) => handleTimeChange(patient, time)}
           onBillingToggle={() => toggleBilling(patient.rowIndex)}
           billingCodes={codes}
-          onViewNote={() => router.push(`/patient/${patient.rowIndex}?sheet=${encodeURIComponent(patient.sheetName)}`)}
           onNavigate={() => router.push(`/patient/${patient.rowIndex}?sheet=${encodeURIComponent(patient.sheetName)}`)}
           onProcess={async () => {
             let settings: any;
