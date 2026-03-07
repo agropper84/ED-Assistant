@@ -41,8 +41,10 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
   const [transcript, setTranscript] = useState('');
   const [preRecordTranscript, setPreRecordTranscript] = useState('');
   const [encounterNotes, setEncounterNotes] = useState('');
+  const [preRecordEncounter, setPreRecordEncounter] = useState('');
   const [triageVitals, setTriageVitals] = useState('');
   const [additional, setAdditional] = useState('');
+  const [preRecordAdditional, setPreRecordAdditional] = useState('');
   const [pastDocs, setPastDocs] = useState('');
   const [saving, setSaving] = useState(false);
   const [regenerating, setRegenerating] = useState(false);
@@ -161,9 +163,21 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
 
           {/* Encounter Notes */}
           <div>
-            <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">
-              Encounter Notes
-            </label>
+            <div className="flex items-center justify-between mb-1">
+              <label className="text-sm font-medium text-[var(--text-secondary)]">
+                Encounter Notes
+              </label>
+              <VoiceRecorder
+                onTranscript={(text) => {
+                  const base = preRecordEncounter || encounterNotes;
+                  setEncounterNotes(base ? `${base}\n${text}` : text);
+                }}
+                onRecordingStart={() => setPreRecordEncounter(encounterNotes)}
+                onInterimTranscript={(text) => {
+                  setEncounterNotes(preRecordEncounter ? `${preRecordEncounter}\n${text}` : text);
+                }}
+              />
+            </div>
             <AutocompleteTextarea
               value={encounterNotes}
               onChange={setEncounterNotes}
@@ -180,9 +194,21 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
 
           {/* Additional Findings with Exam Toggles */}
           <div>
-            <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">
-              Additional Findings / Exam
-            </label>
+            <div className="flex items-center justify-between mb-1">
+              <label className="text-sm font-medium text-[var(--text-secondary)]">
+                Additional Findings / Exam
+              </label>
+              <VoiceRecorder
+                onTranscript={(text) => {
+                  const base = preRecordAdditional || additional;
+                  setAdditional(base ? `${base}\n${text}` : text);
+                }}
+                onRecordingStart={() => setPreRecordAdditional(additional)}
+                onInterimTranscript={(text) => {
+                  setAdditional(preRecordAdditional ? `${preRecordAdditional}\n${text}` : text);
+                }}
+              />
+            </div>
             <ExamToggles value={additional} onChange={setAdditional} />
             <textarea
               value={additional}
