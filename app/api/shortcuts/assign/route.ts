@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createHash } from 'crypto';
 import { getShortcutTokenUser } from '@/lib/kv';
-import { getSheetsContextForUser, updatePatientFields } from '@/lib/google-sheets';
+import { getSheetsContextForUser, updatePatientFields, getPatient } from '@/lib/google-sheets';
 
 function sha256(input: string): string {
   return createHash('sha256').update(input).digest('hex');
@@ -23,14 +23,23 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
     }
 
-    const { rowIndex, sheetName, transcript } = await request.json();
+    const { rowIndex, sheetName, transcript, append } = await request.json();
 
     if (typeof rowIndex !== 'number' || !transcript) {
       return NextResponse.json({ error: 'rowIndex and transcript are required' }, { status: 400 });
     }
 
     const ctx = await getSheetsContextForUser(userId);
-    await updatePatientFields(ctx, rowIndex, { transcript }, sheetName || undefined);
+
+    let finalTranscript = transcript;
+    if (append) {
+      const existing = await getPatient(ctx, rowIndex, sheetName || undefined);
+      if (existing?.transcript) {
+        finalTranscript = existing.transcript + '\n\n---\n\n' + transcript;
+      }
+    }
+
+    await updatePatientFields(ctx, rowIndex, { transcript: finalTranscript }, sheetName || undefined);
 
     return NextResponse.json({ success: true, rowIndex });
   } catch (error: any) {
