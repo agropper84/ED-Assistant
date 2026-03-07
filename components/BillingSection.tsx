@@ -1,12 +1,73 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { X, ChevronDown, ChevronUp, DollarSign, Search } from 'lucide-react';
+import { X, ChevronDown, ChevronUp, DollarSign, Search, Info } from 'lucide-react';
 import {
   BillingItem, BillingCategory, BillingCode,
   addBillingCode, calculateTotal, getAdditionalCodes, filterAdditionalCodes,
   getCategoryForCode, BILLING_CATEGORIES,
 } from '@/lib/billing';
+
+/** Documentation requirements and billing tips per code, from the Yukon Fee Guide */
+const BILLING_HINTS: Record<string, string[]> = {
+  '1101': [
+    'Min 20 min patient contact',
+    'Requires complete detailed history & physical exam of all parts and systems',
+    'Document: complaints, hx present/past illness, family hx, personal hx, functional inquiry, PE, DDx, provisional dx',
+  ],
+  '0081': [
+    'Record start & end time',
+    'Per ½ hr — active bedside treatment of acutely ill patients only',
+    'Not for standby time (e.g. waiting for lab results)',
+    'If billing with a consult, the consult fee covers the first ½ hr',
+    '>6 units requires written report to Medical Advisor',
+    'Includes POCUS — do not bill 0089 separately',
+  ],
+  '0080': [
+    'Night hours only (2300–0800)',
+    'Record start & end time',
+    'Per ½ hr — active bedside treatment of acutely ill patients only',
+    'Not for standby time (e.g. waiting for lab results)',
+    'If billing with a consult, the consult fee covers the first ½ hr',
+    '>6 units requires written report to Medical Advisor',
+  ],
+  '0082': [
+    'Record start & end time',
+    'Per ½ hr — physician presence needed but emergency care not required',
+    'Not for waiting for lab/x-ray results or consultations',
+    'This fee is inclusive of all other services',
+    '>6 units requires written report to Medical Advisor',
+    'Includes POCUS — do not bill 0089 separately',
+  ],
+  '0083': [
+    'Per ½ hr — continuous medical assistance at exclusion of all other services',
+    'Applies to: rape, sudden bereavement, suicidal behavior, acute psychosis',
+    '>2 units requires written report to Medical Advisor',
+  ],
+  '0116': [
+    'For critically ill patients only — not routine or post-anesthetic',
+    'Requires immediate complete exam, investigation & close monitoring',
+  ],
+  '0089': [
+    'Requires documented competency/training in portable ultrasound',
+    'Already included in 0081/0082 — do not bill separately with those codes',
+  ],
+  '0113': [
+    'Record start & end times on claim and in patient chart',
+    'Per 15 min — billed on behalf of specific patient by MRP',
+  ],
+  '0120': [
+    'Min 20 min patient contact',
+    'Max 8 visits/patient/fiscal year (Apr 1–Mar 31)',
+  ],
+  '0121': ['Min 16 min patient contact'],
+  '0122': ['31–45 min patient contact'],
+  '0123': ['Over 45 min patient contact'],
+  '0109': ['Psychiatric counselling'],
+  '1153': [
+    'Also applies 0800–2259 on weekends & statutory holidays',
+  ],
+};
 
 interface BillingSectionProps {
   billingItems: BillingItem[];
@@ -15,6 +76,24 @@ interface BillingSectionProps {
   onSaveComments: (comments: string) => void;
   showBilling: boolean;
   setShowBilling: (v: boolean) => void;
+}
+
+/** Compact hint panel shown when a code with requirements is selected */
+function BillingHints({ code }: { code: string | undefined }) {
+  if (!code || !BILLING_HINTS[code]) return null;
+  const hints = BILLING_HINTS[code];
+  return (
+    <div className="mt-1.5 px-3 py-2 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/50 rounded-lg">
+      <div className="flex gap-1.5 items-start">
+        <Info className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+        <ul className="text-xs text-amber-800 dark:text-amber-300 space-y-0.5">
+          {hints.map((hint, i) => (
+            <li key={i}>{hint}</li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  );
 }
 
 export function BillingSection({
@@ -185,10 +264,14 @@ function BillingBody({
           <label className="block text-xs font-medium text-[var(--text-muted)] mb-1">Current Items</label>
           <div className="border border-[var(--border)] rounded-lg divide-y divide-[var(--border)] bg-[var(--card-bg)]">
             {billingItems.map((item, idx) => (
-              <div key={`${item.code}-${idx}`} className="flex items-center justify-between px-3 py-2 text-sm">
-                <div className="flex-1 min-w-0">
+              <div key={`${item.code}-${idx}`} className="px-3 py-2 text-sm">
+                <div className="flex items-center justify-between">
+                <div className="flex-1 min-w-0 flex items-center gap-1">
                   <span className="font-medium text-[var(--text-primary)]">{item.code}</span>
-                  <span className="text-[var(--text-muted)] ml-2 truncate">{item.description}</span>
+                  <span className="text-[var(--text-muted)] ml-1 truncate">{item.description}</span>
+                  {BILLING_HINTS[item.code] && (
+                    <Info className="w-3 h-3 text-amber-500 dark:text-amber-400 flex-shrink-0" />
+                  )}
                 </div>
                 <div className="flex items-center gap-2 flex-shrink-0">
                   <input
@@ -207,6 +290,15 @@ function BillingBody({
                     <X className="w-3.5 h-3.5" />
                   </button>
                 </div>
+                </div>
+                {BILLING_HINTS[item.code] && (
+                  <div className="mt-1 flex gap-1.5 items-start">
+                    <Info className="w-3 h-3 text-amber-500 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+                    <p className="text-[10px] text-amber-700 dark:text-amber-400 leading-tight">
+                      {BILLING_HINTS[item.code].join(' · ')}
+                    </p>
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -239,6 +331,7 @@ function BillingBody({
             Complete Examination ($111.50)
           </button>
         </div>
+        <BillingHints code={currentVisit?.code} />
       </div>
 
       {/* Acute Care Fees */}
@@ -278,6 +371,7 @@ function BillingBody({
             Crisis Intervention ($107.30)
           </button>
         </div>
+        <BillingHints code={currentAcuteCare?.code} />
       </div>
 
       {/* Premium Toggle */}
@@ -309,6 +403,7 @@ function BillingBody({
             Night ($107.40)
           </button>
         </div>
+        <BillingHints code={currentPremium?.code} />
       </div>
 
       {/* Additional Fees */}
