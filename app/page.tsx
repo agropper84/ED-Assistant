@@ -138,8 +138,37 @@ export default function HomePage() {
   // Draggable FAB
   const [fabPos, setFabPos] = useState<{ x: number; y: number } | null>(null);
   const fabDragging = useRef(false);
-  const fabDragStart = useRef({ x: 0, y: 0, startX: 0, startY: 0 });
+  const fabDragStart = useRef({ x: 0, y: 0, fabX: 0, fabY: 0 });
   const fabMoved = useRef(false);
+  const fabRef = useRef<HTMLDivElement | null>(null);
+
+  // Window-level pointer handlers for reliable drag
+  useEffect(() => {
+    const onMove = (e: PointerEvent) => {
+      if (!fabDragging.current) return;
+      const dx = e.clientX - fabDragStart.current.x;
+      const dy = e.clientY - fabDragStart.current.y;
+      if (!fabMoved.current && Math.abs(dx) < 5 && Math.abs(dy) < 5) return;
+      fabMoved.current = true;
+      setFabPos({
+        x: Math.max(0, Math.min(window.innerWidth - 56, fabDragStart.current.fabX + dx)),
+        y: Math.max(0, Math.min(window.innerHeight - 56, fabDragStart.current.fabY + dy)),
+      });
+    };
+    const onUp = () => {
+      if (!fabDragging.current) return;
+      fabDragging.current = false;
+      if (!fabMoved.current) {
+        setShowParseModal(true);
+      }
+    };
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+    return () => {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+    };
+  }, []);
   const [sharedFile, setSharedFile] = useState<File | undefined>(undefined);
   const [sharedTranscript, setSharedTranscript] = useState<string | undefined>(undefined);
 
@@ -960,6 +989,7 @@ export default function HomePage() {
 
       {/* FAB - Add Patient (draggable) */}
       <div
+        ref={fabRef}
         className="fixed z-50"
         style={fabPos
           ? { left: fabPos.x, top: fabPos.y }
@@ -977,37 +1007,16 @@ export default function HomePage() {
         )}
         <button
           onPointerDown={(e) => {
+            e.preventDefault();
             fabDragging.current = true;
             fabMoved.current = false;
-            const rect = (e.currentTarget.parentElement as HTMLElement).getBoundingClientRect();
+            const rect = fabRef.current!.getBoundingClientRect();
             fabDragStart.current = {
               x: e.clientX,
               y: e.clientY,
-              startX: rect.left,
-              startY: rect.top,
+              fabX: rect.left,
+              fabY: rect.top,
             };
-            (e.currentTarget.parentElement as HTMLElement).setPointerCapture(e.pointerId);
-          }}
-          onPointerMove={(e) => {
-            if (!fabDragging.current) return;
-            const dx = e.clientX - fabDragStart.current.x;
-            const dy = e.clientY - fabDragStart.current.y;
-            if (Math.abs(dx) > 3 || Math.abs(dy) > 3) {
-              fabMoved.current = true;
-            }
-            if (fabMoved.current) {
-              setFabPos({
-                x: Math.max(0, Math.min(window.innerWidth - 56, fabDragStart.current.startX + dx)),
-                y: Math.max(0, Math.min(window.innerHeight - 56, fabDragStart.current.startY + dy)),
-              });
-            }
-          }}
-          onPointerUp={(e) => {
-            (e.currentTarget.parentElement as HTMLElement).releasePointerCapture(e.pointerId);
-            fabDragging.current = false;
-            if (!fabMoved.current) {
-              setShowParseModal(true);
-            }
           }}
           className="w-14 h-14 bg-[var(--accent)] text-white rounded-2xl flex items-center justify-center hover:brightness-110 active:scale-[0.93] transition-all duration-200 touch-none select-none cursor-grab active:cursor-grabbing"
           style={{ boxShadow: 'var(--fab-shadow)' }}
