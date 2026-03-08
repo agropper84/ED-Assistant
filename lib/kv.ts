@@ -110,3 +110,39 @@ export async function setUserRefreshToken(userId: string, refreshToken: string):
 export async function getUserRefreshToken(userId: string): Promise<string | null> {
   return getRedis().get(`user:${userId}:refresh-token`);
 }
+
+// --- Pending audio queue for async watch uploads ---
+
+export interface PendingAudio {
+  id: string;
+  userId: string;
+  audioBase64: string;
+  filename: string;
+  rowIndex?: number;
+  sheetName?: string;
+  append?: boolean;
+  mode?: string; // 'transcribe' | 'analyze' | 'full' | 'quick'
+  createdAt: string;
+}
+
+export async function addPendingAudio(data: PendingAudio): Promise<void> {
+  const key = `pending-audio:${data.id}`;
+  await getRedis().set(key, JSON.stringify(data), 'EX', 3600); // 1 hour TTL
+  await getRedis().sadd(`pending-audio-list:${data.userId}`, data.id);
+  await getRedis().expire(`pending-audio-list:${data.userId}`, 3600);
+}
+
+export async function getPendingAudioIds(userId: string): Promise<string[]> {
+  return getRedis().smembers(`pending-audio-list:${userId}`);
+}
+
+export async function getPendingAudio(id: string): Promise<PendingAudio | null> {
+  const val = await getRedis().get(`pending-audio:${id}`);
+  if (!val) return null;
+  return JSON.parse(val);
+}
+
+export async function deletePendingAudio(id: string, userId: string): Promise<void> {
+  await getRedis().del(`pending-audio:${id}`);
+  await getRedis().srem(`pending-audio-list:${userId}`, id);
+}
