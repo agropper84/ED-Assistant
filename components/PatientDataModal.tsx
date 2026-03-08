@@ -41,10 +41,8 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
   const [transcript, setTranscript] = useState('');
   const [preRecordTranscript, setPreRecordTranscript] = useState('');
   const [encounterNotes, setEncounterNotes] = useState('');
-  const [preRecordEncounter, setPreRecordEncounter] = useState('');
   const [triageVitals, setTriageVitals] = useState('');
   const [additional, setAdditional] = useState('');
-  const [preRecordAdditional, setPreRecordAdditional] = useState('');
   const [pastDocs, setPastDocs] = useState('');
   const [saving, setSaving] = useState(false);
   const [generating, setGenerating] = useState(false);
@@ -176,12 +174,7 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
               </label>
               <VoiceRecorder
                 onTranscript={(text) => {
-                  const base = preRecordEncounter || encounterNotes;
-                  setEncounterNotes(base ? `${base}\n${text}` : text);
-                }}
-                onRecordingStart={() => setPreRecordEncounter(encounterNotes)}
-                onInterimTranscript={(text) => {
-                  setEncounterNotes(preRecordEncounter ? `${preRecordEncounter}\n${text}` : text);
+                  setEncounterNotes(prev => prev ? `${prev}\n${text}` : text);
                 }}
               />
             </div>
@@ -203,12 +196,7 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
               </label>
               <VoiceRecorder
                 onTranscript={(text) => {
-                  const base = preRecordAdditional || additional;
-                  setAdditional(base ? `${base}\n${text}` : text);
-                }}
-                onRecordingStart={() => setPreRecordAdditional(additional)}
-                onInterimTranscript={(text) => {
-                  setAdditional(preRecordAdditional ? `${preRecordAdditional}\n${text}` : text);
+                  setAdditional(prev => prev ? `${prev}\n${text}` : text);
                 }}
               />
             </div>
