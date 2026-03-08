@@ -187,14 +187,16 @@ button, .btn {
   background: var(--card-bg);
   border: 1px solid var(--card-border);
   box-shadow: var(--card-shadow);
-  @apply rounded-2xl p-5 mb-3 transition-all duration-200;
+  @apply rounded-2xl mb-3 transition-all duration-200 overflow-visible;
 }
 .patient-card:hover {
   box-shadow: var(--card-shadow-hover);
   border-color: var(--card-hover-border);
+  transform: translateY(-1px);
 }
 .patient-card:active {
   background: var(--bg-tertiary);
+  transform: translateY(0);
 }
 
 /* Status badges */
