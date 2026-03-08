@@ -30,6 +30,9 @@ function toInitials(name: string): string {
     .join('');
 }
 
+// Unified empty-state color for unfilled icons
+const EMPTY = 'text-slate-300 dark:text-slate-600';
+
 export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChange, onBillingToggle, billingCodes, onNavigate, onProcess, onGenerateAnalysis, onUpdateFields, onClinicalChat, onMerge }: PatientCardProps) {
   const [editingTime, setEditingTime] = useState(false);
   const [timeValue, setTimeValue] = useState(patient.timestamp || '');
@@ -69,12 +72,6 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
       onTimeChange(timeValue);
     }
     setEditingTime(false);
-  };
-
-  const chevronAccent: Record<string, string> = {
-    new: 'group-hover/card:text-blue-500 dark:group-hover/card:text-blue-400',
-    pending: 'group-hover/card:text-amber-500 dark:group-hover/card:text-amber-400',
-    processed: 'group-hover/card:text-emerald-500 dark:group-hover/card:text-emerald-400',
   };
 
   return (
@@ -153,7 +150,7 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
           {/* Info icons — inline with name */}
           {showInfoIcons && (
             <>
-              {/* Encounter note icon */}
+              {/* Encounter note — indigo (echoes the header blue) */}
               {hasEncounterNote && onNavigate && (
                 <div className="relative group/note flex-shrink-0">
                   <span
@@ -161,9 +158,9 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
                       e.stopPropagation();
                       onNavigate();
                     }}
-                    className="p-0.5 hover:bg-green-100 dark:hover:bg-green-900/50 rounded transition-colors cursor-pointer inline-flex"
+                    className="p-0.5 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded transition-colors cursor-pointer inline-flex"
                   >
-                    <FileText className="w-4 h-4 text-green-600 dark:text-green-400" />
+                    <FileText className="w-4 h-4 text-indigo-500 dark:text-indigo-400" />
                   </span>
                   <div className="absolute left-0 top-full h-2 w-80 hidden group-hover/note:block" />
                   <div
@@ -171,7 +168,7 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
                     onClick={(e) => e.stopPropagation()}
                   >
                     <div className="flex items-center justify-between mb-2 sticky top-0 bg-gray-900 pb-1">
-                      <span className="text-gray-400 font-medium">Encounter Note</span>
+                      <span className="text-indigo-400 font-medium">Encounter Note</span>
                       <button
                         onClick={async (e) => {
                           e.stopPropagation();
@@ -188,20 +185,20 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
                     </div>
                     <div className="whitespace-pre-wrap leading-relaxed space-y-2">
                       {patient.hpi && (
-                        <div><span className="text-green-400 font-medium">HPI:</span> {patient.hpi}</div>
+                        <div><span className="text-indigo-400 font-medium">HPI:</span> {patient.hpi}</div>
                       )}
                       {patient.objective && (
-                        <div><span className="text-green-400 font-medium">Objective:</span> {patient.objective}</div>
+                        <div><span className="text-indigo-400 font-medium">Objective:</span> {patient.objective}</div>
                       )}
                       {patient.assessmentPlan && (
-                        <div><span className="text-green-400 font-medium">A&P:</span> {patient.assessmentPlan}</div>
+                        <div><span className="text-indigo-400 font-medium">A&P:</span> {patient.assessmentPlan}</div>
                       )}
                     </div>
                   </div>
                 </div>
               )}
 
-              {/* Synopsis hover icon */}
+              {/* Synopsis — blue (matches header directly) */}
               <div className="relative group/synopsis flex-shrink-0">
                 <span
                   onClick={(e) => {
@@ -213,13 +210,13 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
                       onNavigate();
                     }
                   }}
-                  className={`p-0.5 rounded transition-colors inline-flex ${patient.synopsis || onGenerateAnalysis ? 'hover:bg-blue-100 dark:hover:bg-blue-900/50 cursor-pointer' : ''}`}
+                  className={`p-0.5 rounded transition-colors inline-flex ${patient.synopsis || onGenerateAnalysis ? 'hover:bg-blue-50 dark:hover:bg-blue-900/30 cursor-pointer' : ''}`}
                   title={patient.synopsis ? '' : 'Generate synopsis & analysis'}
                 >
                   {isGenerating ? (
                     <Loader2 className="w-4 h-4 text-blue-400 animate-spin" />
                   ) : (
-                    <Brain className={`w-4 h-4 ${patient.synopsis ? 'text-blue-500 dark:text-blue-400' : 'text-gray-300 dark:text-gray-600'}`} />
+                    <Brain className={`w-4 h-4 ${patient.synopsis ? 'text-blue-500 dark:text-blue-400' : EMPTY}`} />
                   )}
                 </span>
                 {patient.synopsis && (
@@ -236,7 +233,7 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
                 )}
               </div>
 
-              {/* Management hover icon */}
+              {/* Management — violet (analogous to blue) */}
               <div className="relative group/mgmt flex-shrink-0">
                 <span
                   onClick={(e) => {
@@ -248,13 +245,13 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
                       onNavigate();
                     }
                   }}
-                  className={`p-0.5 rounded transition-colors inline-flex ${patient.management || onGenerateAnalysis ? 'hover:bg-purple-100 dark:hover:bg-purple-900/50 cursor-pointer' : ''}`}
+                  className={`p-0.5 rounded transition-colors inline-flex ${patient.management || onGenerateAnalysis ? 'hover:bg-violet-50 dark:hover:bg-violet-900/30 cursor-pointer' : ''}`}
                   title={patient.management ? '' : 'Generate synopsis & analysis'}
                 >
                   {isGenerating ? (
-                    <Loader2 className="w-4 h-4 text-purple-400 animate-spin" />
+                    <Loader2 className="w-4 h-4 text-violet-400 animate-spin" />
                   ) : (
-                    <ClipboardList className={`w-4 h-4 ${patient.management ? 'text-purple-500 dark:text-purple-400' : 'text-gray-300 dark:text-gray-600'}`} />
+                    <ClipboardList className={`w-4 h-4 ${patient.management ? 'text-violet-500 dark:text-violet-400' : EMPTY}`} />
                   )}
                 </span>
                 {patient.management && (
@@ -264,14 +261,14 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
                       className="absolute left-0 top-full mt-2 z-50 hidden group-hover/mgmt:block w-72 max-h-48 overflow-y-auto p-3 bg-gray-900 text-gray-100 text-xs rounded-lg shadow-xl ring-1 ring-white/10"
                       onClick={(e) => e.stopPropagation()}
                     >
-                      <span className="text-purple-400 font-medium block mb-1">Management</span>
+                      <span className="text-violet-400 font-medium block mb-1">Management</span>
                       <p className="whitespace-pre-wrap leading-relaxed">{patient.management}</p>
                     </div>
                   </>
                 )}
               </div>
 
-              {/* Evidence hover icon */}
+              {/* Evidence — amber (warm complement to blues) */}
               <div className="relative group/evidence flex-shrink-0">
                 <span
                   onClick={(e) => {
@@ -283,13 +280,13 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
                       onNavigate();
                     }
                   }}
-                  className={`p-0.5 rounded transition-colors inline-flex ${patient.evidence || onGenerateAnalysis ? 'hover:bg-amber-100 dark:hover:bg-amber-900/50 cursor-pointer' : ''}`}
+                  className={`p-0.5 rounded transition-colors inline-flex ${patient.evidence || onGenerateAnalysis ? 'hover:bg-amber-50 dark:hover:bg-amber-900/30 cursor-pointer' : ''}`}
                   title={patient.evidence ? '' : 'Generate synopsis & analysis'}
                 >
                   {isGenerating ? (
                     <Loader2 className="w-4 h-4 text-amber-400 animate-spin" />
                   ) : (
-                    <BookOpen className={`w-4 h-4 ${patient.evidence ? 'text-amber-500 dark:text-amber-400' : 'text-gray-300 dark:text-gray-600'}`} />
+                    <BookOpen className={`w-4 h-4 ${patient.evidence ? 'text-amber-500 dark:text-amber-400' : EMPTY}`} />
                   )}
                 </span>
                 {patient.evidence && (
@@ -308,7 +305,7 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
             </>
           )}
 
-          {/* Clinical Q&A chat icon — always visible */}
+          {/* Clinical Q&A — sky (lighter blue, conversational feel) */}
           {onClinicalChat && (
             <div className="relative group/qa flex-shrink-0">
               <span
@@ -316,10 +313,10 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
                   e.stopPropagation();
                   onClinicalChat();
                 }}
-                className="p-0.5 hover:bg-teal-100 dark:hover:bg-teal-900/50 rounded transition-colors cursor-pointer inline-flex"
+                className="p-0.5 hover:bg-sky-50 dark:hover:bg-sky-900/30 rounded transition-colors cursor-pointer inline-flex"
                 title="Clinical questions"
               >
-                <MessageCircleQuestion className={`w-4 h-4 ${patient.clinicalQA ? 'text-teal-500 dark:text-teal-400' : 'text-gray-300 dark:text-gray-600'}`} />
+                <MessageCircleQuestion className={`w-4 h-4 ${patient.clinicalQA ? 'text-sky-500 dark:text-sky-400' : EMPTY}`} />
               </span>
               {patient.clinicalQA && (() => {
                 try {
@@ -334,8 +331,8 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
                         className="absolute left-0 top-full mt-2 z-50 hidden group-hover/qa:block w-72 max-h-48 overflow-y-auto p-3 bg-gray-900 text-gray-100 text-xs rounded-lg shadow-xl ring-1 ring-white/10"
                         onClick={(e) => e.stopPropagation()}
                       >
-                        <span className="text-teal-400 font-medium block mb-1">Last Q&A</span>
-                        <p className="text-blue-300 mb-1"><strong>Q:</strong> {lastQ?.content}</p>
+                        <span className="text-sky-400 font-medium block mb-1">Last Q&A</span>
+                        <p className="text-sky-300/80 mb-1"><strong>Q:</strong> {lastQ?.content}</p>
                         <p className="whitespace-pre-wrap leading-relaxed"><strong>A:</strong> {lastA?.content?.slice(0, 200)}{lastA?.content?.length > 200 ? '...' : ''}</p>
                       </div>
                     </>
@@ -350,7 +347,7 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
         <div className="flex items-center gap-4 text-sm text-[var(--text-muted)]">
           {patient.timestamp && !editingTime && (
             <span
-              className="flex items-center gap-1 hover:text-blue-600 dark:hover:text-blue-400 cursor-pointer"
+              className="flex items-center gap-1 hover:text-blue-500 dark:hover:text-blue-400 cursor-pointer transition-colors"
               onClick={(e) => {
                 e.stopPropagation();
                 setTimeValue(patient.timestamp);
@@ -376,7 +373,7 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
         </div>
       </button>
 
-      {/* Right action icons — appear on hover with staggered animation */}
+      {/* Right action icons — appear on hover */}
       <div className="flex items-center gap-0.5 pr-2 flex-shrink-0 opacity-0 group-hover/card:opacity-100 transition-all duration-200 translate-x-2 group-hover/card:translate-x-0">
 
         {/* Inline time editor */}
@@ -397,25 +394,27 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
           </div>
         )}
 
+        {/* Billing — emerald */}
         {onBillingToggle && (
           <button
             onClick={(e) => {
               e.stopPropagation();
               onBillingToggle();
             }}
-            className="p-1.5 hover:bg-green-50 dark:hover:bg-green-900/30 rounded-lg transition-colors"
+            className="p-1.5 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 rounded-lg transition-colors"
             title="Billing"
           >
             {billingCodes ? (
-              <span className="text-xs font-medium text-green-700 dark:text-green-400 whitespace-nowrap">
+              <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400 whitespace-nowrap">
                 {billingCodes}
               </span>
             ) : (
-              <DollarSign className="w-4 h-4 text-[var(--text-muted)] hover:text-green-600 dark:hover:text-green-400 transition-colors" />
+              <DollarSign className="w-4 h-4 text-[var(--text-muted)] hover:text-emerald-500 dark:hover:text-emerald-400 transition-colors" />
             )}
           </button>
         )}
 
+        {/* Merge — blue */}
         {onMerge && patient.name?.startsWith('New Encounter') && (
           <button
             onClick={(e) => {
@@ -429,16 +428,16 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
           </button>
         )}
 
-        {/* Chevron — always visible but animated on hover */}
+        {/* Chevron — subtle to blue on hover */}
         <button
           onClick={(e) => {
             e.stopPropagation();
             onNavigate?.();
           }}
-          className="p-1.5 hover:bg-[var(--bg-tertiary)] rounded-lg transition-all"
+          className="p-1.5 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg transition-all"
           title="Open full view"
         >
-          <ChevronRight className={`w-5 h-5 text-[var(--text-muted)] transition-all duration-200 group-hover/card:translate-x-0.5 ${chevronAccent[patient.status] || ''}`} />
+          <ChevronRight className="w-5 h-5 text-slate-300 dark:text-slate-600 transition-all duration-200 group-hover/card:translate-x-0.5 group-hover/card:text-blue-400 dark:group-hover/card:text-blue-400" />
         </button>
       </div>
 
