@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Patient } from '@/lib/google-sheets';
 import { MEDICAL_SUGGESTIONS } from '@/lib/medical-suggestions';
-import { X, Loader2, Save, ExternalLink, RefreshCw } from 'lucide-react';
+import { X, Loader2, Save, ExternalLink, RefreshCw, Play } from 'lucide-react';
 import { ExamToggles } from '@/components/ExamToggles';
 import { VoiceRecorder } from '@/components/VoiceRecorder';
 import { AutocompleteTextarea } from '@/components/AutocompleteTextarea';
@@ -47,7 +47,7 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
   const [preRecordAdditional, setPreRecordAdditional] = useState('');
   const [pastDocs, setPastDocs] = useState('');
   const [saving, setSaving] = useState(false);
-  const [regenerating, setRegenerating] = useState(false);
+  const [generating, setGenerating] = useState(false);
 
   // Sync state when patient changes
   useEffect(() => {
@@ -241,7 +241,7 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
         <div className="px-5 py-4 border-t border-[var(--border)] bg-[var(--bg-tertiary)] sm:rounded-b-3xl flex gap-2">
           <button
             onClick={handleSave}
-            disabled={saving || regenerating || !hasChanges}
+            disabled={saving || generating || !hasChanges}
             className="flex-1 py-3 bg-emerald-600 dark:bg-emerald-500 text-white rounded-xl font-medium disabled:opacity-40 flex items-center justify-center gap-2 hover:bg-emerald-700 dark:hover:bg-emerald-600 active:scale-[0.97] transition-all"
           >
             {saving ? (
@@ -251,10 +251,11 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
             )}
             Save
           </button>
-          {patient.hasOutput && onRegenerate && (
+          {/* Generate (no output yet) or Regenerate (has output) */}
+          {(patient.status === 'pending' || patient.hasOutput) && (
             <button
               onClick={async () => {
-                setRegenerating(true);
+                setGenerating(true);
                 try {
                   // Save first if there are changes
                   if (hasChanges) {
@@ -270,7 +271,7 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
                       }),
                     });
                   }
-                  // Regenerate
+                  // Generate / Regenerate
                   const res = await fetch('/api/process', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -285,20 +286,26 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
                     onClose();
                   }
                 } catch (error) {
-                  console.error('Failed to regenerate:', error);
+                  console.error('Failed to generate:', error);
                 } finally {
-                  setRegenerating(false);
+                  setGenerating(false);
                 }
               }}
-              disabled={regenerating || saving}
-              className="py-3 px-4 bg-amber-600 dark:bg-amber-500 text-white rounded-xl font-medium disabled:opacity-40 flex items-center justify-center gap-2 hover:bg-amber-700 dark:hover:bg-amber-600 active:scale-[0.97] transition-all"
+              disabled={generating || saving}
+              className={`py-3 px-4 text-white rounded-xl font-medium disabled:opacity-40 flex items-center justify-center gap-2 active:scale-[0.97] transition-all ${
+                patient.hasOutput
+                  ? 'bg-amber-600 dark:bg-amber-500 hover:bg-amber-700 dark:hover:bg-amber-600'
+                  : 'bg-blue-600 dark:bg-blue-500 hover:bg-blue-700 dark:hover:bg-blue-600'
+              }`}
             >
-              {regenerating ? (
+              {generating ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
+              ) : patient.hasOutput ? (
                 <RefreshCw className="w-4 h-4" />
+              ) : (
+                <Play className="w-4 h-4" />
               )}
-              Regenerate
+              {patient.hasOutput ? 'Regenerate' : 'Generate'}
             </button>
           )}
           <button
@@ -306,7 +313,6 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
             className="py-3 px-4 bg-blue-600 dark:bg-blue-500 text-white rounded-xl font-medium flex items-center justify-center gap-2 hover:bg-blue-700 dark:hover:bg-blue-600 active:scale-[0.97] transition-all"
           >
             <ExternalLink className="w-4 h-4" />
-            Full View
           </button>
         </div>
       </div>
