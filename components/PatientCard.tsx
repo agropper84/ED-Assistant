@@ -89,7 +89,7 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
       {/* Card body — slides right on hover to reveal delete */}
       <div
         className={`patient-card relative flex items-center transition-all duration-200 ${onDelete ? 'group-hover/card:translate-x-6' : ''}`}
-        style={{ borderLeftWidth: '3px', borderLeftColor: statusBorderColor[patient.status] || 'transparent' }}
+        style={{ background: `linear-gradient(to right, ${statusBorderColor[patient.status] || 'transparent'}, transparent 45%), var(--card-bg)` }}
       >
 
       {/* Main content area */}
