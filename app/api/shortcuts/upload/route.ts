@@ -77,7 +77,7 @@ export async function POST(request: NextRequest) {
     const protocol = request.headers.get('x-forwarded-proto') || 'https';
     const url = `${protocol}://${host}/?transcript=${id}`;
 
-    return NextResponse.json({ id, url });
+    return NextResponse.json({ id, url, transcript: transcription.text });
   } catch (error: any) {
     console.error('Shortcut upload error:', error);
     const message = error?.message || 'Upload failed';
