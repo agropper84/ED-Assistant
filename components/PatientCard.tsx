@@ -150,7 +150,7 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
           {/* Info icons — inline with name */}
           {showInfoIcons && (
             <>
-              {/* Encounter note — indigo (echoes the header blue) */}
+              {/* Encounter note — emerald green */}
               {hasEncounterNote && onNavigate && (
                 <div className="relative group/note flex-shrink-0">
                   <span
@@ -158,9 +158,9 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
                       e.stopPropagation();
                       onNavigate();
                     }}
-                    className="p-0.5 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded transition-colors cursor-pointer inline-flex"
+                    className="p-0.5 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 rounded transition-colors cursor-pointer inline-flex"
                   >
-                    <FileText className="w-4 h-4 text-indigo-500 dark:text-indigo-400" />
+                    <FileText className="w-4 h-4 text-emerald-700 dark:text-emerald-400" />
                   </span>
                   <div className="absolute left-0 top-full h-2 w-80 hidden group-hover/note:block" />
                   <div
@@ -168,7 +168,7 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
                     onClick={(e) => e.stopPropagation()}
                   >
                     <div className="flex items-center justify-between mb-2 sticky top-0 bg-gray-900 pb-1">
-                      <span className="text-indigo-400 font-medium">Encounter Note</span>
+                      <span className="text-emerald-400 font-medium">Encounter Note</span>
                       <button
                         onClick={async (e) => {
                           e.stopPropagation();
@@ -185,20 +185,20 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
                     </div>
                     <div className="whitespace-pre-wrap leading-relaxed space-y-2">
                       {patient.hpi && (
-                        <div><span className="text-indigo-400 font-medium">HPI:</span> {patient.hpi}</div>
+                        <div><span className="text-emerald-400 font-medium">HPI:</span> {patient.hpi}</div>
                       )}
                       {patient.objective && (
-                        <div><span className="text-indigo-400 font-medium">Objective:</span> {patient.objective}</div>
+                        <div><span className="text-emerald-400 font-medium">Objective:</span> {patient.objective}</div>
                       )}
                       {patient.assessmentPlan && (
-                        <div><span className="text-indigo-400 font-medium">A&P:</span> {patient.assessmentPlan}</div>
+                        <div><span className="text-emerald-400 font-medium">A&P:</span> {patient.assessmentPlan}</div>
                       )}
                     </div>
                   </div>
                 </div>
               )}
 
-              {/* Synopsis — blue (matches header directly) */}
+              {/* Synopsis — blue (echoes header) */}
               <div className="relative group/synopsis flex-shrink-0">
                 <span
                   onClick={(e) => {
@@ -216,7 +216,7 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
                   {isGenerating ? (
                     <Loader2 className="w-4 h-4 text-blue-400 animate-spin" />
                   ) : (
-                    <Brain className={`w-4 h-4 ${patient.synopsis ? 'text-blue-500 dark:text-blue-400' : EMPTY}`} />
+                    <Brain className={`w-4 h-4 ${patient.synopsis ? 'text-blue-600 dark:text-blue-400' : EMPTY}`} />
                   )}
                 </span>
                 {patient.synopsis && (
@@ -233,7 +233,7 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
                 )}
               </div>
 
-              {/* Management — violet (analogous to blue) */}
+              {/* Management — violet (purple complement) */}
               <div className="relative group/mgmt flex-shrink-0">
                 <span
                   onClick={(e) => {
@@ -251,7 +251,7 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
                   {isGenerating ? (
                     <Loader2 className="w-4 h-4 text-violet-400 animate-spin" />
                   ) : (
-                    <ClipboardList className={`w-4 h-4 ${patient.management ? 'text-violet-500 dark:text-violet-400' : EMPTY}`} />
+                    <ClipboardList className={`w-4 h-4 ${patient.management ? 'text-violet-600 dark:text-violet-400' : EMPTY}`} />
                   )}
                 </span>
                 {patient.management && (
@@ -268,7 +268,7 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
                 )}
               </div>
 
-              {/* Evidence — amber (warm complement to blues) */}
+              {/* Evidence — amber (warm accent) */}
               <div className="relative group/evidence flex-shrink-0">
                 <span
                   onClick={(e) => {
@@ -286,7 +286,7 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
                   {isGenerating ? (
                     <Loader2 className="w-4 h-4 text-amber-400 animate-spin" />
                   ) : (
-                    <BookOpen className={`w-4 h-4 ${patient.evidence ? 'text-amber-500 dark:text-amber-400' : EMPTY}`} />
+                    <BookOpen className={`w-4 h-4 ${patient.evidence ? 'text-amber-600 dark:text-amber-400' : EMPTY}`} />
                   )}
                 </span>
                 {patient.evidence && (
@@ -305,7 +305,7 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
             </>
           )}
 
-          {/* Clinical Q&A — sky (lighter blue, conversational feel) */}
+          {/* Clinical Q&A — cyan (conversational feel) */}
           {onClinicalChat && (
             <div className="relative group/qa flex-shrink-0">
               <span
@@ -313,10 +313,10 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
                   e.stopPropagation();
                   onClinicalChat();
                 }}
-                className="p-0.5 hover:bg-sky-50 dark:hover:bg-sky-900/30 rounded transition-colors cursor-pointer inline-flex"
+                className="p-0.5 hover:bg-cyan-50 dark:hover:bg-cyan-900/30 rounded transition-colors cursor-pointer inline-flex"
                 title="Clinical questions"
               >
-                <MessageCircleQuestion className={`w-4 h-4 ${patient.clinicalQA ? 'text-sky-500 dark:text-sky-400' : EMPTY}`} />
+                <MessageCircleQuestion className={`w-4 h-4 ${patient.clinicalQA ? 'text-cyan-600 dark:text-cyan-400' : EMPTY}`} />
               </span>
               {patient.clinicalQA && (() => {
                 try {
@@ -331,8 +331,8 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
                         className="absolute left-0 top-full mt-2 z-50 hidden group-hover/qa:block w-72 max-h-48 overflow-y-auto p-3 bg-gray-900 text-gray-100 text-xs rounded-lg shadow-xl ring-1 ring-white/10"
                         onClick={(e) => e.stopPropagation()}
                       >
-                        <span className="text-sky-400 font-medium block mb-1">Last Q&A</span>
-                        <p className="text-sky-300/80 mb-1"><strong>Q:</strong> {lastQ?.content}</p>
+                        <span className="text-cyan-400 font-medium block mb-1">Last Q&A</span>
+                        <p className="text-cyan-300/80 mb-1"><strong>Q:</strong> {lastQ?.content}</p>
                         <p className="whitespace-pre-wrap leading-relaxed"><strong>A:</strong> {lastA?.content?.slice(0, 200)}{lastA?.content?.length > 200 ? '...' : ''}</p>
                       </div>
                     </>
@@ -394,22 +394,22 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
           </div>
         )}
 
-        {/* Billing — emerald */}
+        {/* Billing — teal (distinct from encounter note's emerald) */}
         {onBillingToggle && (
           <button
             onClick={(e) => {
               e.stopPropagation();
               onBillingToggle();
             }}
-            className="p-1.5 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 rounded-lg transition-colors"
+            className="p-1.5 hover:bg-teal-50 dark:hover:bg-teal-900/30 rounded-lg transition-colors"
             title="Billing"
           >
             {billingCodes ? (
-              <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400 whitespace-nowrap">
+              <span className="text-xs font-medium text-teal-700 dark:text-teal-400 whitespace-nowrap">
                 {billingCodes}
               </span>
             ) : (
-              <DollarSign className="w-4 h-4 text-[var(--text-muted)] hover:text-emerald-500 dark:hover:text-emerald-400 transition-colors" />
+              <DollarSign className="w-4 h-4 text-[var(--text-muted)] hover:text-teal-600 dark:hover:text-teal-400 transition-colors" />
             )}
           </button>
         )}
@@ -437,7 +437,7 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
           className="p-1.5 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg transition-all"
           title="Open full view"
         >
-          <ChevronRight className="w-5 h-5 text-slate-300 dark:text-slate-600 transition-all duration-200 group-hover/card:translate-x-0.5 group-hover/card:text-blue-400 dark:group-hover/card:text-blue-400" />
+          <ChevronRight className="w-5 h-5 text-slate-300 dark:text-slate-600 transition-all duration-200 group-hover/card:translate-x-0.5 group-hover/card:text-blue-500 dark:group-hover/card:text-blue-400" />
         </button>
       </div>
 
