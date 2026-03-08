@@ -686,7 +686,12 @@ export default function HomePage() {
     return (
       <div
         className="fixed inset-0 z-[100] flex items-center justify-center cursor-pointer select-none"
-        onClick={() => { setAwayScreen(false); setAwayFunFact(''); }}
+        onClick={() => {
+          // Tap cycles to a new random photo
+          let next: number;
+          do { next = Math.floor(Math.random() * AWAY_PHOTOS.length); } while (next === awayPhotoIndex && AWAY_PHOTOS.length > 1);
+          setAwayPhotoIndex(next);
+        }}
         style={{
           backgroundImage: `url(${awayPhotoUrl})`,
           backgroundSize: 'cover',
@@ -706,7 +711,17 @@ export default function HomePage() {
               {awayWeather.location && <span className="ml-2 text-lg opacity-75">{awayWeather.location}</span>}
             </div>
           )}
-          <div className="mt-8 text-sm opacity-50 font-light">Click anywhere to return</div>
+          <div className="mt-8 text-sm opacity-50 font-light">Tap for a new view</div>
+        </div>
+
+        {/* Close button */}
+        <div
+          className="absolute top-6 right-6 z-30 cursor-pointer"
+          onClick={(e) => { e.stopPropagation(); setAwayScreen(false); setAwayFunFact(''); }}
+        >
+          <div className="p-2.5 rounded-full bg-white/15 hover:bg-white/25 active:scale-90 transition-all duration-200" style={{ backdropFilter: 'blur(8px)' }}>
+            <X className="w-5 h-5 text-white/70" />
+          </div>
         </div>
 
         {/* Fun fact bubble */}
@@ -769,7 +784,7 @@ export default function HomePage() {
                       {anonymize ? 'Show Names' : 'Anonymize Names'}
                     </button>
                     <button
-                      onClick={() => { setAwayPhotoIndex(i => i + 1); setAwayScreen(true); setPrivacyMenuOpen(false); }}
+                      onClick={() => { setAwayPhotoIndex(Math.floor(Math.random() * AWAY_PHOTOS.length)); setAwayScreen(true); setPrivacyMenuOpen(false); }}
                       className="w-full flex items-center gap-2.5 px-3 py-2 text-left text-gray-100 hover:bg-white/10 transition-colors"
                     >
                       <Monitor className="w-4 h-4" />
