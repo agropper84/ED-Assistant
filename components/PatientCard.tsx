@@ -77,13 +77,38 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
     processed: 'border-l-emerald-500',
   };
 
+  const chevronAccent: Record<string, string> = {
+    new: 'group-hover/card:text-blue-500 dark:group-hover/card:text-blue-400',
+    pending: 'group-hover/card:text-amber-500 dark:group-hover/card:text-amber-400',
+    processed: 'group-hover/card:text-emerald-500 dark:group-hover/card:text-emerald-400',
+  };
+
   return (
-    <div className={`patient-card relative flex items-center gap-4 hover:-translate-y-0.5 hover:z-10 border-l-[3px] ${borderAccent[patient.status] || 'border-l-transparent'}`}>
+    <div className={`patient-card group/card relative flex items-center border-l-[3px] ${borderAccent[patient.status] || 'border-l-transparent'}`}>
+
+      {/* Delete button — left side, appears on hover */}
+      {onDelete && (
+        <div className="absolute -left-2.5 top-1/2 -translate-y-1/2 z-20 opacity-0 group-hover/card:opacity-100 transition-all duration-200 scale-75 group-hover/card:scale-100">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete();
+            }}
+            className="w-7 h-7 flex items-center justify-center bg-[var(--card-bg)] border border-red-200 dark:border-red-800/50 rounded-full shadow-md hover:bg-red-50 dark:hover:bg-red-950/50 hover:border-red-300 dark:hover:border-red-700 transition-all active:scale-90"
+            title="Delete patient"
+          >
+            <Trash2 className="w-3 h-3 text-red-400 hover:text-red-500 dark:text-red-500 dark:hover:text-red-400" />
+          </button>
+        </div>
+      )}
+
+      {/* Main content area */}
       <button
         onClick={onClick}
-        className="flex-1 min-w-0 text-left"
+        className="flex-1 min-w-0 text-left px-5 py-4"
       >
-        <div className="flex items-center gap-2 mb-1">
+        {/* Top row: Name + badges + inline info icons */}
+        <div className="flex items-center gap-2 mb-1.5">
           <span
             className={`font-semibold text-[var(--text-primary)] truncate ${onUpdateFields ? 'hover:text-blue-600 dark:hover:text-blue-400 cursor-pointer' : ''}`}
             onClick={onUpdateFields ? (e) => {
@@ -100,6 +125,7 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
           >
             {displayName}
           </span>
+
           {/* Status badge / process button */}
           {patient.status === 'pending' && onProcess ? (
             <span
@@ -128,7 +154,7 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
             </span>
           ) : null}
 
-          {/* Info icons — shown when any output exists or input data available for generation */}
+          {/* Info icons — inline with name */}
           {showInfoIcons && (
             <>
               {/* Encounter note icon */}
@@ -143,7 +169,6 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
                   >
                     <FileText className="w-4 h-4 text-green-600 dark:text-green-400" />
                   </span>
-                  {/* Invisible bridge so mouse can travel from icon to popup */}
                   <div className="absolute left-0 top-full h-2 w-80 hidden group-hover/note:block" />
                   <div
                     className="absolute left-0 top-full mt-2 z-50 hidden group-hover/note:block w-80 max-h-64 overflow-y-auto p-3 bg-gray-900 text-gray-100 text-xs rounded-lg shadow-xl ring-1 ring-white/10"
@@ -284,7 +309,6 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
                   </>
                 )}
               </div>
-
             </>
           )}
 
@@ -326,6 +350,7 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
           )}
         </div>
 
+        {/* Bottom row: metadata */}
         <div className="flex items-center gap-4 text-sm text-[var(--text-muted)]">
           {patient.timestamp && !editingTime && (
             <span
@@ -355,10 +380,76 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
         </div>
       </button>
 
+      {/* Right action icons — appear on hover with staggered animation */}
+      <div className="flex items-center gap-0.5 pr-2 flex-shrink-0 opacity-0 group-hover/card:opacity-100 transition-all duration-200 translate-x-2 group-hover/card:translate-x-0">
+
+        {/* Inline time editor */}
+        {editingTime && (
+          <div
+            className="flex items-center gap-1 flex-shrink-0"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <input
+              type="time"
+              value={timeValue}
+              onChange={(e) => setTimeValue(e.target.value)}
+              onBlur={handleTimeSave}
+              onKeyDown={(e) => { if (e.key === 'Enter') handleTimeSave(); }}
+              autoFocus
+              className="w-24 p-1 border border-[var(--input-border)] rounded text-sm text-center focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)]"
+            />
+          </div>
+        )}
+
+        {onBillingToggle && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onBillingToggle();
+            }}
+            className="p-1.5 hover:bg-green-50 dark:hover:bg-green-900/30 rounded-lg transition-colors"
+            title="Billing"
+          >
+            {billingCodes ? (
+              <span className="text-xs font-medium text-green-700 dark:text-green-400 whitespace-nowrap">
+                {billingCodes}
+              </span>
+            ) : (
+              <DollarSign className="w-4 h-4 text-[var(--text-muted)] hover:text-green-600 dark:hover:text-green-400 transition-colors" />
+            )}
+          </button>
+        )}
+
+        {onMerge && patient.name?.startsWith('New Encounter') && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onMerge();
+            }}
+            className="p-1.5 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg transition-colors"
+            title="Assign to existing patient"
+          >
+            <Merge className="w-4 h-4 text-[var(--text-muted)] hover:text-blue-500 dark:hover:text-blue-400 transition-colors" />
+          </button>
+        )}
+
+        {/* Chevron — always visible but animated on hover */}
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onNavigate?.();
+          }}
+          className="p-1.5 hover:bg-[var(--bg-tertiary)] rounded-lg transition-all"
+          title="Open full view"
+        >
+          <ChevronRight className={`w-5 h-5 text-[var(--text-muted)] transition-all duration-200 group-hover/card:translate-x-0.5 ${chevronAccent[patient.status] || ''}`} />
+        </button>
+      </div>
+
       {/* Inline demographics editor */}
       {editingDemo && (
         <div
-          className="absolute left-0 right-0 top-0 z-40 bg-[var(--card-bg)] border border-[var(--card-border)] rounded-2xl p-4 shadow-xl"
+          className="absolute left-0 right-0 top-0 z-40 bg-[var(--card-bg)] border border-[var(--card-border)] rounded-2xl p-4 shadow-xl animate-scaleIn"
           onClick={(e) => e.stopPropagation()}
           style={{ boxShadow: 'var(--card-shadow)' }}
         >
@@ -459,79 +550,6 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
           </div>
         </div>
       )}
-
-      {/* Inline time editor */}
-      {editingTime && (
-        <div
-          className="flex items-center gap-1 flex-shrink-0"
-          onClick={(e) => e.stopPropagation()}
-        >
-          <input
-            type="time"
-            value={timeValue}
-            onChange={(e) => setTimeValue(e.target.value)}
-            onBlur={handleTimeSave}
-            onKeyDown={(e) => { if (e.key === 'Enter') handleTimeSave(); }}
-            autoFocus
-            className="w-24 p-1 border border-[var(--input-border)] rounded text-sm text-center focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)]"
-          />
-        </div>
-      )}
-
-      {onBillingToggle && (
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onBillingToggle();
-          }}
-          className="p-2 hover:bg-green-50 dark:hover:bg-green-900/30 rounded-lg transition-colors flex-shrink-0"
-          title="Billing"
-        >
-          {billingCodes ? (
-            <span className="text-xs font-medium text-green-700 dark:text-green-400 whitespace-nowrap">
-              {billingCodes}
-            </span>
-          ) : (
-            <DollarSign className="w-4 h-4 text-[var(--text-muted)] hover:text-green-600 dark:hover:text-green-400" />
-          )}
-        </button>
-      )}
-
-      {onMerge && patient.name?.startsWith('New Encounter') && (
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onMerge();
-          }}
-          className="p-2 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg transition-colors flex-shrink-0"
-          title="Assign to existing patient"
-        >
-          <Merge className="w-4 h-4 text-[var(--text-muted)] hover:text-blue-500 dark:hover:text-blue-400" />
-        </button>
-      )}
-
-      {onDelete && (
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onDelete();
-          }}
-          className="p-2 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-colors flex-shrink-0"
-        >
-          <Trash2 className="w-4 h-4 text-[var(--text-muted)] hover:text-red-500 dark:hover:text-red-400" />
-        </button>
-      )}
-
-      <button
-        onClick={(e) => {
-          e.stopPropagation();
-          onNavigate?.();
-        }}
-        className="p-2 hover:bg-[var(--bg-tertiary)] rounded-lg transition-colors flex-shrink-0"
-        title="Open full view"
-      >
-        <ChevronRight className="w-5 h-5 text-[var(--text-muted)]" />
-      </button>
     </div>
   );
 }
