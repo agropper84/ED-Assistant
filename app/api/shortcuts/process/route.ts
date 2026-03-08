@@ -54,7 +54,19 @@ export async function POST(request: NextRequest) {
     let styleGuidance = '';
     try {
       const guide = await getStyleGuideFromSheet(ctx);
-      if (guide?.guidance) styleGuidance = guide.guidance;
+      const parts: string[] = [];
+      for (const [section, examples] of Object.entries(guide.examples)) {
+        if ((examples as string[]).length > 0) {
+          parts.push(`${section.toUpperCase()} style examples:\n${(examples as string[]).map((e: string, i: number) => `Example ${i + 1}:\n${e}`).join('\n\n')}`);
+        }
+      }
+      if (guide.extractedFeatures.length > 0) {
+        parts.push(`Writing style features:\n${guide.extractedFeatures.join('\n')}`);
+      }
+      if (guide.customGuidance) {
+        parts.push(`Custom guidance:\n${guide.customGuidance}`);
+      }
+      styleGuidance = parts.join('\n\n');
     } catch {}
 
     if (mode === 'full') {
