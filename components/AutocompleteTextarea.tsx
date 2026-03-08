@@ -94,6 +94,43 @@ export function AutocompleteTextarea({
     }
   }, [patientContext]);
 
+  /**
+   * Find the best suggestion match using suffix-aware matching.
+   * Instead of only matching from the start of the sentence, we also
+   * try progressively shorter trailing word sequences so suggestions
+   * evolve as the sentence grows.
+   *
+   * e.g. "the chest pain is described as sh" →
+   *   tries "the chest pain is described as sh" (no match)
+   *   tries "chest pain is described as sh" (no match)
+   *   ...
+   *   tries "described as sh" → matches "described as sharp" → ghost "arp"
+   */
+  const findSuggestionMatch = useCallback((partial: string): string | null => {
+    const lowerPartial = partial.toLowerCase();
+
+    // 1. Full prefix match (entire partial starts a suggestion)
+    for (const suggestion of suggestions) {
+      if (suggestion.startsWith(lowerPartial) && suggestion.length > lowerPartial.length) {
+        return suggestion.substring(lowerPartial.length);
+      }
+    }
+
+    // 2. Suffix matching — drop leading words progressively
+    const words = lowerPartial.split(/\s+/);
+    for (let start = 1; start < words.length; start++) {
+      const suffix = words.slice(start).join(' ');
+      if (suffix.length < 3) break; // require at least 3 chars
+      for (const suggestion of suggestions) {
+        if (suggestion.startsWith(suffix) && suggestion.length > suffix.length) {
+          return suggestion.substring(suffix.length);
+        }
+      }
+    }
+
+    return null;
+  }, [suggestions]);
+
   // Compute ghost text whenever value or suggestions change
   const computeGhost = useCallback((currentValue: string) => {
     // Clear pending debounce + abort in-flight AI request
@@ -111,13 +148,11 @@ export function AutocompleteTextarea({
       return;
     }
 
-    // Try corpus prefix match (instant)
-    const lowerPartial = partial.toLowerCase();
-    for (const suggestion of suggestions) {
-      if (suggestion.startsWith(lowerPartial) && suggestion.length > lowerPartial.length) {
-        setGhost(suggestion.substring(lowerPartial.length));
-        return;
-      }
+    // Try corpus match (instant) — full prefix + suffix-aware
+    const match = findSuggestionMatch(partial);
+    if (match) {
+      setGhost(match);
+      return;
     }
 
     // No corpus match — schedule AI fallback if context available
@@ -127,7 +162,7 @@ export function AutocompleteTextarea({
         fetchAICompletion(partial, currentValue);
       }, 800);
     }
-  }, [suggestions, patientContext, fetchAICompletion]);
+  }, [findSuggestionMatch, patientContext, fetchAICompletion]);
 
   useEffect(() => {
     computeGhost(value);
