@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
 import Anthropic from '@anthropic-ai/sdk';
+import { DICTATION_WHISPER_PROMPT, ENCOUNTER_WHISPER_PROMPT } from '@/lib/whisper-prompts';
 
 export const maxDuration = 60;
 
@@ -9,25 +10,6 @@ function getOpenAI() {
 }
 
 const anthropic = new Anthropic({ apiKey: process.env.CLAUDE_API_KEY });
-
-// Whisper prompt for physician dictation
-const DICTATION_WHISPER_PROMPT =
-  'Emergency department medical dictation. Terms: HEENT, PERRL, PERRLA, ' +
-  'troponin, D-dimer, CBC, BMP, CMP, ABG, EKG, ECG, CT, MRI, CXR, XR, ' +
-  'dyspnea, tachycardia, bradycardia, diaphoresis, edema, JVD, CVA, TIA, ' +
-  'STEMI, NSTEMI, afib, DVT, PE, pneumothorax, hemothorax, intubation, ' +
-  'GCS, LOC, ROS, HPI, PMH, PSH, vitals, SpO2, prn, IV, IM, PO, BID, TID, ' +
-  'mg, mL, mmHg, laceration, abscess, cellulitis, sepsis, meningitis, ' +
-  'appendicitis, cholecystitis, diverticulitis, pyelonephritis, UTI, AMS, ' +
-  'afebrile, normocephalic, atraumatic, midline trachea, bilateral breath sounds';
-
-// Whisper prompt for doctor-patient encounter recording
-const ENCOUNTER_WHISPER_PROMPT =
-  'Emergency department doctor-patient encounter. Two speakers: physician and patient. ' +
-  'Medical terms: HEENT, troponin, D-dimer, CBC, BMP, CT, MRI, EKG, dyspnea, ' +
-  'tachycardia, edema, CVA, TIA, STEMI, DVT, PE, SpO2, GCS, appendicitis, ' +
-  'cholecystitis, diverticulitis, pyelonephritis, UTI, cellulitis, sepsis, ' +
-  'laceration, abscess, intubation, vitals, mmHg, mg, mL';
 
 /**
  * Convert spoken punctuation commands to actual punctuation.

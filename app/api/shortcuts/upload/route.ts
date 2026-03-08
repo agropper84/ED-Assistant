@@ -3,6 +3,7 @@ import { createHash, randomBytes } from 'crypto';
 import OpenAI from 'openai';
 import { getShortcutTokenUser, setShortcutTranscript } from '@/lib/kv';
 import { getSheetsContextForUser, updatePatientFields } from '@/lib/google-sheets';
+import { DEVICE_WHISPER_PROMPT } from '@/lib/whisper-prompts';
 
 export const maxDuration = 60;
 
@@ -13,17 +14,6 @@ function sha256(input: string): string {
 function getOpenAI() {
   return new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 }
-
-// Reuse medical prompt from transcribe route
-const MEDICAL_PROMPT =
-  'Emergency department medical dictation. Terms: HEENT, PERRL, PERRLA, ' +
-  'troponin, D-dimer, CBC, BMP, CMP, ABG, EKG, ECG, CT, MRI, CXR, XR, ' +
-  'dyspnea, tachycardia, bradycardia, diaphoresis, edema, JVD, CVA, TIA, ' +
-  'STEMI, NSTEMI, afib, DVT, PE, pneumothorax, hemothorax, intubation, ' +
-  'GCS, LOC, ROS, HPI, PMH, PSH, vitals, SpO2, prn, IV, IM, PO, BID, TID, ' +
-  'mg, mL, mmHg, laceration, abscess, cellulitis, sepsis, meningitis, ' +
-  'appendicitis, cholecystitis, diverticulitis, pyelonephritis, UTI, AMS, ' +
-  'afebrile, normocephalic, atraumatic, midline trachea, bilateral breath sounds';
 
 export async function POST(request: NextRequest) {
   try {
@@ -53,7 +43,7 @@ export async function POST(request: NextRequest) {
     const transcription = await getOpenAI().audio.transcriptions.create({
       file: audioFile,
       model: 'whisper-1',
-      prompt: MEDICAL_PROMPT,
+      prompt: DEVICE_WHISPER_PROMPT,
       language: 'en',
     });
 
