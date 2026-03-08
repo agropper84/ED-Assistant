@@ -721,16 +721,17 @@ export default function HomePage() {
         )}
 
         {/* Sparkle icon — random fact */}
-        <button
-          className="absolute bottom-6 right-6 z-20 p-3 rounded-full text-white/40 hover:text-white/80 hover:bg-white/10 transition-all duration-300"
+        <div
+          className="absolute bottom-6 right-6 z-30 cursor-pointer"
           onClick={(e) => {
             e.stopPropagation();
             setAwayFunFact(AWAY_FUN[Math.floor(Math.random() * AWAY_FUN.length)]);
           }}
-          title="Random fact"
         >
-          <Sparkles className="w-5 h-5" />
-        </button>
+          <div className="p-3.5 rounded-full bg-white/15 hover:bg-white/25 active:scale-90 transition-all duration-200" style={{ backdropFilter: 'blur(8px)' }}>
+            <Sparkles className="w-6 h-6 text-white/80" />
+          </div>
+        </div>
       </div>
     );
   }
