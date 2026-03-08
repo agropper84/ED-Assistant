@@ -33,10 +33,10 @@
   --row-hover: rgba(37,99,235,0.04);
   --card-hover-border: rgba(37,99,235,0.18);
 
-  /* Status tint (subtle glass wash) */
-  --status-new: rgba(96, 165, 250, 0.08);
-  --status-pending: rgba(251, 191, 36, 0.08);
-  --status-processed: rgba(52, 211, 153, 0.08);
+  /* Status card tint — concentrated left accent for light */
+  --status-new: linear-gradient(to right, rgba(59,130,246,0.11) 0%, rgba(59,130,246,0.03) 8%, transparent 24%), var(--card-bg);
+  --status-pending: linear-gradient(to right, rgba(245,158,11,0.11) 0%, rgba(245,158,11,0.03) 8%, transparent 24%), var(--card-bg);
+  --status-processed: linear-gradient(to right, rgba(16,185,129,0.11) 0%, rgba(16,185,129,0.03) 8%, transparent 24%), var(--card-bg);
 
   /* Dashboard header gradient — light blue palette */
   --dash-header-from: #1d4ed8;
@@ -85,10 +85,10 @@
   --row-hover: rgba(59,130,246,0.06);
   --card-hover-border: rgba(59,130,246,0.22);
 
-  /* Status tint (subtle glass wash) */
-  --status-new: rgba(96, 165, 250, 0.10);
-  --status-pending: rgba(251, 191, 36, 0.10);
-  --status-processed: rgba(52, 211, 153, 0.10);
+  /* Status card tint — wide atmospheric glow for dark */
+  --status-new: linear-gradient(to right, rgba(96,165,250,0.12) 0%, transparent 45%), var(--card-bg);
+  --status-pending: linear-gradient(to right, rgba(251,191,36,0.12) 0%, transparent 45%), var(--card-bg);
+  --status-processed: linear-gradient(to right, rgba(52,211,153,0.12) 0%, transparent 45%), var(--card-bg);
 
   /* Dashboard header gradient — deep navy palette */
   --dash-header-from: #060e24;
@@ -200,6 +200,9 @@ button, .btn {
   z-index: 0;
   @apply rounded-2xl mb-3 transition-all duration-200 overflow-visible;
 }
+.patient-card[data-status="new"]       { background: var(--status-new); }
+.patient-card[data-status="pending"]   { background: var(--status-pending); }
+.patient-card[data-status="processed"] { background: var(--status-processed); }
 .patient-card:hover {
   box-shadow: var(--card-shadow-hover);
   border-color: var(--card-hover-border);
