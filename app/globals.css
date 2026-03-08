@@ -33,6 +33,11 @@
   --row-hover: rgba(37,99,235,0.04);
   --card-hover-border: rgba(37,99,235,0.18);
 
+  /* Status left-border accents */
+  --status-new: rgba(96, 165, 250, 0.55);
+  --status-pending: rgba(251, 191, 36, 0.55);
+  --status-processed: rgba(52, 211, 153, 0.55);
+
   /* Dashboard header gradient — light blue palette */
   --dash-header-from: #1d4ed8;
   --dash-header-via: #2563eb;
@@ -79,6 +84,11 @@
   --fab-shadow: 0 4px 14px rgba(59,130,246,0.3);
   --row-hover: rgba(59,130,246,0.06);
   --card-hover-border: rgba(59,130,246,0.22);
+
+  /* Status left-border accents */
+  --status-new: rgba(96, 165, 250, 0.35);
+  --status-pending: rgba(251, 191, 36, 0.35);
+  --status-processed: rgba(52, 211, 153, 0.35);
 
   /* Dashboard header gradient — deep navy palette */
   --dash-header-from: #060e24;

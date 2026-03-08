@@ -53,16 +53,10 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
   const hasInputData = !!(patient.transcript || patient.triageVitals || patient.additional || patient.diagnosis);
   const showInfoIcons = hasEncounterNote || hasAnalysis || (hasInputData && !!onGenerateAnalysis);
 
-  const statusColors: Record<string, string> = {
-    new: 'bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300 dark:border dark:border-blue-800/60',
-    pending: 'bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 dark:border dark:border-amber-800/60',
-    processed: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border dark:border-emerald-800/60',
-  };
-
-  const statusLabels: Record<string, string> = {
-    new: 'New',
-    pending: 'Create Encounter Note',
-    processed: 'Processed',
+  const statusBorderColor: Record<string, string> = {
+    new: 'var(--status-new)',
+    pending: 'var(--status-pending)',
+    processed: 'var(--status-processed)',
   };
 
   const displayName = anonymize ? toInitials(patient.name) : (patient.name || 'No name');
@@ -93,7 +87,10 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
       )}
 
       {/* Card body — slides right on hover to reveal delete */}
-      <div className={`patient-card relative flex items-center transition-all duration-200 ${onDelete ? 'group-hover/card:translate-x-6' : ''}`}>
+      <div
+        className={`patient-card relative flex items-center transition-all duration-200 ${onDelete ? 'group-hover/card:translate-x-6' : ''}`}
+        style={{ borderLeftWidth: '3px', borderLeftColor: statusBorderColor[patient.status] || 'transparent' }}
+      >
 
       {/* Main content area */}
       <button
@@ -118,34 +115,6 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
           >
             {displayName}
           </span>
-
-          {/* Status badge / process button */}
-          {patient.status === 'pending' && onProcess ? (
-            <span
-              onClick={async (e) => {
-                e.stopPropagation();
-                if (isProcessing) return;
-                setIsProcessing(true);
-                try {
-                  await onProcess();
-                } finally {
-                  setIsProcessing(false);
-                }
-              }}
-              className={`badge ${statusColors[patient.status]} cursor-pointer hover:brightness-95 dark:hover:brightness-125 active:scale-[0.97] transition-all inline-flex items-center gap-1`}
-            >
-              {isProcessing ? (
-                <Loader2 className="w-3 h-3 animate-spin" />
-              ) : (
-                <Play className="w-3 h-3" />
-              )}
-              {isProcessing ? 'Processing...' : statusLabels[patient.status]}
-            </span>
-          ) : patient.status !== 'processed' ? (
-            <span className={`badge ${statusColors[patient.status]}`}>
-              {statusLabels[patient.status]}
-            </span>
-          ) : null}
 
           {/* Info icons — inline with name */}
           {showInfoIcons && (
@@ -392,6 +361,27 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
               className="w-24 p-1 border border-[var(--input-border)] rounded text-sm text-center focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)]"
             />
           </div>
+        )}
+
+        {/* Process — play button for pending patients */}
+        {patient.status === 'pending' && onProcess && (
+          <button
+            onClick={async (e) => {
+              e.stopPropagation();
+              if (isProcessing) return;
+              setIsProcessing(true);
+              try { await onProcess(); } finally { setIsProcessing(false); }
+            }}
+            disabled={isProcessing}
+            className="p-1.5 hover:bg-amber-50 dark:hover:bg-amber-900/30 rounded-lg transition-colors"
+            title="Create Encounter Note"
+          >
+            {isProcessing ? (
+              <Loader2 className="w-4 h-4 text-amber-500 animate-spin" />
+            ) : (
+              <Play className="w-4 h-4 text-amber-500 dark:text-amber-400" />
+            )}
+          </button>
         )}
 
         {/* Billing — teal (distinct from encounter note's emerald) */}
