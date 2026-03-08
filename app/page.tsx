@@ -761,6 +761,11 @@ export default function HomePage() {
               <span className="flex items-center gap-1.5 px-2 py-1">
                 <Calendar className="w-3.5 h-3.5" style={{ color: 'var(--dash-text-muted)' }} />
                 <span className="text-sm font-medium" style={{ color: 'var(--dash-text)' }}>{formatDateDisplay(currentDate)}</span>
+                {!loading && patients.length > 0 && (
+                  <span className="text-[11px] font-medium px-1.5 py-0.5 rounded-full bg-white/15" style={{ color: 'var(--dash-text-sub)' }}>
+                    {patients.length}
+                  </span>
+                )}
               </span>
               {!isToday && (
                 <button
@@ -932,9 +937,6 @@ export default function HomePage() {
             {/* Ready to Process */}
             {pendingPatients.length > 0 && (
               <section>
-                <h2 className="text-sm font-semibold text-amber-700 dark:text-amber-400 uppercase tracking-wide mb-3">
-                  Ready to Process ({pendingPatients.length})
-                </h2>
                 <div className="space-y-3">
                   {pendingPatients.map((patient) => (
                     <div key={patient.rowIndex} className="flex items-start gap-2">
@@ -962,9 +964,6 @@ export default function HomePage() {
             {/* New */}
             {newPatients.length > 0 && (
               <section>
-                <h2 className="text-sm font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wide mb-3">
-                  New ({newPatients.length})
-                </h2>
                 <div className="space-y-3">
                   {newPatients.map((patient) => renderPatientWithBilling(patient))}
                 </div>
@@ -974,9 +973,6 @@ export default function HomePage() {
             {/* Processed */}
             {processedPatients.length > 0 && (
               <section>
-                <h2 className="text-sm font-semibold text-emerald-600 dark:text-emerald-400 uppercase tracking-wide mb-3">
-                  Processed ({processedPatients.length})
-                </h2>
                 <div className="space-y-3">
                   {processedPatients.map((patient) => renderPatientWithBilling(patient))}
                 </div>
