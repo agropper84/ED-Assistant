@@ -191,7 +191,12 @@ export default function HomePage() {
   const [mergeSource, setMergeSource] = useState<Patient | null>(null);
 
   // Draggable FAB
-  const [fabPos, setFabPos] = useState<{ x: number; y: number } | null>(null);
+  const [fabPos, setFabPos] = useState<{ x: number; y: number } | null>(() => {
+    if (typeof window !== 'undefined') {
+      try { const s = localStorage.getItem('ed-fab-pos'); if (s) return JSON.parse(s); } catch {}
+    }
+    return null;
+  });
   const fabDragging = useRef(false);
   const fabDragStart = useRef({ x: 0, y: 0, fabX: 0, fabY: 0 });
   const fabMoved = useRef(false);
@@ -224,6 +229,16 @@ export default function HomePage() {
       window.removeEventListener('pointerup', onUp);
     };
   }, []);
+
+  // Persist FAB position to localStorage
+  useEffect(() => {
+    if (fabPos) {
+      localStorage.setItem('ed-fab-pos', JSON.stringify(fabPos));
+    } else {
+      localStorage.removeItem('ed-fab-pos');
+    }
+  }, [fabPos]);
+
   const [sharedFile, setSharedFile] = useState<File | undefined>(undefined);
   const [sharedTranscript, setSharedTranscript] = useState<string | undefined>(undefined);
 
