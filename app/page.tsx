@@ -813,13 +813,10 @@ export default function HomePage() {
                 <option value="08:00">8:00 AM</option>
               </select>
               {shiftHours && (
-                <span className="text-[10px] flex-shrink-0 hidden sm:inline" style={{ color: 'var(--dash-text-muted)' }}>{shiftHours}h</span>
+                <span className="text-xs font-medium flex-shrink-0" style={{ color: 'var(--dash-text-sub)' }}>{shiftHours}h</span>
               )}
               {shiftCode && (
-                <span className="text-[9px] font-mono flex-shrink-0 hidden sm:inline" style={{ color: 'var(--dash-text-muted)' }}>{shiftCode}</span>
-              )}
-              {shiftTotal && (
-                <span className="text-[11px] font-semibold flex-shrink-0" style={{ color: '#34d399' }}>${shiftTotal}</span>
+                <span className="text-[11px] font-mono font-medium flex-shrink-0" style={{ color: 'var(--dash-text-sub)' }}>{shiftCode}</span>
               )}
             </div>
           </div>
