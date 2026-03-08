@@ -10,6 +10,7 @@ import { PatientDataModal } from '@/components/PatientDataModal';
 import { BatchTranscribeModal } from '@/components/BatchTranscribeModal';
 import { ClinicalChatModal } from '@/components/ClinicalChatModal';
 import { MergeModal } from '@/components/MergeModal';
+import { PendingAudioBanner } from '@/components/PendingAudioBanner';
 import { InlineBilling } from '@/components/BillingSection';
 import {
   BillingItem,
@@ -18,7 +19,7 @@ import {
 import {
   Plus, RefreshCw, Loader2, ChevronLeft, ChevronRight,
   Calendar, Settings, CheckSquare, Square, Play, Clock, EyeOff, Eye,
-  Search, ArrowUpDown, X, LogOut, Upload, Shield, Monitor, RotateCcw
+  Search, ArrowUpDown, X, LogOut, Upload, Shield, Monitor, RotateCcw, Sparkles
 } from 'lucide-react';
 
 function formatDateForSheet(date: Date): string {
@@ -80,6 +81,53 @@ const AWAY_PHOTOS = [
   'https://images.unsplash.com/photo-1415369629372-26f2fe60c467?w=1920&q=80', // otter floating
 ];
 
+// Fun facts and jokes for the away screen
+const AWAY_FUN = [
+  // Medical humor
+  "Why did the doctor carry a red pen? In case they needed to draw blood.",
+  "A man walks into the ER and says \"I broke my arm in two places.\" The doctor replies: \"Stop going to those places.\"",
+  "What's the difference between a surgeon and a physician? A surgeon knows nothing and does everything. A physician knows everything and does nothing.",
+  "Why do ER doctors make great DJs? They're used to dealing with codes.",
+  "What did the ER nurse say to the impatient patient? \"You'll just have to be patient.\"",
+  "The best time to go to the ER is when you don't need to.",
+  "A cardiologist's diet: everything in moderation... except coffee.",
+  "Ortho consult note: \"Bones appear bony.\"",
+  "Radiology called. They want to know if the patient has any history of being alive.",
+  "\"Stat\" is Latin for \"whenever you get around to it\" in some departments.",
+
+  // Genuinely interesting medical/science facts
+  "Your body produces about 3.8 million cells every second. By the time you finish reading this, you've made about 20 million new ones.",
+  "The human nose can detect over 1 trillion different scents.",
+  "A human sneeze can travel at speeds up to 160 km/h (100 mph).",
+  "Your stomach lining replaces itself every 3-4 days to prevent it from digesting itself.",
+  "The cornea is the only part of the body with no blood supply \u2014 it gets oxygen directly from the air.",
+  "Humans share about 60% of their DNA with bananas.",
+  "Your brain uses roughly 20% of your body's total energy despite being only 2% of your body weight.",
+  "The human body contains enough iron to make a 7.5 cm (3-inch) nail.",
+  "Babies are born with about 300 bones, but adults have only 206 \u2014 many fuse together as you grow.",
+  "The acid in your stomach (pH 1.5-3.5) is strong enough to dissolve metal.",
+  "A red blood cell takes about 20 seconds to complete a full circuit of the body.",
+  "Your left lung is about 10% smaller than your right lung to make room for your heart.",
+  "The average person walks about 160,000 km (100,000 miles) in a lifetime \u2014 enough to circle the Earth 4 times.",
+  "The human brain can store roughly 2.5 petabytes of information \u2014 about 3 million hours of TV.",
+  "Fingernails grow about 3.5 mm per month, roughly 4 times faster than toenails.",
+  "Your body has about 96,000 km (60,000 miles) of blood vessels.",
+  "The small intestine is about 6 meters (20 feet) long \u2014 roughly 3 times the height of an average person.",
+  "Humans can survive without food for weeks, but only about 3 days without water.",
+  "The strongest muscle in the human body, relative to its size, is the masseter (jaw muscle).",
+  "Your eyes can distinguish approximately 10 million different colors.",
+  "Pound for pound, bone is stronger than steel. A cubic inch of bone can bear a load of 8,600 kg (19,000 lbs).",
+  "The liver is the only organ that can completely regenerate. You can lose 75% of it and it will grow back.",
+  "Astronauts can grow up to 5 cm (2 inches) taller in space because the spine expands without gravity.",
+  "Octopuses have three hearts: two pump blood to the gills, and one pumps it to the rest of the body.",
+  "A single bolt of lightning contains enough energy to toast about 100,000 slices of bread.",
+  "Honey never spoils. Edible honey has been found in 3,000-year-old Egyptian tombs.",
+  "There are more possible chess games than atoms in the observable universe.",
+  "Tardigrades (water bears) can survive in the vacuum of space, extreme radiation, and temperatures from -272\u00b0C to 150\u00b0C.",
+  "A day on Venus is longer than a year on Venus \u2014 it takes 243 Earth days to rotate but only 225 to orbit the sun.",
+  "The total length of DNA in all your cells would stretch from the Earth to the Sun and back about 600 times.",
+];
+
 export default function HomePage() {
   const router = useRouter();
   const [patients, setPatients] = useState<Patient[]>([]);
@@ -126,6 +174,7 @@ export default function HomePage() {
   const [awayTime, setAwayTime] = useState('');
   const [awayWeather, setAwayWeather] = useState<{ temp: string; desc: string; location: string } | null>(null);
   const [awayPhotoIndex, setAwayPhotoIndex] = useState(0);
+  const [awayFunFact, setAwayFunFact] = useState('');
 
   // Dashboard billing
   const [billingPatientIdx, setBillingPatientIdx] = useState<number | null>(null);
@@ -637,7 +686,7 @@ export default function HomePage() {
     return (
       <div
         className="fixed inset-0 z-[100] flex items-center justify-center cursor-pointer select-none"
-        onClick={() => setAwayScreen(false)}
+        onClick={() => { setAwayScreen(false); setAwayFunFact(''); }}
         style={{
           backgroundImage: `url(${awayPhotoUrl})`,
           backgroundSize: 'cover',
@@ -659,6 +708,29 @@ export default function HomePage() {
           )}
           <div className="mt-8 text-sm opacity-50 font-light">Click anywhere to return</div>
         </div>
+
+        {/* Fun fact bubble */}
+        {awayFunFact && (
+          <div
+            className="absolute bottom-20 left-1/2 -translate-x-1/2 z-20 max-w-md mx-4 px-5 py-3 rounded-2xl text-white/90 text-sm font-light text-center animate-fadeIn"
+            style={{ background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(12px)', textShadow: '0 1px 4px rgba(0,0,0,0.3)' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {awayFunFact}
+          </div>
+        )}
+
+        {/* Sparkle icon — random fact */}
+        <button
+          className="absolute bottom-6 right-6 z-20 p-3 rounded-full text-white/40 hover:text-white/80 hover:bg-white/10 transition-all duration-300"
+          onClick={(e) => {
+            e.stopPropagation();
+            setAwayFunFact(AWAY_FUN[Math.floor(Math.random() * AWAY_FUN.length)]);
+          }}
+          title="Random fact"
+        >
+          <Sparkles className="w-5 h-5" />
+        </button>
       </div>
     );
   }
@@ -806,6 +878,9 @@ export default function HomePage() {
           </div>
         </div>
       </header>
+
+      {/* Pending Watch Recordings */}
+      <PendingAudioBanner onProcessed={() => fetchPatients(false)} />
 
       {/* Batch Processing Bar */}
       {batchMode && (
