@@ -962,7 +962,7 @@ export default function HomePage() {
             {/* New */}
             {newPatients.length > 0 && (
               <section>
-                <h2 className="text-sm font-semibold text-blue-700 dark:text-blue-400 uppercase tracking-wide mb-3">
+                <h2 className="text-sm font-semibold text-sky-600 dark:text-sky-400 uppercase tracking-wide mb-3">
                   New ({newPatients.length})
                 </h2>
                 <div className="space-y-3">
@@ -974,7 +974,7 @@ export default function HomePage() {
             {/* Processed */}
             {processedPatients.length > 0 && (
               <section>
-                <h2 className="text-sm font-semibold text-green-700 dark:text-green-400 uppercase tracking-wide mb-3">
+                <h2 className="text-sm font-semibold text-teal-600 dark:text-teal-400 uppercase tracking-wide mb-3">
                   Processed ({processedPatients.length})
                 </h2>
                 <div className="space-y-3">
