@@ -51,9 +51,9 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
   const showInfoIcons = hasEncounterNote || hasAnalysis || (hasInputData && !!onGenerateAnalysis);
 
   const statusColors: Record<string, string> = {
-    new: 'bg-blue-100 text-blue-800 dark:bg-blue-950/50 dark:text-blue-300 dark:border dark:border-blue-800',
-    pending: 'bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300 dark:border dark:border-amber-800',
-    processed: 'bg-green-100 text-green-800 dark:bg-green-950/50 dark:text-green-300 dark:border dark:border-green-800',
+    new: 'bg-sky-50 text-sky-700 dark:bg-sky-950/40 dark:text-sky-300 dark:border dark:border-sky-800/60',
+    pending: 'bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 dark:border dark:border-amber-800/60',
+    processed: 'bg-teal-50 text-teal-700 dark:bg-teal-950/40 dark:text-teal-300 dark:border dark:border-teal-800/60',
   };
 
   const statusLabels: Record<string, string> = {
@@ -71,33 +71,34 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
     setEditingTime(false);
   };
 
+  // Accent palette tuned to complement the blue header
   const borderAccent: Record<string, string> = {
-    new: 'border-l-blue-500',
-    pending: 'border-l-amber-500',
-    processed: 'border-l-emerald-500',
+    new: 'border-l-sky-400 dark:border-l-sky-500',
+    pending: 'border-l-amber-400 dark:border-l-amber-500',
+    processed: 'border-l-teal-400 dark:border-l-teal-500',
   };
 
   const chevronAccent: Record<string, string> = {
-    new: 'group-hover/card:text-blue-500 dark:group-hover/card:text-blue-400',
+    new: 'group-hover/card:text-sky-500 dark:group-hover/card:text-sky-400',
     pending: 'group-hover/card:text-amber-500 dark:group-hover/card:text-amber-400',
-    processed: 'group-hover/card:text-emerald-500 dark:group-hover/card:text-emerald-400',
+    processed: 'group-hover/card:text-teal-500 dark:group-hover/card:text-teal-400',
   };
 
   return (
-    <div className={`patient-card group/card relative flex items-center border-l-[3px] ${borderAccent[patient.status] || 'border-l-transparent'}`}>
+    <div className={`patient-card group/card relative flex items-center border-l-[3px] transition-all duration-200 ${onDelete ? 'group-hover/card:translate-x-3' : ''} ${borderAccent[patient.status] || 'border-l-transparent'}`}>
 
-      {/* Delete button — left side, appears on hover */}
+      {/* Delete button — left side, revealed as card slides right */}
       {onDelete && (
-        <div className="absolute -left-2.5 top-1/2 -translate-y-1/2 z-20 opacity-0 group-hover/card:opacity-100 transition-all duration-200 scale-75 group-hover/card:scale-100">
+        <div className="absolute -left-1 top-1/2 -translate-y-1/2 z-20 opacity-0 group-hover/card:opacity-100 transition-all duration-200 -translate-x-1 group-hover/card:translate-x-0 scale-90 group-hover/card:scale-100">
           <button
             onClick={(e) => {
               e.stopPropagation();
               onDelete();
             }}
-            className="w-7 h-7 flex items-center justify-center bg-[var(--card-bg)] border border-red-200 dark:border-red-800/50 rounded-full shadow-md hover:bg-red-50 dark:hover:bg-red-950/50 hover:border-red-300 dark:hover:border-red-700 transition-all active:scale-90"
+            className="w-7 h-7 flex items-center justify-center bg-[var(--card-bg)] border border-[var(--border)] rounded-full shadow-sm hover:bg-red-50 dark:hover:bg-red-950/40 hover:border-red-300 dark:hover:border-red-700 transition-all active:scale-90"
             title="Delete patient"
           >
-            <Trash2 className="w-3 h-3 text-red-400 hover:text-red-500 dark:text-red-500 dark:hover:text-red-400" />
+            <Trash2 className="w-3 h-3 text-[var(--text-muted)] hover:text-red-500 dark:hover:text-red-400 transition-colors" />
           </button>
         </div>
       )}
