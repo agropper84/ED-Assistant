@@ -1025,9 +1025,9 @@ export default function HomePage() {
             {pendingPatients.length > 0 && (
               <section>
                 <div className="space-y-3">
-                  {pendingPatients.map((patient) => (
-                    <div key={patient.rowIndex} className="flex items-start gap-2">
-                      {batchMode && (
+                  {pendingPatients.map((patient) =>
+                    batchMode ? (
+                      <div key={patient.rowIndex} className="flex items-start gap-2">
                         <button
                           onClick={() => togglePatientSelection(patient.rowIndex)}
                           className="flex-shrink-0 p-1 mt-3"
@@ -1038,12 +1038,14 @@ export default function HomePage() {
                             <Square className="w-5 h-5 text-[var(--text-muted)]" />
                           )}
                         </button>
-                      )}
-                      <div className="flex-1">
-                        {renderPatientWithBilling(patient)}
+                        <div className="flex-1">
+                          {renderPatientWithBilling(patient)}
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    ) : (
+                      renderPatientWithBilling(patient)
+                    )
+                  )}
                 </div>
               </section>
             )}
