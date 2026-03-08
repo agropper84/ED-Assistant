@@ -53,12 +53,6 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
   const hasInputData = !!(patient.transcript || patient.triageVitals || patient.additional || patient.diagnosis);
   const showInfoIcons = hasEncounterNote || hasAnalysis || (hasInputData && !!onGenerateAnalysis);
 
-  const statusBorderColor: Record<string, string> = {
-    new: 'var(--status-new)',
-    pending: 'var(--status-pending)',
-    processed: 'var(--status-processed)',
-  };
-
   const displayName = anonymize ? toInitials(patient.name) : (patient.name || 'No name');
 
   const handleTimeSave = () => {
@@ -89,7 +83,7 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
       {/* Card body — slides right on hover to reveal delete */}
       <div
         className={`patient-card relative flex items-center transition-all duration-200 ${onDelete ? 'group-hover/card:translate-x-6' : ''}`}
-        style={{ background: `linear-gradient(to right, ${statusBorderColor[patient.status] || 'transparent'}, transparent 45%), var(--card-bg)` }}
+        data-status={patient.status}
       >
 
       {/* Main content area */}
