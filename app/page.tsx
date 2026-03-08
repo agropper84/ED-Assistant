@@ -178,10 +178,6 @@ export default function HomePage() {
   const [sharedFile, setSharedFile] = useState<File | undefined>(undefined);
   const [sharedTranscript, setSharedTranscript] = useState<string | undefined>(undefined);
 
-  // Autocomplete suggestions
-  const [suggestions, setSuggestions] = useState<string[]>([]);
-  const suggestionsLoaded = useRef(false);
-
   // Search and sort
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<'time' | 'name'>('time');
@@ -241,18 +237,6 @@ export default function HomePage() {
           setUserEmail(data.email || '');
           setUserName(data.name || '');
         }
-      })
-      .catch(() => {});
-  }, []);
-
-  // Fetch autocomplete suggestions once per session
-  useEffect(() => {
-    if (suggestionsLoaded.current) return;
-    suggestionsLoaded.current = true;
-    fetch('/api/suggestions')
-      .then(res => res.ok ? res.json() : null)
-      .then(data => {
-        if (data?.sentences) setSuggestions(data.sentences);
       })
       .catch(() => {});
   }, []);
@@ -1041,7 +1025,6 @@ export default function HomePage() {
         onSaved={() => fetchPatients()}
         onNavigate={() => dataModalPatient && navigateToPatient(dataModalPatient)}
         onRegenerate={() => fetchPatients()}
-        suggestions={suggestions}
       />
 
       {/* Batch Transcribe Modal */}
