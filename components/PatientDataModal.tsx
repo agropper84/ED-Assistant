@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Patient } from '@/lib/google-sheets';
+import { MEDICAL_SUGGESTIONS } from '@/lib/medical-suggestions';
 import { X, Loader2, Save, ExternalLink, RefreshCw } from 'lucide-react';
 import { ExamToggles } from '@/components/ExamToggles';
 import { VoiceRecorder } from '@/components/VoiceRecorder';
@@ -34,10 +35,9 @@ interface PatientDataModalProps {
   onSaved: () => void;
   onNavigate: () => void;
   onRegenerate?: () => void;
-  suggestions?: string[];
 }
 
-export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate, onRegenerate, suggestions = [] }: PatientDataModalProps) {
+export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate, onRegenerate }: PatientDataModalProps) {
   const [transcript, setTranscript] = useState('');
   const [preRecordTranscript, setPreRecordTranscript] = useState('');
   const [encounterNotes, setEncounterNotes] = useState('');
@@ -93,16 +93,22 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
     }
   };
 
+  const patientContext = {
+    age: patient.age,
+    gender: patient.gender,
+    chiefComplaint: triageVitals.split('\n')[0] || '',
+  };
+
   return (
     <div className="fixed inset-0 modal-overlay z-50 flex items-end sm:items-center justify-center">
       <div className="bg-[var(--card-bg)] w-full sm:max-w-lg sm:rounded-3xl rounded-t-3xl max-h-[90vh] overflow-hidden flex flex-col animate-slideUp" style={{ boxShadow: 'var(--card-shadow-elevated)' }}>
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border)]">
+        <div className="dash-header flex items-center justify-between px-5 py-4 sm:rounded-t-3xl">
           <div className="min-w-0">
-            <h2 className="text-lg font-semibold text-[var(--text-primary)] truncate">
+            <h2 className="text-lg font-semibold truncate" style={{ color: 'var(--dash-text)' }}>
               {patient.name || 'Unknown'}
             </h2>
-            <p className="text-sm text-[var(--text-muted)]">
+            <p className="text-sm" style={{ color: 'var(--dash-text-muted)' }}>
               {patient.age && `${patient.age} `}{patient.gender && `${patient.gender} `}
               {patient.timestamp && `• ${patient.timestamp}`}
             </p>
@@ -110,13 +116,13 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
           <div className="flex items-center gap-1 flex-shrink-0">
             <button
               onClick={onNavigate}
-              className="p-2 hover:bg-[var(--bg-tertiary)] rounded-full"
+              className="p-2 hover:bg-white/10 rounded-full"
               title="Open full detail"
             >
-              <ExternalLink className="w-5 h-5 text-[var(--text-muted)]" />
+              <ExternalLink className="w-5 h-5" style={{ color: 'var(--dash-text-sub)' }} />
             </button>
-            <button onClick={onClose} className="p-2 hover:bg-[var(--bg-tertiary)] rounded-full">
-              <X className="w-5 h-5 text-[var(--text-muted)]" />
+            <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-full">
+              <X className="w-5 h-5" style={{ color: 'var(--dash-text-sub)' }} />
             </button>
           </div>
         </div>
@@ -125,21 +131,21 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
         <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
           {/* Triage Notes */}
           <div>
-            <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">
+            <label className="block text-xs font-semibold text-[var(--text-muted)] uppercase tracking-widest mb-1.5">
               Triage Notes & Vitals
             </label>
             <textarea
               value={triageVitals}
               onChange={(e) => setTriageVitals(e.target.value)}
               placeholder="Chief complaint, vitals, triage assessment..."
-              className="w-full h-20 p-3 border border-[var(--input-border)] rounded-lg text-sm resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)]"
+              className="w-full h-20 p-3 border border-[var(--input-border)] rounded-xl text-sm resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)]"
             />
           </div>
 
           {/* Transcript */}
           <div>
-            <div className="flex items-center justify-between mb-1">
-              <label className="text-sm font-medium text-[var(--text-secondary)]">
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-widest">
                 Transcript
               </label>
               <VoiceRecorder
@@ -158,14 +164,14 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
               value={transcript}
               onChange={(e) => setTranscript(e.target.value)}
               placeholder="Audio transcript or dictation..."
-              className="w-full h-28 p-3 border border-[var(--input-border)] rounded-lg text-sm resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)]"
+              className="w-full h-28 p-3 border border-[var(--input-border)] rounded-xl text-sm resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)]"
             />
           </div>
 
           {/* Encounter Notes */}
           <div>
-            <div className="flex items-center justify-between mb-1">
-              <label className="text-sm font-medium text-[var(--text-secondary)]">
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-widest">
                 Encounter Notes
               </label>
               <VoiceRecorder
@@ -182,21 +188,17 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
             <AutocompleteTextarea
               value={encounterNotes}
               onChange={setEncounterNotes}
-              suggestions={suggestions}
+              suggestions={MEDICAL_SUGGESTIONS}
               placeholder="Physician notes, clinical observations, plan..."
-              textareaClassName="w-full h-28 p-3 border border-[var(--input-border)] rounded-lg text-sm resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)]"
-              patientContext={{
-                age: patient.age,
-                gender: patient.gender,
-                chiefComplaint: triageVitals.split('\n')[0] || '',
-              }}
+              textareaClassName="w-full h-28 p-3 border border-[var(--input-border)] rounded-xl text-sm resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)]"
+              patientContext={patientContext}
             />
           </div>
 
           {/* Additional Findings with Exam Toggles */}
           <div>
-            <div className="flex items-center justify-between mb-1">
-              <label className="text-sm font-medium text-[var(--text-secondary)]">
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-widest">
                 Additional Findings / Exam
               </label>
               <VoiceRecorder
@@ -211,34 +213,36 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
               />
             </div>
             <ExamToggles value={additional} onChange={setAdditional} />
-            <textarea
+            <AutocompleteTextarea
               value={additional}
-              onChange={(e) => setAdditional(e.target.value)}
+              onChange={setAdditional}
+              suggestions={MEDICAL_SUGGESTIONS}
               placeholder="Exam findings, investigations, results, updates..."
-              className="w-full h-24 p-3 border border-[var(--input-border)] rounded-lg text-sm resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)]"
+              textareaClassName="w-full h-24 p-3 border border-[var(--input-border)] rounded-xl text-sm resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)]"
+              patientContext={patientContext}
             />
           </div>
 
           {/* Past Documentation */}
           <div>
-            <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">
+            <label className="block text-xs font-semibold text-[var(--text-muted)] uppercase tracking-widest mb-1.5">
               Past Documentation
             </label>
             <textarea
               value={pastDocs}
               onChange={(e) => setPastDocs(e.target.value)}
               placeholder="Previous visit notes, relevant history..."
-              className="w-full h-20 p-3 border border-[var(--input-border)] rounded-lg text-sm resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)]"
+              className="w-full h-20 p-3 border border-[var(--input-border)] rounded-xl text-sm resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)]"
             />
           </div>
         </div>
 
         {/* Footer */}
-        <div className="px-5 py-4 border-t border-[var(--border)] bg-[var(--bg-tertiary)] flex gap-2">
+        <div className="px-5 py-4 border-t border-[var(--border)] bg-[var(--bg-tertiary)] sm:rounded-b-3xl flex gap-2">
           <button
             onClick={handleSave}
             disabled={saving || regenerating || !hasChanges}
-            className="flex-1 py-3 bg-green-600 text-white rounded-lg font-medium disabled:opacity-50 disabled:bg-gray-400 dark:disabled:bg-gray-600 flex items-center justify-center gap-2 active:scale-[0.97] transition-all"
+            className="flex-1 py-3 bg-emerald-600 dark:bg-emerald-500 text-white rounded-xl font-medium disabled:opacity-40 flex items-center justify-center gap-2 hover:bg-emerald-700 dark:hover:bg-emerald-600 active:scale-[0.97] transition-all"
           >
             {saving ? (
               <Loader2 className="w-4 h-4 animate-spin" />
@@ -287,7 +291,7 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
                 }
               }}
               disabled={regenerating || saving}
-              className="py-3 px-4 bg-amber-500 text-white rounded-lg font-medium disabled:opacity-50 flex items-center justify-center gap-2 active:scale-[0.97] transition-all"
+              className="py-3 px-4 bg-amber-600 dark:bg-amber-500 text-white rounded-xl font-medium disabled:opacity-40 flex items-center justify-center gap-2 hover:bg-amber-700 dark:hover:bg-amber-600 active:scale-[0.97] transition-all"
             >
               {regenerating ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
@@ -299,7 +303,7 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
           )}
           <button
             onClick={onNavigate}
-            className="py-3 px-4 bg-blue-600 text-white rounded-lg font-medium flex items-center justify-center gap-2 active:scale-[0.97] transition-all"
+            className="py-3 px-4 bg-blue-600 dark:bg-blue-500 text-white rounded-xl font-medium flex items-center justify-center gap-2 hover:bg-blue-700 dark:hover:bg-blue-600 active:scale-[0.97] transition-all"
           >
             <ExternalLink className="w-4 h-4" />
             Full View
