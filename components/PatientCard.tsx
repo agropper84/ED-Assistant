@@ -81,7 +81,7 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
     <div className="group/card relative">
       {/* Delete button — left side, revealed as card slides right */}
       {onDelete && (
-        <div className="absolute left-1 top-1/2 -translate-y-1/2 z-20 opacity-0 group-hover/card:opacity-100 transition-all duration-200 scale-90 group-hover/card:scale-100">
+        <div className="absolute left-0 top-1/2 -translate-y-1/2 z-[35] opacity-0 group-hover/card:opacity-100 transition-all duration-200 scale-90 group-hover/card:scale-100">
           <button
             onClick={(e) => {
               e.stopPropagation();
