@@ -9,6 +9,7 @@ import { ParseModal } from '@/components/ParseModal';
 import { PatientDataModal } from '@/components/PatientDataModal';
 import { BatchTranscribeModal } from '@/components/BatchTranscribeModal';
 import { ClinicalChatModal } from '@/components/ClinicalChatModal';
+import { MergeModal } from '@/components/MergeModal';
 import { InlineBilling } from '@/components/BillingSection';
 import {
   BillingItem,
@@ -138,6 +139,7 @@ export default function HomePage() {
 
   // Clinical chat
   const [chatPatient, setChatPatient] = useState<Patient | null>(null);
+  const [mergeSource, setMergeSource] = useState<Patient | null>(null);
 
   // Draggable FAB
   const [fabPos, setFabPos] = useState<{ x: number; y: number } | null>(null);
@@ -614,6 +616,7 @@ export default function HomePage() {
             fetchPatients();
           }}
           onClinicalChat={() => setChatPatient(patient)}
+          onMerge={() => setMergeSource(patient)}
         />
         {isBillingOpen && (
           <div className="mt-1 ml-0">
@@ -1066,6 +1069,28 @@ export default function HomePage() {
           onClose={() => setChatPatient(null)}
           patient={chatPatient}
           onUpdate={() => fetchPatients()}
+        />
+      )}
+
+      {/* Merge Modal */}
+      {mergeSource && (
+        <MergeModal
+          source={mergeSource}
+          patients={patients}
+          onMerge={async (sourceRowIndex, targetRowIndex) => {
+            await fetch('/api/patients/merge', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                sourceRowIndex,
+                targetRowIndex,
+                sheetName: mergeSource.sheetName,
+              }),
+            });
+            setMergeSource(null);
+            fetchPatients();
+          }}
+          onClose={() => setMergeSource(null)}
         />
       )}
 

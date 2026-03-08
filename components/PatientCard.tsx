@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Patient } from '@/lib/google-sheets';
-import { Clock, User, FileText, ChevronRight, Trash2, DollarSign, Stethoscope, Copy, Check, Brain, ClipboardList, BookOpen, Play, Loader2, X, MessageCircleQuestion } from 'lucide-react';
+import { Clock, User, FileText, ChevronRight, Trash2, DollarSign, Stethoscope, Copy, Check, Brain, ClipboardList, BookOpen, Play, Loader2, X, MessageCircleQuestion, Merge } from 'lucide-react';
 
 interface PatientCardProps {
   patient: Patient;
@@ -17,6 +17,7 @@ interface PatientCardProps {
   onGenerateAnalysis?: () => Promise<void>;
   onUpdateFields?: (fields: Record<string, string>) => Promise<void>;
   onClinicalChat?: () => void;
+  onMerge?: () => void;
 }
 
 /** Convert a full name to initials, e.g. "John Smith" → "J.S." */
@@ -29,7 +30,7 @@ function toInitials(name: string): string {
     .join('');
 }
 
-export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChange, onBillingToggle, billingCodes, onNavigate, onProcess, onGenerateAnalysis, onUpdateFields, onClinicalChat }: PatientCardProps) {
+export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChange, onBillingToggle, billingCodes, onNavigate, onProcess, onGenerateAnalysis, onUpdateFields, onClinicalChat, onMerge }: PatientCardProps) {
   const [editingTime, setEditingTime] = useState(false);
   const [timeValue, setTimeValue] = useState(patient.timestamp || '');
   const [noteCopied, setNoteCopied] = useState(false);
@@ -493,6 +494,19 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
           ) : (
             <DollarSign className="w-4 h-4 text-[var(--text-muted)] hover:text-green-600 dark:hover:text-green-400" />
           )}
+        </button>
+      )}
+
+      {onMerge && patient.name?.startsWith('New Encounter') && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onMerge();
+          }}
+          className="p-2 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg transition-colors flex-shrink-0"
+          title="Assign to existing patient"
+        >
+          <Merge className="w-4 h-4 text-[var(--text-muted)] hover:text-blue-500 dark:hover:text-blue-400" />
         </button>
       )}
 
