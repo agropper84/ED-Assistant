@@ -51,9 +51,9 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
   const showInfoIcons = hasEncounterNote || hasAnalysis || (hasInputData && !!onGenerateAnalysis);
 
   const statusColors: Record<string, string> = {
-    new: 'bg-sky-50 text-sky-700 dark:bg-sky-950/40 dark:text-sky-300 dark:border dark:border-sky-800/60',
+    new: 'bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300 dark:border dark:border-blue-800/60',
     pending: 'bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 dark:border dark:border-amber-800/60',
-    processed: 'bg-teal-50 text-teal-700 dark:bg-teal-950/40 dark:text-teal-300 dark:border dark:border-teal-800/60',
+    processed: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border dark:border-emerald-800/60',
   };
 
   const statusLabels: Record<string, string> = {
@@ -71,25 +71,17 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
     setEditingTime(false);
   };
 
-  // Accent palette tuned to complement the blue header
-  const borderAccent: Record<string, string> = {
-    new: 'border-l-sky-400 dark:border-l-sky-500',
-    pending: 'border-l-amber-400 dark:border-l-amber-500',
-    processed: 'border-l-teal-400 dark:border-l-teal-500',
-  };
-
   const chevronAccent: Record<string, string> = {
-    new: 'group-hover/card:text-sky-500 dark:group-hover/card:text-sky-400',
+    new: 'group-hover/card:text-blue-500 dark:group-hover/card:text-blue-400',
     pending: 'group-hover/card:text-amber-500 dark:group-hover/card:text-amber-400',
-    processed: 'group-hover/card:text-teal-500 dark:group-hover/card:text-teal-400',
+    processed: 'group-hover/card:text-emerald-500 dark:group-hover/card:text-emerald-400',
   };
 
   return (
-    <div className={`patient-card group/card relative flex items-center border-l-[3px] transition-all duration-200 ${onDelete ? 'group-hover/card:translate-x-3' : ''} ${borderAccent[patient.status] || 'border-l-transparent'}`}>
-
+    <div className="group/card relative">
       {/* Delete button — left side, revealed as card slides right */}
       {onDelete && (
-        <div className="absolute -left-1 top-1/2 -translate-y-1/2 z-20 opacity-0 group-hover/card:opacity-100 transition-all duration-200 -translate-x-1 group-hover/card:translate-x-0 scale-90 group-hover/card:scale-100">
+        <div className="absolute left-1 top-1/2 -translate-y-1/2 z-20 opacity-0 group-hover/card:opacity-100 transition-all duration-200 scale-90 group-hover/card:scale-100">
           <button
             onClick={(e) => {
               e.stopPropagation();
@@ -102,6 +94,9 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
           </button>
         </div>
       )}
+
+      {/* Card body — slides right on hover to reveal delete */}
+      <div className={`patient-card relative flex items-center transition-all duration-200 ${onDelete ? 'group-hover/card:translate-x-6' : ''}`}>
 
       {/* Main content area */}
       <button
@@ -551,6 +546,7 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
           </div>
         </div>
       )}
+      </div>{/* end patient-card */}
     </div>
   );
 }

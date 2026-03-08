@@ -14,7 +14,7 @@
   --card-bg: #ffffff;
   --card-border: #e5e7eb;
   --card-shadow: 0 1px 2px rgba(0,0,0,0.04), 0 2px 8px rgba(0,0,0,0.06);
-  --card-shadow-hover: 0 4px 16px rgba(14,165,233,0.10), 0 8px 24px rgba(0,0,0,0.06);
+  --card-shadow-hover: 0 4px 16px rgba(37,99,235,0.09), 0 8px 24px rgba(0,0,0,0.05);
   --card-shadow-elevated: 0 4px 12px rgba(0,0,0,0.06), 0 16px 40px rgba(0,0,0,0.1);
   --input-bg: #ffffff;
   --input-border: #cbd5e1;
@@ -30,8 +30,8 @@
   --accent-purple: #6366f1;
   --fab-shadow: 0 4px 14px rgba(37,99,235,0.35);
   --page-px: 1rem;
-  --row-hover: rgba(14,165,233,0.04);
-  --card-hover-border: rgba(14,165,233,0.22);
+  --row-hover: rgba(37,99,235,0.04);
+  --card-hover-border: rgba(37,99,235,0.18);
 
   /* Dashboard header gradient — light blue palette */
   --dash-header-from: #1d4ed8;
@@ -62,7 +62,7 @@
   --card-bg: #141416;
   --card-border: #232327;
   --card-shadow: 0 1px 2px rgba(0,0,0,0.2), 0 2px 8px rgba(0,0,0,0.25);
-  --card-shadow-hover: 0 4px 16px rgba(56,189,248,0.08), 0 8px 24px rgba(0,0,0,0.25);
+  --card-shadow-hover: 0 4px 16px rgba(59,130,246,0.10), 0 8px 24px rgba(0,0,0,0.25);
   --card-shadow-elevated: 0 4px 12px rgba(0,0,0,0.3), 0 16px 40px rgba(0,0,0,0.4);
   --input-bg: #1a1a1e;
   --input-border: #3f3f46;
@@ -77,8 +77,8 @@
   --accent-red: #f87171;
   --accent-purple: #818cf8;
   --fab-shadow: 0 4px 14px rgba(59,130,246,0.3);
-  --row-hover: rgba(56,189,248,0.06);
-  --card-hover-border: rgba(56,189,248,0.20);
+  --row-hover: rgba(59,130,246,0.06);
+  --card-hover-border: rgba(59,130,246,0.22);
 
   /* Dashboard header gradient — deep navy palette */
   --dash-header-from: #060e24;
