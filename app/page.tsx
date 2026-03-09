@@ -1274,7 +1274,7 @@ export default function HomePage() {
       {/* FAB - Add Patient (draggable) */}
       <div
         ref={fabRef}
-        className="fixed z-50"
+        className="fixed z-50 group/fab"
         style={fabPos
           ? { left: fabPos.x, top: fabPos.y }
           : { bottom: 24, right: 24 }
@@ -1283,10 +1283,10 @@ export default function HomePage() {
         {fabPos && (
           <button
             onClick={() => setFabPos(null)}
-            className="absolute -top-2 -left-2 w-5 h-5 bg-[var(--card-bg)] border border-[var(--border)] rounded-full flex items-center justify-center shadow-md hover:bg-[var(--bg-tertiary)] transition-colors"
+            className="absolute -top-3 -left-3 w-4 h-4 bg-[var(--card-bg)] border border-[var(--border)] rounded-full flex items-center justify-center shadow-md hover:bg-[var(--bg-tertiary)] transition-all opacity-0 group-hover/fab:opacity-100 z-10"
             title="Reset position"
           >
-            <RotateCcw className="w-2.5 h-2.5 text-[var(--text-muted)]" />
+            <RotateCcw className="w-2 h-2 text-[var(--text-muted)]" />
           </button>
         )}
         <button
