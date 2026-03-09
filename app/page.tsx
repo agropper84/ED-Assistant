@@ -1283,7 +1283,7 @@ export default function HomePage() {
         {fabPos && (
           <button
             onClick={() => setFabPos(null)}
-            className="absolute -top-3 -left-3 w-4 h-4 bg-[var(--card-bg)] border border-[var(--border)] rounded-full flex items-center justify-center shadow-md hover:bg-[var(--bg-tertiary)] transition-all opacity-0 group-hover/fab:opacity-100 z-10"
+            className="absolute -top-3 -left-3 w-4 h-4 bg-[var(--card-bg)] border border-[var(--border)] rounded-full flex items-center justify-center shadow-md hover:bg-[var(--bg-tertiary)] opacity-0 scale-75 group-hover/fab:opacity-100 group-hover/fab:scale-100 transition-all duration-200 delay-150 z-10"
             title="Reset position"
           >
             <RotateCcw className="w-2 h-2 text-[var(--text-muted)]" />
@@ -1302,7 +1302,7 @@ export default function HomePage() {
               fabY: rect.top,
             };
           }}
-          className="w-14 h-14 bg-[var(--accent)] text-white rounded-2xl flex items-center justify-center hover:brightness-110 active:scale-[0.93] transition-all duration-200 touch-none select-none cursor-grab active:cursor-grabbing"
+          className="w-14 h-14 bg-[var(--accent)] text-white rounded-2xl flex items-center justify-center hover:brightness-110 active:scale-[0.93] transition-all duration-200 touch-none select-none cursor-pointer"
           style={{ boxShadow: 'var(--fab-shadow)' }}
         >
           <Plus className="w-6 h-6 pointer-events-none" />
