@@ -116,7 +116,7 @@ export async function getUserRefreshToken(userId: string): Promise<string | null
 export interface PendingAudio {
   id: string;
   userId: string;
-  audioBase64: string;
+  blobUrl: string;
   filename: string;
   rowIndex?: number;
   sheetName?: string;

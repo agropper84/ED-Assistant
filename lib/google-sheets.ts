@@ -608,6 +608,66 @@ export async function clearPatientRow(
   });
 }
 
+/** Move a patient (including continuation/billing rows) from one date sheet to another */
+export async function movePatientToSheet(
+  ctx: SheetsContext,
+  rowIndex: number,
+  sourceSheet: string,
+  targetSheetName: string,
+): Promise<{ newRowIndex: number; newSheetName: string }> {
+  const { sheets, spreadsheetId } = ctx;
+
+  // 1. Read the patient row + up to 20 continuation rows
+  const response = await sheets.spreadsheets.values.get({
+    spreadsheetId,
+    range: `'${sourceSheet}'!A${rowIndex}:AF${rowIndex + 20}`,
+  });
+  const allRows = response.data.values || [];
+  if (allRows.length === 0) throw new Error('Patient row not found');
+
+  // Collect patient row + continuation rows
+  const rowsToMove: string[][] = [allRows[0]];
+  for (let i = 1; i < allRows.length; i++) {
+    const row = allRows[i];
+    const name = row[COLUMNS.PATIENT_NAME]?.toString() || '';
+    const transcript = row[COLUMNS.TRANSCRIPT]?.toString() || '';
+    const procCode = row[COLUMNS.PROC_CODE]?.toString() || '';
+    if (!name && !transcript && procCode) {
+      rowsToMove.push(row);
+    } else {
+      break;
+    }
+  }
+
+  // 2. Ensure target sheet exists
+  const newSheetName = await getOrCreateDateSheet(ctx, targetSheetName);
+
+  // 3. Get next empty row in target
+  const newRowIndex = await getNextEmptyRow(ctx, newSheetName);
+
+  // 4. Ensure target sheet has enough columns
+  await ensureColumnCount(ctx, newSheetName, 32);
+
+  // 5. Write all rows to target
+  const batchData = rowsToMove.map((row, i) => ({
+    range: `'${newSheetName}'!A${newRowIndex + i}:AF${newRowIndex + i}`,
+    values: [row],
+  }));
+
+  await sheets.spreadsheets.values.batchUpdate({
+    spreadsheetId,
+    requestBody: {
+      valueInputOption: 'USER_ENTERED',
+      data: batchData,
+    },
+  });
+
+  // 6. Clear source row(s)
+  await clearPatientRow(ctx, rowIndex, sourceSheet);
+
+  return { newRowIndex, newSheetName };
+}
+
 // --- Patient CRUD operations (now date-sheet aware) ---
 
 /** Fetch all patients from a specific date sheet (merges continuation rows for multi-row billing) */
