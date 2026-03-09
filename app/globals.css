@@ -198,7 +198,7 @@ button, .btn {
   border: 1px solid var(--card-border);
   box-shadow: var(--card-shadow);
   z-index: 0;
-  @apply rounded-2xl mb-3 transition-all duration-200 overflow-visible;
+  @apply rounded-2xl transition-all duration-200 overflow-visible;
 }
 .patient-card[data-status="new"]       { background: var(--status-new); }
 .patient-card[data-status="pending"]   { background: var(--status-pending); }
