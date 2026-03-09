@@ -1286,7 +1286,7 @@ export default function HomePage() {
             className="absolute -top-3 -left-3 w-5 h-5 bg-black/30 dark:bg-white/20 backdrop-blur-sm border border-white/30 dark:border-white/15 rounded-full flex items-center justify-center hover:bg-black/40 dark:hover:bg-white/30 opacity-0 scale-75 group-hover/fab:opacity-100 group-hover/fab:scale-100 transition-all duration-200 delay-150 z-10"
             title="Reset position"
           >
-            <RotateCcw className="w-3 h-3 text-purple-300 dark:text-purple-300" />
+            <RotateCcw className="w-3 h-3 text-purple-600 dark:text-purple-400" />
           </button>
         )}
         <button
