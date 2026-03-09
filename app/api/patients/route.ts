@@ -9,6 +9,7 @@ import {
   getPatientCount,
   getShiftTimes,
   setShiftTimes,
+  searchPatientsAcrossSheets,
 } from '@/lib/google-sheets';
 
 // GET /api/patients?sheet=Mar+03,+2026
@@ -25,28 +26,11 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ sheets });
     }
 
-    // Cross-sheet search
+    // Cross-sheet search — single batchGet call instead of N sequential calls
     if (search) {
-      const sheets = await getDateSheets(ctx);
-      const results: any[] = [];
-      // Search up to 30 sheets (most recent first) to avoid timeouts
-      const sheetsToSearch = sheets.slice(0, 30);
-      for (const s of sheetsToSearch) {
-        try {
-          const pts = await getPatients(ctx, s);
-          for (const p of pts) {
-            if (
-              p.name?.toLowerCase().includes(search) ||
-              p.diagnosis?.toLowerCase().includes(search) ||
-              p.triageVitals?.split('\n')[0]?.toLowerCase().includes(search)
-            ) {
-              results.push(p);
-            }
-          }
-        } catch {
-          // Sheet may not exist or be empty, skip
-        }
-      }
+      const allSheets = await getDateSheets(ctx);
+      const sheetsToSearch = allSheets.slice(0, 30);
+      const results = await searchPatientsAcrossSheets(ctx, sheetsToSearch, search);
       return NextResponse.json({ patients: results, searchQuery: search });
     }
 

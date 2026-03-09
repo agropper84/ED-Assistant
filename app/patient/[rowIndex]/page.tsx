@@ -100,7 +100,7 @@ export default function PatientPage() {
   const fetchPatient = async () => {
     try {
       const sheetParam = sheetName ? `?sheet=${encodeURIComponent(sheetName)}` : '';
-      const res = await fetch(`/api/patients/${rowIndex}${sheetParam}`);
+      const res = await fetch(`/api/patients/${rowIndex}${sheetParam}`, { cache: 'no-store' });
       if (res.status === 403) { window.location.href = '/pending'; return; }
       if (res.status === 401) { window.location.href = '/login'; return; }
       const data = await res.json();
@@ -596,7 +596,11 @@ export default function PatientPage() {
                     await fetch(`/api/patients/${rowIndex}`, {
                       method: 'PATCH',
                       headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ ...fields, _sheetName: sheetName }),
+                      body: JSON.stringify({
+                        ...fields,
+                        _sheetName: sheetName,
+                        _upsertDiagnosis: fields.diagnosis ? { diagnosis: fields.diagnosis, icd9: fields.icd9 || '', icd10: fields.icd10 || '' } : undefined,
+                      }),
                     });
                     await fetchPatient();
                   }}
@@ -624,24 +628,28 @@ export default function PatientPage() {
                     <h3 className="font-semibold text-sm text-[var(--text-primary)]">Physician Notes</h3>
                   </div>
                   <div className="p-4 space-y-3">
-                    <div className="flex items-center gap-2">
-                      <VoiceRecorder
-                        onTranscript={(text) => {
-                          const base = preRecordApNotes || apNotes;
-                          setApNotes(base ? `${base}\n${text}` : text);
-                        }}
-                        onRecordingStart={() => setPreRecordApNotes(apNotes)}
-                        mode="dictation"
+                    <div className="relative">
+                      <textarea
+                        value={apNotes}
+                        onChange={(e) => setApNotes(e.target.value)}
+                        placeholder="Add physician notes, observations, or corrections to incorporate into the Assessment & Plan..."
+                        rows={3}
+                        className="w-full rounded-lg border border-[var(--card-border)] bg-[var(--input-bg)] text-[var(--text-primary)] px-3 py-2 pr-10 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-y placeholder:text-[var(--text-muted)]"
                       />
-                      <span className="text-xs text-[var(--text-muted)]">Dictate or type notes below</span>
+                      <div className="absolute top-1.5 right-1.5">
+                        <VoiceRecorder
+                          onTranscript={(text) => {
+                            const base = preRecordApNotes || apNotes;
+                            setApNotes(base ? `${base}\n${text}` : text);
+                          }}
+                          onRecordingStart={() => setPreRecordApNotes(apNotes)}
+                          onInterimTranscript={(text) => {
+                            setApNotes(preRecordApNotes ? `${preRecordApNotes}\n${text}` : text);
+                          }}
+                          mode="dictation"
+                        />
+                      </div>
                     </div>
-                    <textarea
-                      value={apNotes}
-                      onChange={(e) => setApNotes(e.target.value)}
-                      placeholder="Add physician notes, observations, or corrections to incorporate into the Assessment & Plan..."
-                      rows={3}
-                      className="w-full rounded-lg border border-[var(--card-border)] bg-[var(--input-bg)] text-[var(--text-primary)] px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-y placeholder:text-[var(--text-muted)]"
-                    />
                     <div className="flex gap-2">
                       <button
                         onClick={async () => {
@@ -853,26 +861,28 @@ export default function PatientPage() {
               </button>
             ) : (
               <div className="bg-[var(--bg-tertiary)] rounded-xl border border-[var(--border-light)] p-4 space-y-3 animate-slideUp">
-                <div className="flex items-center justify-between">
-                  <h4 className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-widest">Quick Add Note</h4>
-                  <VoiceRecorder
-                    onTranscript={(text) => {
-                      const base = preRecordQuickAdd || quickAddText;
-                      setQuickAddText(base ? `${base}\n${text}` : text);
-                    }}
-                    onRecordingStart={() => setPreRecordQuickAdd(quickAddText)}
-                    onInterimTranscript={(text) => {
-                      setQuickAddText(preRecordQuickAdd ? `${preRecordQuickAdd}\n${text}` : text);
-                    }}
+                <h4 className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-widest">Quick Add Note</h4>
+                <div className="relative">
+                  <textarea
+                    value={quickAddText}
+                    onChange={(e) => setQuickAddText(e.target.value)}
+                    placeholder="Add exam findings, investigation results, or clinical notes..."
+                    className="w-full h-24 p-3 pr-10 border border-[var(--input-border)] rounded-lg text-sm resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)]"
+                    autoFocus
                   />
+                  <div className="absolute top-1.5 right-1.5">
+                    <VoiceRecorder
+                      onTranscript={(text) => {
+                        const base = preRecordQuickAdd || quickAddText;
+                        setQuickAddText(base ? `${base}\n${text}` : text);
+                      }}
+                      onRecordingStart={() => setPreRecordQuickAdd(quickAddText)}
+                      onInterimTranscript={(text) => {
+                        setQuickAddText(preRecordQuickAdd ? `${preRecordQuickAdd}\n${text}` : text);
+                      }}
+                    />
+                  </div>
                 </div>
-                <textarea
-                  value={quickAddText}
-                  onChange={(e) => setQuickAddText(e.target.value)}
-                  placeholder="Add exam findings, investigation results, or clinical notes..."
-                  className="w-full h-24 p-3 border border-[var(--input-border)] rounded-lg text-sm resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)]"
-                  autoFocus
-                />
                 <div className="flex gap-2">
                   <button
                     onClick={handleQuickAddSave}
@@ -1223,24 +1233,26 @@ function OutputSection({
                   onChange={setEditValue}
                 />
               )}
-              <div className="flex items-center justify-between">
-                <VoiceRecorder
-                  onTranscript={(text) => {
-                    const base = preRecordText || editValue;
-                    setEditValue(base ? `${base}\n\n${text}` : text);
-                  }}
-                  onRecordingStart={() => setPreRecordText(editValue)}
-                  onInterimTranscript={(text) => {
-                    const base = preRecordText;
-                    setEditValue(base ? `${base}\n\n${text}` : text);
-                  }}
+              <div className="relative">
+                <textarea
+                  value={editValue}
+                  onChange={(e) => setEditValue(e.target.value)}
+                  className="w-full h-40 p-3 pr-10 border border-[var(--input-border)] rounded-lg text-sm resize-y focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)]"
                 />
+                <div className="absolute top-1.5 right-1.5">
+                  <VoiceRecorder
+                    onTranscript={(text) => {
+                      const base = preRecordText || editValue;
+                      setEditValue(base ? `${base}\n\n${text}` : text);
+                    }}
+                    onRecordingStart={() => setPreRecordText(editValue)}
+                    onInterimTranscript={(text) => {
+                      const base = preRecordText;
+                      setEditValue(base ? `${base}\n\n${text}` : text);
+                    }}
+                  />
+                </div>
               </div>
-              <textarea
-                value={editValue}
-                onChange={(e) => setEditValue(e.target.value)}
-                className="w-full h-40 p-3 border border-[var(--input-border)] rounded-lg text-sm resize-y focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)]"
-              />
               <div className="flex gap-2">
                 <button
                   onClick={handleSaveEdit}

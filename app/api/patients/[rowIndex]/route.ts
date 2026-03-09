@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSheetsContext, getPatient, updatePatientFields, clearPatientRow, saveBillingRows } from '@/lib/google-sheets';
+import { getSheetsContext, getPatient, updatePatientFields, clearPatientRow, saveBillingRows, upsertDiagnosisCode } from '@/lib/google-sheets';
 
 // GET /api/patients/[rowIndex]?sheet=Mar+03,+2026
 export async function GET(
@@ -41,7 +41,7 @@ export async function PATCH(
     const ctx = await getSheetsContext();
     const rowIndex = parseInt(params.rowIndex);
     const body = await request.json();
-    const { _sheetName, _billingItems, ...fields } = body;
+    const { _sheetName, _billingItems, _upsertDiagnosis, ...fields } = body;
 
     if (_billingItems) {
       // Multi-row billing save
@@ -58,6 +58,15 @@ export async function PATCH(
       }
     } else {
       await updatePatientFields(ctx, rowIndex, fields, _sheetName || undefined);
+    }
+
+    // Upsert diagnosis→ICD mapping to registry if requested
+    if (_upsertDiagnosis && _upsertDiagnosis.diagnosis?.trim()) {
+      upsertDiagnosisCode(ctx, {
+        diagnosis: _upsertDiagnosis.diagnosis,
+        icd9: _upsertDiagnosis.icd9 || '',
+        icd10: _upsertDiagnosis.icd10 || '',
+      }).catch(err => console.error('Failed to upsert diagnosis code:', err));
     }
 
     return NextResponse.json({ success: true });

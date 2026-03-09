@@ -183,10 +183,10 @@ Respond in EXACTLY this format with these exact headers:
 [${pt.diagnosis}]
 
 ===ICD9===
-[ICD-9 code for the primary diagnosis. Code only, no description]
+[ICD-9 code for the primary diagnosis. Prefer general/unspecified codes unless the clinical description clearly specifies a more precise diagnosis. Code only, no description]
 
 ===ICD10===
-[ICD-10 code for the primary diagnosis. Code only, no description]`;
+[ICD-10 code for the primary diagnosis. Prefer general/unspecified codes unless the clinical description clearly specifies a more precise diagnosis (e.g., prefer J02.9 over J02.0 unless the organism is explicitly named). Code only, no description]`;
 }
 
 function parseClaudeResponse(response: string): ProcessedNote {
@@ -287,6 +287,8 @@ export async function lookupICDCodes(diagnosisText: string): Promise<{
 1. A clean, standard diagnosis name (use common/general terms)
 2. The most appropriate ICD-9 code
 3. The most appropriate ICD-10 code
+
+IMPORTANT: Prefer general/unspecified ICD codes unless the clinical description clearly specifies a more precise diagnosis. For example, prefer J02.9 (Pharyngitis, unspecified) over J02.0 (Streptococcal pharyngitis) unless the diagnosis explicitly names the organism or specific variant.
 
 Diagnosis/Description: ${diagnosisText}
 
