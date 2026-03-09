@@ -6,6 +6,7 @@ import { ExamToggles } from '@/components/ExamToggles';
 import { AutocompleteTextarea } from '@/components/AutocompleteTextarea';
 import { MEDICAL_SUGGESTIONS } from '@/lib/medical-suggestions';
 import { VoiceRecorder } from '@/components/VoiceRecorder';
+import { getParseRules } from '@/lib/settings';
 
 interface ParseModalProps {
   isOpen: boolean;
@@ -95,10 +96,11 @@ export function ParseModal({ isOpen, onClose, onSave }: ParseModalProps) {
     setError('');
 
     try {
+      const parseRules = getParseRules();
       const res = await fetch('/api/parse', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: pasteText }),
+        body: JSON.stringify({ text: pasteText, parseRules }),
       });
 
       if (!res.ok) throw new Error('Failed to parse');
@@ -187,12 +189,12 @@ export function ParseModal({ isOpen, onClose, onSave }: ParseModalProps) {
           {/* Paste Area */}
           <div>
             <label className="block text-xs font-semibold text-[var(--text-muted)] uppercase tracking-widest mb-1.5">
-              Meditech Data
+              Patient Information
             </label>
             <textarea
               value={pasteText}
               onChange={(e) => setPasteText(e.target.value)}
-              placeholder="Paste patient info from Meditech..."
+              placeholder="Paste patient info..."
               className="w-full h-28 p-3 border border-[var(--input-border)] rounded-xl text-sm font-mono resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)]"
             />
             <button

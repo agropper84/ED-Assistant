@@ -89,3 +89,39 @@ export function savePromptTemplates(templates: PromptTemplates): void {
   if (typeof window === 'undefined') return;
   localStorage.setItem(PROMPTS_STORAGE_KEY, JSON.stringify(templates));
 }
+
+// --- Parse Rules ---
+
+export interface ParseRules {
+  formatName: string;          // e.g. "Meditech", "EPIC", "Custom"
+  ageDobPattern: string;       // regex: group1=age, group2=gender, group3=dob
+  hcnPattern: string;          // regex: group1=HCN
+  mrnPattern: string;          // regex: group1=MRN
+  nameCleanup: string;         // comma-separated markers to strip (e.g. "ED")
+}
+
+export const DEFAULT_PARSE_RULES: ParseRules = {
+  formatName: 'Meditech',
+  ageDobPattern: '(\\d+(?:y\\s*\\d+m)?),?\\s*([MF])\\s*(\\d{1,2}\\/\\d{1,2}\\/\\d{4})',
+  hcnPattern: 'HCN#\\s*(\\d+)',
+  mrnPattern: 'MRN#\\s*([A-Z0-9]+)',
+  nameCleanup: 'ED',
+};
+
+const PARSE_RULES_STORAGE_KEY = 'ed-app-parse-rules';
+
+export function getParseRules(): ParseRules {
+  if (typeof window === 'undefined') return DEFAULT_PARSE_RULES;
+  try {
+    const stored = localStorage.getItem(PARSE_RULES_STORAGE_KEY);
+    if (!stored) return DEFAULT_PARSE_RULES;
+    return { ...DEFAULT_PARSE_RULES, ...JSON.parse(stored) };
+  } catch {
+    return DEFAULT_PARSE_RULES;
+  }
+}
+
+export function saveParseRules(rules: ParseRules): void {
+  if (typeof window === 'undefined') return;
+  localStorage.setItem(PARSE_RULES_STORAGE_KEY, JSON.stringify(rules));
+}

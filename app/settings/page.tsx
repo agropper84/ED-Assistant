@@ -13,7 +13,7 @@ import {
   getStyleGuide,
   clearLocalStyleGuide,
 } from '@/lib/style-guide';
-import { getSettings, saveSettings, AppSettings, DEFAULT_SETTINGS, PromptTemplates, DEFAULT_PROMPT_TEMPLATES, getPromptTemplates, savePromptTemplates } from '@/lib/settings';
+import { getSettings, saveSettings, AppSettings, DEFAULT_SETTINGS, PromptTemplates, DEFAULT_PROMPT_TEMPLATES, getPromptTemplates, savePromptTemplates, ParseRules, DEFAULT_PARSE_RULES, getParseRules, saveParseRules } from '@/lib/settings';
 import { getExamPresets, saveExamPresets, resetExamPresets, ExamPreset } from '@/lib/exam-presets';
 import {
   BillingCode, BillingGroup,
@@ -68,6 +68,12 @@ export default function SettingsPage() {
   const [shortcutLoading, setShortcutLoading] = useState(false);
   const [shortcutCopied, setShortcutCopied] = useState(false);
 
+  // Parse rules state
+  const [parseRules, setParseRules] = useState<ParseRules>(DEFAULT_PARSE_RULES);
+  const [testInput, setTestInput] = useState('');
+  const [testResult, setTestResult] = useState<Record<string, string> | null>(null);
+  const [testLoading, setTestLoading] = useState(false);
+
   // Prompt templates state
   const [promptTemplates, setPromptTemplates] = useState<PromptTemplates>(DEFAULT_PROMPT_TEMPLATES);
   const [expandedPromptSections, setExpandedPromptSections] = useState<Set<string>>(new Set());
@@ -121,6 +127,7 @@ export default function SettingsPage() {
       }
     })();
     setSettings(getSettings());
+    setParseRules(getParseRules());
     setPromptTemplates(getPromptTemplates());
     setExamPresets(getExamPresets());
     // Check shortcut token status
@@ -242,6 +249,32 @@ export default function SettingsPage() {
     const newSettings = { ...settings, [key]: value };
     setSettings(newSettings);
     saveSettings(newSettings);
+  };
+
+  const handleParseRuleChange = (key: keyof ParseRules, value: string) => {
+    const updated = { ...parseRules, [key]: value };
+    setParseRules(updated);
+    saveParseRules(updated);
+  };
+
+  const handleTestParse = async () => {
+    if (!testInput.trim()) return;
+    setTestLoading(true);
+    try {
+      const res = await fetch('/api/parse', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: testInput, parseRules }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setTestResult(data);
+      }
+    } catch {
+      setTestResult(null);
+    } finally {
+      setTestLoading(false);
+    }
   };
 
   const sectionLabels: Record<string, string> = {
@@ -637,6 +670,119 @@ export default function SettingsPage() {
                   <span>0 (Precise)</span>
                   <span>1 (Creative)</span>
                 </div>
+              </div>
+            </div>
+
+            {/* Patient Data Format */}
+            <div className="bg-[var(--card-bg)] rounded-2xl border border-[var(--card-border)] p-5 space-y-4" style={{ boxShadow: 'var(--card-shadow)' }}>
+              <div className="flex items-center justify-between">
+                <h3 className="font-semibold text-[var(--text-primary)]">Patient Data Format</h3>
+                <button
+                  onClick={() => {
+                    setParseRules(DEFAULT_PARSE_RULES);
+                    saveParseRules(DEFAULT_PARSE_RULES);
+                  }}
+                  className="flex items-center gap-1 px-2.5 py-1.5 text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] rounded-lg text-xs font-medium transition-colors"
+                >
+                  <RotateCcw className="w-3.5 h-3.5" />
+                  Reset to Meditech
+                </button>
+              </div>
+              <p className="text-xs text-[var(--text-muted)]">
+                Configure regex patterns for parsing patient data from your EMR. Each pattern should use capture groups.
+              </p>
+
+              <div>
+                <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Format Name</label>
+                <input
+                  type="text"
+                  value={parseRules.formatName}
+                  onChange={(e) => handleParseRuleChange('formatName', e.target.value)}
+                  placeholder="e.g. Meditech, EPIC, Cerner"
+                  className="w-full p-2.5 border border-[var(--input-border)] rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">
+                  Age / Gender / DOB Pattern
+                </label>
+                <p className="text-xs text-[var(--text-muted)] mb-1">Group 1 = age, Group 2 = gender, Group 3 = DOB</p>
+                <input
+                  type="text"
+                  value={parseRules.ageDobPattern}
+                  onChange={(e) => handleParseRuleChange('ageDobPattern', e.target.value)}
+                  className="w-full p-2.5 border border-[var(--input-border)] rounded-lg text-sm font-mono focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)]"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">HCN Pattern</label>
+                  <p className="text-xs text-[var(--text-muted)] mb-1">Group 1 = HCN</p>
+                  <input
+                    type="text"
+                    value={parseRules.hcnPattern}
+                    onChange={(e) => handleParseRuleChange('hcnPattern', e.target.value)}
+                    className="w-full p-2.5 border border-[var(--input-border)] rounded-lg text-sm font-mono focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">MRN Pattern</label>
+                  <p className="text-xs text-[var(--text-muted)] mb-1">Group 1 = MRN</p>
+                  <input
+                    type="text"
+                    value={parseRules.mrnPattern}
+                    onChange={(e) => handleParseRuleChange('mrnPattern', e.target.value)}
+                    className="w-full p-2.5 border border-[var(--input-border)] rounded-lg text-sm font-mono focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)]"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Cleanup Markers</label>
+                <p className="text-xs text-[var(--text-muted)] mb-1">Comma-separated words to strip from name (e.g. &quot;ED, ER&quot;)</p>
+                <input
+                  type="text"
+                  value={parseRules.nameCleanup}
+                  onChange={(e) => handleParseRuleChange('nameCleanup', e.target.value)}
+                  placeholder="ED"
+                  className="w-full p-2.5 border border-[var(--input-border)] rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)]"
+                />
+              </div>
+
+              {/* Test Area */}
+              <div className="border-t border-[var(--border)] pt-4 space-y-2">
+                <label className="block text-sm font-medium text-[var(--text-secondary)]">Test Parse</label>
+                <textarea
+                  value={testInput}
+                  onChange={(e) => setTestInput(e.target.value)}
+                  placeholder="Paste sample patient data to test..."
+                  className="w-full h-20 p-2.5 border border-[var(--input-border)] rounded-lg text-sm font-mono resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)]"
+                />
+                <button
+                  onClick={handleTestParse}
+                  disabled={testLoading || !testInput.trim()}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium disabled:opacity-40 flex items-center gap-2"
+                >
+                  {testLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Search className="w-3.5 h-3.5" />}
+                  Test
+                </button>
+                {testResult && (
+                  <div className="bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 rounded-lg p-3 animate-fadeIn">
+                    <div className="flex items-center gap-2 text-emerald-700 dark:text-emerald-300 font-medium mb-2 text-sm">
+                      <Check className="w-4 h-4" />
+                      Parse Result
+                    </div>
+                    <div className="grid grid-cols-2 gap-1 text-sm">
+                      <div><span className="text-[var(--text-muted)]">Name:</span> <span className="text-[var(--text-primary)]">{testResult.name || '—'}</span></div>
+                      <div><span className="text-[var(--text-muted)]">Age:</span> <span className="text-[var(--text-primary)]">{testResult.age || '—'} {testResult.gender || ''}</span></div>
+                      <div><span className="text-[var(--text-muted)]">DOB:</span> <span className="text-[var(--text-primary)]">{testResult.birthday || '—'}</span></div>
+                      <div><span className="text-[var(--text-muted)]">HCN:</span> <span className="text-[var(--text-primary)]">{testResult.hcn || '—'}</span></div>
+                      <div><span className="text-[var(--text-muted)]">MRN:</span> <span className="text-[var(--text-primary)]">{testResult.mrn || '—'}</span></div>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 
