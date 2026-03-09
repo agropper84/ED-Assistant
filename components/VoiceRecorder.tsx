@@ -162,8 +162,8 @@ export function VoiceRecorder({
     }
     isFlushingRef.current = false;
 
-    // Process blob in background
-    if (blob.size > 0) {
+    // Process blob in background (skip tiny blobs — likely just silence)
+    if (blob.size > 1000) {
       processSegmentBlob(blob);
     }
   }, [startSegment, processSegmentBlob]);

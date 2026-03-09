@@ -39,6 +39,26 @@ function convertSpokenPunctuation(text: string): string {
     .trim();
 }
 
+/**
+ * Detect common Whisper hallucinations produced from silence or noise.
+ * Whisper often generates these phrases when given near-empty audio.
+ */
+function isWhisperHallucination(text: string): boolean {
+  const normalized = text.toLowerCase().replace(/[^a-z\s]/g, '').trim();
+  // Too short to be meaningful (just punctuation or 1-2 words)
+  if (normalized.length < 3) return true;
+
+  const hallucinations = [
+    'thank you', 'thanks for watching', 'thank you for watching',
+    'thanks for listening', 'thank you for listening',
+    'please subscribe', 'like and subscribe',
+    'see you next time', 'bye', 'goodbye',
+    'you', 'the end', 'gene',
+    'and more', 'and after',
+  ];
+  return hallucinations.some(h => normalized === h || normalized.startsWith(h + ' '));
+}
+
 async function medicalize(rawText: string, mode: string): Promise<string> {
   const prompt = mode === 'encounter'
     ? `Convert this recorded doctor-patient emergency department encounter into a structured clinical transcript. Rules:
@@ -49,6 +69,7 @@ async function medicalize(rawText: string, mode: string): Promise<string> {
 - Fix filler words, false starts, and repetition
 - Use concise, professional formatting
 - Output ONLY the converted transcript, nothing else
+- If the input contains no clinical content (e.g. just greetings, filler, or noise), output exactly: EMPTY
 
 Recording:
 ${rawText}`
@@ -58,7 +79,8 @@ ${rawText}`
 - Correct any misheard medical terms based on context (e.g., "CPA tenderness" → "CVA tenderness", "tendered" → "tender/tenderness")
 - Do NOT add, infer, or remove clinical information — preserve meaning exactly
 - Use concise ED physician charting style
-- Output ONLY the converted text, nothing else
+- Output ONLY the converted text, nothing else — no explanations, no questions, no commentary
+- If the input contains no clinical content (e.g. just greetings, filler, noise artifacts, or meaningless fragments), output exactly: EMPTY
 
 Dictation:
 ${rawText}`;
@@ -71,7 +93,10 @@ ${rawText}`;
   });
 
   const result = response.content[0].type === 'text' ? response.content[0].text : '';
-  return result.trim() || rawText;
+  const trimmed = result.trim();
+  // If Claude flagged as empty/no content, return empty string
+  if (!trimmed || trimmed === 'EMPTY') return '';
+  return trimmed;
 }
 
 export async function POST(request: NextRequest) {
@@ -95,6 +120,11 @@ export async function POST(request: NextRequest) {
 
     const rawText = transcription.text?.trim();
     if (!rawText) {
+      return NextResponse.json({ text: '' });
+    }
+
+    // Filter out Whisper hallucinations (common artifacts from silence/noise)
+    if (isWhisperHallucination(rawText)) {
       return NextResponse.json({ text: '' });
     }
 
