@@ -17,11 +17,37 @@ export async function GET(request: NextRequest) {
     const ctx = await getSheetsContext();
     const sheetName = request.nextUrl.searchParams.get('sheet') || undefined;
     const listSheets = request.nextUrl.searchParams.get('listSheets');
+    const search = request.nextUrl.searchParams.get('search')?.toLowerCase().trim();
 
     // Return available date sheets
     if (listSheets) {
       const sheets = await getDateSheets(ctx);
       return NextResponse.json({ sheets });
+    }
+
+    // Cross-sheet search
+    if (search) {
+      const sheets = await getDateSheets(ctx);
+      const results: any[] = [];
+      // Search up to 30 sheets (most recent first) to avoid timeouts
+      const sheetsToSearch = sheets.slice(0, 30);
+      for (const s of sheetsToSearch) {
+        try {
+          const pts = await getPatients(ctx, s);
+          for (const p of pts) {
+            if (
+              p.name?.toLowerCase().includes(search) ||
+              p.diagnosis?.toLowerCase().includes(search) ||
+              p.triageVitals?.split('\n')[0]?.toLowerCase().includes(search)
+            ) {
+              results.push(p);
+            }
+          }
+        } catch {
+          // Sheet may not exist or be empty, skip
+        }
+      }
+      return NextResponse.json({ patients: results, searchQuery: search });
     }
 
     const [patients, shiftTimes] = await Promise.all([

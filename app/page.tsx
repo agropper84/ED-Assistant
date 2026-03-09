@@ -244,6 +244,9 @@ export default function HomePage() {
 
   // Search and sort
   const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<Patient[] | null>(null);
+  const [searching, setSearching] = useState(false);
+  const searchDebounce = useRef<NodeJS.Timeout | null>(null);
   const [sortBy, setSortBy] = useState<'time' | 'name'>('time');
 
   const sheetName = formatDateForSheet(currentDate);
@@ -292,6 +295,32 @@ export default function HomePage() {
     fetchPatients();
     fetchSheets();
   }, [sheetName]);
+
+  // Debounced cross-sheet search
+  useEffect(() => {
+    if (searchDebounce.current) clearTimeout(searchDebounce.current);
+    const q = searchQuery.trim();
+    if (!q) {
+      setSearchResults(null);
+      setSearching(false);
+      return;
+    }
+    if (q.length < 2) return;
+    setSearching(true);
+    searchDebounce.current = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/patients?search=${encodeURIComponent(q)}`);
+        if (res.status === 401) { window.location.href = '/login'; return; }
+        const data = await res.json();
+        setSearchResults(data.patients || []);
+      } catch {
+        setSearchResults([]);
+      } finally {
+        setSearching(false);
+      }
+    }, 400);
+    return () => { if (searchDebounce.current) clearTimeout(searchDebounce.current); };
+  }, [searchQuery]);
 
   useEffect(() => {
     fetch('/api/auth/me')
@@ -499,23 +528,19 @@ export default function HomePage() {
     return () => document.removeEventListener('mousedown', handleClick);
   }, [privacyMenuOpen]);
 
-  // Filter and sort patients
-  const filteredPatients = searchQuery.trim()
-    ? patients.filter(p => {
-        const q = searchQuery.toLowerCase();
-        return (
-          p.name?.toLowerCase().includes(q) ||
-          p.diagnosis?.toLowerCase().includes(q) ||
-          p.triageVitals?.split('\n')[0]?.toLowerCase().includes(q)
-        );
-      })
-    : patients;
+  // Filter and sort patients — use cross-sheet search results when searching
+  const isSearching = searchQuery.trim().length >= 2;
+  const activePatients = isSearching && searchResults !== null ? searchResults : patients;
 
-  const sortedPatients = [...filteredPatients].sort((a, b) => {
+  const sortedPatients = [...activePatients].sort((a, b) => {
     if (sortBy === 'name') {
       return (a.name || '').localeCompare(b.name || '');
     }
-    // sort by time (HH:MM string comparison works for 24h format)
+    // When searching across dates, sort by date (sheetName) then time
+    if (isSearching) {
+      const dateCompare = (b.sheetName || '').localeCompare(a.sheetName || '');
+      if (dateCompare !== 0) return dateCompare;
+    }
     return (a.timestamp || '').localeCompare(b.timestamp || '');
   });
 
@@ -983,12 +1008,16 @@ export default function HomePage() {
             {/* Search & Sort Bar */}
             <div className="flex items-center gap-2">
               <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-muted)]" />
+                {searching ? (
+                  <Loader2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-blue-500 animate-spin" />
+                ) : (
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-muted)]" />
+                )}
                 <input
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search patients..."
+                  placeholder="Search all dates..."
                   className="w-full pl-9 pr-8 py-2 border border-[var(--input-border)] rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)]"
                 />
                 {searchQuery && (
@@ -1009,6 +1038,12 @@ export default function HomePage() {
                 {sortBy === 'time' ? 'Time' : 'Name'}
               </button>
             </div>
+            {/* Search results banner */}
+            {isSearching && searchResults !== null && !searching && (
+              <div className="text-xs text-[var(--text-muted)] px-1">
+                {searchResults.length === 0 ? 'No patients found across all dates' : `${searchResults.length} result${searchResults.length !== 1 ? 's' : ''} across all dates`}
+              </div>
+            )}
 
             {/* Batch Process Button */}
             {hasPending && !batchMode && (
@@ -1021,51 +1056,76 @@ export default function HomePage() {
               </button>
             )}
 
-            {/* Ready to Process */}
-            {pendingPatients.length > 0 && (
-              <section>
-                <div className="space-y-3">
-                  {pendingPatients.map((patient) =>
-                    batchMode ? (
-                      <div key={patient.rowIndex} className="flex items-start gap-2">
-                        <button
-                          onClick={() => togglePatientSelection(patient.rowIndex)}
-                          className="flex-shrink-0 p-1 mt-3"
-                        >
-                          {selectedPatients.has(patient.rowIndex) ? (
-                            <CheckSquare className="w-5 h-5 text-amber-600 dark:text-amber-400" />
-                          ) : (
-                            <Square className="w-5 h-5 text-[var(--text-muted)]" />
-                          )}
-                        </button>
-                        <div className="flex-1">
-                          {renderPatientWithBilling(patient)}
-                        </div>
-                      </div>
-                    ) : (
-                      renderPatientWithBilling(patient)
-                    )
-                  )}
-                </div>
-              </section>
-            )}
+            {/* Search results: grouped by date */}
+            {isSearching && searchResults !== null ? (
+              <div className="space-y-4">
+                {Object.entries(
+                  sortedPatients.reduce<Record<string, Patient[]>>((acc, p) => {
+                    const key = p.sheetName || 'Unknown';
+                    (acc[key] = acc[key] || []).push(p);
+                    return acc;
+                  }, {})
+                ).map(([sheet, pts]) => (
+                  <section key={sheet}>
+                    <h3 className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-widest mb-2 flex items-center gap-1.5">
+                      <Calendar className="w-3 h-3" />
+                      {sheet}
+                    </h3>
+                    <div className="space-y-3">
+                      {pts.map((patient) => renderPatientWithBilling(patient))}
+                    </div>
+                  </section>
+                ))}
+              </div>
+            ) : (
+              <>
+                {/* Ready to Process */}
+                {pendingPatients.length > 0 && (
+                  <section>
+                    <div className="space-y-3">
+                      {pendingPatients.map((patient) =>
+                        batchMode ? (
+                          <div key={patient.rowIndex} className="flex items-start gap-2">
+                            <button
+                              onClick={() => togglePatientSelection(patient.rowIndex)}
+                              className="flex-shrink-0 p-1 mt-3"
+                            >
+                              {selectedPatients.has(patient.rowIndex) ? (
+                                <CheckSquare className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+                              ) : (
+                                <Square className="w-5 h-5 text-[var(--text-muted)]" />
+                              )}
+                            </button>
+                            <div className="flex-1">
+                              {renderPatientWithBilling(patient)}
+                            </div>
+                          </div>
+                        ) : (
+                          renderPatientWithBilling(patient)
+                        )
+                      )}
+                    </div>
+                  </section>
+                )}
 
-            {/* New */}
-            {newPatients.length > 0 && (
-              <section>
-                <div className="space-y-3">
-                  {newPatients.map((patient) => renderPatientWithBilling(patient))}
-                </div>
-              </section>
-            )}
+                {/* New */}
+                {newPatients.length > 0 && (
+                  <section>
+                    <div className="space-y-3">
+                      {newPatients.map((patient) => renderPatientWithBilling(patient))}
+                    </div>
+                  </section>
+                )}
 
-            {/* Processed */}
-            {processedPatients.length > 0 && (
-              <section>
-                <div className="space-y-3">
-                  {processedPatients.map((patient) => renderPatientWithBilling(patient))}
-                </div>
-              </section>
+                {/* Processed */}
+                {processedPatients.length > 0 && (
+                  <section>
+                    <div className="space-y-3">
+                      {processedPatients.map((patient) => renderPatientWithBilling(patient))}
+                    </div>
+                  </section>
+                )}
+              </>
             )}
           </div>
         )}
