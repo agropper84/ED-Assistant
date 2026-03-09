@@ -1283,10 +1283,10 @@ export default function HomePage() {
         {fabPos && (
           <button
             onClick={() => setFabPos(null)}
-            className="absolute -top-3 -left-3 w-4 h-4 bg-[var(--card-bg)] border border-[var(--border)] rounded-full flex items-center justify-center shadow-md hover:bg-[var(--bg-tertiary)] opacity-0 scale-75 group-hover/fab:opacity-100 group-hover/fab:scale-100 transition-all duration-200 delay-150 z-10"
+            className="absolute -top-3 -left-3 w-4 h-4 bg-black/20 dark:bg-white/15 backdrop-blur-sm border border-white/20 dark:border-white/10 rounded-full flex items-center justify-center hover:bg-black/30 dark:hover:bg-white/25 opacity-0 scale-75 group-hover/fab:opacity-100 group-hover/fab:scale-100 transition-all duration-200 delay-150 z-10"
             title="Reset position"
           >
-            <RotateCcw className="w-2 h-2 text-purple-500" />
+            <RotateCcw className="w-2.5 h-2.5 text-purple-400" />
           </button>
         )}
         <button
@@ -1302,10 +1302,12 @@ export default function HomePage() {
               fabY: rect.top,
             };
           }}
-          className="w-14 h-14 bg-[var(--accent)] text-white rounded-2xl flex items-center justify-center hover:brightness-110 active:scale-[0.93] transition-all duration-200 touch-none select-none cursor-pointer"
+          className="w-14 h-14 bg-[var(--accent)] text-white rounded-2xl flex items-center justify-center hover:brightness-110 active:scale-[0.93] transition-all duration-200 touch-none select-none cursor-grab active:cursor-grabbing"
           style={{ boxShadow: 'var(--fab-shadow)' }}
         >
-          <Plus className="w-6 h-6 pointer-events-none" />
+          <span className="w-9 h-9 flex items-center justify-center cursor-pointer">
+            <Plus className="w-6 h-6 pointer-events-none" />
+          </span>
         </button>
       </div>
 
