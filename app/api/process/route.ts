@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { processEncounter, ProcessedNote } from '@/lib/claude';
-import { getSheetsContext, getPatient, updatePatientFields, saveBillingRows, getStyleGuideFromSheet } from '@/lib/google-sheets';
+import { getSheetsContext, getPatient, updatePatientFields, saveBillingRows, getStyleGuideFromSheet, upsertDiagnosisCode } from '@/lib/google-sheets';
 import { getAutoBilling, BillingItem } from '@/lib/billing';
 
 // Allow longer execution for Claude API calls
@@ -98,6 +98,15 @@ export async function POST(request: NextRequest) {
 
     // Update the sheet with clinical notes
     await updatePatientFields(ctx, rowIndex, fieldsToUpdate, sheetName);
+
+    // Save diagnosis→ICD mapping to registry (fire-and-forget)
+    if (result.diagnosis?.trim()) {
+      upsertDiagnosisCode(ctx, {
+        diagnosis: result.diagnosis,
+        icd9: result.icd9,
+        icd10: result.icd10,
+      }).catch(err => console.error('Failed to upsert diagnosis code:', err));
+    }
 
     // Auto-assign billing if not already set (only on fresh processing, not modifications)
     if (!modifications && !patient.procCode) {

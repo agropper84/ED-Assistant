@@ -41,8 +41,10 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
   const [transcript, setTranscript] = useState('');
   const [preRecordTranscript, setPreRecordTranscript] = useState('');
   const [encounterNotes, setEncounterNotes] = useState('');
+  const [preRecordEncounterNotes, setPreRecordEncounterNotes] = useState('');
   const [triageVitals, setTriageVitals] = useState('');
   const [additional, setAdditional] = useState('');
+  const [preRecordAdditional, setPreRecordAdditional] = useState('');
   const [pastDocs, setPastDocs] = useState('');
   const [saving, setSaving] = useState(false);
   const [generating, setGenerating] = useState(false);
@@ -142,73 +144,90 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
 
           {/* Transcript */}
           <div>
-            <div className="flex items-center justify-between mb-1.5">
-              <label className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-widest">
-                Transcript
-              </label>
-              <VoiceRecorder
-                mode="encounter"
-                onTranscript={(text) => {
-                  const base = preRecordTranscript || transcript;
-                  setTranscript(base ? `${base}\n\n${text}` : text);
-                }}
-                onRecordingStart={() => setPreRecordTranscript(transcript)}
-                onInterimTranscript={(text) => {
-                  setTranscript(preRecordTranscript ? `${preRecordTranscript}\n\n${text}` : text);
-                }}
+            <label className="block text-xs font-semibold text-[var(--text-muted)] uppercase tracking-widest mb-1.5">
+              Transcript
+            </label>
+            <div className="relative">
+              <textarea
+                value={transcript}
+                onChange={(e) => setTranscript(e.target.value)}
+                placeholder="Audio transcript or dictation..."
+                className="w-full h-28 p-3 pr-16 border border-[var(--input-border)] rounded-xl text-sm resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)]"
               />
+              <div className="absolute top-1.5 right-1.5">
+                <VoiceRecorder
+                  mode="encounter"
+                  showUpload
+                  onTranscript={(text) => {
+                    const base = preRecordTranscript || transcript;
+                    setTranscript(base ? `${base}\n\n${text}` : text);
+                  }}
+                  onRecordingStart={() => setPreRecordTranscript(transcript)}
+                  onInterimTranscript={(text) => {
+                    setTranscript(preRecordTranscript ? `${preRecordTranscript}\n\n${text}` : text);
+                  }}
+                />
+              </div>
             </div>
-            <textarea
-              value={transcript}
-              onChange={(e) => setTranscript(e.target.value)}
-              placeholder="Audio transcript or dictation..."
-              className="w-full h-28 p-3 border border-[var(--input-border)] rounded-xl text-sm resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)]"
-            />
           </div>
 
           {/* Encounter Notes */}
           <div>
-            <div className="flex items-center justify-between mb-1.5">
-              <label className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-widest">
-                Encounter Notes
-              </label>
-              <VoiceRecorder
-                onTranscript={(text) => {
-                  setEncounterNotes(prev => prev ? `${prev}\n${text}` : text);
-                }}
+            <label className="block text-xs font-semibold text-[var(--text-muted)] uppercase tracking-widest mb-1.5">
+              Encounter Notes
+            </label>
+            <div className="relative">
+              <AutocompleteTextarea
+                value={encounterNotes}
+                onChange={setEncounterNotes}
+                suggestions={MEDICAL_SUGGESTIONS}
+                placeholder="Physician notes, clinical observations, plan..."
+                textareaClassName="w-full h-28 p-3 pr-10 border border-[var(--input-border)] rounded-xl text-sm resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)]"
+                patientContext={patientContext}
               />
+              <div className="absolute top-1.5 right-1.5 z-10">
+                <VoiceRecorder
+                  onTranscript={(text) => {
+                    const base = preRecordEncounterNotes || encounterNotes;
+                    setEncounterNotes(base ? `${base}\n${text}` : text);
+                  }}
+                  onRecordingStart={() => setPreRecordEncounterNotes(encounterNotes)}
+                  onInterimTranscript={(text) => {
+                    setEncounterNotes(preRecordEncounterNotes ? `${preRecordEncounterNotes}\n${text}` : text);
+                  }}
+                />
+              </div>
             </div>
-            <AutocompleteTextarea
-              value={encounterNotes}
-              onChange={setEncounterNotes}
-              suggestions={MEDICAL_SUGGESTIONS}
-              placeholder="Physician notes, clinical observations, plan..."
-              textareaClassName="w-full h-28 p-3 border border-[var(--input-border)] rounded-xl text-sm resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)]"
-              patientContext={patientContext}
-            />
           </div>
 
           {/* Additional Findings with Exam Toggles */}
           <div>
-            <div className="flex items-center justify-between mb-1.5">
-              <label className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-widest">
-                Additional Findings / Exam
-              </label>
-              <VoiceRecorder
-                onTranscript={(text) => {
-                  setAdditional(prev => prev ? `${prev}\n${text}` : text);
-                }}
-              />
-            </div>
+            <label className="block text-xs font-semibold text-[var(--text-muted)] uppercase tracking-widest mb-1.5">
+              Additional Findings / Exam
+            </label>
             <ExamToggles value={additional} onChange={setAdditional} />
-            <AutocompleteTextarea
-              value={additional}
-              onChange={setAdditional}
-              suggestions={MEDICAL_SUGGESTIONS}
-              placeholder="Exam findings, investigations, results, updates..."
-              textareaClassName="w-full h-24 p-3 border border-[var(--input-border)] rounded-xl text-sm resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)]"
-              patientContext={patientContext}
-            />
+            <div className="relative">
+              <AutocompleteTextarea
+                value={additional}
+                onChange={setAdditional}
+                suggestions={MEDICAL_SUGGESTIONS}
+                placeholder="Exam findings, investigations, results, updates..."
+                textareaClassName="w-full h-24 p-3 pr-10 border border-[var(--input-border)] rounded-xl text-sm resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)]"
+                patientContext={patientContext}
+              />
+              <div className="absolute top-1.5 right-1.5 z-10">
+                <VoiceRecorder
+                  onTranscript={(text) => {
+                    const base = preRecordAdditional || additional;
+                    setAdditional(base ? `${base}\n${text}` : text);
+                  }}
+                  onRecordingStart={() => setPreRecordAdditional(additional)}
+                  onInterimTranscript={(text) => {
+                    setAdditional(preRecordAdditional ? `${preRecordAdditional}\n${text}` : text);
+                  }}
+                />
+              </div>
+            </div>
           </div>
 
           {/* Past Documentation */}
@@ -271,7 +290,7 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
                   });
                   if (res.ok) {
                     onSaved();
-                    onClose();
+                    onNavigate();
                   }
                 } catch (error) {
                   console.error('Failed to generate:', error);

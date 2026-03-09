@@ -655,6 +655,57 @@ export async function getPatients(ctx: SheetsContext, sheetName?: string): Promi
   return patients;
 }
 
+/** Search patients across multiple sheets using a single batchGet call */
+export async function searchPatientsAcrossSheets(
+  ctx: SheetsContext,
+  sheetNames: string[],
+  query: string
+): Promise<Patient[]> {
+  if (sheetNames.length === 0) return [];
+  const needle = query.toLowerCase().trim();
+  if (!needle) return [];
+
+  const { sheets, spreadsheetId } = ctx;
+
+  // Fetch all sheets in a single batchGet call (instead of N sequential calls)
+  const ranges = sheetNames.map(s => `'${s}'!A${DATA_START_ROW}:AF200`);
+  const response = await sheets.spreadsheets.values.batchGet({
+    spreadsheetId,
+    ranges,
+  });
+
+  const results: Patient[] = [];
+  const valueRanges = response.data.valueRanges || [];
+
+  for (let si = 0; si < valueRanges.length; si++) {
+    const sheetName = sheetNames[si];
+    const rows = valueRanges[si].values || [];
+
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+      const name = row[COLUMNS.PATIENT_NAME]?.toString() || '';
+      const transcript = row[COLUMNS.TRANSCRIPT]?.toString() || '';
+
+      if (!name && !transcript) continue;
+
+      // Check search criteria
+      const diagnosis = row[COLUMNS.DIAGNOSIS]?.toString() || '';
+      const triageVitals = row[COLUMNS.TRIAGE_VITALS]?.toString() || '';
+      const firstTriageLine = triageVitals.split('\n')[0] || '';
+
+      if (
+        name.toLowerCase().includes(needle) ||
+        diagnosis.toLowerCase().includes(needle) ||
+        firstTriageLine.toLowerCase().includes(needle)
+      ) {
+        results.push(rowToPatient(row, i + DATA_START_ROW, sheetName));
+      }
+    }
+  }
+
+  return results;
+}
+
 /** Get a single patient by row index and sheet name (includes continuation rows for billing) */
 export async function getPatient(ctx: SheetsContext, rowIndex: number, sheetName?: string): Promise<Patient | null> {
   const sheet = sheetName || getTodaySheetName();
@@ -1010,6 +1061,143 @@ export async function deleteBillingCodeFromSheet(
     },
   });
   return true;
+}
+
+// --- Diagnosis Codes Sheet ---
+
+const DIAGNOSIS_CODES_SHEET = 'Diagnosis Codes';
+
+/** Ensure the "Diagnosis Codes" tab exists, creating it with headers if needed. Returns the sheetId. */
+async function ensureDiagnosisCodesSheet(ctx: SheetsContext): Promise<number> {
+  const { sheets, spreadsheetId } = ctx;
+  const spreadsheet = await sheets.spreadsheets.get({ spreadsheetId });
+  const existing = spreadsheet.data.sheets?.find(
+    (s: any) => s.properties.title === DIAGNOSIS_CODES_SHEET
+  );
+  if (existing) return existing.properties!.sheetId!;
+
+  const addRes = await sheets.spreadsheets.batchUpdate({
+    spreadsheetId,
+    requestBody: {
+      requests: [{ addSheet: { properties: { title: DIAGNOSIS_CODES_SHEET } } }],
+    },
+  });
+  const sheetId = addRes.data.replies![0].addSheet!.properties!.sheetId!;
+
+  // Write headers
+  await sheets.spreadsheets.values.update({
+    spreadsheetId,
+    range: `'${DIAGNOSIS_CODES_SHEET}'!A1:D1`,
+    valueInputOption: 'RAW',
+    requestBody: { values: [['Diagnosis', 'ICD-9', 'ICD-10', 'Count']] },
+  });
+
+  return sheetId;
+}
+
+/** Read all diagnosis codes from the "Diagnosis Codes" sheet. */
+export async function getDiagnosisCodes(ctx: SheetsContext): Promise<{ diagnosis: string; icd9: string; icd10: string; count: number }[]> {
+  const { sheets, spreadsheetId } = ctx;
+
+  const spreadsheet = await sheets.spreadsheets.get({ spreadsheetId });
+  const exists = spreadsheet.data.sheets?.some(
+    (s: any) => s.properties.title === DIAGNOSIS_CODES_SHEET
+  );
+  if (!exists) return [];
+
+  const response = await sheets.spreadsheets.values.get({
+    spreadsheetId,
+    range: `'${DIAGNOSIS_CODES_SHEET}'!A2:D500`,
+  });
+
+  const rows = response.data.values || [];
+  return rows
+    .filter((row: any[]) => row[0]?.toString().trim())
+    .map((row: any[]) => ({
+      diagnosis: row[0]?.toString().trim() || '',
+      icd9: row[1]?.toString().trim() || '',
+      icd10: row[2]?.toString().trim() || '',
+      count: parseInt(row[3]?.toString() || '0', 10) || 0,
+    }));
+}
+
+/** Find a diagnosis code by case-insensitive match on diagnosis name. */
+export async function findDiagnosisCode(ctx: SheetsContext, diagnosis: string): Promise<{ diagnosis: string; icd9: string; icd10: string } | null> {
+  const { sheets, spreadsheetId } = ctx;
+
+  const spreadsheet = await sheets.spreadsheets.get({ spreadsheetId });
+  const exists = spreadsheet.data.sheets?.some(
+    (s: any) => s.properties.title === DIAGNOSIS_CODES_SHEET
+  );
+  if (!exists) return null;
+
+  const response = await sheets.spreadsheets.values.get({
+    spreadsheetId,
+    range: `'${DIAGNOSIS_CODES_SHEET}'!A2:D500`,
+  });
+
+  const rows = response.data.values || [];
+  const needle = diagnosis.toLowerCase().trim();
+
+  for (const row of rows) {
+    const name = row[0]?.toString().trim() || '';
+    if (name.toLowerCase() === needle) {
+      return {
+        diagnosis: name,
+        icd9: row[1]?.toString().trim() || '',
+        icd10: row[2]?.toString().trim() || '',
+      };
+    }
+  }
+
+  return null;
+}
+
+/** Upsert a diagnosis code: update existing row (increment count) or append new row. */
+export async function upsertDiagnosisCode(
+  ctx: SheetsContext,
+  entry: { diagnosis: string; icd9: string; icd10: string }
+): Promise<void> {
+  if (!entry.diagnosis?.trim()) return;
+
+  const { sheets, spreadsheetId } = ctx;
+  await ensureDiagnosisCodesSheet(ctx);
+
+  const response = await sheets.spreadsheets.values.get({
+    spreadsheetId,
+    range: `'${DIAGNOSIS_CODES_SHEET}'!A2:D500`,
+  });
+
+  const rows = response.data.values || [];
+  const needle = entry.diagnosis.toLowerCase().trim();
+
+  const rowIndex = rows.findIndex(
+    (row: any[]) => (row[0]?.toString().trim() || '').toLowerCase() === needle
+  );
+
+  if (rowIndex !== -1) {
+    // Update existing row: overwrite codes and increment count
+    const sheetRow = rowIndex + 2; // +1 for header, +1 for 1-indexed
+    const currentCount = parseInt(rows[rowIndex][3]?.toString() || '0', 10) || 0;
+    await sheets.spreadsheets.values.update({
+      spreadsheetId,
+      range: `'${DIAGNOSIS_CODES_SHEET}'!A${sheetRow}:D${sheetRow}`,
+      valueInputOption: 'RAW',
+      requestBody: {
+        values: [[entry.diagnosis.trim(), entry.icd9, entry.icd10, (currentCount + 1).toString()]],
+      },
+    });
+  } else {
+    // Append new row
+    await sheets.spreadsheets.values.append({
+      spreadsheetId,
+      range: `'${DIAGNOSIS_CODES_SHEET}'!A:D`,
+      valueInputOption: 'RAW',
+      requestBody: {
+        values: [[entry.diagnosis.trim(), entry.icd9, entry.icd10, '1']],
+      },
+    });
+  }
 }
 
 // --- Style Guide Sheet ---

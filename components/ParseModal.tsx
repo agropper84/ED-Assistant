@@ -325,28 +325,31 @@ export function ParseModal({ isOpen, onClose, onSave }: ParseModalProps) {
 
           {/* Transcript */}
           <div>
-            <div className="flex items-center justify-between mb-1.5">
-              <label className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-widest">
-                Transcript
-              </label>
-              <VoiceRecorder
-                mode="encounter"
-                onTranscript={(text) => {
-                  const base = preRecordTranscript || transcript;
-                  setTranscript(base ? `${base}\n\n${text}` : text);
-                }}
-                onRecordingStart={() => setPreRecordTranscript(transcript)}
-                onInterimTranscript={(text) => {
-                  setTranscript(preRecordTranscript ? `${preRecordTranscript}\n\n${text}` : text);
-                }}
+            <label className="block text-xs font-semibold text-[var(--text-muted)] uppercase tracking-widest mb-1.5">
+              Transcript
+            </label>
+            <div className="relative">
+              <textarea
+                value={transcript}
+                onChange={(e) => setTranscript(e.target.value)}
+                placeholder="Audio transcript or dictation..."
+                className="w-full h-28 p-3 pr-16 border border-[var(--input-border)] rounded-xl text-sm resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)]"
               />
+              <div className="absolute top-1.5 right-1.5">
+                <VoiceRecorder
+                  mode="encounter"
+                  showUpload
+                  onTranscript={(text) => {
+                    const base = preRecordTranscript || transcript;
+                    setTranscript(base ? `${base}\n\n${text}` : text);
+                  }}
+                  onRecordingStart={() => setPreRecordTranscript(transcript)}
+                  onInterimTranscript={(text) => {
+                    setTranscript(preRecordTranscript ? `${preRecordTranscript}\n\n${text}` : text);
+                  }}
+                />
+              </div>
             </div>
-            <textarea
-              value={transcript}
-              onChange={(e) => setTranscript(e.target.value)}
-              placeholder="Audio transcript or dictation..."
-              className="w-full h-28 p-3 border border-[var(--input-border)] rounded-xl text-sm resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)]"
-            />
           </div>
 
           {/* Encounter Notes */}

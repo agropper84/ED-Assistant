@@ -256,14 +256,17 @@ export default function HomePage() {
     return d.getTime() === t.getTime();
   })();
 
+  const lastFetchRef = useRef(Date.now());
+
   const fetchPatients = async (showRefresh = false) => {
     if (showRefresh) setRefreshing(true);
     try {
-      const res = await fetch(`/api/patients?sheet=${encodeURIComponent(sheetName)}`);
+      const res = await fetch(`/api/patients?sheet=${encodeURIComponent(sheetName)}`, { cache: 'no-store' });
       if (res.status === 403) { window.location.href = '/pending'; return; }
       if (res.status === 401) { window.location.href = '/login'; return; }
       const data = await res.json();
       setPatients(data.patients || []);
+      lastFetchRef.current = Date.now();
       if (data.shiftTimes) {
         setShiftStart(data.shiftTimes.start || '');
         setShiftEnd(data.shiftTimes.end || '');
@@ -282,7 +285,7 @@ export default function HomePage() {
 
   const fetchSheets = async () => {
     try {
-      const res = await fetch('/api/patients?listSheets=1');
+      const res = await fetch('/api/patients?listSheets=1', { cache: 'no-store' });
       const data = await res.json();
       setAvailableSheets(data.sheets || []);
     } catch (error) {
@@ -294,6 +297,18 @@ export default function HomePage() {
     setLoading(true);
     fetchPatients();
     fetchSheets();
+  }, [sheetName]);
+
+  // Re-fetch when window regains focus (e.g. returning from patient detail page)
+  useEffect(() => {
+    const handleFocus = () => {
+      // Only re-fetch if at least 3 seconds since last fetch (avoid rapid re-fetches)
+      if (Date.now() - lastFetchRef.current > 3000) {
+        fetchPatients();
+      }
+    };
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
   }, [sheetName]);
 
   // Debounced cross-sheet search
@@ -309,7 +324,7 @@ export default function HomePage() {
     setSearching(true);
     searchDebounce.current = setTimeout(async () => {
       try {
-        const res = await fetch(`/api/patients?search=${encodeURIComponent(q)}`);
+        const res = await fetch(`/api/patients?search=${encodeURIComponent(q)}`, { cache: 'no-store' });
         if (res.status === 401) { window.location.href = '/login'; return; }
         const data = await res.json();
         setSearchResults(data.patients || []);
