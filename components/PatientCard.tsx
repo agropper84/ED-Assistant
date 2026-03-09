@@ -367,7 +367,7 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
       </button>
 
       {/* Right action icons — appear on hover */}
-      <div className="flex items-center gap-0.5 pr-2 flex-shrink-0 opacity-0 group-hover/card:opacity-100 transition-all duration-200 translate-x-2 group-hover/card:translate-x-0">
+      <div className="flex items-center gap-0.5 pr-2 flex-shrink-0 self-center opacity-0 group-hover/card:opacity-100 transition-all duration-200 translate-x-2 group-hover/card:translate-x-0">
 
         {/* Inline time editor */}
         {editingTime && (
