@@ -1231,6 +1231,7 @@ function InteractiveContent({
         .join(' ');
       const fullContext = partsToText(parts);
 
+      const templates = getPromptTemplates();
       const res = await fetch('/api/edit-text', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -1239,6 +1240,8 @@ function InteractiveContent({
           operation,
           hint: hint || undefined,
           context: fullContext,
+          expandInstructions: templates.editExpand,
+          shortenInstructions: templates.editShorten,
         }),
       });
       if (!res.ok) throw new Error('AI edit failed');
