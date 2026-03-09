@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSheetsContext, getPatient, updatePatientFields, clearPatientRow, saveBillingRows, upsertDiagnosisCode } from '@/lib/google-sheets';
+import { getSheetsContext, getPatient, updatePatientFields, clearPatientRow, saveBillingRows, upsertDiagnosisCode, movePatientToSheet } from '@/lib/google-sheets';
 
 // GET /api/patients/[rowIndex]?sheet=Mar+03,+2026
 export async function GET(
@@ -41,7 +41,13 @@ export async function PATCH(
     const ctx = await getSheetsContext();
     const rowIndex = parseInt(params.rowIndex);
     const body = await request.json();
-    const { _sheetName, _billingItems, _upsertDiagnosis, ...fields } = body;
+    const { _sheetName, _billingItems, _upsertDiagnosis, _moveToSheet, ...fields } = body;
+
+    // Move patient to a different date sheet
+    if (_moveToSheet) {
+      const result = await movePatientToSheet(ctx, rowIndex, _sheetName || '', _moveToSheet);
+      return NextResponse.json({ success: true, ...result });
+    }
 
     if (_billingItems) {
       // Multi-row billing save

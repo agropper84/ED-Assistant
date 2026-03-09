@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { Patient } from '@/lib/google-sheets';
-import { Clock, User, FileText, ChevronRight, Trash2, DollarSign, Stethoscope, Copy, Check, Brain, ClipboardList, BookOpen, Play, Loader2, X, MessageCircleQuestion, Merge } from 'lucide-react';
+import { Clock, User, FileText, ChevronRight, Trash2, DollarSign, Stethoscope, Copy, Check, Brain, ClipboardList, BookOpen, Play, Loader2, X, MessageCircleQuestion, Merge, CalendarDays } from 'lucide-react';
 
 interface PatientCardProps {
   patient: Patient;
@@ -18,6 +18,7 @@ interface PatientCardProps {
   onUpdateFields?: (fields: Record<string, string>) => Promise<void>;
   onClinicalChat?: () => void;
   onMerge?: () => void;
+  onDateChange?: (newSheetName: string) => void;
 }
 
 /** Convert a full name to initials, e.g. "John Smith" → "J.S." */
@@ -33,7 +34,7 @@ function toInitials(name: string): string {
 // Unified empty-state color for unfilled icons
 const EMPTY = 'text-slate-300 dark:text-slate-600';
 
-export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChange, onBillingToggle, billingCodes, onNavigate, onProcess, onGenerateAnalysis, onUpdateFields, onClinicalChat, onMerge }: PatientCardProps) {
+export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChange, onBillingToggle, billingCodes, onNavigate, onProcess, onGenerateAnalysis, onUpdateFields, onClinicalChat, onMerge, onDateChange }: PatientCardProps) {
   const [editingTime, setEditingTime] = useState(false);
   const [timeValue, setTimeValue] = useState(patient.timestamp || '');
   const [noteCopied, setNoteCopied] = useState(false);
@@ -47,6 +48,7 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
   const [editHcn, setEditHcn] = useState('');
   const [editMrn, setEditMrn] = useState('');
   const [savingDemo, setSavingDemo] = useState(false);
+  const dateInputRef = useRef<HTMLInputElement>(null);
 
   const hasEncounterNote = !!(patient.hpi || patient.objective || patient.assessmentPlan);
   const hasAnalysis = !!(patient.synopsis || patient.management || patient.evidence);
@@ -309,16 +311,44 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
         {/* Bottom row: metadata */}
         <div className="flex items-center gap-4 text-sm text-[var(--text-muted)]">
           {patient.timestamp && !editingTime && (
-            <span
-              className="flex items-center gap-1 hover:text-blue-500 dark:hover:text-blue-400 cursor-pointer transition-colors"
-              onClick={(e) => {
-                e.stopPropagation();
-                setTimeValue(patient.timestamp);
-                setEditingTime(true);
-              }}
-            >
-              <Clock className="w-3.5 h-3.5" />
-              {patient.timestamp}
+            <span className="flex items-center gap-1">
+              <span
+                className="flex items-center gap-1 hover:text-blue-500 dark:hover:text-blue-400 cursor-pointer transition-colors"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setTimeValue(patient.timestamp);
+                  setEditingTime(true);
+                }}
+              >
+                <Clock className="w-3.5 h-3.5" />
+                {patient.timestamp}
+              </span>
+              {onDateChange && (
+                <span
+                  className="hover:text-blue-500 dark:hover:text-blue-400 cursor-pointer transition-colors"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    dateInputRef.current?.showPicker();
+                  }}
+                  title="Move to different date"
+                >
+                  <CalendarDays className="w-3.5 h-3.5" />
+                  <input
+                    ref={dateInputRef}
+                    type="date"
+                    className="sr-only"
+                    onChange={(e) => {
+                      if (!e.target.value) return;
+                      const [y, m, d] = e.target.value.split('-').map(Number);
+                      const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+                      const newSheet = `${months[m - 1]} ${d.toString().padStart(2, '0')}, ${y}`;
+                      if (newSheet !== patient.sheetName) {
+                        onDateChange(newSheet);
+                      }
+                    }}
+                  />
+                </span>
+              )}
             </span>
           )}
           {(patient.age || patient.gender) && (

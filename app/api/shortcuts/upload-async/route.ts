@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createHash, randomBytes } from 'crypto';
+import { put } from '@vercel/blob';
 import { getShortcutTokenUser, addPendingAudio } from '@/lib/kv';
 
 function sha256(input: string): string {
@@ -7,6 +8,7 @@ function sha256(input: string): string {
 }
 
 // POST /api/shortcuts/upload-async — Queue audio for background processing
+// Stores audio in Vercel Blob (up to 500MB), metadata in KV
 // Returns immediately so the watch doesn't time out
 export async function POST(request: NextRequest) {
   try {
@@ -36,22 +38,23 @@ export async function POST(request: NextRequest) {
     const append = formData.get('append') === 'true';
     const mode = (formData.get('mode') as string) || 'transcribe';
 
-    // Convert audio to base64 for KV storage
-    const audioBuffer = await audioFile.arrayBuffer();
-    const audioBase64 = Buffer.from(audioBuffer).toString('base64');
-
-    // Check size — KV limit is ~1MB, base64 adds ~33% overhead
-    if (audioBase64.length > 900000) {
-      return NextResponse.json({ error: 'Audio too large for async upload. Try a shorter recording.' }, { status: 413 });
-    }
-
     const id = randomBytes(16).toString('hex');
+    const filename = audioFile.name || 'recording.m4a';
 
+    // Upload audio to Vercel Blob (public store)
+    const blobToken = process.env.ed_audio_blob_public_READ_WRITE_TOKEN || process.env.BLOB_READ_WRITE_TOKEN;
+    const blob = await put(`pending-audio/${id}/${filename}`, audioFile, {
+      access: 'public',
+      addRandomSuffix: false,
+      token: blobToken,
+    });
+
+    // Store metadata in KV (no audio data — just the blob URL)
     await addPendingAudio({
       id,
       userId,
-      audioBase64,
-      filename: audioFile.name || 'recording.m4a',
+      blobUrl: blob.url,
+      filename,
       rowIndex: rowIndexStr ? parseInt(rowIndexStr, 10) : undefined,
       sheetName: sheetName || undefined,
       append,

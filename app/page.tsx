@@ -44,7 +44,7 @@ function formatDateDisplay(date: Date): string {
   return formatDateForSheet(date);
 }
 
-// Away screen photos — landscape, wildlife, comedy wildlife (Unsplash)
+// Away screen photos — landscape, wildlife, space, underwater, architecture, comedy (Unsplash)
 const AWAY_PHOTOS = [
   // Landscapes
   'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=1920&q=80', // alpine mountains
@@ -62,6 +62,25 @@ const AWAY_PHOTOS = [
   'https://images.unsplash.com/photo-1490730141103-6cac27aaab94?w=1920&q=80', // sunset silhouette
   'https://images.unsplash.com/photo-1419242902214-272b3f66ee7a?w=1920&q=80', // starry night sky
   'https://images.unsplash.com/photo-1509316975850-ff9c5deb0cd9?w=1920&q=80', // pine trees
+  'https://images.unsplash.com/photo-1520262454473-a1a82276a574?w=1920&q=80', // lavender fields
+  'https://images.unsplash.com/photo-1509023464722-18d996393ca8?w=1920&q=80', // dark stormy sky
+  'https://images.unsplash.com/photo-1531366936337-7c912a4589a7?w=1920&q=80', // northern lights
+  'https://images.unsplash.com/photo-1494500764479-0c8f2919a3d8?w=1920&q=80', // misty forest path
+  'https://images.unsplash.com/photo-1542224566-6e85f2e6772f?w=1920&q=80', // snowy mountains
+  'https://images.unsplash.com/photo-1586348943529-beaae6c28db9?w=1920&q=80', // cherry blossoms
+  'https://images.unsplash.com/photo-1505228395891-9a51e7e86bf6?w=1920&q=80', // iceland waterfall
+  'https://images.unsplash.com/photo-1473580044384-7ba9967e16a0?w=1920&q=80', // wheat field sunset
+  // Space & cosmos
+  'https://images.unsplash.com/photo-1462331940025-496dfbfc7564?w=1920&q=80', // nebula
+  'https://images.unsplash.com/photo-1446776811953-b23d57bd21aa?w=1920&q=80', // earth from space
+  'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=1920&q=80', // earth night lights
+  'https://images.unsplash.com/photo-1543722530-d2c3201371e7?w=1920&q=80', // galaxy
+  'https://images.unsplash.com/photo-1507400492013-162706c8c05e?w=1920&q=80', // milky way over mountains
+  // Underwater
+  'https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=1920&q=80', // sea turtle
+  'https://images.unsplash.com/photo-1546026423-cc4642628d2b?w=1920&q=80', // jellyfish
+  'https://images.unsplash.com/photo-1559827260-dc66d52bef19?w=1920&q=80', // whale shark
+  'https://images.unsplash.com/photo-1682687220742-aba13b6e50ba?w=1920&q=80', // coral reef
   // Wildlife
   'https://images.unsplash.com/photo-1474511320723-9a56873571b7?w=1920&q=80', // eagle soaring
   'https://images.unsplash.com/photo-1535338454528-1b5f0e27c1df?w=1920&q=80', // fox in snow
@@ -73,15 +92,30 @@ const AWAY_PHOTOS = [
   'https://images.unsplash.com/photo-1543946207-39bd91e70ca7?w=1920&q=80', // sleeping cat
   'https://images.unsplash.com/photo-1452857297128-d9c29adba80b?w=1920&q=80', // owl portrait
   'https://images.unsplash.com/photo-1497752531616-c3afd9760a11?w=1920&q=80', // raccoon
+  'https://images.unsplash.com/photo-1504006833117-8886a355efbf?w=1920&q=80', // lion portrait
+  'https://images.unsplash.com/photo-1437622368342-7a3d73a34c8f?w=1920&q=80', // sea turtle swimming
+  'https://images.unsplash.com/photo-1557008075-7f2c5b029e3f?w=1920&q=80', // polar bear
+  'https://images.unsplash.com/photo-1540979388789-6cee28a1cdc9?w=1920&q=80', // flamingos
+  'https://images.unsplash.com/photo-1459262838948-3e2de6c1ec80?w=1920&q=80', // hummingbird
+  'https://images.unsplash.com/photo-1474314170901-f351b68f544f?w=1920&q=80', // red panda
+  // Architecture & travel
+  'https://images.unsplash.com/photo-1499856871958-5b9627545d1a?w=1920&q=80', // paris eiffel tower
+  'https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?w=1920&q=80', // kyoto temple
+  'https://images.unsplash.com/photo-1523978591478-c753949ff840?w=1920&q=80', // santorini
+  'https://images.unsplash.com/photo-1512453979798-5ea266f8880c?w=1920&q=80', // dubai skyline
   // Comedy / fun wildlife
   'https://images.unsplash.com/photo-1517849845537-4d257902454a?w=1920&q=80', // goofy dog close-up
   'https://images.unsplash.com/photo-1518020382113-a7e8fc38eac9?w=1920&q=80', // pug with tongue out
   'https://images.unsplash.com/photo-1537151625747-768eb6cf92b2?w=1920&q=80', // happy dog smiling
   'https://images.unsplash.com/photo-1583511655857-d19b40a7a54e?w=1920&q=80', // dog with sunglasses
   'https://images.unsplash.com/photo-1415369629372-26f2fe60c467?w=1920&q=80', // otter floating
+  'https://images.unsplash.com/photo-1574158622682-e40e69881006?w=1920&q=80', // cat staring intensely
+  'https://images.unsplash.com/photo-1533738363-b7f9aef128ce?w=1920&q=80', // cat with sunglasses
+  'https://images.unsplash.com/photo-1587300003388-59208cc962cb?w=1920&q=80', // golden retriever puppy
+  'https://images.unsplash.com/photo-1548247416-ec66f4900b2e?w=1920&q=80', // squirrel eating
 ];
 
-// Fun facts and jokes for the away screen
+// Fun facts, jokes, observations, and tidbits for the away screen
 const AWAY_FUN = [
   // Medical humor
   "Why did the doctor carry a red pen? In case they needed to draw blood.",
@@ -94,6 +128,24 @@ const AWAY_FUN = [
   "Ortho consult note: \"Bones appear bony.\"",
   "Radiology called. They want to know if the patient has any history of being alive.",
   "\"Stat\" is Latin for \"whenever you get around to it\" in some departments.",
+  "The psychiatrist's office called. They said you're overthinking it.",
+  "A patient told the ER doc they swallowed a bunch of Scrabble tiles. The doc said the next bowel movement could spell disaster.",
+  "The surgical resident's three food groups: caffeine, carbs, and regret.",
+  "\"Patient states they Googled their symptoms and are pretty sure it's either a cold or a rare tropical disease.\"",
+  "The difference between ER and urgent care is about $3,000 and a 4-hour wait.",
+  "No one is more honest about their alcohol intake than a patient about to get a CT with contrast.",
+  "\"Pain 10/10\" \u2014 typed while scrolling TikTok and eating Doritos.",
+  "The three certainties in life: death, taxes, and someone in the waiting room who \"just has a quick question.\"",
+  "An ER doc's love language is discharge paperwork.",
+  "Pediatric ER rule: the louder the kid screams, the more likely they're fine.",
+
+  // ER life observations
+  "The shift that you think will be quiet is never quiet. You just jinxed it by thinking that.",
+  "Coffee doesn't ask silly questions. Coffee understands.",
+  "Your stethoscope is only around your neck when you don't need it. It vanishes the moment you do.",
+  "Nothing humbles you quite like a 3am trauma call on a night you were considering leaving early.",
+  "The best part about a night shift is the sunrise. The worst part is everything before it.",
+  "Somewhere out there, a patient is describing their pain as \"a 15 out of 10\" and the triage nurse hasn't blinked.",
 
   // Genuinely interesting medical/science facts
   "Your body produces about 3.8 million cells every second. By the time you finish reading this, you've made about 20 million new ones.",
@@ -113,19 +165,69 @@ const AWAY_FUN = [
   "Fingernails grow about 3.5 mm per month, roughly 4 times faster than toenails.",
   "Your body has about 96,000 km (60,000 miles) of blood vessels.",
   "The small intestine is about 6 meters (20 feet) long \u2014 roughly 3 times the height of an average person.",
-  "Humans can survive without food for weeks, but only about 3 days without water.",
   "The strongest muscle in the human body, relative to its size, is the masseter (jaw muscle).",
   "Your eyes can distinguish approximately 10 million different colors.",
   "Pound for pound, bone is stronger than steel. A cubic inch of bone can bear a load of 8,600 kg (19,000 lbs).",
   "The liver is the only organ that can completely regenerate. You can lose 75% of it and it will grow back.",
   "Astronauts can grow up to 5 cm (2 inches) taller in space because the spine expands without gravity.",
+  "The total length of DNA in all your cells would stretch from the Earth to the Sun and back about 600 times.",
+  "Your body contains about 0.2 mg of gold, mostly in your blood.",
+  "Nerve impulses travel at up to 430 km/h (268 mph) \u2014 faster than a Formula 1 car.",
+  "The human heart beats about 100,000 times per day, pumping roughly 7,500 litres of blood.",
+  "You produce about 1 litre of saliva per day \u2014 enough to fill two swimming pools in a lifetime.",
+  "The surface area of the lungs, if flattened out, would cover roughly half a tennis court.",
+  "Humans are bioluminescent \u2014 we glow in the dark, but the light is 1,000 times too faint for our eyes to detect.",
+  "Your brain generates about 12-25 watts of electricity \u2014 enough to power a dim LED bulb.",
+  "The human skeleton is completely replaced roughly every 10 years through bone remodelling.",
+  "You can't hum while holding your nose. (Go ahead, try it.)",
+
+  // History of medicine
+  "Before anaesthesia was discovered in 1846, the best surgeons were the fastest. Robert Liston could amputate a leg in 28 seconds.",
+  "Ancient Egyptians used mouldy bread on wounds \u2014 accidentally harnessing penicillin-like compounds 3,000 years before Fleming.",
+  "The stethoscope was invented in 1816 because Ren\u00e9 Laennec felt awkward pressing his ear to a young woman's chest.",
+  "Bloodletting was a standard medical treatment for over 2,000 years, only falling out of favour in the late 1800s.",
+  "The first successful human-to-human blood transfusion was performed in 1818 by James Blundell, an obstetrician.",
+  "Listerine was originally marketed as a surgical antiseptic in 1879, then as a floor cleaner, then as a mouthwash.",
+  "X-rays were discovered accidentally in 1895. Within a year, they were being used to find bullets in wounded soldiers.",
+
+  // Nature & animals
   "Octopuses have three hearts: two pump blood to the gills, and one pumps it to the rest of the body.",
   "A single bolt of lightning contains enough energy to toast about 100,000 slices of bread.",
   "Honey never spoils. Edible honey has been found in 3,000-year-old Egyptian tombs.",
   "There are more possible chess games than atoms in the observable universe.",
   "Tardigrades (water bears) can survive in the vacuum of space, extreme radiation, and temperatures from -272\u00b0C to 150\u00b0C.",
   "A day on Venus is longer than a year on Venus \u2014 it takes 243 Earth days to rotate but only 225 to orbit the sun.",
-  "The total length of DNA in all your cells would stretch from the Earth to the Sun and back about 600 times.",
+  "Crows can recognize individual human faces and hold grudges for years. They also tell other crows about you.",
+  "Sea otters hold hands while sleeping so they don't drift apart. They also have a favourite rock they keep in a skin pouch.",
+  "A group of flamingos is called a \"flamboyance.\" A group of pugs is called a \"grumble.\"",
+  "Dolphins have names for each other and will respond when called by their specific whistle.",
+  "The mantis shrimp can punch with the force of a .22 calibre bullet and sees 16 types of colour receptors (humans have 3).",
+  "Trees in a forest share nutrients through underground fungal networks, sometimes called the \"wood wide web.\"",
+  "Wombat poop is cube-shaped. Scientists spent years figuring out why. (It prevents the poop from rolling away to mark territory.)",
+  "Cats have over 20 different vocalizations, but they mostly only meow to communicate with humans, not other cats.",
+  "A blue whale's heart is the size of a golf cart, and a child could crawl through its arteries.",
+
+  // Space & physics
+  "If the Sun were the size of a front door, Earth would be the size of a nickel.",
+  "There are more stars in the observable universe than grains of sand on all of Earth's beaches.",
+  "Neutron stars are so dense that a teaspoon of one would weigh about 6 billion tonnes.",
+  "Saturn would float if you could find a bathtub big enough \u2014 it's less dense than water.",
+  "The Great Wall of China is NOT visible from space with the naked eye, but greenhouse farms in Spain are.",
+  "Light from the Sun takes about 8 minutes to reach Earth. You're always seeing the Sun as it was 8 minutes ago.",
+  "If you could fold a piece of paper 42 times, it would reach the Moon.",
+
+  // Philosophy & perspective
+  "Every person you've ever seen in a dream is someone your brain has actually encountered, even in passing.",
+  "The average person spends about 2 weeks of their lifetime waiting for traffic lights to change.",
+  "You are the result of 4 billion years of evolutionary success. Act like it.",
+  "There are people walking around right now whose names will be in future history books.",
+  "Oxford University is older than the Aztec Empire. Classes started in 1096; the Aztecs founded Tenochtitl\u00e1n in 1325.",
+  "Cleopatra lived closer in time to the Moon landing than to the building of the Great Pyramid.",
+  "If the Earth's history were compressed into 24 hours, humans would appear at 11:58:43 PM.",
+  "You are made of the same atoms that were forged in the cores of dying stars billions of years ago.",
+  "A \"jiffy\" is an actual unit of time: 1/100th of a second.",
+  "The inventor of the Pringles can is buried in one. (His name was Fredric Baur.)",
+  "The average cloud weighs about 500,000 kg (1.1 million lbs). They float because the air below them is even heavier.",
 ];
 
 export default function HomePage() {
@@ -636,6 +738,19 @@ export default function HomePage() {
     }
   };
 
+  const handleDateChange = async (patient: Patient, newSheetName: string) => {
+    try {
+      await fetch(`/api/patients/${patient.rowIndex}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ _moveToSheet: newSheetName, _sheetName: patient.sheetName }),
+      });
+      fetchPatients();
+    } catch (error) {
+      console.error('Failed to move patient:', error);
+    }
+  };
+
   const handleDashboardBillingSave = async (patient: Patient, items: BillingItem[], comments?: string) => {
     try {
       await fetch(`/api/patients/${patient.rowIndex}`, {
@@ -705,6 +820,7 @@ export default function HomePage() {
           }}
           onClinicalChat={() => setChatPatient(patient)}
           onMerge={() => setMergeSource(patient)}
+          onDateChange={(newSheet) => handleDateChange(patient, newSheet)}
         />
         {isBillingOpen && (
           <div className="mt-1 ml-0">

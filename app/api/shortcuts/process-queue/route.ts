@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import OpenAI from 'openai';
+import { del as deleteBlob } from '@vercel/blob';
 import { getSessionFromCookies } from '@/lib/session';
 import {
   getPendingAudioIds,
@@ -51,6 +52,14 @@ export async function POST() {
     const result = await processOne(pending);
     await deletePendingAudio(id, session.userId);
 
+    // Clean up blob storage
+    try {
+      const blobToken = process.env.ed_audio_blob_public_READ_WRITE_TOKEN || process.env.BLOB_READ_WRITE_TOKEN;
+      await deleteBlob(pending.blobUrl, { token: blobToken });
+    } catch (e) {
+      console.warn('Failed to delete blob:', e);
+    }
+
     return NextResponse.json({
       processed: 1,
       remaining: pendingIds.length - 1,
@@ -96,8 +105,9 @@ export async function GET() {
 }
 
 async function processOne(pending: PendingAudio): Promise<{ transcript: string; mode: string }> {
-  // 1. Transcribe audio
-  const audioBuffer = Buffer.from(pending.audioBase64, 'base64');
+  // 1. Fetch audio from Blob and transcribe
+  const audioResponse = await fetch(pending.blobUrl);
+  const audioBuffer = Buffer.from(await audioResponse.arrayBuffer());
   const audioFile = new File([audioBuffer], pending.filename, { type: 'audio/m4a' });
 
   const transcription = await getOpenAI().audio.transcriptions.create({
