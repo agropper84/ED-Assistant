@@ -85,10 +85,10 @@
   --row-hover: rgba(59,130,246,0.06);
   --card-hover-border: rgba(59,130,246,0.22);
 
-  /* Status card tint — wide atmospheric glow for dark */
-  --status-new: linear-gradient(to right, rgba(96,165,250,0.12) 0%, transparent 45%), var(--card-bg);
-  --status-pending: linear-gradient(to right, rgba(251,191,36,0.12) 0%, transparent 45%), var(--card-bg);
-  --status-processed: linear-gradient(to right, rgba(52,211,153,0.12) 0%, transparent 45%), var(--card-bg);
+  /* Status card tint — symmetric subtle glow for dark */
+  --status-new: linear-gradient(to right, rgba(96,165,250,0.10) 0%, rgba(96,165,250,0.04) 30%, rgba(96,165,250,0.04) 70%, rgba(96,165,250,0.10) 100%), var(--card-bg);
+  --status-pending: linear-gradient(to right, rgba(251,191,36,0.10) 0%, rgba(251,191,36,0.04) 30%, rgba(251,191,36,0.04) 70%, rgba(251,191,36,0.10) 100%), var(--card-bg);
+  --status-processed: linear-gradient(to right, rgba(52,211,153,0.10) 0%, rgba(52,211,153,0.04) 30%, rgba(52,211,153,0.04) 70%, rgba(52,211,153,0.10) 100%), var(--card-bg);
 
   /* Dashboard header gradient — deep navy palette */
   --dash-header-from: #060e24;
