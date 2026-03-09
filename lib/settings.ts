@@ -60,8 +60,9 @@ export const DEFAULT_PROMPT_TEMPLATES: PromptTemplates = {
   objective: `Physical examination findings ONLY. Use this format for normal exam:
 "Patient appears well, NAD. AVSS."
 Then include ONLY pertinent exam findings that were actually documented or mentioned. If no exam documented, state "Physical examination not documented."`,
-  assessmentPlan: `Diagnosis or working diagnosis (e.g., Appendicitis, Otitis Media, Abdo Pain NYD).
-Summarize assessment leading to diagnosis. Include differential if applicable.
+  assessmentPlan: `Do NOT start with the diagnosis name (it is displayed separately above).
+Begin directly with the clinical rationale and assessment supporting the diagnosis.
+Include differential if applicable.
 Document management plan: investigations ordered, treatments given.
 Document that appropriate red flags were ruled out.
 Include return to ED instructions.
