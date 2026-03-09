@@ -801,6 +801,55 @@ export default function SettingsPage() {
               />
             </div>
 
+            {/* Inline Edit Instructions */}
+            <h3 className="font-semibold text-[var(--text-primary)] text-sm">Inline Edit Instructions</h3>
+            <p className="text-xs text-[var(--text-muted)] -mt-4">Customize how &quot;Add Detail&quot; and &quot;Shorten&quot; behave when editing sentences in the encounter note.</p>
+            {([
+              { key: 'editExpand' as const, label: 'Add Detail' },
+              { key: 'editShorten' as const, label: 'Shorten' },
+            ]).map(({ key, label }) => {
+              const isExpanded = expandedPromptSections.has(key);
+              return (
+                <div key={key} className="bg-[var(--card-bg)] rounded-2xl border border-[var(--card-border)] overflow-hidden" style={{ boxShadow: 'var(--card-shadow)' }}>
+                  <button
+                    onClick={() => {
+                      const next = new Set(expandedPromptSections);
+                      if (next.has(key)) next.delete(key);
+                      else next.add(key);
+                      setExpandedPromptSections(next);
+                    }}
+                    className="w-full flex items-center justify-between px-5 py-3 hover:bg-[var(--bg-tertiary)] transition-colors"
+                  >
+                    <div className="flex items-center gap-2">
+                      <ChevronRight className={`w-4 h-4 text-[var(--text-muted)] transition-transform ${isExpanded ? 'rotate-90' : ''}`} />
+                      <h4 className="font-medium text-sm text-[var(--text-primary)]">{label}</h4>
+                    </div>
+                    {promptTemplates[key] !== DEFAULT_PROMPT_TEMPLATES[key] && (
+                      <span className="text-xs text-blue-600 dark:text-blue-400 font-medium">Modified</span>
+                    )}
+                  </button>
+                  {isExpanded && (
+                    <div className="border-t border-[var(--border)] px-5 py-4 space-y-2">
+                      <textarea
+                        value={promptTemplates[key]}
+                        onChange={(e) => handlePromptChange(key, e.target.value)}
+                        className="w-full h-32 p-3 border border-[var(--input-border)] rounded-lg text-sm resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)] font-mono text-xs leading-relaxed"
+                      />
+                      <div className="flex justify-end">
+                        <button
+                          onClick={() => handlePromptChange(key, DEFAULT_PROMPT_TEMPLATES[key])}
+                          className="flex items-center gap-1 px-2 py-1 text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] rounded-lg text-xs transition-colors"
+                        >
+                          <RotateCcw className="w-3 h-3" />
+                          Reset to Default
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+
             {/* Section Instructions */}
             <h3 className="font-semibold text-[var(--text-primary)] text-sm">Section Instructions</h3>
             {([

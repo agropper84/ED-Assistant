@@ -40,6 +40,8 @@ export interface PromptTemplates {
   objective: string;
   assessmentPlan: string;
   diagnosis: string;
+  editExpand: string;
+  editShorten: string;
 }
 
 export const DEFAULT_PROMPT_TEMPLATES: PromptTemplates = {
@@ -65,6 +67,8 @@ Document that appropriate red flags were ruled out.
 Include return to ED instructions.
 Use paragraph/narrative form only. No bullet points.`,
   diagnosis: `Primary diagnosis only - use common, general terms`,
+  editExpand: `Rewrite ONLY the selected text with more detail incorporated. Keep the same clinical voice and style. Do not add information that wouldn't be known from the context. Output ONLY the rewritten text, nothing else.`,
+  editShorten: `Make this more concise while preserving all clinically important information. Remove unnecessary words and redundancy. Keep the same professional tone. Output ONLY the shortened text, nothing else.`,
 };
 
 const PROMPTS_STORAGE_KEY = 'ed-app-prompts';
