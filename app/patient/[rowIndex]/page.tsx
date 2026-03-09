@@ -668,14 +668,14 @@ export default function PatientPage() {
                           setRegeneratingAp(true);
                           try {
                             await handleSaveField('apNotes', apNotes);
-                            await handleRegenerateSection('assessmentPlan', apNotes);
+                            await handleProcess(apNotes);
                           } catch (err) {
-                            console.error('Failed to regenerate A&P with notes:', err);
+                            console.error('Failed to regenerate note with physician notes:', err);
                           } finally {
                             setRegeneratingAp(false);
                           }
                         }}
-                        disabled={regeneratingAp || !apNotes.trim()}
+                        disabled={regeneratingAp || processing || !apNotes.trim()}
                         className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg bg-amber-600 dark:bg-amber-500 text-white hover:bg-amber-700 dark:hover:bg-amber-600 disabled:opacity-50 active:scale-[0.97] transition-all"
                       >
                         {regeneratingAp ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
