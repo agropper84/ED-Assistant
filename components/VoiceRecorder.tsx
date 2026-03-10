@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { Mic, Loader2, Upload } from 'lucide-react';
+import { Mic, Loader2, Upload, RotateCcw } from 'lucide-react';
+import { getSettings } from '@/lib/settings';
 
 type RecorderState = 'idle' | 'recording' | 'transcribing' | 'error';
 
@@ -54,6 +55,17 @@ export function VoiceRecorder({
   const analyserRef = useRef<AnalyserNode | null>(null);
   const stoppingRef = useRef(false);
 
+  // Feature 2: Audio level visualization
+  const [audioLevel, setAudioLevel] = useState(0);
+  const animFrameRef = useRef<number | null>(null);
+
+  // Feature 3: Undo last segment
+  const segmentTextsRef = useRef<string[]>([]);
+  const [canUndo, setCanUndo] = useState(false);
+
+  // Feature 4: Fast dictation setting
+  const fastDictationRef = useRef(false);
+
   // Stable callback refs for use inside streaming closures
   const onInterimRef = useRef(onInterimTranscript);
   onInterimRef.current = onInterimTranscript;
@@ -62,6 +74,11 @@ export function VoiceRecorder({
 
   // Use streaming when dictation mode + caller wants interim updates
   const useStreaming = mode === 'dictation' && !!onInterimTranscript;
+
+  // Load fast dictation setting on mount
+  useEffect(() => {
+    fastDictationRef.current = getSettings().fastDictation;
+  }, []);
 
   // Clear error after 3 seconds
   useEffect(() => {
@@ -76,6 +93,7 @@ export function VoiceRecorder({
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
       if (silenceCheckRef.current) clearInterval(silenceCheckRef.current);
+      if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
       if (audioContextRef.current) {
         try { audioContextRef.current.close(); } catch {}
       }
@@ -98,6 +116,40 @@ export function VoiceRecorder({
     return mime.includes('mp4') ? 'mp4' : 'webm';
   };
 
+  // --- Audio level visualization ---
+
+  const startAudioLevelViz = useCallback((analyser: AnalyserNode) => {
+    const dataArray = new Float32Array(analyser.fftSize);
+    const tick = () => {
+      analyser.getFloatTimeDomainData(dataArray);
+      let sum = 0;
+      for (let i = 0; i < dataArray.length; i++) sum += dataArray[i] * dataArray[i];
+      const rms = Math.sqrt(sum / dataArray.length);
+      // Normalize: typical speech RMS 0.01-0.15 → 0-1
+      setAudioLevel(Math.min(1, rms / 0.12));
+      animFrameRef.current = requestAnimationFrame(tick);
+    };
+    animFrameRef.current = requestAnimationFrame(tick);
+  }, []);
+
+  const stopAudioLevelViz = useCallback(() => {
+    if (animFrameRef.current) {
+      cancelAnimationFrame(animFrameRef.current);
+      animFrameRef.current = null;
+    }
+    setAudioLevel(0);
+  }, []);
+
+  // --- Undo last segment ---
+
+  const undoLastSegment = useCallback(() => {
+    if (segmentTextsRef.current.length === 0) return;
+    segmentTextsRef.current.pop();
+    accumulatedTextRef.current = segmentTextsRef.current.join('\n');
+    setCanUndo(segmentTextsRef.current.length > 0);
+    onInterimRef.current?.(accumulatedTextRef.current);
+  }, []);
+
   // --- Streaming dictation helpers ---
 
   /** Start a new MediaRecorder segment on the existing stream */
@@ -114,26 +166,46 @@ export function VoiceRecorder({
     segmentStartRef.current = Date.now();
   }, []);
 
-  /** Send a blob to /api/transcribe and accumulate the result */
+  /** Send a blob to /api/transcribe and accumulate the result (with retry) */
   const processSegmentBlob = useCallback(async (blob: Blob) => {
     pendingCountRef.current++;
     setSegmentsProcessing(c => c + 1);
     try {
-      const formData = new FormData();
-      formData.append('audio', blob, `segment.${getFileExtension(mimeTypeRef.current)}`);
-      formData.append('mode', 'dictation');
-      const res = await fetch('/api/transcribe', { method: 'POST', body: formData });
-      if (res.ok) {
-        const { text } = await res.json();
-        if (text?.trim()) {
-          accumulatedTextRef.current = accumulatedTextRef.current
-            ? `${accumulatedTextRef.current}\n${text.trim()}`
-            : text.trim();
-          onInterimRef.current?.(accumulatedTextRef.current);
+      let lastError: unknown;
+      for (let attempt = 0; attempt < 2; attempt++) {
+        try {
+          // Recreate FormData on each attempt (fetch consumes the body)
+          const formData = new FormData();
+          formData.append('audio', blob, `segment.${getFileExtension(mimeTypeRef.current)}`);
+          formData.append('mode', 'dictation');
+          // Feature 1: context carry-forward
+          if (accumulatedTextRef.current) {
+            formData.append('context', accumulatedTextRef.current);
+          }
+          // Feature 4: skip medicalization
+          if (fastDictationRef.current) {
+            formData.append('skipMedicalize', 'true');
+          }
+          const res = await fetch('/api/transcribe', { method: 'POST', body: formData });
+          if (res.ok) {
+            const { text } = await res.json();
+            if (text?.trim()) {
+              const trimmed = text.trim();
+              accumulatedTextRef.current = accumulatedTextRef.current
+                ? `${accumulatedTextRef.current}\n${trimmed}`
+                : trimmed;
+              segmentTextsRef.current.push(trimmed);
+              setCanUndo(true);
+              onInterimRef.current?.(accumulatedTextRef.current);
+            }
+          }
+          return; // success — exit retry loop
+        } catch (err) {
+          lastError = err;
+          if (attempt === 0) await new Promise(r => setTimeout(r, 500));
         }
       }
-    } catch (err) {
-      console.error('Segment transcription error:', err);
+      console.error('Segment transcription error after retries:', lastError);
     } finally {
       pendingCountRef.current--;
       setSegmentsProcessing(c => Math.max(0, c - 1));
@@ -250,6 +322,9 @@ export function VoiceRecorder({
 
   const startRecording = useCallback(async () => {
     try {
+      // Reload fast dictation setting each recording
+      fastDictationRef.current = getSettings().fastDictation;
+
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
       const mimeType = getMimeType();
@@ -260,6 +335,8 @@ export function VoiceRecorder({
       if (useStreaming) {
         // --- Streaming dictation mode ---
         accumulatedTextRef.current = '';
+        segmentTextsRef.current = [];
+        setCanUndo(false);
         stoppingRef.current = false;
         startSegment();
 
@@ -267,8 +344,14 @@ export function VoiceRecorder({
         setState('recording');
         timerRef.current = setInterval(() => setElapsed(s => s + 1), 1000);
 
-        // Start adaptive silence detection
+        // Start adaptive silence detection (also sets up analyserRef)
         startSilenceDetection(stream);
+
+        // Start audio level visualization using the analyser from silence detection
+        // Delay slightly to let startSilenceDetection create the analyser
+        setTimeout(() => {
+          if (analyserRef.current) startAudioLevelViz(analyserRef.current);
+        }, 50);
       } else {
         // --- Single-shot mode (encounter recording) ---
         const recorder = new MediaRecorder(stream, { mimeType });
@@ -297,6 +380,7 @@ export function VoiceRecorder({
             const formData = new FormData();
             formData.append('audio', blob, `recording.${getFileExtension(mimeType)}`);
             formData.append('mode', mode);
+            if (fastDictationRef.current) formData.append('skipMedicalize', 'true');
             const res = await fetch('/api/transcribe', { method: 'POST', body: formData });
             if (!res.ok) {
               const err = await res.json().catch(() => ({ error: 'Transcription failed' }));
@@ -314,6 +398,18 @@ export function VoiceRecorder({
         setElapsed(0);
         setState('recording');
         timerRef.current = setInterval(() => setElapsed(s => s + 1), 1000);
+
+        // Audio level visualization for encounter mode
+        try {
+          const vizCtx = new AudioContext();
+          const vizSource = vizCtx.createMediaStreamSource(stream);
+          const vizAnalyser = vizCtx.createAnalyser();
+          vizAnalyser.fftSize = 2048;
+          vizSource.connect(vizAnalyser);
+          audioContextRef.current = vizCtx;
+          analyserRef.current = vizAnalyser;
+          startAudioLevelViz(vizAnalyser);
+        } catch {}
 
         // Web Speech API for live text in encounter mode
         const SpeechRecognitionAPI = typeof window !== 'undefined'
@@ -351,7 +447,7 @@ export function VoiceRecorder({
     } catch (err: any) {
       setState('error');
     }
-  }, [onTranscript, onInterimTranscript, onRecordingStart, mode, useStreaming, startSegment, startSilenceDetection]);
+  }, [onTranscript, onInterimTranscript, onRecordingStart, mode, useStreaming, startSegment, startSilenceDetection, startAudioLevelViz]);
 
   const stopRecording = useCallback(async () => {
     // Stop Web Speech API (encounter mode)
@@ -363,6 +459,9 @@ export function VoiceRecorder({
     if (useStreaming) {
       // --- Streaming stop ---
       stoppingRef.current = true;
+
+      // Stop audio visualization
+      stopAudioLevelViz();
 
       // Stop silence detection
       if (silenceCheckRef.current) { clearInterval(silenceCheckRef.current); silenceCheckRef.current = null; }
@@ -403,6 +502,8 @@ export function VoiceRecorder({
         onTranscriptRef.current(accumulatedTextRef.current.trim());
       }
       accumulatedTextRef.current = '';
+      segmentTextsRef.current = [];
+      setCanUndo(false);
       setState('idle');
     } else {
       // --- Single-shot stop ---
@@ -410,7 +511,7 @@ export function VoiceRecorder({
         mediaRecorderRef.current.stop();
       }
     }
-  }, [useStreaming, processSegmentBlob]);
+  }, [useStreaming, processSegmentBlob, stopAudioLevelViz]);
 
   // --- Click-to-toggle / hold-to-talk ---
   const handlePointerDown = useCallback((e: React.PointerEvent) => {
@@ -448,6 +549,7 @@ export function VoiceRecorder({
       const formData = new FormData();
       formData.append('audio', file, file.name);
       formData.append('mode', mode);
+      if (fastDictationRef.current) formData.append('skipMedicalize', 'true');
       const res = await fetch('/api/transcribe', { method: 'POST', body: formData });
       if (!res.ok) {
         const err = await res.json().catch(() => ({ error: 'Transcription failed' }));
@@ -479,6 +581,9 @@ export function VoiceRecorder({
             ? 'text-red-400'
             : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)]'
         } disabled:opacity-50`}
+        style={state === 'recording' && audioLevel > 0 ? {
+          boxShadow: `0 0 0 ${2 + audioLevel * 4}px rgba(239, 68, 68, ${0.15 + audioLevel * 0.35})`,
+        } : undefined}
         title={
           state === 'recording' ? 'Click to stop'
           : state === 'transcribing' ? 'Processing...'
@@ -502,6 +607,16 @@ export function VoiceRecorder({
           <Mic className="w-4 h-4" />
         )}
       </button>
+      {canUndo && state === 'recording' && (
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); undoLastSegment(); }}
+          className="p-1 text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] rounded transition-colors"
+          title="Undo last segment"
+        >
+          <RotateCcw className="w-3.5 h-3.5" />
+        </button>
+      )}
       {segmentsProcessing > 0 && (
         <Loader2 className="w-3 h-3 animate-spin text-blue-500" />
       )}

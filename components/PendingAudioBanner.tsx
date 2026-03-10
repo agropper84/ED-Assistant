@@ -12,7 +12,7 @@ interface PendingItem {
 }
 
 interface Props {
-  onProcessed?: () => void; // callback to refresh patient list
+  onProcessed?: () => void;
 }
 
 export function PendingAudioBanner({ onProcessed }: Props) {
@@ -22,12 +22,13 @@ export function PendingAudioBanner({ onProcessed }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [dismissed, setDismissed] = useState(false);
   const pollRef = useRef<NodeJS.Timeout | null>(null);
-  const autoProcessing = useRef(false);
+  const busyRef = useRef(false); // single lock to prevent all races
 
   const checkQueue = useCallback(async () => {
+    if (busyRef.current) return 0;
     try {
       const res = await fetch('/api/shortcuts/process-queue');
-      if (!res.ok) return;
+      if (!res.ok) return 0;
       const data = await res.json();
       setPending(data.items || []);
       return data.items?.length || 0;
@@ -37,7 +38,8 @@ export function PendingAudioBanner({ onProcessed }: Props) {
   }, []);
 
   const processOne = useCallback(async () => {
-    if (processing) return;
+    if (busyRef.current) return;
+    busyRef.current = true;
     setProcessing(true);
     setError(null);
     try {
@@ -55,14 +57,21 @@ export function PendingAudioBanner({ onProcessed }: Props) {
         onProcessed?.();
         setTimeout(() => setLastResult(null), 4000);
       }
-      // Re-check queue
-      await checkQueue();
     } catch (e: any) {
       setError(e.message || 'Processing failed');
     } finally {
       setProcessing(false);
+      busyRef.current = false;
+      // Check for more items after a short delay
+      setTimeout(async () => {
+        const count = await checkQueue();
+        // Auto-process next item if any
+        if (count > 0) {
+          processOne();
+        }
+      }, 1000);
     }
-  }, [processing, checkQueue, onProcessed]);
+  }, [checkQueue, onProcessed]);
 
   // Poll for pending items every 10 seconds
   useEffect(() => {
@@ -73,16 +82,13 @@ export function PendingAudioBanner({ onProcessed }: Props) {
     };
   }, [checkQueue]);
 
-  // Auto-process when items are found
+  // Auto-process when items appear (only if not already busy)
   useEffect(() => {
-    if (pending.length > 0 && !processing && !autoProcessing.current) {
-      autoProcessing.current = true;
+    if (pending.length > 0 && !busyRef.current) {
       setDismissed(false);
-      processOne().finally(() => {
-        autoProcessing.current = false;
-      });
+      processOne();
     }
-  }, [pending, processing, processOne]);
+  }, [pending.length]); // intentionally only depend on count
 
   // Nothing to show
   if (pending.length === 0 && !processing && !lastResult && !error) return null;

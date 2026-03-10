@@ -245,7 +245,7 @@ export default function SettingsPage() {
     debouncedSavePrompts(updated);
   };
 
-  const handleSettingChange = (key: keyof AppSettings, value: string | number) => {
+  const handleSettingChange = (key: keyof AppSettings, value: string | number | boolean) => {
     const newSettings = { ...settings, [key]: value };
     setSettings(newSettings);
     saveSettings(newSettings);
@@ -678,6 +678,32 @@ export default function SettingsPage() {
                   <span>0 (Precise)</span>
                   <span>1 (Creative)</span>
                 </div>
+              </div>
+            </div>
+
+            {/* Dictation */}
+            <div className="bg-[var(--card-bg)] rounded-2xl border border-[var(--card-border)] p-5 space-y-3" style={{ boxShadow: 'var(--card-shadow)' }}>
+              <h3 className="font-semibold text-[var(--text-primary)]">Dictation</h3>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-[var(--text-primary)]">Fast Dictation</p>
+                  <p className="text-xs text-[var(--text-muted)]">Skip AI medical terminology correction for faster results</p>
+                </div>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={settings.fastDictation}
+                  onClick={() => handleSettingChange('fastDictation', !settings.fastDictation)}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                    settings.fastDictation ? 'bg-blue-600' : 'bg-gray-300 dark:bg-gray-600'
+                  }`}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 rounded-full bg-white transition-transform ${
+                      settings.fastDictation ? 'translate-x-6' : 'translate-x-1'
+                    }`}
+                  />
+                </button>
               </div>
             </div>
 

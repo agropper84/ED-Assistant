@@ -17,8 +17,8 @@ const anthropic = new Anthropic({ apiKey: process.env.CLAUDE_API_KEY });
  */
 function convertSpokenPunctuation(text: string): string {
   return text
-    // Sentence-ending: "period" / "full stop" → "."
-    .replace(/\s*\b(?:period|full stop)\b\s*/gi, '. ')
+    // Sentence-ending: "period" / "full stop" → "." (but not "menstrual period" or "period of ...")
+    .replace(/(?<!\bmenstrual)\s*\b(?:period|full stop)\b(?!\s+of)\s*/gi, '. ')
     // Comma
     .replace(/\s*\bcomma\b\s*/gi, ', ')
     // Question mark
@@ -59,7 +59,11 @@ function isWhisperHallucination(text: string): boolean {
   return hallucinations.some(h => normalized === h || normalized.startsWith(h + ' '));
 }
 
-async function medicalize(rawText: string, mode: string): Promise<string> {
+async function medicalize(rawText: string, mode: string, context?: string): Promise<string> {
+  const contextBlock = context
+    ? `\n\nPrevious context for continuity (do NOT repeat, only use to resolve ambiguity):\n"${context}"\n`
+    : '';
+
   const prompt = mode === 'encounter'
     ? `Convert this recorded doctor-patient emergency department encounter into a structured clinical transcript. Rules:
 - Identify and label speakers as "Dr:" and "Pt:" (or "Family:" if applicable)
@@ -80,7 +84,7 @@ ${rawText}`
 - Do NOT add, infer, or remove clinical information — preserve meaning exactly
 - Use concise ED physician charting style
 - Output ONLY the converted text, nothing else — no explanations, no questions, no commentary
-- If the input contains no clinical content (e.g. just greetings, filler, noise artifacts, or meaningless fragments), output exactly: EMPTY
+- If the input contains no clinical content (e.g. just greetings, filler, noise artifacts, or meaningless fragments), output exactly: EMPTY${contextBlock}
 
 Dictation:
 ${rawText}`;
@@ -104,6 +108,8 @@ export async function POST(request: NextRequest) {
     const formData = await request.formData();
     const audioFile = formData.get('audio');
     const mode = (formData.get('mode') as string) || 'dictation';
+    const context = (formData.get('context') as string) || '';
+    const skipMedicalize = (formData.get('skipMedicalize') as string) === 'true';
 
     if (!audioFile || !(audioFile instanceof File)) {
       return NextResponse.json({ error: 'No audio file provided' }, { status: 400 });
@@ -131,8 +137,16 @@ export async function POST(request: NextRequest) {
     // Convert spoken punctuation ("period", "comma") to actual punctuation first
     const punctuated = convertSpokenPunctuation(rawText);
 
-    // Convert to medical language
-    const medicalText = await medicalize(punctuated, mode);
+    // Skip medicalization if requested (fast dictation mode)
+    if (skipMedicalize) {
+      return NextResponse.json({ text: punctuated });
+    }
+
+    // Convert to medical language, passing last ~100 words of context for continuity
+    const contextTail = context
+      ? context.split(/\s+/).slice(-100).join(' ')
+      : undefined;
+    const medicalText = await medicalize(punctuated, mode, contextTail);
 
     return NextResponse.json({ text: medicalText });
   } catch (error: any) {
