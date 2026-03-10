@@ -569,16 +569,23 @@ export function VoiceRecorder({
     }
   }, [onTranscript, mode]);
 
-  // Dynamic recording style: multi-ring glow + scale based on audio level
+  // Dynamic recording style: red (silent) → green (speaking), tight circular glow
   const recordingStyle = state === 'recording' ? (() => {
     const l = audioLevel;
+    // Interpolate red → green based on voice level
+    const r = Math.round(239 - 205 * l);
+    const g = Math.round(68 + 129 * l);
+    const b = Math.round(68 + 26 * l);
+    const c = `${r}, ${g}, ${b}`;
     const speaking = l > 0.05;
     return {
+      backgroundColor: `rgba(${c}, 0.12)`,
+      color: `rgb(${c})`,
       boxShadow: speaking
-        ? `0 0 0 ${2 + l * 4}px rgba(239, 68, 68, ${0.2 + l * 0.3}), 0 0 ${l * 8}px ${4 + l * 8}px rgba(239, 68, 68, ${0.06 + l * 0.14})`
-        : '0 0 0 2px rgba(239, 68, 68, 0.15)',
-      transform: `scale(${1 + l * 0.08})`,
-      transition: 'box-shadow 0.08s ease-out, transform 0.08s ease-out',
+        ? `0 0 0 ${1.5 + l * 2.5}px rgba(${c}, ${0.25 + l * 0.3}), 0 0 ${l * 6}px ${2 + l * 4}px rgba(${c}, ${0.08 + l * 0.12})`
+        : `0 0 0 1.5px rgba(${c}, 0.2)`,
+      transform: `scale(${1 + l * 0.06})`,
+      transition: 'all 0.1s ease-out',
     };
   })() : undefined;
 
@@ -589,9 +596,9 @@ export function VoiceRecorder({
         onPointerDown={handlePointerDown}
         onPointerUp={handlePointerUp}
         disabled={disabled || state === 'transcribing'}
-        className={`p-1.5 rounded-lg select-none touch-none ${
+        className={`p-1 rounded-full select-none touch-none flex items-center justify-center ${
           state === 'recording'
-            ? 'bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400'
+            ? '' /* inline style handles all recording colors */
             : state === 'transcribing'
             ? 'text-blue-500 animate-pulse'
             : state === 'error'
@@ -605,30 +612,30 @@ export function VoiceRecorder({
           : 'Click to dictate, or hold to talk'
         }
       >
-        <Mic className="w-4 h-4" />
+        <Mic className="w-3.5 h-3.5" />
       </button>
       {canUndo && state === 'recording' && (
         <button
           type="button"
           onClick={(e) => { e.stopPropagation(); undoLastSegment(); }}
-          className="p-1 text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] rounded transition-colors"
+          className="p-0.5 text-[var(--text-muted)] hover:text-[var(--text-secondary)] rounded transition-colors"
           title="Undo last segment"
         >
-          <RotateCcw className="w-3.5 h-3.5" />
+          <RotateCcw className="w-3 h-3" />
         </button>
       )}
       {mode === 'dictation' && state !== 'transcribing' && (
         <button
           type="button"
           onClick={toggleMedicalize}
-          className={`text-[10px] font-semibold px-1.5 py-0.5 rounded transition-colors ${
+          className={`text-[9px] leading-none font-bold px-0.5 transition-colors ${
             medicalize
-              ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400'
-              : 'bg-[var(--bg-tertiary)] text-[var(--text-muted)]'
+              ? 'text-blue-500/40 dark:text-blue-400/40 hover:text-blue-500 dark:hover:text-blue-400'
+              : 'text-[var(--text-muted)] opacity-25 hover:opacity-50'
           }`}
-          title={medicalize ? 'Medicalize ON — AI corrects medical terminology' : 'Medicalize OFF — Raw transcription'}
+          title={medicalize ? 'Medicalize ON' : 'Medicalize OFF — raw transcription'}
         >
-          Medicalize
+          M
         </button>
       )}
       {showUpload && state === 'idle' && (
@@ -637,10 +644,10 @@ export function VoiceRecorder({
             type="button"
             onClick={() => fileInputRef.current?.click()}
             disabled={disabled}
-            className="p-1.5 text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] rounded-lg transition-colors disabled:opacity-50"
+            className="p-1 text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] rounded-full transition-colors disabled:opacity-50"
             title="Upload audio file"
           >
-            <Upload className="w-3.5 h-3.5" />
+            <Upload className="w-3 h-3" />
           </button>
           <input
             ref={fileInputRef}
