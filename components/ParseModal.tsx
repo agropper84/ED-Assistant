@@ -75,6 +75,8 @@ export function ParseModal({ isOpen, onClose, onSave }: ParseModalProps) {
   const [transcript, setTranscript] = useState('');
   const [preRecordTranscript, setPreRecordTranscript] = useState('');
   const [encounterNotes, setEncounterNotes] = useState('');
+  const [preRecordEncounter, setPreRecordEncounter] = useState('');
+  const [preRecordAdditional, setPreRecordAdditional] = useState('');
   const [additional, setAdditional] = useState('');
   const [pastDocs, setPastDocs] = useState('');
   const [encounterTime, setEncounterTime] = useState('');
@@ -359,14 +361,29 @@ export function ParseModal({ isOpen, onClose, onSave }: ParseModalProps) {
             <label className="block text-xs font-semibold text-[var(--text-muted)] uppercase tracking-widest mb-1.5">
               Encounter Notes
             </label>
-            <AutocompleteTextarea
-              value={encounterNotes}
-              onChange={setEncounterNotes}
-              suggestions={MEDICAL_SUGGESTIONS}
-              placeholder="Physician notes, clinical observations, plan..."
-              textareaClassName="w-full h-28 p-3 border border-[var(--input-border)] rounded-xl text-sm resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)]"
-              patientContext={patientContext}
-            />
+            <div className="relative">
+              <AutocompleteTextarea
+                value={encounterNotes}
+                onChange={setEncounterNotes}
+                suggestions={MEDICAL_SUGGESTIONS}
+                placeholder="Physician notes, clinical observations, plan..."
+                textareaClassName="w-full h-28 p-3 pr-10 border border-[var(--input-border)] rounded-xl text-sm resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)]"
+                patientContext={patientContext}
+              />
+              <div className="absolute top-1.5 right-1.5 z-10">
+                <VoiceRecorder
+                  mode="dictation"
+                  onTranscript={(text) => {
+                    const base = preRecordEncounter || encounterNotes;
+                    setEncounterNotes(base ? `${base}\n${text}` : text);
+                  }}
+                  onRecordingStart={() => setPreRecordEncounter(encounterNotes)}
+                  onInterimTranscript={(text) => {
+                    setEncounterNotes(preRecordEncounter ? `${preRecordEncounter}\n${text}` : text);
+                  }}
+                />
+              </div>
+            </div>
           </div>
 
           {/* Additional Findings with Exam Toggles */}
@@ -375,14 +392,29 @@ export function ParseModal({ isOpen, onClose, onSave }: ParseModalProps) {
               Additional Findings / Exam
             </label>
             <ExamToggles value={additional} onChange={setAdditional} />
-            <AutocompleteTextarea
-              value={additional}
-              onChange={setAdditional}
-              suggestions={MEDICAL_SUGGESTIONS}
-              placeholder="Exam findings, investigations, results, updates..."
-              textareaClassName="w-full h-24 p-3 border border-[var(--input-border)] rounded-xl text-sm resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)]"
-              patientContext={patientContext}
-            />
+            <div className="relative">
+              <AutocompleteTextarea
+                value={additional}
+                onChange={setAdditional}
+                suggestions={MEDICAL_SUGGESTIONS}
+                placeholder="Exam findings, investigations, results, updates..."
+                textareaClassName="w-full h-24 p-3 pr-10 border border-[var(--input-border)] rounded-xl text-sm resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)]"
+                patientContext={patientContext}
+              />
+              <div className="absolute top-1.5 right-1.5 z-10">
+                <VoiceRecorder
+                  mode="dictation"
+                  onTranscript={(text) => {
+                    const base = preRecordAdditional || additional;
+                    setAdditional(base ? `${base}\n${text}` : text);
+                  }}
+                  onRecordingStart={() => setPreRecordAdditional(additional)}
+                  onInterimTranscript={(text) => {
+                    setAdditional(preRecordAdditional ? `${preRecordAdditional}\n${text}` : text);
+                  }}
+                />
+              </div>
+            </div>
           </div>
 
           {/* Past Documentation */}
