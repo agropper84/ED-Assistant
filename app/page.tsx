@@ -292,6 +292,9 @@ export default function HomePage() {
   const [chatPatient, setChatPatient] = useState<Patient | null>(null);
   const [mergeSource, setMergeSource] = useState<Patient | null>(null);
 
+  // Date picker ref
+  const datePickerRef = useRef<HTMLInputElement>(null);
+
   // Draggable FAB
   const [fabPos, setFabPos] = useState<{ x: number; y: number } | null>(() => {
     if (typeof window !== 'undefined') {
@@ -1001,7 +1004,10 @@ export default function HomePage() {
               >
                 <ChevronLeft className="w-4 h-4" />
               </button>
-              <span className="flex items-center gap-1.5 px-2 py-1">
+              <button
+                onClick={() => datePickerRef.current?.showPicker()}
+                className="flex items-center gap-1.5 px-2 py-1 hover:bg-white/10 rounded-lg transition-colors"
+              >
                 <Calendar className="w-3.5 h-3.5" style={{ color: 'var(--dash-text-muted)' }} />
                 <span className="text-sm font-medium" style={{ color: 'var(--dash-text)' }}>{formatDateDisplay(currentDate)}</span>
                 {!loading && patients.length > 0 && (
@@ -1009,7 +1015,20 @@ export default function HomePage() {
                     {patients.length}
                   </span>
                 )}
-              </span>
+              </button>
+              <input
+                ref={datePickerRef}
+                type="date"
+                className="sr-only"
+                value={currentDate.toISOString().split('T')[0]}
+                max={new Date().toISOString().split('T')[0]}
+                onChange={(e) => {
+                  if (e.target.value) {
+                    const [y, m, d] = e.target.value.split('-').map(Number);
+                    changeDate(new Date(y, m - 1, d));
+                  }
+                }}
+              />
               {!isToday && (
                 <button
                   onClick={goToToday}
