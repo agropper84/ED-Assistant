@@ -566,7 +566,8 @@ export async function saveBillingRows(
   await sheets.spreadsheets.values.batchUpdate({
     spreadsheetId,
     requestBody: {
-      valueInputOption: 'USER_ENTERED',
+      // RAW prevents Sheets from stripping leading zeros on codes like 0081
+      valueInputOption: 'RAW',
       data: batchData,
     },
   });

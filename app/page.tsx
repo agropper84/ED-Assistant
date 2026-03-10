@@ -15,6 +15,7 @@ import { InlineBilling } from '@/components/BillingSection';
 import {
   BillingItem,
   parseBillingItems,
+  serializeBillingItems,
 } from '@/lib/billing';
 import {
   Plus, RefreshCw, Loader2, ChevronLeft, ChevronRight,
@@ -755,6 +756,22 @@ export default function HomePage() {
   };
 
   const handleDashboardBillingSave = async (patient: Patient, items: BillingItem[], comments?: string) => {
+    // Optimistic update: immediately reflect changes in the UI
+    const serialized = serializeBillingItems(items);
+    setPatients(prev => prev.map(p =>
+      p.rowIndex === patient.rowIndex && p.sheetName === patient.sheetName
+        ? {
+            ...p,
+            visitProcedure: serialized.visitProcedure,
+            procCode: serialized.procCode,
+            fee: serialized.fee,
+            unit: serialized.unit,
+            total: serialized.total,
+            ...(comments !== undefined ? { comments } : {}),
+          }
+        : p
+    ));
+
     try {
       await fetch(`/api/patients/${patient.rowIndex}`, {
         method: 'PATCH',
@@ -768,6 +785,7 @@ export default function HomePage() {
       fetchPatients();
     } catch (error) {
       console.error('Failed to save billing:', error);
+      fetchPatients(); // Revert optimistic update on error
     }
   };
 

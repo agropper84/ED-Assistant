@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { Mic, Upload, RotateCcw } from 'lucide-react';
+import { Mic, Upload, RotateCcw, Stethoscope } from 'lucide-react';
 import { getSettings, saveSettings } from '@/lib/settings';
 
 type RecorderState = 'idle' | 'recording' | 'transcribing' | 'error';
@@ -569,23 +569,26 @@ export function VoiceRecorder({
     }
   }, [onTranscript, mode]);
 
-  // Dynamic recording style: red (silent) → green (speaking), tight circular glow
+  // Dynamic recording style: warm red → amber glow that intensifies with voice
   const recordingStyle = state === 'recording' ? (() => {
     const l = audioLevel;
-    // Interpolate red → green based on voice level
-    const r = Math.round(239 - 205 * l);
-    const g = Math.round(68 + 129 * l);
-    const b = Math.round(68 + 26 * l);
+    // Power curve: boost quiet-speech visibility while keeping loud speech controlled
+    const v = Math.pow(l, 0.6);
+    // Warm shift: recording red → amber with voice level
+    const r = Math.round(220 + v * 35);
+    const g = Math.round(60 + v * 90);
+    const b = Math.round(60 - v * 20);
     const c = `${r}, ${g}, ${b}`;
-    const speaking = l > 0.05;
     return {
-      backgroundColor: `rgba(${c}, 0.12)`,
+      backgroundColor: `rgba(${c}, ${0.12 + v * 0.08})`,
       color: `rgb(${c})`,
-      boxShadow: speaking
-        ? `0 0 0 ${1.5 + l * 2.5}px rgba(${c}, ${0.25 + l * 0.3}), 0 0 ${l * 6}px ${2 + l * 4}px rgba(${c}, ${0.08 + l * 0.12})`
-        : `0 0 0 1.5px rgba(${c}, 0.2)`,
-      transform: `scale(${1 + l * 0.06})`,
-      transition: 'all 0.1s ease-out',
+      boxShadow: [
+        `0 0 0 ${1 + v * 2.5}px rgba(${c}, ${0.22 + v * 0.23})`,
+        `0 0 ${3 + v * 8}px rgba(${c}, ${0.06 + v * 0.14})`,
+        `0 0 ${6 + v * 14}px rgba(${c}, ${0.02 + v * 0.06})`,
+      ].join(', '),
+      transform: `scale(${1 + v * 0.05})`,
+      transition: 'all 0.12s cubic-bezier(0.4, 0, 0.2, 1)',
     };
   })() : undefined;
 
@@ -628,14 +631,14 @@ export function VoiceRecorder({
         <button
           type="button"
           onClick={toggleMedicalize}
-          className={`text-[9px] leading-none font-bold px-0.5 transition-colors ${
+          className={`p-0.5 rounded transition-colors ${
             medicalize
               ? 'text-blue-500/40 dark:text-blue-400/40 hover:text-blue-500 dark:hover:text-blue-400'
               : 'text-[var(--text-muted)] opacity-25 hover:opacity-50'
           }`}
-          title={medicalize ? 'Medicalize ON' : 'Medicalize OFF — raw transcription'}
+          title={medicalize ? 'Medicalize Dictation ON' : 'Medicalize Dictation OFF'}
         >
-          M
+          <Stethoscope className="w-3 h-3" />
         </button>
       )}
       {showUpload && state === 'idle' && (
