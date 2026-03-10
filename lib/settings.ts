@@ -2,12 +2,14 @@ export interface AppSettings {
   model: string;
   maxTokens: number;
   temperature: number;
+  fastDictation: boolean;
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
   model: 'claude-sonnet-4-20250514',
   maxTokens: 4096,
   temperature: 0.3,
+  fastDictation: false,
 };
 
 const STORAGE_KEY = 'ed-app-settings';
