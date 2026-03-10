@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { Mic, Loader2, Upload, RotateCcw } from 'lucide-react';
-import { getSettings } from '@/lib/settings';
+import { Mic, Upload, RotateCcw } from 'lucide-react';
+import { getSettings, saveSettings } from '@/lib/settings';
 
 type RecorderState = 'idle' | 'recording' | 'transcribing' | 'error';
 
@@ -33,11 +33,8 @@ export function VoiceRecorder({
   disabled, mode = 'dictation', showUpload,
 }: VoiceRecorderProps) {
   const [state, setState] = useState<RecorderState>('idle');
-  const [elapsed, setElapsed] = useState(0);
-  const [segmentsProcessing, setSegmentsProcessing] = useState(0);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const recognitionRef = useRef<any>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -55,16 +52,17 @@ export function VoiceRecorder({
   const analyserRef = useRef<AnalyserNode | null>(null);
   const stoppingRef = useRef(false);
 
-  // Feature 2: Audio level visualization
+  // Audio level visualization
   const [audioLevel, setAudioLevel] = useState(0);
   const animFrameRef = useRef<number | null>(null);
 
-  // Feature 3: Undo last segment
+  // Undo last segment
   const segmentTextsRef = useRef<string[]>([]);
   const [canUndo, setCanUndo] = useState(false);
 
-  // Feature 4: Fast dictation setting
-  const fastDictationRef = useRef(false);
+  // Medicalize toggle (default ON, persisted via fastDictation setting inverted)
+  const [medicalize, setMedicalize] = useState(true);
+  const medicalizeRef = useRef(true);
 
   // Stable callback refs for use inside streaming closures
   const onInterimRef = useRef(onInterimTranscript);
@@ -75,9 +73,22 @@ export function VoiceRecorder({
   // Use streaming when dictation mode + caller wants interim updates
   const useStreaming = mode === 'dictation' && !!onInterimTranscript;
 
-  // Load fast dictation setting on mount
+  // Load medicalize setting on mount
   useEffect(() => {
-    fastDictationRef.current = getSettings().fastDictation;
+    const val = !getSettings().fastDictation;
+    setMedicalize(val);
+    medicalizeRef.current = val;
+  }, []);
+
+  // Toggle medicalize and persist
+  const toggleMedicalize = useCallback(() => {
+    setMedicalize(prev => {
+      const next = !prev;
+      medicalizeRef.current = next;
+      const s = getSettings();
+      saveSettings({ ...s, fastDictation: !next });
+      return next;
+    });
   }, []);
 
   // Clear error after 3 seconds
@@ -91,7 +102,6 @@ export function VoiceRecorder({
   // Cleanup on unmount
   useEffect(() => {
     return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
       if (silenceCheckRef.current) clearInterval(silenceCheckRef.current);
       if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
       if (audioContextRef.current) {
@@ -169,7 +179,6 @@ export function VoiceRecorder({
   /** Send a blob to /api/transcribe and accumulate the result (with retry) */
   const processSegmentBlob = useCallback(async (blob: Blob) => {
     pendingCountRef.current++;
-    setSegmentsProcessing(c => c + 1);
     try {
       let lastError: unknown;
       for (let attempt = 0; attempt < 2; attempt++) {
@@ -178,12 +187,12 @@ export function VoiceRecorder({
           const formData = new FormData();
           formData.append('audio', blob, `segment.${getFileExtension(mimeTypeRef.current)}`);
           formData.append('mode', 'dictation');
-          // Feature 1: context carry-forward
+          // Context carry-forward
           if (accumulatedTextRef.current) {
             formData.append('context', accumulatedTextRef.current);
           }
-          // Feature 4: skip medicalization
-          if (fastDictationRef.current) {
+          // Skip medicalization when toggle is off
+          if (!medicalizeRef.current) {
             formData.append('skipMedicalize', 'true');
           }
           const res = await fetch('/api/transcribe', { method: 'POST', body: formData });
@@ -208,7 +217,6 @@ export function VoiceRecorder({
       console.error('Segment transcription error after retries:', lastError);
     } finally {
       pendingCountRef.current--;
-      setSegmentsProcessing(c => Math.max(0, c - 1));
     }
   }, []);
 
@@ -322,8 +330,10 @@ export function VoiceRecorder({
 
   const startRecording = useCallback(async () => {
     try {
-      // Reload fast dictation setting each recording
-      fastDictationRef.current = getSettings().fastDictation;
+      // Reload medicalize setting each recording
+      const val = !getSettings().fastDictation;
+      medicalizeRef.current = val;
+      setMedicalize(val);
 
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
@@ -340,15 +350,12 @@ export function VoiceRecorder({
         stoppingRef.current = false;
         startSegment();
 
-        setElapsed(0);
         setState('recording');
-        timerRef.current = setInterval(() => setElapsed(s => s + 1), 1000);
 
         // Start adaptive silence detection (also sets up analyserRef)
         startSilenceDetection(stream);
 
         // Start audio level visualization using the analyser from silence detection
-        // Delay slightly to let startSilenceDetection create the analyser
         setTimeout(() => {
           if (analyserRef.current) startAudioLevelViz(analyserRef.current);
         }, 50);
@@ -363,9 +370,13 @@ export function VoiceRecorder({
         };
 
         recorder.onstop = async () => {
+          // Stop audio viz
+          stopAudioLevelViz();
+          if (audioContextRef.current) { try { audioContextRef.current.close(); } catch {} audioContextRef.current = null; }
+          analyserRef.current = null;
+
           stream.getTracks().forEach(t => t.stop());
           streamRef.current = null;
-          if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
 
           if (recognitionRef.current) {
             try { recognitionRef.current.abort(); } catch {}
@@ -380,7 +391,7 @@ export function VoiceRecorder({
             const formData = new FormData();
             formData.append('audio', blob, `recording.${getFileExtension(mimeType)}`);
             formData.append('mode', mode);
-            if (fastDictationRef.current) formData.append('skipMedicalize', 'true');
+            if (!medicalizeRef.current) formData.append('skipMedicalize', 'true');
             const res = await fetch('/api/transcribe', { method: 'POST', body: formData });
             if (!res.ok) {
               const err = await res.json().catch(() => ({ error: 'Transcription failed' }));
@@ -395,9 +406,7 @@ export function VoiceRecorder({
         };
 
         recorder.start();
-        setElapsed(0);
         setState('recording');
-        timerRef.current = setInterval(() => setElapsed(s => s + 1), 1000);
 
         // Audio level visualization for encounter mode
         try {
@@ -447,7 +456,7 @@ export function VoiceRecorder({
     } catch (err: any) {
       setState('error');
     }
-  }, [onTranscript, onInterimTranscript, onRecordingStart, mode, useStreaming, startSegment, startSilenceDetection, startAudioLevelViz]);
+  }, [onTranscript, onInterimTranscript, onRecordingStart, mode, useStreaming, startSegment, startSilenceDetection, startAudioLevelViz, stopAudioLevelViz]);
 
   const stopRecording = useCallback(async () => {
     // Stop Web Speech API (encounter mode)
@@ -467,9 +476,6 @@ export function VoiceRecorder({
       if (silenceCheckRef.current) { clearInterval(silenceCheckRef.current); silenceCheckRef.current = null; }
       if (audioContextRef.current) { try { audioContextRef.current.close(); } catch {} audioContextRef.current = null; }
       analyserRef.current = null;
-
-      // Stop timer
-      if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
 
       setState('transcribing');
 
@@ -549,7 +555,7 @@ export function VoiceRecorder({
       const formData = new FormData();
       formData.append('audio', file, file.name);
       formData.append('mode', mode);
-      if (fastDictationRef.current) formData.append('skipMedicalize', 'true');
+      if (!medicalizeRef.current) formData.append('skipMedicalize', 'true');
       const res = await fetch('/api/transcribe', { method: 'POST', body: formData });
       if (!res.ok) {
         const err = await res.json().catch(() => ({ error: 'Transcription failed' }));
@@ -563,7 +569,18 @@ export function VoiceRecorder({
     }
   }, [onTranscript, mode]);
 
-  const formatTime = (s: number) => `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, '0')}`;
+  // Dynamic recording style: multi-ring glow + scale based on audio level
+  const recordingStyle = state === 'recording' ? (() => {
+    const l = audioLevel;
+    const speaking = l > 0.05;
+    return {
+      boxShadow: speaking
+        ? `0 0 0 ${2 + l * 4}px rgba(239, 68, 68, ${0.2 + l * 0.3}), 0 0 ${l * 8}px ${4 + l * 8}px rgba(239, 68, 68, ${0.06 + l * 0.14})`
+        : '0 0 0 2px rgba(239, 68, 68, 0.15)',
+      transform: `scale(${1 + l * 0.08})`,
+      transition: 'box-shadow 0.08s ease-out, transform 0.08s ease-out',
+    };
+  })() : undefined;
 
   return (
     <span className="inline-flex items-center gap-0.5">
@@ -572,40 +589,23 @@ export function VoiceRecorder({
         onPointerDown={handlePointerDown}
         onPointerUp={handlePointerUp}
         disabled={disabled || state === 'transcribing'}
-        className={`p-1.5 rounded-lg transition-all select-none touch-none ${
+        className={`p-1.5 rounded-lg select-none touch-none ${
           state === 'recording'
             ? 'bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400'
             : state === 'transcribing'
-            ? 'text-blue-500'
+            ? 'text-blue-500 animate-pulse'
             : state === 'error'
             ? 'text-red-400'
             : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)]'
         } disabled:opacity-50`}
-        style={state === 'recording' && audioLevel > 0 ? {
-          boxShadow: `0 0 0 ${2 + audioLevel * 4}px rgba(239, 68, 68, ${0.15 + audioLevel * 0.35})`,
-        } : undefined}
+        style={recordingStyle}
         title={
           state === 'recording' ? 'Click to stop'
           : state === 'transcribing' ? 'Processing...'
           : 'Click to dictate, or hold to talk'
         }
       >
-        {state === 'transcribing' ? (
-          <Loader2 className="w-4 h-4 animate-spin" />
-        ) : state === 'recording' ? (
-          <span className="relative flex items-center gap-1">
-            <span className="relative">
-              <Mic className="w-4 h-4" />
-              <span className="absolute -top-0.5 -right-0.5 flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75" />
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-red-600" />
-              </span>
-            </span>
-            <span className="text-[10px] font-mono tabular-nums leading-none">{formatTime(elapsed)}</span>
-          </span>
-        ) : (
-          <Mic className="w-4 h-4" />
-        )}
+        <Mic className="w-4 h-4" />
       </button>
       {canUndo && state === 'recording' && (
         <button
@@ -617,8 +617,19 @@ export function VoiceRecorder({
           <RotateCcw className="w-3.5 h-3.5" />
         </button>
       )}
-      {segmentsProcessing > 0 && (
-        <Loader2 className="w-3 h-3 animate-spin text-blue-500" />
+      {mode === 'dictation' && state !== 'transcribing' && (
+        <button
+          type="button"
+          onClick={toggleMedicalize}
+          className={`text-[10px] font-semibold px-1.5 py-0.5 rounded transition-colors ${
+            medicalize
+              ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400'
+              : 'bg-[var(--bg-tertiary)] text-[var(--text-muted)]'
+          }`}
+          title={medicalize ? 'Medicalize ON — AI corrects medical terminology' : 'Medicalize OFF — Raw transcription'}
+        >
+          Medicalize
+        </button>
       )}
       {showUpload && state === 'idle' && (
         <>
