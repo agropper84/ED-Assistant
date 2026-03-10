@@ -569,19 +569,18 @@ export function VoiceRecorder({
     }
   }, [onTranscript, mode]);
 
-  // Dynamic recording style: warm red → amber glow that intensifies with voice
+  // Dynamic recording style: blue/green glow that intensifies with voice, red mic icon
   const recordingStyle = state === 'recording' ? (() => {
     const l = audioLevel;
     // Power curve: boost quiet-speech visibility while keeping loud speech controlled
     const v = Math.pow(l, 0.6);
-    // Warm shift: recording red → amber with voice level
-    const r = Math.round(220 + v * 35);
-    const g = Math.round(60 + v * 90);
-    const b = Math.round(60 - v * 20);
+    // Blue → teal/green shift with voice level
+    const r = Math.round(40 + v * 10);
+    const g = Math.round(140 + v * 80);
+    const b = Math.round(220 - v * 40);
     const c = `${r}, ${g}, ${b}`;
     return {
-      backgroundColor: `rgba(${c}, ${0.12 + v * 0.08})`,
-      color: `rgb(${c})`,
+      backgroundColor: `rgba(${c}, ${0.10 + v * 0.08})`,
       boxShadow: [
         `0 0 0 ${1 + v * 2.5}px rgba(${c}, ${0.22 + v * 0.23})`,
         `0 0 ${3 + v * 8}px rgba(${c}, ${0.06 + v * 0.14})`,
@@ -594,29 +593,46 @@ export function VoiceRecorder({
 
   return (
     <span className="inline-flex items-center gap-0.5">
-      <button
-        type="button"
-        onPointerDown={handlePointerDown}
-        onPointerUp={handlePointerUp}
-        disabled={disabled || state === 'transcribing'}
-        className={`p-1 rounded-full select-none touch-none flex items-center justify-center ${
-          state === 'recording'
-            ? '' /* inline style handles all recording colors */
-            : state === 'transcribing'
-            ? 'text-blue-500 animate-pulse'
-            : state === 'error'
-            ? 'text-red-400'
-            : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)]'
-        } disabled:opacity-50`}
-        style={recordingStyle}
-        title={
-          state === 'recording' ? 'Click to stop'
-          : state === 'transcribing' ? 'Processing...'
-          : 'Click to dictate, or hold to talk'
-        }
-      >
-        <Mic className="w-3.5 h-3.5" />
-      </button>
+      {/* Mic + medicalize as a single visual unit */}
+      <span className="inline-flex items-center">
+        <button
+          type="button"
+          onPointerDown={handlePointerDown}
+          onPointerUp={handlePointerUp}
+          disabled={disabled || state === 'transcribing'}
+          className={`p-1 rounded-full select-none touch-none flex items-center justify-center ${
+            state === 'recording'
+              ? 'text-red-500' /* red mic icon, glow via inline style */
+              : state === 'transcribing'
+              ? 'text-blue-500 animate-pulse'
+              : state === 'error'
+              ? 'text-red-400'
+              : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)]'
+          } disabled:opacity-50`}
+          style={recordingStyle}
+          title={
+            state === 'recording' ? 'Click to stop'
+            : state === 'transcribing' ? 'Processing...'
+            : 'Click to dictate, or hold to talk'
+          }
+        >
+          <Mic className="w-3.5 h-3.5" />
+        </button>
+        {mode === 'dictation' && state !== 'transcribing' && (
+          <button
+            type="button"
+            onClick={toggleMedicalize}
+            className={`-ml-0.5 transition-colors ${
+              medicalize
+                ? 'text-blue-500/40 dark:text-blue-400/40 hover:text-blue-500 dark:hover:text-blue-400'
+                : 'text-[var(--text-muted)] opacity-25 hover:opacity-50'
+            }`}
+            title={medicalize ? 'Medicalize Dictation ON' : 'Medicalize Dictation OFF'}
+          >
+            <Stethoscope className="w-2.5 h-2.5" />
+          </button>
+        )}
+      </span>
       {canUndo && state === 'recording' && (
         <button
           type="button"
@@ -625,20 +641,6 @@ export function VoiceRecorder({
           title="Undo last segment"
         >
           <RotateCcw className="w-3 h-3" />
-        </button>
-      )}
-      {mode === 'dictation' && state !== 'transcribing' && (
-        <button
-          type="button"
-          onClick={toggleMedicalize}
-          className={`p-0.5 rounded transition-colors ${
-            medicalize
-              ? 'text-blue-500/40 dark:text-blue-400/40 hover:text-blue-500 dark:hover:text-blue-400'
-              : 'text-[var(--text-muted)] opacity-25 hover:opacity-50'
-          }`}
-          title={medicalize ? 'Medicalize Dictation ON' : 'Medicalize Dictation OFF'}
-        >
-          <Stethoscope className="w-3 h-3" />
         </button>
       )}
       {showUpload && state === 'idle' && (
