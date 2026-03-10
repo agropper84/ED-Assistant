@@ -844,7 +844,7 @@ export default function HomePage() {
           onDateChange={(newSheet) => handleDateChange(patient, newSheet)}
         />
         {isBillingOpen && (
-          <div className="mt-1 ml-0">
+          <div className="mt-1 ml-0" key={`billing-${patient.rowIndex}-${patient.procCode || ''}`}>
             <InlineBilling
               billingItems={items}
               comments={patient.comments || ''}
