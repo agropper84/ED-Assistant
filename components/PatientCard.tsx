@@ -363,6 +363,18 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
               {patient.diagnosis}
             </span>
           )}
+          {billingCodes && (
+            <span
+              className="flex items-center gap-1 flex-shrink-0 cursor-pointer hover:text-teal-600 dark:hover:text-teal-400 transition-colors"
+              onClick={(e) => {
+                e.stopPropagation();
+                onBillingToggle?.();
+              }}
+            >
+              <DollarSign className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
+              <span className="text-xs font-medium text-teal-700 dark:text-teal-400">{billingCodes}</span>
+            </span>
+          )}
         </div>
       </button>
 
