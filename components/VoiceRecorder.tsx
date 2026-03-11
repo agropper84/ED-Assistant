@@ -155,7 +155,7 @@ export function VoiceRecorder({
   const undoLastSegment = useCallback(() => {
     if (segmentTextsRef.current.length === 0) return;
     segmentTextsRef.current.pop();
-    accumulatedTextRef.current = segmentTextsRef.current.join('\n');
+    accumulatedTextRef.current = segmentTextsRef.current.join(' ');
     setCanUndo(segmentTextsRef.current.length > 0);
     onInterimRef.current?.(accumulatedTextRef.current);
   }, []);
@@ -201,7 +201,7 @@ export function VoiceRecorder({
             if (text?.trim()) {
               const trimmed = text.trim();
               accumulatedTextRef.current = accumulatedTextRef.current
-                ? `${accumulatedTextRef.current}\n${trimmed}`
+                ? `${accumulatedTextRef.current} ${trimmed}`
                 : trimmed;
               segmentTextsRef.current.push(trimmed);
               setCanUndo(true);
