@@ -29,6 +29,8 @@ function convertSpokenPunctuation(text: string): string {
     .replace(/\s*\bcolon\b\s*/gi, ': ')
     // Semicolon
     .replace(/\s*\bsemicolon\b\s*/gi, '; ')
+    // Dash / hyphen
+    .replace(/\s*\b(?:dash|hyphen)\b\s*/gi, ' — ')
     // New line / new paragraph
     .replace(/\s*\b(?:new line|newline|next line)\b\s*/gi, '\n')
     .replace(/\s*\b(?:new paragraph|next paragraph)\b\s*/gi, '\n\n')
@@ -83,6 +85,7 @@ ${rawText}`
 - Correct any misheard medical terms based on context (e.g., "CPA tenderness" → "CVA tenderness", "tendered" → "tender/tenderness")
 - Do NOT add, infer, or remove clinical information — preserve meaning exactly
 - Use concise ED physician charting style
+- Output as a single continuous block of text — do NOT add line breaks or paragraph breaks unless the input explicitly contains them
 - Output ONLY the converted text, nothing else — no explanations, no questions, no commentary
 - If the input contains no clinical content (e.g. just greetings, filler, noise artifacts, or meaningless fragments), output exactly: EMPTY${contextBlock}
 
