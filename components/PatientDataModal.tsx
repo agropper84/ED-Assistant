@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Patient } from '@/lib/google-sheets';
 import { MEDICAL_SUGGESTIONS } from '@/lib/medical-suggestions';
 import { X, Loader2, Save, ExternalLink, RefreshCw, Play } from 'lucide-react';
@@ -8,6 +8,7 @@ import { ExamToggles } from '@/components/ExamToggles';
 import { VoiceRecorder } from '@/components/VoiceRecorder';
 import { AutocompleteTextarea } from '@/components/AutocompleteTextarea';
 import { getPromptTemplates } from '@/lib/settings';
+import { savePhrasesInBackground } from '@/lib/user-phrases';
 
 /** Combine transcript + encounter notes into one string for storage */
 function combineTranscriptAndNotes(transcript: string, encounterNotes: string): string {
@@ -48,6 +49,27 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
   const [pastDocs, setPastDocs] = useState('');
   const [saving, setSaving] = useState(false);
   const [generating, setGenerating] = useState(false);
+  const [userPhrases, setUserPhrases] = useState<string[]>([]);
+
+  // Fetch user's saved phrases for autocomplete
+  useEffect(() => {
+    if (isOpen) {
+      fetch('/api/user-phrases')
+        .then(r => r.ok ? r.json() : { phrases: [] })
+        .then(data => setUserPhrases(data.phrases || []))
+        .catch(() => {});
+    }
+  }, [isOpen]);
+
+  // Merge static corpus with user phrases (user phrases first for priority)
+  const allSuggestions = useMemo(
+    () => {
+      const set = new Set<string>(userPhrases);
+      for (const s of MEDICAL_SUGGESTIONS) set.add(s);
+      return Array.from(set);
+    },
+    [userPhrases]
+  );
 
   // Sync state when patient changes
   useEffect(() => {
@@ -71,6 +93,9 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
     pastDocs !== (patient.pastDocs || '');
 
   const handleSave = async () => {
+    // Save user phrases for future autocomplete (fire-and-forget)
+    savePhrasesInBackground(encounterNotes, additional);
+
     setSaving(true);
     try {
       await fetch(`/api/patients/${patient.rowIndex}`, {
@@ -180,7 +205,7 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
               <AutocompleteTextarea
                 value={encounterNotes}
                 onChange={setEncounterNotes}
-                suggestions={MEDICAL_SUGGESTIONS}
+                suggestions={allSuggestions}
                 placeholder="Physician notes, clinical observations, plan..."
                 textareaClassName="w-full h-28 p-3 pr-10 border border-[var(--input-border)] rounded-xl text-sm resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)]"
                 patientContext={patientContext}
@@ -210,7 +235,7 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
               <AutocompleteTextarea
                 value={additional}
                 onChange={setAdditional}
-                suggestions={MEDICAL_SUGGESTIONS}
+                suggestions={allSuggestions}
                 placeholder="Exam findings, investigations, results, updates..."
                 textareaClassName="w-full h-24 p-3 pr-10 border border-[var(--input-border)] rounded-xl text-sm resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)]"
                 patientContext={patientContext}

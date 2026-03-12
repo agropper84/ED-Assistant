@@ -1347,3 +1347,109 @@ export async function saveStyleGuideToSheet(ctx: SheetsContext, guide: StyleGuid
     requestBody: { values: [[JSON.stringify(guide)]] },
   });
 }
+
+// ────────────────────────────────────────────────────────────────────────────
+// User Phrases (autocomplete suggestions learned from user input)
+// ────────────────────────────────────────────────────────────────────────────
+
+const USER_PHRASES_SHEET = 'User Phrases';
+
+/** Ensure the "User Phrases" tab exists, creating it with headers if needed. */
+async function ensureUserPhrasesSheet(ctx: SheetsContext): Promise<void> {
+  const { sheets, spreadsheetId } = ctx;
+  const spreadsheet = await sheets.spreadsheets.get({ spreadsheetId });
+  const exists = spreadsheet.data.sheets?.some(
+    (s: any) => s.properties.title === USER_PHRASES_SHEET
+  );
+  if (exists) return;
+
+  await sheets.spreadsheets.batchUpdate({
+    spreadsheetId,
+    requestBody: {
+      requests: [{ addSheet: { properties: { title: USER_PHRASES_SHEET } } }],
+    },
+  });
+
+  // Write header row
+  await sheets.spreadsheets.values.update({
+    spreadsheetId,
+    range: `'${USER_PHRASES_SHEET}'!A1:B1`,
+    valueInputOption: 'RAW',
+    requestBody: { values: [['phrase', 'count']] },
+  });
+}
+
+/** Get all user phrases sorted by frequency (most used first). */
+export async function getUserPhrases(ctx: SheetsContext): Promise<string[]> {
+  const { sheets, spreadsheetId } = ctx;
+
+  const spreadsheet = await sheets.spreadsheets.get({ spreadsheetId });
+  const exists = spreadsheet.data.sheets?.some(
+    (s: any) => s.properties.title === USER_PHRASES_SHEET
+  );
+  if (!exists) return [];
+
+  const response = await sheets.spreadsheets.values.get({
+    spreadsheetId,
+    range: `'${USER_PHRASES_SHEET}'!A2:B5000`,
+  });
+
+  const rows = response.data.values || [];
+  return rows
+    .filter((row: any[]) => row[0]?.toString().trim())
+    .sort((a: any[], b: any[]) => (parseInt(b[1]) || 1) - (parseInt(a[1]) || 1))
+    .map((row: any[]) => row[0].toString().trim().toLowerCase());
+}
+
+/** Save new phrases to the User Phrases sheet. Increments count for existing phrases, appends new ones. */
+export async function saveUserPhrases(ctx: SheetsContext, phrases: string[]): Promise<void> {
+  if (!phrases.length) return;
+
+  const { sheets, spreadsheetId } = ctx;
+  await ensureUserPhrasesSheet(ctx);
+
+  // Read existing phrases
+  const response = await sheets.spreadsheets.values.get({
+    spreadsheetId,
+    range: `'${USER_PHRASES_SHEET}'!A2:B5000`,
+  });
+
+  const existingRows = response.data.values || [];
+  const phraseMap = new Map<string, number>();
+
+  for (const row of existingRows) {
+    const phrase = row[0]?.toString().trim().toLowerCase();
+    const count = parseInt(row[1]) || 1;
+    if (phrase) phraseMap.set(phrase, count);
+  }
+
+  // Merge new phrases
+  for (const phrase of phrases) {
+    const lower = phrase.toLowerCase().trim();
+    if (lower.length < 5) continue; // skip very short fragments
+    phraseMap.set(lower, (phraseMap.get(lower) || 0) + 1);
+  }
+
+  // Write back all phrases sorted by count
+  const sorted = Array.from(phraseMap.entries())
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 2000); // cap at 2000 phrases
+
+  const values = [
+    ['phrase', 'count'],
+    ...sorted.map(([phrase, count]) => [phrase, count.toString()]),
+  ];
+
+  // Clear and rewrite
+  await sheets.spreadsheets.values.clear({
+    spreadsheetId,
+    range: `'${USER_PHRASES_SHEET}'!A1:B5000`,
+  });
+
+  await sheets.spreadsheets.values.update({
+    spreadsheetId,
+    range: `'${USER_PHRASES_SHEET}'!A1`,
+    valueInputOption: 'RAW',
+    requestBody: { values },
+  });
+}
