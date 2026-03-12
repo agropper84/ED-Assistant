@@ -1,12 +1,13 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { X, Clipboard, Check, Loader2, Clock } from 'lucide-react';
 import { ExamToggles } from '@/components/ExamToggles';
 import { AutocompleteTextarea } from '@/components/AutocompleteTextarea';
 import { MEDICAL_SUGGESTIONS } from '@/lib/medical-suggestions';
 import { VoiceRecorder } from '@/components/VoiceRecorder';
 import { getParseRules } from '@/lib/settings';
+import { savePhrasesInBackground } from '@/lib/user-phrases';
 
 interface ParseModalProps {
   isOpen: boolean;
@@ -84,7 +85,28 @@ export function ParseModal({ isOpen, onClose, onSave }: ParseModalProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [showTimePicker, setShowTimePicker] = useState(false);
+  const [userPhrases, setUserPhrases] = useState<string[]>([]);
   const timeScrollRef = useRef<HTMLDivElement>(null);
+
+  // Fetch user's saved phrases for autocomplete
+  useEffect(() => {
+    if (isOpen) {
+      fetch('/api/user-phrases')
+        .then(r => r.ok ? r.json() : { phrases: [] })
+        .then(data => setUserPhrases(data.phrases || []))
+        .catch(() => {});
+    }
+  }, [isOpen]);
+
+  // Merge static corpus with user phrases (user phrases first for priority)
+  const allSuggestions = useMemo(
+    () => {
+      const set = new Set<string>(userPhrases);
+      for (const s of MEDICAL_SUGGESTIONS) set.add(s);
+      return Array.from(set);
+    },
+    [userPhrases]
+  );
 
   if (!isOpen) return null;
 
@@ -126,6 +148,9 @@ export function ParseModal({ isOpen, onClose, onSave }: ParseModalProps) {
 
   const handleSave = () => {
     if (parsedData) {
+      // Save user phrases for future autocomplete (fire-and-forget)
+      savePhrasesInBackground(encounterNotes, additional);
+
       const timestamp = encounterTime || parsedData.timestamp;
       onSave({
         ...parsedData,
@@ -365,7 +390,7 @@ export function ParseModal({ isOpen, onClose, onSave }: ParseModalProps) {
               <AutocompleteTextarea
                 value={encounterNotes}
                 onChange={setEncounterNotes}
-                suggestions={MEDICAL_SUGGESTIONS}
+                suggestions={allSuggestions}
                 placeholder="Physician notes, clinical observations, plan..."
                 textareaClassName="w-full h-28 p-3 pr-10 border border-[var(--input-border)] rounded-xl text-sm resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)]"
                 patientContext={patientContext}
@@ -396,7 +421,7 @@ export function ParseModal({ isOpen, onClose, onSave }: ParseModalProps) {
               <AutocompleteTextarea
                 value={additional}
                 onChange={setAdditional}
-                suggestions={MEDICAL_SUGGESTIONS}
+                suggestions={allSuggestions}
                 placeholder="Exam findings, investigations, results, updates..."
                 textareaClassName="w-full h-24 p-3 pr-10 border border-[var(--input-border)] rounded-xl text-sm resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)]"
                 patientContext={patientContext}
