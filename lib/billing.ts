@@ -23,7 +23,21 @@ export interface BillingRegion {
 
 export const BILLING_REGIONS: BillingRegion[] = [
   { id: 'yukon', label: 'Yukon' },
+  { id: 'vch', label: 'VCH - Time Based' },
 ];
+
+/** Check if the current region uses time-based billing */
+export function isTimeBased(region?: string): boolean {
+  const r = region || getRegion();
+  return r === 'vch';
+}
+
+/** VCH time-based billing categories */
+export const VCH_CATEGORIES = [
+  { code: 'VCH-DO', label: 'Direct Onsite', description: 'Face-to-face with patient' },
+  { code: 'VCH-IO', label: 'Indirect Onsite', description: 'Charting, orders, chart review at facility' },
+  { code: 'VCH-IF', label: 'Indirect Offsite', description: 'Phone calls, results review off-site' },
+] as const;
 
 export type BillingGroup =
   | 'ED Visits'

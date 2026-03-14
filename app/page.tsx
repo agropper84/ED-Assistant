@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Patient } from '@/lib/google-sheets';
-import { getPromptTemplates } from '@/lib/settings';
+import { getPromptTemplates, getSettings } from '@/lib/settings';
 import { PatientCard } from '@/components/PatientCard';
 import { ParseModal } from '@/components/ParseModal';
 import { PatientDataModal } from '@/components/PatientDataModal';
@@ -16,6 +16,7 @@ import {
   BillingItem,
   parseBillingItems,
   serializeBillingItems,
+  isTimeBased,
 } from '@/lib/billing';
 import {
   Plus, RefreshCw, Loader2, ChevronLeft, ChevronRight,
@@ -292,6 +293,10 @@ export default function HomePage() {
   // Clinical chat
   const [chatPatient, setChatPatient] = useState<Patient | null>(null);
   const [mergeSource, setMergeSource] = useState<Patient | null>(null);
+
+  // VCH sheet generation
+  const [generatingVch, setGeneratingVch] = useState(false);
+  const [vchResult, setVchResult] = useState<string | null>(null);
 
   // Date picker ref
   const datePickerRef = useRef<HTMLInputElement>(null);
@@ -798,7 +803,13 @@ export default function HomePage() {
       patient.visitProcedure || '', patient.procCode || '',
       patient.fee || '', patient.unit || ''
     );
-    const codes = items.length > 0 ? items.map(i => i.code).join(', ') : '';
+    const timeBased = isTimeBased();
+    const codes = timeBased
+      ? (() => {
+          const totalMin = items.filter(i => i.code.startsWith('VCH-')).reduce((sum, i) => sum + (parseInt(i.unit || '0', 10) || 0), 0);
+          return totalMin > 0 ? `${totalMin}m` : '';
+        })()
+      : items.length > 0 ? items.map(i => i.code).join(', ') : '';
     const isBillingOpen = billingPatientIdx === patient.rowIndex;
 
     return (
@@ -1067,36 +1078,81 @@ export default function HomePage() {
 
             {/* Shift times */}
             <div className="flex items-center gap-1.5">
-              <select
-                value={shiftStart}
-                onChange={(e) => { setShiftStart(e.target.value); handleShiftTimeSave({ start: e.target.value }); }}
-                className="shift-select-header"
-              >
-                <option value="">Start</option>
-                <option value="08:00">8:00 AM</option>
-                <option value="11:00">11:00 AM</option>
-                <option value="13:00">1:00 PM</option>
-                <option value="18:00">6:00 PM</option>
-                <option value="23:00">11:00 PM</option>
-              </select>
-              <span className="text-[10px]" style={{ color: 'var(--dash-text-muted)' }}>–</span>
-              <select
-                value={shiftEnd}
-                onChange={(e) => { setShiftEnd(e.target.value); handleShiftTimeSave({ end: e.target.value }); }}
-                className="shift-select-header"
-              >
-                <option value="">End</option>
-                <option value="15:00">3:00 PM</option>
-                <option value="18:00">6:00 PM</option>
-                <option value="21:00">9:00 PM</option>
-                <option value="01:00">1:00 AM</option>
-                <option value="08:00">8:00 AM</option>
-              </select>
-              {shiftHours && (
-                <span className="text-xs font-medium flex-shrink-0" style={{ color: 'var(--dash-text-sub)' }}>{shiftHours}h</span>
+              {isTimeBased() ? (
+                <button
+                  onClick={async () => {
+                    setGeneratingVch(true);
+                    setVchResult(null);
+                    try {
+                      const appSettings = getSettings();
+                      const res = await fetch('/api/vch-billing-sheet', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                          sheetName,
+                          cprpId: appSettings.vchCprpId,
+                          siteFacility: appSettings.vchSiteFacility,
+                          pracNumber: appSettings.vchPracNumber,
+                          practitionerName: appSettings.vchPractitionerName,
+                        }),
+                      });
+                      const data = await res.json();
+                      if (res.ok) {
+                        setVchResult(`VCH sheet created: ${data.count} rows`);
+                      } else {
+                        setVchResult(data.error || 'Failed');
+                      }
+                    } catch {
+                      setVchResult('Failed to generate');
+                    } finally {
+                      setGeneratingVch(false);
+                      setTimeout(() => setVchResult(null), 4000);
+                    }
+                  }}
+                  disabled={generatingVch}
+                  className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium bg-white/15 hover:bg-white/25 transition-colors disabled:opacity-50"
+                  style={{ color: 'var(--dash-text)' }}
+                >
+                  {generatingVch ? <Loader2 className="w-3 h-3 animate-spin" /> : <Clock className="w-3 h-3" />}
+                  VCH Sheet
+                </button>
+              ) : (
+                <>
+                  <select
+                    value={shiftStart}
+                    onChange={(e) => { setShiftStart(e.target.value); handleShiftTimeSave({ start: e.target.value }); }}
+                    className="shift-select-header"
+                  >
+                    <option value="">Start</option>
+                    <option value="08:00">8:00 AM</option>
+                    <option value="11:00">11:00 AM</option>
+                    <option value="13:00">1:00 PM</option>
+                    <option value="18:00">6:00 PM</option>
+                    <option value="23:00">11:00 PM</option>
+                  </select>
+                  <span className="text-[10px]" style={{ color: 'var(--dash-text-muted)' }}>–</span>
+                  <select
+                    value={shiftEnd}
+                    onChange={(e) => { setShiftEnd(e.target.value); handleShiftTimeSave({ end: e.target.value }); }}
+                    className="shift-select-header"
+                  >
+                    <option value="">End</option>
+                    <option value="15:00">3:00 PM</option>
+                    <option value="18:00">6:00 PM</option>
+                    <option value="21:00">9:00 PM</option>
+                    <option value="01:00">1:00 AM</option>
+                    <option value="08:00">8:00 AM</option>
+                  </select>
+                  {shiftHours && (
+                    <span className="text-xs font-medium flex-shrink-0" style={{ color: 'var(--dash-text-sub)' }}>{shiftHours}h</span>
+                  )}
+                  {shiftCode && (
+                    <span className="text-[11px] font-mono font-medium flex-shrink-0" style={{ color: 'var(--dash-text-sub)' }}>{shiftCode}</span>
+                  )}
+                </>
               )}
-              {shiftCode && (
-                <span className="text-[11px] font-mono font-medium flex-shrink-0" style={{ color: 'var(--dash-text-sub)' }}>{shiftCode}</span>
+              {vchResult && (
+                <span className="text-[11px] font-medium flex-shrink-0" style={{ color: 'var(--dash-text-sub)' }}>{vchResult}</span>
               )}
             </div>
           </div>

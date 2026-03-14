@@ -5,7 +5,7 @@ import { X, ChevronDown, ChevronUp, DollarSign, Search, Info } from 'lucide-reac
 import {
   BillingItem, BillingCategory, BillingCode,
   addBillingCode, calculateTotal, getAdditionalCodes, filterAdditionalCodes,
-  getCategoryForCode, BILLING_CATEGORIES,
+  getCategoryForCode, BILLING_CATEGORIES, isTimeBased, VCH_CATEGORIES,
 } from '@/lib/billing';
 
 /** Documentation requirements and billing tips per code, from the Yukon Fee Guide */
@@ -100,6 +100,10 @@ export function BillingSection({
   billingItems, comments, onSave, onSaveComments, showBilling, setShowBilling,
 }: BillingSectionProps) {
   const total = calculateTotal(billingItems);
+  const timeBased = isTimeBased();
+  const vchTotalMin = timeBased
+    ? billingItems.filter(i => i.code.startsWith('VCH-')).reduce((sum, i) => sum + (parseInt(i.unit || '0', 10) || 0), 0)
+    : 0;
 
   return (
     <div className="bg-[var(--card-bg)] rounded-2xl border border-[var(--card-border)] overflow-hidden" style={{ boxShadow: 'var(--card-shadow)' }}>
@@ -110,13 +114,21 @@ export function BillingSection({
         <div className="flex items-center gap-2">
           <DollarSign className="w-5 h-5 text-[var(--text-muted)]" />
           <h3 className="font-semibold text-[var(--text-primary)]">Billing</h3>
-          {billingItems.length > 0 && (
-            <span className="text-xs bg-green-100 dark:bg-green-950/50 text-green-700 dark:text-green-300 px-2 py-0.5 rounded-full">
-              {billingItems.length} item{billingItems.length !== 1 ? 's' : ''}
-            </span>
-          )}
-          {total && (
-            <span className="text-sm font-semibold text-green-700 dark:text-green-400">${total}</span>
+          {timeBased ? (
+            vchTotalMin > 0 && (
+              <span className="text-sm font-semibold text-green-700 dark:text-green-400">{vchTotalMin}m</span>
+            )
+          ) : (
+            <>
+              {billingItems.length > 0 && (
+                <span className="text-xs bg-green-100 dark:bg-green-950/50 text-green-700 dark:text-green-300 px-2 py-0.5 rounded-full">
+                  {billingItems.length} item{billingItems.length !== 1 ? 's' : ''}
+                </span>
+              )}
+              {total && (
+                <span className="text-sm font-semibold text-green-700 dark:text-green-400">${total}</span>
+              )}
+            </>
           )}
         </div>
         {showBilling ? (
@@ -160,6 +172,95 @@ export function InlineBilling({
   );
 }
 
+/** VCH time-based billing UI */
+function VchTimeBilling({
+  billingItems, comments, onSave, onSaveComments,
+}: {
+  billingItems: BillingItem[];
+  comments: string;
+  onSave: (items: BillingItem[]) => void;
+  onSaveComments: (c: string) => void;
+}) {
+  const getMinutes = (code: string) => {
+    const item = billingItems.find(i => i.code === code);
+    return item ? parseInt(item.unit || '0', 10) : 0;
+  };
+
+  const setMinutes = (code: string, minutes: number) => {
+    const cat = VCH_CATEGORIES.find(c => c.code === code);
+    if (!cat) return;
+    const others = billingItems.filter(i => i.code !== code);
+    if (minutes <= 0) {
+      onSave(others);
+    } else {
+      const item: BillingItem = {
+        code,
+        description: cat.label,
+        fee: '',
+        unit: minutes.toString(),
+        category: 'additional',
+      };
+      onSave([...others, item]);
+    }
+  };
+
+  const totalMinutes = VCH_CATEGORIES.reduce((sum, cat) => sum + getMinutes(cat.code), 0);
+  const totalHours = (totalMinutes / 60).toFixed(2);
+
+  return (
+    <div className="space-y-4">
+      {VCH_CATEGORIES.map(cat => {
+        const mins = getMinutes(cat.code);
+        return (
+          <div key={cat.code} className="flex items-center justify-between">
+            <div className="flex-1 min-w-0">
+              <div className="text-sm font-medium text-[var(--text-primary)]">{cat.label}</div>
+              <div className="text-xs text-[var(--text-muted)]">{cat.description}</div>
+            </div>
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <button
+                onClick={() => setMinutes(cat.code, Math.max(0, mins - 15))}
+                disabled={mins <= 0}
+                className="w-8 h-8 flex items-center justify-center rounded-lg bg-[var(--bg-tertiary)] text-[var(--text-secondary)] hover:bg-[var(--border)] disabled:opacity-30 font-bold text-lg transition-colors"
+              >
+                -
+              </button>
+              <span className="w-16 text-center text-sm font-semibold text-[var(--text-primary)]">
+                {mins} min
+              </span>
+              <button
+                onClick={() => setMinutes(cat.code, mins + 15)}
+                className="w-8 h-8 flex items-center justify-center rounded-lg bg-[var(--bg-tertiary)] text-[var(--text-secondary)] hover:bg-[var(--border)] font-bold text-lg transition-colors"
+              >
+                +
+              </button>
+            </div>
+          </div>
+        );
+      })}
+
+      {/* Total */}
+      <div className="flex justify-end border-t border-[var(--border)] pt-2">
+        <span className="text-sm font-bold text-[var(--text-primary)]">
+          Total: {totalMinutes} min ({totalHours} hrs)
+        </span>
+      </div>
+
+      {/* Comments */}
+      <div>
+        <label className="block text-xs font-medium text-[var(--text-muted)] mb-1">Comments</label>
+        <input
+          type="text"
+          value={comments}
+          onChange={(e) => onSaveComments(e.target.value)}
+          onBlur={(e) => onSaveComments(e.target.value)}
+          className="w-full p-2 border border-[var(--input-border)] rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)]"
+        />
+      </div>
+    </div>
+  );
+}
+
 /** Shared billing body */
 function BillingBody({
   billingItems, comments, onSave, onSaveComments,
@@ -169,6 +270,10 @@ function BillingBody({
   onSave: (items: BillingItem[]) => void;
   onSaveComments: (c: string) => void;
 }) {
+  // VCH time-based billing mode
+  if (isTimeBased()) {
+    return <VchTimeBilling billingItems={billingItems} comments={comments} onSave={onSave} onSaveComments={onSaveComments} />;
+  }
   const [showAddCode, setShowAddCode] = useState(false);
   const [newCode, setNewCode] = useState('');
   const [newDesc, setNewDesc] = useState('');
