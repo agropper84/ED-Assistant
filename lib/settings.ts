@@ -3,6 +3,10 @@ export interface AppSettings {
   maxTokens: number;
   temperature: number;
   fastDictation: boolean;
+  vchCprpId: string;
+  vchSiteFacility: string;
+  vchPracNumber: string;
+  vchPractitionerName: string;
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
@@ -10,6 +14,10 @@ export const DEFAULT_SETTINGS: AppSettings = {
   maxTokens: 4096,
   temperature: 0.3,
   fastDictation: false,
+  vchCprpId: '',
+  vchSiteFacility: '',
+  vchPracNumber: '',
+  vchPractitionerName: '',
 };
 
 const STORAGE_KEY = 'ed-app-settings';

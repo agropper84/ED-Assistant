@@ -18,7 +18,7 @@ import { getExamPresets, saveExamPresets, resetExamPresets, ExamPreset } from '@
 import {
   BillingCode, BillingGroup,
   BILLING_REGIONS, BILLING_GROUPS,
-  getRegion, saveRegion,
+  getRegion, saveRegion, isTimeBased,
   fetchBillingCodes,
   addBillingCodeAsync,
   updateBillingCodeAsync,
@@ -333,7 +333,7 @@ export default function SettingsPage() {
             { id: 'style' as const, label: 'Style Guide' },
             { id: 'settings' as const, label: 'Processing' },
             { id: 'prompts' as const, label: 'Prompts' },
-            { id: 'billing' as const, label: 'Billing Codes' },
+            { id: 'billing' as const, label: 'Billing' },
           ]).map(({ id, label }) => (
             <button
               key={id}
@@ -1036,25 +1036,27 @@ export default function SettingsPage() {
             <div className="bg-[var(--card-bg)] rounded-2xl border border-[var(--card-border)] p-5 space-y-3" style={{ boxShadow: 'var(--card-shadow)' }}>
               <div className="flex items-center justify-between">
                 <h3 className="font-semibold text-[var(--text-primary)]">Fee Region</h3>
-                <button
-                  onClick={async () => {
-                    setBillingLoading(true);
-                    try {
-                      const codes = await resetBillingCodesAsync(billingRegion);
-                      setBillingCodes(codes as (BillingCode & { group: BillingGroup })[]);
-                    } catch (err) {
-                      console.error('Failed to reset billing codes:', err);
-                    } finally {
-                      setBillingLoading(false);
-                    }
-                  }}
-                  disabled={billingLoading}
-                  className="flex items-center gap-1 px-2.5 py-1.5 text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] rounded-lg text-xs font-medium transition-colors disabled:opacity-50"
-                  title="Reset all billing codes to defaults"
-                >
-                  <RotateCcw className={`w-3.5 h-3.5 ${billingLoading ? 'animate-spin' : ''}`} />
-                  Reset
-                </button>
+                {!isTimeBased(billingRegion) && (
+                  <button
+                    onClick={async () => {
+                      setBillingLoading(true);
+                      try {
+                        const codes = await resetBillingCodesAsync(billingRegion);
+                        setBillingCodes(codes as (BillingCode & { group: BillingGroup })[]);
+                      } catch (err) {
+                        console.error('Failed to reset billing codes:', err);
+                      } finally {
+                        setBillingLoading(false);
+                      }
+                    }}
+                    disabled={billingLoading}
+                    className="flex items-center gap-1 px-2.5 py-1.5 text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] rounded-lg text-xs font-medium transition-colors disabled:opacity-50"
+                    title="Reset all billing codes to defaults"
+                  >
+                    <RotateCcw className={`w-3.5 h-3.5 ${billingLoading ? 'animate-spin' : ''}`} />
+                    Reset
+                  </button>
+                )}
               </div>
               <select
                 value={billingRegion}
@@ -1062,7 +1064,9 @@ export default function SettingsPage() {
                   const r = e.target.value;
                   setBillingRegion(r);
                   saveRegion(r);
-                  await loadBillingCodes(r);
+                  if (!isTimeBased(r)) {
+                    await loadBillingCodes(r);
+                  }
                 }}
                 className="w-full p-3 border border-[var(--input-border)] rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)]"
               >
@@ -1072,6 +1076,34 @@ export default function SettingsPage() {
               </select>
             </div>
 
+            {/* VCH Configuration */}
+            {isTimeBased(billingRegion) && (
+              <div className="bg-[var(--card-bg)] rounded-2xl border border-[var(--card-border)] p-5 space-y-4" style={{ boxShadow: 'var(--card-shadow)' }}>
+                <h3 className="font-semibold text-[var(--text-primary)]">VCH Configuration</h3>
+                <div className="space-y-3">
+                  {([
+                    { key: 'vchCprpId' as const, label: 'CPRP ID', placeholder: 'e.g. 12345' },
+                    { key: 'vchSiteFacility' as const, label: 'Site / Facility', placeholder: 'e.g. Vancouver General Hospital' },
+                    { key: 'vchPracNumber' as const, label: 'PRAC #', placeholder: 'e.g. 67890' },
+                    { key: 'vchPractitionerName' as const, label: 'Practitioner Name', placeholder: 'e.g. Dr. Jane Smith' },
+                  ]).map(({ key, label, placeholder }) => (
+                    <div key={key}>
+                      <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">{label}</label>
+                      <input
+                        type="text"
+                        value={settings[key] || ''}
+                        onChange={(e) => handleSettingChange(key, e.target.value)}
+                        placeholder={placeholder}
+                        className="w-full p-3 border border-[var(--input-border)] rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)]"
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Search + Add (Yukon only) */}
+            {!isTimeBased(billingRegion) && (<>
             {/* Search + Add */}
             <div className="flex gap-2">
               <div className="relative flex-1">
@@ -1342,6 +1374,7 @@ export default function SettingsPage() {
                 );
               });
             })()}
+            </>)}
           </>
         )}
       </main>

@@ -1349,6 +1349,106 @@ export async function saveStyleGuideToSheet(ctx: SheetsContext, guide: StyleGuid
 }
 
 // ────────────────────────────────────────────────────────────────────────────
+// VCH Time-Based Billing Sheet
+// ────────────────────────────────────────────────────────────────────────────
+
+const VCH_BILLING_SHEET = 'VCH Billing';
+
+const VCH_HEADERS = [
+  'CPRP ID', 'Site/Facility', 'PRAC #', 'Practitioner Name',
+  'Service Start Date', 'Service End Date', 'Rate Period',
+  'Start Time', 'End Time', 'Scheduled/Unscheduled', 'Onsite/Offsite',
+  'Direct+Indirect Hrs', 'Direct Hrs', 'Indirect Hrs', 'Other', 'Total',
+];
+
+export interface VchBillingRow {
+  cprpId: string;
+  siteFacility: string;
+  pracNumber: string;
+  practitionerName: string;
+  serviceDate: string;
+  ratePeriod: string;
+  startTime: string;
+  endTime: string;
+  scheduled: string;
+  onsiteOffsite: 'Onsite' | 'Offsite';
+  directIndirectHrs: string;
+  directHrs: string;
+  indirectHrs: string;
+  other: string;
+  total: string;
+}
+
+/** Determine VCH rate period from timestamp and day of week */
+export function getVchRatePeriod(timestamp: string, dayOfWeek: number): string {
+  // dayOfWeek: 0=Sunday, 6=Saturday
+  const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+
+  let hour = -1;
+  const match24 = timestamp.match(/(\d{1,2}):(\d{2})/);
+  if (match24) {
+    hour = parseInt(match24[1], 10);
+    const isPM = /pm/i.test(timestamp);
+    const isAM = /am/i.test(timestamp);
+    if (isPM && hour < 12) hour += 12;
+    if (isAM && hour === 12) hour = 0;
+  }
+
+  if (isWeekend) return 'Weekend';
+  if (hour >= 8 && hour < 17) return 'Weekday Regular';
+  if (hour >= 17 && hour < 23) return 'Weekday Evening';
+  return 'Weekday Night';
+}
+
+/** Write VCH billing rows to the "VCH Billing" tab, creating it if needed */
+export async function writeVchBillingSheet(
+  ctx: SheetsContext,
+  rows: VchBillingRow[],
+): Promise<void> {
+  const { sheets, spreadsheetId } = ctx;
+
+  // Check if tab exists
+  const spreadsheet = await sheets.spreadsheets.get({ spreadsheetId });
+  const exists = spreadsheet.data.sheets?.some(
+    (s: any) => s.properties.title === VCH_BILLING_SHEET
+  );
+
+  if (!exists) {
+    await sheets.spreadsheets.batchUpdate({
+      spreadsheetId,
+      requestBody: {
+        requests: [{ addSheet: { properties: { title: VCH_BILLING_SHEET } } }],
+      },
+    });
+
+    // Write headers
+    await sheets.spreadsheets.values.update({
+      spreadsheetId,
+      range: `'${VCH_BILLING_SHEET}'!A1:P1`,
+      valueInputOption: 'RAW',
+      requestBody: { values: [VCH_HEADERS] },
+    });
+  }
+
+  if (rows.length === 0) return;
+
+  // Append rows
+  const values = rows.map(r => [
+    r.cprpId, r.siteFacility, r.pracNumber, r.practitionerName,
+    r.serviceDate, r.serviceDate, r.ratePeriod,
+    r.startTime, r.endTime, r.scheduled, r.onsiteOffsite,
+    r.directIndirectHrs, r.directHrs, r.indirectHrs, r.other, r.total,
+  ]);
+
+  await sheets.spreadsheets.values.append({
+    spreadsheetId,
+    range: `'${VCH_BILLING_SHEET}'!A:P`,
+    valueInputOption: 'RAW',
+    requestBody: { values },
+  });
+}
+
+// ────────────────────────────────────────────────────────────────────────────
 // User Phrases (autocomplete suggestions learned from user input)
 // ────────────────────────────────────────────────────────────────────────────
 
