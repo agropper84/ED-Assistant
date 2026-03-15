@@ -27,7 +27,7 @@ import {
   Plus, RefreshCw, Loader2, ChevronLeft, ChevronRight,
   Calendar, Settings, CheckSquare, Square, Play, Clock, EyeOff, Eye,
   Search, ArrowUpDown, X, LogOut, Upload, Shield, Monitor, RotateCcw, Sparkles,
-  Stethoscope
+  ChevronDown
 } from 'lucide-react';
 
 function formatDateForSheet(date: Date): string {
@@ -1002,12 +1002,12 @@ export default function HomePage() {
               <div className="relative" ref={encounterMenuRef}>
                 <button
                   onClick={() => setEncounterMenuOpen(!encounterMenuOpen)}
-                  className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium bg-white/15 hover:bg-white/25 transition-colors"
-                  style={{ color: 'var(--dash-text-sub)' }}
+                  className="flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-medium hover:bg-white/10 transition-colors"
+                  style={{ color: 'var(--dash-text-muted)' }}
                   title="Encounter type"
                 >
-                  <Stethoscope className="w-3.5 h-3.5" />
                   {encounterTypes.find(t => t.id === activeEncounterType)?.label || 'ER'}
+                  <ChevronDown className="w-2.5 h-2.5 opacity-50" />
                 </button>
                 {encounterMenuOpen && (
                   <div className="absolute left-0 top-full mt-1 z-50 w-48 bg-gray-900 rounded-lg shadow-xl ring-1 ring-white/10 py-1 text-sm">
