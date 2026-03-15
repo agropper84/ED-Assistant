@@ -100,6 +100,135 @@ export function savePromptTemplates(templates: PromptTemplates): void {
   localStorage.setItem(PROMPTS_STORAGE_KEY, JSON.stringify(templates));
 }
 
+// --- Encounter Types ---
+
+export interface EncounterType {
+  id: string;
+  label: string;
+  prompts: Partial<PromptTemplates>; // overrides for this encounter type
+}
+
+const ENCOUNTER_TYPE_KEY = 'ed-app-encounter-type';
+const ENCOUNTER_TYPES_KEY = 'ed-app-encounter-types';
+
+export const DEFAULT_ENCOUNTER_TYPES: EncounterType[] = [
+  {
+    id: 'er',
+    label: 'ER',
+    prompts: {}, // uses default prompts as-is
+  },
+  {
+    id: 'urgent-care',
+    label: 'Urgent Care',
+    prompts: {
+      generalRules: `- Do NOT assume, infer, or make up information not explicitly stated in the provided data
+- Use appropriate evidence-based medicine and guidelines
+- Use professional yet concise language appropriate for an urgent care setting
+- Abbreviations are acceptable without explanation
+- Truncated sentences are acceptable
+- Use narrative/paragraph form, NOT bullet points or numbered lists
+- If information for a section is not available, write "Information not documented" or "Insufficient data"`,
+      hpi: `Narrative summary of patient's presentation in an urgent care context. Document the history and features supporting the working diagnosis. Note any red flags that would warrant ED referral. Professional, concise language.`,
+      assessmentPlan: `Do NOT start with the diagnosis name (it is displayed separately above).
+Begin directly with the clinical rationale and assessment.
+Include differential if applicable.
+Document management plan: investigations, treatments, prescriptions.
+Include follow-up plan with primary care or specialist if needed.
+Document any red flags discussed and return precautions.
+Use paragraph/narrative form only. No bullet points.`,
+      management: `Recommend management and treatment plan appropriate for urgent care. Include medications, procedures, referrals, and follow-up planning. Note any conditions requiring ED transfer. Use narrative form.`,
+    },
+  },
+  {
+    id: 'primary-care',
+    label: 'Primary Care',
+    prompts: {
+      generalRules: `- Do NOT assume, infer, or make up information not explicitly stated in the provided data
+- Use appropriate evidence-based medicine and guidelines
+- Use professional language appropriate for a primary care encounter
+- Abbreviations are acceptable without explanation
+- Use narrative/paragraph form, NOT bullet points or numbered lists
+- Consider chronic disease management and preventive care context
+- If information for a section is not available, write "Information not documented" or "Insufficient data"`,
+      hpi: `Narrative summary of patient's presentation in a primary care context. Include relevant past medical history, chronic conditions, and how current complaint relates to ongoing care. Professional language.`,
+      assessmentPlan: `Do NOT start with the diagnosis name (it is displayed separately above).
+Begin with clinical reasoning supporting the diagnosis.
+Address both acute and chronic issues as applicable.
+Document management plan including medications, lifestyle modifications, referrals.
+Include follow-up timeline and preventive care considerations.
+Use paragraph/narrative form only. No bullet points.`,
+      management: `Recommend management plan appropriate for primary care. Include medications, lifestyle modifications, referrals to specialists if needed, screening/preventive care recommendations, and follow-up timeline. Use narrative form.`,
+      investigations: `Recommend appropriate investigations for a primary care setting. Include labs, imaging, and screening tests as applicable. Consider preventive care guidelines. Use narrative form.`,
+    },
+  },
+  {
+    id: 'specialist-consult',
+    label: 'Specialist Consult',
+    prompts: {
+      generalRules: `- Do NOT assume, infer, or make up information not explicitly stated in the provided data
+- Use appropriate evidence-based medicine and specialty-specific guidelines
+- Use professional, detailed language appropriate for a specialist consultation
+- Abbreviations are acceptable without explanation
+- Use narrative/paragraph form, NOT bullet points or numbered lists
+- If information for a section is not available, write "Information not documented" or "Insufficient data"`,
+      hpi: `Comprehensive narrative of the patient's presentation as referred for specialist consultation. Include reason for referral, relevant history, prior workup, and treatments tried. Detailed, professional language.`,
+      assessmentPlan: `Do NOT start with the diagnosis name (it is displayed separately above).
+Begin with specialist assessment and clinical reasoning.
+Provide detailed differential diagnosis from specialty perspective.
+Document recommended specialist-specific investigations and management.
+Include recommendations back to referring physician.
+Document follow-up plan and criteria for re-referral.
+Use paragraph/narrative form only. No bullet points.`,
+      management: `Provide specialist-level management recommendations. Include specialty-specific treatments, procedures, and follow-up plan. Document recommendations to the referring physician. Use narrative form.`,
+      investigations: `Recommend specialty-specific investigations. Include advanced labs, specialized imaging, and diagnostic procedures as applicable. Use narrative form.`,
+    },
+  },
+];
+
+/** Get the active encounter type ID */
+export function getEncounterType(): string {
+  if (typeof window === 'undefined') return 'er';
+  return localStorage.getItem(ENCOUNTER_TYPE_KEY) || 'er';
+}
+
+/** Save the active encounter type ID */
+export function saveEncounterType(id: string): void {
+  if (typeof window === 'undefined') return;
+  localStorage.setItem(ENCOUNTER_TYPE_KEY, id);
+}
+
+/** Get all encounter types (defaults + custom) */
+export function getEncounterTypes(): EncounterType[] {
+  if (typeof window === 'undefined') return DEFAULT_ENCOUNTER_TYPES;
+  try {
+    const stored = localStorage.getItem(ENCOUNTER_TYPES_KEY);
+    if (!stored) return DEFAULT_ENCOUNTER_TYPES;
+    return JSON.parse(stored);
+  } catch {
+    return DEFAULT_ENCOUNTER_TYPES;
+  }
+}
+
+/** Save all encounter types */
+export function saveEncounterTypes(types: EncounterType[]): void {
+  if (typeof window === 'undefined') return;
+  localStorage.setItem(ENCOUNTER_TYPES_KEY, JSON.stringify(types));
+}
+
+/** Get effective prompt templates for a given encounter type */
+export function getEffectivePromptTemplates(encounterTypeId?: string): PromptTemplates {
+  const base = getPromptTemplates(); // user's global customizations
+  const typeId = encounterTypeId || getEncounterType();
+  if (typeId === 'er') return base; // ER uses base prompts
+
+  const types = getEncounterTypes();
+  const encounterType = types.find(t => t.id === typeId);
+  if (!encounterType) return base;
+
+  // Merge: defaults -> user customizations -> encounter type overrides
+  return { ...base, ...encounterType.prompts };
+}
+
 // --- Parse Rules ---
 
 export interface ParseRules {
