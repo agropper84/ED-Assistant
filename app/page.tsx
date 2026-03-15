@@ -374,7 +374,7 @@ export default function HomePage() {
   const [searchResults, setSearchResults] = useState<Patient[] | null>(null);
   const [searching, setSearching] = useState(false);
   const searchDebounce = useRef<NodeJS.Timeout | null>(null);
-  const [sortBy, setSortBy] = useState<'time' | 'name'>('time');
+  const [sortBy, setSortBy] = useState<'time' | 'name' | 'status'>('time');
 
   const sheetName = formatDateForSheet(currentDate);
   const isToday = (() => {
@@ -693,9 +693,16 @@ export default function HomePage() {
   const isSearching = searchQuery.trim().length >= 2;
   const activePatients = isSearching && searchResults !== null ? searchResults : patients;
 
+  const STATUS_ORDER: Record<string, number> = { new: 0, pending: 1, processed: 2 };
   const sortedPatients = [...activePatients].sort((a, b) => {
     if (sortBy === 'name') {
       return (a.name || '').localeCompare(b.name || '');
+    }
+    if (sortBy === 'status') {
+      const sa = STATUS_ORDER[a.status || 'new'] ?? 0;
+      const sb = STATUS_ORDER[b.status || 'new'] ?? 0;
+      if (sa !== sb) return sa - sb;
+      return (a.timestamp || '').localeCompare(b.timestamp || '');
     }
     // When searching across dates, sort by date (sheetName) then time
     if (isSearching) {
@@ -1363,12 +1370,12 @@ export default function HomePage() {
                 )}
               </div>
               <button
-                onClick={() => setSortBy(prev => prev === 'time' ? 'name' : 'time')}
+                onClick={() => setSortBy(prev => prev === 'time' ? 'name' : prev === 'name' ? 'status' : 'time')}
                 className="flex items-center gap-1.5 px-3 py-2 border border-[var(--border)] rounded-lg text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] flex-shrink-0"
-                title={`Sort by ${sortBy === 'time' ? 'name' : 'time'}`}
+                title={`Sort by ${sortBy === 'time' ? 'name' : sortBy === 'name' ? 'status' : 'time'}`}
               >
                 <ArrowUpDown className="w-3.5 h-3.5" />
-                {sortBy === 'time' ? 'Time' : 'Name'}
+                {sortBy === 'time' ? 'Time' : sortBy === 'name' ? 'Name' : 'Status'}
               </button>
             </div>
             {/* Search results banner */}
@@ -1412,8 +1419,8 @@ export default function HomePage() {
               </div>
             ) : (
               <>
-                {sortBy === 'name' ? (
-                  /* Name sort: flat list, no status grouping */
+                {sortBy !== 'time' ? (
+                  /* Name/Status sort: flat list, no status grouping */
                   <section>
                     <div className="space-y-3">
                       {sortedPatients.map((patient) =>
