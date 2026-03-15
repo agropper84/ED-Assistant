@@ -1412,12 +1412,12 @@ export default function HomePage() {
               </div>
             ) : (
               <>
-                {/* Ready to Process */}
-                {pendingPatients.length > 0 && (
+                {sortBy === 'name' ? (
+                  /* Name sort: flat list, no status grouping */
                   <section>
                     <div className="space-y-3">
-                      {pendingPatients.map((patient) =>
-                        batchMode ? (
+                      {sortedPatients.map((patient) =>
+                        batchMode && patient.status === 'pending' ? (
                           <div key={patient.rowIndex} className="flex items-start gap-2">
                             <button
                               onClick={() => togglePatientSelection(patient.rowIndex)}
@@ -1439,24 +1439,56 @@ export default function HomePage() {
                       )}
                     </div>
                   </section>
-                )}
+                ) : (
+                  /* Time sort: grouped by status */
+                  <>
+                    {/* Ready to Process */}
+                    {pendingPatients.length > 0 && (
+                      <section>
+                        <div className="space-y-3">
+                          {pendingPatients.map((patient) =>
+                            batchMode ? (
+                              <div key={patient.rowIndex} className="flex items-start gap-2">
+                                <button
+                                  onClick={() => togglePatientSelection(patient.rowIndex)}
+                                  className="flex-shrink-0 p-1 mt-3"
+                                >
+                                  {selectedPatients.has(patient.rowIndex) ? (
+                                    <CheckSquare className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+                                  ) : (
+                                    <Square className="w-5 h-5 text-[var(--text-muted)]" />
+                                  )}
+                                </button>
+                                <div className="flex-1">
+                                  {renderPatientWithBilling(patient)}
+                                </div>
+                              </div>
+                            ) : (
+                              renderPatientWithBilling(patient)
+                            )
+                          )}
+                        </div>
+                      </section>
+                    )}
 
-                {/* New */}
-                {newPatients.length > 0 && (
-                  <section>
-                    <div className="space-y-3">
-                      {newPatients.map((patient) => renderPatientWithBilling(patient))}
-                    </div>
-                  </section>
-                )}
+                    {/* New */}
+                    {newPatients.length > 0 && (
+                      <section>
+                        <div className="space-y-3">
+                          {newPatients.map((patient) => renderPatientWithBilling(patient))}
+                        </div>
+                      </section>
+                    )}
 
-                {/* Processed */}
-                {processedPatients.length > 0 && (
-                  <section>
-                    <div className="space-y-3">
-                      {processedPatients.map((patient) => renderPatientWithBilling(patient))}
-                    </div>
-                  </section>
+                    {/* Processed */}
+                    {processedPatients.length > 0 && (
+                      <section>
+                        <div className="space-y-3">
+                          {processedPatients.map((patient) => renderPatientWithBilling(patient))}
+                        </div>
+                      </section>
+                    )}
+                  </>
                 )}
               </>
             )}
