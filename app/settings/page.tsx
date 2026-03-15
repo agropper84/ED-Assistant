@@ -845,22 +845,31 @@ export default function SettingsPage() {
                     {parseRules.formatName || 'Custom'}
                   </span>
                 </div>
-                {/* Format dropdown — only if >1 saved format */}
-                {savedFormats.length > 0 && (
-                  <select
-                    value={parseRules.formatName || ''}
-                    onChange={(e) => {
-                      const f = savedFormats.find((f: any) => f.name === e.target.value);
+                {/* Format dropdown */}
+                <select
+                  value={parseRules.formatName || ''}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (val === 'Meditech') {
+                      setParseRules(DEFAULT_PARSE_RULES);
+                      saveParseRules(DEFAULT_PARSE_RULES);
+                      setFormatName('Meditech');
+                      setSampleInput(''); setFieldName(''); setFieldAge(''); setFieldGender('');
+                      setFieldDob(''); setFieldMrn(''); setFieldHcn('');
+                      setTestResult(null);
+                    } else {
+                      const f = savedFormats.find((f: any) => f.name === val);
                       if (f) handleLoadFormat(f);
-                    }}
-                    className="px-2 py-1 border border-[var(--input-border)] rounded-lg text-xs bg-[var(--input-bg)] text-[var(--text-primary)] focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="">Select format...</option>
-                    {savedFormats.map((f: any) => (
-                      <option key={f.name} value={f.name}>{f.name}</option>
-                    ))}
-                  </select>
-                )}
+                    }
+                  }}
+                  className="px-2 py-1 border border-[var(--input-border)] rounded-lg text-xs bg-[var(--input-bg)] text-[var(--text-primary)] focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">Select format...</option>
+                  <option value="Meditech">Meditech (built-in)</option>
+                  {savedFormats.filter((f: any) => f.name !== 'Meditech').map((f: any) => (
+                    <option key={f.name} value={f.name}>{f.name}</option>
+                  ))}
+                </select>
               </div>
               <p className="text-xs text-[var(--text-muted)]">
                 Paste sample patient data from your EMR on the left, then identify each field on the right. AI will learn the pattern.
