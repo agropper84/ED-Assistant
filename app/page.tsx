@@ -17,7 +17,6 @@ import {
   parseBillingItems,
   serializeBillingItems,
   isTimeBased,
-  VchBillingMode, getVchBillingMode, saveVchBillingMode,
   TimeSegment,
 } from '@/lib/billing';
 import {
@@ -300,8 +299,7 @@ export default function HomePage() {
   const [generatingVch, setGeneratingVch] = useState(false);
   const [vchResult, setVchResult] = useState<string | null>(null);
 
-  // VCH billing mode and time-based shift segments
-  const [vchMode, setVchMode] = useState<VchBillingMode>(() => getVchBillingMode());
+  // VCH time-based shift segments
   const [shiftSegments, setShiftSegments] = useState<TimeSegment[]>([]);
   const [showShiftPanel, setShowShiftPanel] = useState(false);
 
@@ -1103,25 +1101,17 @@ export default function HomePage() {
             <div className="flex items-center gap-1.5">
               {isTimeBased() ? (
                 <>
-                  {/* Patient / Time toggle */}
-                  <div className="flex rounded-lg overflow-hidden border border-white/20">
-                    <button
-                      onClick={() => { setVchMode('patient'); saveVchBillingMode('patient'); setShowShiftPanel(false); }}
-                      className={`px-2 py-1 text-[10px] font-medium transition-colors ${
-                        vchMode === 'patient' ? 'bg-white/25 text-white' : 'text-white/60 hover:text-white/80'
-                      }`}
-                    >
-                      Patient
-                    </button>
-                    <button
-                      onClick={() => { setVchMode('time'); saveVchBillingMode('time'); setShowShiftPanel(true); }}
-                      className={`px-2 py-1 text-[10px] font-medium transition-colors ${
-                        vchMode === 'time' ? 'bg-white/25 text-white' : 'text-white/60 hover:text-white/80'
-                      }`}
-                    >
-                      Time
-                    </button>
-                  </div>
+                  {/* Time segments toggle */}
+                  <button
+                    onClick={() => setShowShiftPanel(!showShiftPanel)}
+                    className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium transition-colors ${
+                      showShiftPanel ? 'bg-white/25 text-white' : 'bg-white/10 hover:bg-white/20'
+                    }`}
+                    style={{ color: 'var(--dash-text)' }}
+                  >
+                    <Clock className="w-3 h-3" />
+                    Time{shiftSegments.length > 0 ? ` (${shiftSegments.length})` : ''}
+                  </button>
                   {/* VCH Sheet export button */}
                   <button
                     onClick={async () => {
@@ -1138,8 +1128,7 @@ export default function HomePage() {
                             siteFacility: appSettings.vchSiteFacility,
                             pracNumber: appSettings.vchPracNumber,
                             practitionerName: appSettings.vchPractitionerName,
-                            vchMode,
-                            shiftSegments: vchMode === 'time' ? shiftSegments : undefined,
+                            shiftSegments,
                           }),
                         });
                         const data = await res.json();
@@ -1159,19 +1148,9 @@ export default function HomePage() {
                     className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium bg-white/15 hover:bg-white/25 transition-colors disabled:opacity-50"
                     style={{ color: 'var(--dash-text)' }}
                   >
-                    {generatingVch ? <Loader2 className="w-3 h-3 animate-spin" /> : <Clock className="w-3 h-3" />}
+                    {generatingVch ? <Loader2 className="w-3 h-3 animate-spin" /> : null}
                     VCH Sheet
                   </button>
-                  {/* Toggle shift panel (for time mode) */}
-                  {vchMode === 'time' && (
-                    <button
-                      onClick={() => setShowShiftPanel(!showShiftPanel)}
-                      className="px-2 py-1 rounded-lg text-[10px] font-medium bg-white/10 hover:bg-white/20 transition-colors"
-                      style={{ color: 'var(--dash-text-sub)' }}
-                    >
-                      {shiftSegments.length > 0 ? `${shiftSegments.length} seg` : 'Add'}
-                    </button>
-                  )}
                 </>
               ) : (
                 <>
@@ -1217,7 +1196,7 @@ export default function HomePage() {
       </header>
 
       {/* VCH Time-Based Shift Panel */}
-      {isTimeBased() && vchMode === 'time' && showShiftPanel && (
+      {isTimeBased() && showShiftPanel && (
         <div className="bg-[var(--card-bg)] border-b border-[var(--border)] sticky top-[92px] z-20">
           <div className="max-w-2xl mx-auto px-4 py-3">
             <div className="flex items-center justify-between mb-2">
