@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { X, ChevronDown, ChevronUp, DollarSign, Search, Info, Plus, Clock, Trash2 } from 'lucide-react';
+import { X, ChevronDown, ChevronUp, DollarSign, Search, Info, Plus, Trash2 } from 'lucide-react';
 import {
   BillingItem, BillingCategory, BillingCode,
   addBillingCode, calculateTotal, getAdditionalCodes, filterAdditionalCodes,
@@ -106,13 +106,17 @@ export function BillingSection({
   const total = calculateTotal(billingItems);
   const tbSummary = isTB ? getTimeBasedSummary(billingItems) : null;
 
+  const handleToggle = (timeBased: boolean) => {
+    onSave(setTimeBasedMode(billingItems, timeBased));
+  };
+
   return (
     <div className="bg-[var(--card-bg)] rounded-2xl border border-[var(--card-border)] overflow-hidden" style={{ boxShadow: 'var(--card-shadow)' }}>
-      <button
-        onClick={() => setShowBilling(!showBilling)}
-        className="w-full flex items-center justify-between p-4 cursor-pointer"
-      >
-        <div className="flex items-center gap-2">
+      <div className="flex items-center justify-between p-4">
+        <button
+          onClick={() => setShowBilling(!showBilling)}
+          className="flex items-center gap-2 cursor-pointer flex-1 min-w-0"
+        >
           <DollarSign className="w-5 h-5 text-[var(--text-muted)]" />
           <h3 className="font-semibold text-[var(--text-primary)]">Billing</h3>
           {isTB && tbSummary ? (
@@ -133,13 +137,32 @@ export function BillingSection({
               )}
             </>
           )}
+          {showBilling ? (
+            <ChevronUp className="w-5 h-5 text-[var(--text-muted)]" />
+          ) : (
+            <ChevronDown className="w-5 h-5 text-[var(--text-muted)]" />
+          )}
+        </button>
+        {/* Mode toggle — always visible in header */}
+        <div className="flex rounded-lg overflow-hidden border border-[var(--border)] ml-3 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+          <button
+            onClick={() => handleToggle(false)}
+            className={`px-2.5 py-1 text-[10px] font-medium transition-colors ${
+              !isTB ? 'bg-blue-600 text-white' : 'bg-[var(--bg-tertiary)] text-[var(--text-muted)]'
+            }`}
+          >
+            Patient
+          </button>
+          <button
+            onClick={() => handleToggle(true)}
+            className={`px-2.5 py-1 text-[10px] font-medium transition-colors ${
+              isTB ? 'bg-blue-600 text-white' : 'bg-[var(--bg-tertiary)] text-[var(--text-muted)]'
+            }`}
+          >
+            Time
+          </button>
         </div>
-        {showBilling ? (
-          <ChevronUp className="w-5 h-5 text-[var(--text-muted)]" />
-        ) : (
-          <ChevronDown className="w-5 h-5 text-[var(--text-muted)]" />
-        )}
-      </button>
+      </div>
       {showBilling && (
         <div className="px-4 pb-4">
           <BillingBody
@@ -163,8 +186,34 @@ export function InlineBilling({
   onSave: (items: BillingItem[], comments?: string) => void;
   onSaveComments: (comments: string) => void;
 }) {
+  const isTB = isTimeBasedBilling(billingItems);
+  const handleToggle = (timeBased: boolean) => {
+    onSave(setTimeBasedMode(billingItems, timeBased));
+  };
+
   return (
     <div className="bg-[var(--bg-tertiary)] border border-[var(--border)] rounded-xl p-4 space-y-3" onClick={(e) => e.stopPropagation()}>
+      {/* Mode toggle */}
+      <div className="flex justify-end">
+        <div className="flex rounded-lg overflow-hidden border border-[var(--border)]">
+          <button
+            onClick={() => handleToggle(false)}
+            className={`px-2.5 py-1 text-[10px] font-medium transition-colors ${
+              !isTB ? 'bg-blue-600 text-white' : 'bg-[var(--bg-tertiary)] text-[var(--text-muted)]'
+            }`}
+          >
+            Patient
+          </button>
+          <button
+            onClick={() => handleToggle(true)}
+            className={`px-2.5 py-1 text-[10px] font-medium transition-colors ${
+              isTB ? 'bg-blue-600 text-white' : 'bg-[var(--bg-tertiary)] text-[var(--text-muted)]'
+            }`}
+          >
+            Time
+          </button>
+        </div>
+      </div>
       <BillingBody
         billingItems={billingItems}
         comments={comments}
@@ -394,41 +443,6 @@ function TimeBasedBilling({
 }
 
 // ────────────────────────────────────────────────────────────────────────────
-// Mode Toggle
-// ────────────────────────────────────────────────────────────────────────────
-
-function BillingModeToggle({
-  isTimeBased,
-  onToggle,
-}: {
-  isTimeBased: boolean;
-  onToggle: (timeBased: boolean) => void;
-}) {
-  return (
-    <div className="flex rounded-lg overflow-hidden border border-[var(--border)] mb-3">
-      <button
-        onClick={() => onToggle(false)}
-        className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-medium transition-colors ${
-          !isTimeBased ? 'bg-blue-600 text-white' : 'bg-[var(--bg-tertiary)] text-[var(--text-secondary)]'
-        }`}
-      >
-        <DollarSign className="w-3.5 h-3.5" />
-        Patient Based
-      </button>
-      <button
-        onClick={() => onToggle(true)}
-        className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-medium transition-colors ${
-          isTimeBased ? 'bg-blue-600 text-white' : 'bg-[var(--bg-tertiary)] text-[var(--text-secondary)]'
-        }`}
-      >
-        <Clock className="w-3.5 h-3.5" />
-        Time Based
-      </button>
-    </div>
-  );
-}
-
-// ────────────────────────────────────────────────────────────────────────────
 // Shared Billing Body
 // ────────────────────────────────────────────────────────────────────────────
 
@@ -443,15 +457,8 @@ function BillingBody({
 }) {
   const isTB = isTimeBasedBilling(billingItems);
 
-  const handleToggle = (timeBased: boolean) => {
-    onSave(setTimeBasedMode(billingItems, timeBased));
-  };
-
   return (
     <div>
-      {/* Mode Toggle — top right */}
-      <BillingModeToggle isTimeBased={isTB} onToggle={handleToggle} />
-
       {isTB ? (
         <TimeBasedBilling
           billingItems={billingItems}
