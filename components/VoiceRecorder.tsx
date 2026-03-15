@@ -503,8 +503,10 @@ export function VoiceRecorder({
         await new Promise(r => setTimeout(r, 100));
       }
 
-      // Deliver complete accumulated text
-      if (accumulatedTextRef.current.trim()) {
+      // Final delivery: onInterimTranscript already has the full text in the field,
+      // so only call onTranscript if there was NO interim handler (non-streaming callers).
+      // With interim updates, the field is already correct — calling onTranscript would duplicate.
+      if (accumulatedTextRef.current.trim() && !onInterimRef.current) {
         onTranscriptRef.current(accumulatedTextRef.current.trim());
       }
       accumulatedTextRef.current = '';
