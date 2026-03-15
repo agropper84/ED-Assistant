@@ -26,13 +26,28 @@ export const BILLING_REGIONS: BillingRegion[] = [
   { id: 'vch', label: 'VCH - Time Based' },
 ];
 
-/** Check if the current region uses time-based billing */
+/** Check if the current region is VCH */
 export function isTimeBased(region?: string): boolean {
   const r = region || getRegion();
   return r === 'vch';
 }
 
-/** VCH time-based billing categories */
+/** VCH billing mode: 'patient' or 'time' (day-level) */
+export type VchBillingMode = 'patient' | 'time';
+
+const VCH_MODE_KEY = 'ed-app-vch-billing-mode';
+
+export function getVchBillingMode(): VchBillingMode {
+  if (typeof window === 'undefined') return 'patient';
+  return (localStorage.getItem(VCH_MODE_KEY) as VchBillingMode) || 'patient';
+}
+
+export function saveVchBillingMode(mode: VchBillingMode): void {
+  if (typeof window === 'undefined') return;
+  localStorage.setItem(VCH_MODE_KEY, mode);
+}
+
+/** VCH time-based billing categories (legacy — kept for backward compat) */
 export const VCH_CATEGORIES = [
   { code: 'VCH-DO', label: 'Direct Onsite', description: 'Face-to-face with patient' },
   { code: 'VCH-IO', label: 'Indirect Onsite', description: 'Charting, orders, chart review at facility' },

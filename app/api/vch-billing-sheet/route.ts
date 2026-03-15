@@ -8,123 +8,94 @@ import {
 } from '@/lib/google-sheets';
 import {
   parseBillingItems,
-  isTimeBasedBilling,
-  decodeTimeSegments,
   calculateSegmentHours,
   getSegmentRatePeriod,
+  type TimeSegment,
 } from '@/lib/billing';
 
 export async function POST(req: NextRequest) {
   try {
     const ctx = await getSheetsContext();
     const body = await req.json();
-    const { sheetName, cprpId, siteFacility, pracNumber, practitionerName } = body;
+    const { sheetName, cprpId, siteFacility, pracNumber, practitionerName, vchMode, shiftSegments } = body;
 
     if (!sheetName) {
       return NextResponse.json({ error: 'sheetName required' }, { status: 400 });
     }
 
-    // Fetch all patients from the specified date sheet
-    const patients = await getPatients(ctx, sheetName);
-
-    // Parse the date from sheetName (e.g. "Mar 13, 2026")
     const sheetDate = new Date(sheetName);
     const dayOfWeek = sheetDate.getDay();
     const dateStr = `${sheetDate.getMonth() + 1}/${sheetDate.getDate()}/${sheetDate.getFullYear()}`;
 
     const rows: VchBillingRow[] = [];
 
-    for (const patient of patients) {
-      const items = parseBillingItems(
-        patient.visitProcedure || '',
-        patient.procCode || '',
-        patient.fee || '',
-        patient.unit || '',
-      );
+    if (vchMode === 'time' && Array.isArray(shiftSegments) && shiftSegments.length > 0) {
+      // Time-based mode: shift-level segments (not per-patient)
+      for (const seg of shiftSegments as TimeSegment[]) {
+        if (!seg.start || !seg.end) continue;
+        const hrs = calculateSegmentHours(seg);
+        const ratePeriod = getSegmentRatePeriod(seg.start, dayOfWeek);
 
-      if (isTimeBasedBilling(items)) {
-        // New time-based billing: each segment becomes one or more rows
-        const segments = decodeTimeSegments(items);
+        rows.push({
+          cprpId: cprpId || '',
+          siteFacility: siteFacility || '',
+          pracNumber: pracNumber || '',
+          practitionerName: practitionerName || '',
+          serviceDate: dateStr,
+          ratePeriod,
+          startTime: seg.start,
+          endTime: seg.end,
+          scheduled: seg.scheduled ? 'Scheduled' : 'Unscheduled',
+          onsiteOffsite: seg.onsite ? 'Onsite' : 'Offsite',
+          directIndirectHrs: hrs.totalHrs.toFixed(2),
+          directHrs: hrs.directHrs.toFixed(2),
+          indirectHrs: hrs.indirectHrs.toFixed(2),
+          other: '',
+          total: hrs.totalHrs.toFixed(2),
+        });
+      }
+    } else {
+      // Patient-based mode: aggregate VCH-DO/IO per patient
+      const patients = await getPatients(ctx, sheetName);
 
-        for (const seg of segments) {
-          const hrs = calculateSegmentHours(seg);
-          const ratePeriod = getSegmentRatePeriod(seg.start, dayOfWeek);
+      for (const patient of patients) {
+        const items = parseBillingItems(
+          patient.visitProcedure || '',
+          patient.procCode || '',
+          patient.fee || '',
+          patient.unit || '',
+        );
 
-          rows.push({
-            cprpId: cprpId || '',
-            siteFacility: siteFacility || '',
-            pracNumber: pracNumber || '',
-            practitionerName: practitionerName || '',
-            serviceDate: dateStr,
-            ratePeriod,
-            startTime: seg.start,
-            endTime: seg.end,
-            scheduled: seg.scheduled ? 'Scheduled' : 'Unscheduled',
-            onsiteOffsite: seg.onsite ? 'Onsite' : 'Offsite',
-            directIndirectHrs: hrs.totalHrs.toFixed(2),
-            directHrs: hrs.directHrs.toFixed(2),
-            indirectHrs: hrs.indirectHrs.toFixed(2),
-            other: '',
-            total: hrs.totalHrs.toFixed(2),
-          });
-        }
-      } else {
-        // Legacy VCH category-based billing (VCH-DO/IO/IF)
         const vchItems = items.filter(i => i.code.startsWith('VCH-'));
         if (vchItems.length === 0) continue;
 
         const directMin = parseInt(vchItems.find(i => i.code === 'VCH-DO')?.unit || '0', 10) || 0;
-        const indirectOnsiteMin = parseInt(vchItems.find(i => i.code === 'VCH-IO')?.unit || '0', 10) || 0;
-        const indirectOffsiteMin = parseInt(vchItems.find(i => i.code === 'VCH-IF')?.unit || '0', 10) || 0;
+        const indirectMin = parseInt(vchItems.find(i => i.code === 'VCH-IO')?.unit || '0', 10) || 0;
+        const isScheduled = vchItems.some(i => i.code === 'VCH-SCHED');
+        const isOffsite = vchItems.some(i => i.code === 'VCH-OFFSITE');
+
+        const totalMin = directMin + indirectMin;
+        if (totalMin <= 0) continue;
 
         const ratePeriod = getVchRatePeriod(patient.timestamp || '', dayOfWeek);
 
-        // Onsite row: Direct + Indirect Onsite
-        const onsiteMin = directMin + indirectOnsiteMin;
-        if (onsiteMin > 0) {
-          const directHrs = (directMin / 60).toFixed(2);
-          const indirectHrs = (indirectOnsiteMin / 60).toFixed(2);
-          const totalHrs = (onsiteMin / 60).toFixed(2);
-          rows.push({
-            cprpId: cprpId || '',
-            siteFacility: siteFacility || '',
-            pracNumber: pracNumber || '',
-            practitionerName: practitionerName || '',
-            serviceDate: dateStr,
-            ratePeriod,
-            startTime: patient.timestamp || '',
-            endTime: '',
-            scheduled: 'Unscheduled',
-            onsiteOffsite: 'Onsite',
-            directIndirectHrs: totalHrs,
-            directHrs,
-            indirectHrs,
-            other: '',
-            total: totalHrs,
-          });
-        }
-
-        // Offsite row: Indirect Offsite
-        if (indirectOffsiteMin > 0) {
-          const offsiteHrs = (indirectOffsiteMin / 60).toFixed(2);
-          rows.push({
-            cprpId: cprpId || '',
-            siteFacility: siteFacility || '',
-            pracNumber: pracNumber || '',
-            practitionerName: practitionerName || '',
-            serviceDate: dateStr,
-            ratePeriod,
-            startTime: '',
-            endTime: '',
-            scheduled: 'Unscheduled',
-            onsiteOffsite: 'Offsite',
-            directIndirectHrs: offsiteHrs,
-            directHrs: '',
-            indirectHrs: offsiteHrs,
-            other: '',
-            total: offsiteHrs,
-          });
-        }
+        rows.push({
+          cprpId: cprpId || '',
+          siteFacility: siteFacility || '',
+          pracNumber: pracNumber || '',
+          practitionerName: practitionerName || '',
+          serviceDate: dateStr,
+          ratePeriod,
+          startTime: patient.timestamp || '',
+          endTime: '',
+          scheduled: isScheduled ? 'Scheduled' : 'Unscheduled',
+          onsiteOffsite: isOffsite ? 'Offsite' : 'Onsite',
+          directIndirectHrs: (totalMin / 60).toFixed(2),
+          directHrs: (directMin / 60).toFixed(2),
+          indirectHrs: (indirectMin / 60).toFixed(2),
+          other: '',
+          total: (totalMin / 60).toFixed(2),
+        });
       }
     }
 

@@ -11,14 +11,14 @@ import { BatchTranscribeModal } from '@/components/BatchTranscribeModal';
 import { ClinicalChatModal } from '@/components/ClinicalChatModal';
 import { MergeModal } from '@/components/MergeModal';
 import { PendingAudioBanner } from '@/components/PendingAudioBanner';
-import { InlineBilling } from '@/components/BillingSection';
+import { InlineBilling, VchTimeBasedShiftPanel } from '@/components/BillingSection';
 import {
   BillingItem,
   parseBillingItems,
   serializeBillingItems,
   isTimeBased,
-  isTimeBasedBilling,
-  getTimeBasedSummary,
+  VchBillingMode, getVchBillingMode, saveVchBillingMode,
+  TimeSegment,
 } from '@/lib/billing';
 import {
   Plus, RefreshCw, Loader2, ChevronLeft, ChevronRight,
@@ -300,6 +300,11 @@ export default function HomePage() {
   const [generatingVch, setGeneratingVch] = useState(false);
   const [vchResult, setVchResult] = useState<string | null>(null);
 
+  // VCH billing mode and time-based shift segments
+  const [vchMode, setVchMode] = useState<VchBillingMode>(() => getVchBillingMode());
+  const [shiftSegments, setShiftSegments] = useState<TimeSegment[]>([]);
+  const [showShiftPanel, setShowShiftPanel] = useState(false);
+
   // Date picker ref
   const datePickerRef = useRef<HTMLInputElement>(null);
 
@@ -368,6 +373,22 @@ export default function HomePage() {
     const d = new Date(currentDate); d.setHours(0, 0, 0, 0);
     return d.getTime() === t.getTime();
   })();
+
+  // Load/save shift segments from localStorage (day-level, keyed by sheet name)
+  const segmentsKey = `ed-vch-segments-${sheetName}`;
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(segmentsKey);
+      setShiftSegments(stored ? JSON.parse(stored) : []);
+    } catch {
+      setShiftSegments([]);
+    }
+  }, [segmentsKey]);
+
+  const handleSaveShiftSegments = (segs: TimeSegment[]) => {
+    setShiftSegments(segs);
+    localStorage.setItem(segmentsKey, JSON.stringify(segs));
+  };
 
   const lastFetchRef = useRef(Date.now());
 
@@ -805,11 +826,11 @@ export default function HomePage() {
       patient.visitProcedure || '', patient.procCode || '',
       patient.fee || '', patient.unit || ''
     );
-    const patientTimeBased = isTimeBasedBilling(items);
-    const codes = patientTimeBased
+    const vchRegion = isTimeBased();
+    const codes = vchRegion
       ? (() => {
-          const summary = getTimeBasedSummary(items);
-          return summary.segmentCount > 0 ? `${summary.totalHrs.toFixed(1)}h` : '';
+          const totalMin = items.filter(i => i.code.startsWith('VCH-')).reduce((sum, i) => sum + (parseInt(i.unit || '0', 10) || 0), 0);
+          return totalMin > 0 ? `${totalMin}m` : '';
         })()
       : items.length > 0 ? items.map(i => i.code).join(', ') : '';
     const isBillingOpen = billingPatientIdx === patient.rowIndex;
@@ -1078,46 +1099,80 @@ export default function HomePage() {
               </button>
             </div>
 
-            {/* Shift times */}
+            {/* Shift times / VCH controls */}
             <div className="flex items-center gap-1.5">
               {isTimeBased() ? (
-                <button
-                  onClick={async () => {
-                    setGeneratingVch(true);
-                    setVchResult(null);
-                    try {
-                      const appSettings = getSettings();
-                      const res = await fetch('/api/vch-billing-sheet', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                          sheetName,
-                          cprpId: appSettings.vchCprpId,
-                          siteFacility: appSettings.vchSiteFacility,
-                          pracNumber: appSettings.vchPracNumber,
-                          practitionerName: appSettings.vchPractitionerName,
-                        }),
-                      });
-                      const data = await res.json();
-                      if (res.ok) {
-                        setVchResult(`VCH sheet created: ${data.count} rows`);
-                      } else {
-                        setVchResult(data.error || 'Failed');
+                <>
+                  {/* Patient / Time toggle */}
+                  <div className="flex rounded-lg overflow-hidden border border-white/20">
+                    <button
+                      onClick={() => { setVchMode('patient'); saveVchBillingMode('patient'); setShowShiftPanel(false); }}
+                      className={`px-2 py-1 text-[10px] font-medium transition-colors ${
+                        vchMode === 'patient' ? 'bg-white/25 text-white' : 'text-white/60 hover:text-white/80'
+                      }`}
+                    >
+                      Patient
+                    </button>
+                    <button
+                      onClick={() => { setVchMode('time'); saveVchBillingMode('time'); setShowShiftPanel(true); }}
+                      className={`px-2 py-1 text-[10px] font-medium transition-colors ${
+                        vchMode === 'time' ? 'bg-white/25 text-white' : 'text-white/60 hover:text-white/80'
+                      }`}
+                    >
+                      Time
+                    </button>
+                  </div>
+                  {/* VCH Sheet export button */}
+                  <button
+                    onClick={async () => {
+                      setGeneratingVch(true);
+                      setVchResult(null);
+                      try {
+                        const appSettings = getSettings();
+                        const res = await fetch('/api/vch-billing-sheet', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({
+                            sheetName,
+                            cprpId: appSettings.vchCprpId,
+                            siteFacility: appSettings.vchSiteFacility,
+                            pracNumber: appSettings.vchPracNumber,
+                            practitionerName: appSettings.vchPractitionerName,
+                            vchMode,
+                            shiftSegments: vchMode === 'time' ? shiftSegments : undefined,
+                          }),
+                        });
+                        const data = await res.json();
+                        if (res.ok) {
+                          setVchResult(`VCH sheet: ${data.count} rows`);
+                        } else {
+                          setVchResult(data.error || 'Failed');
+                        }
+                      } catch {
+                        setVchResult('Failed to generate');
+                      } finally {
+                        setGeneratingVch(false);
+                        setTimeout(() => setVchResult(null), 4000);
                       }
-                    } catch {
-                      setVchResult('Failed to generate');
-                    } finally {
-                      setGeneratingVch(false);
-                      setTimeout(() => setVchResult(null), 4000);
-                    }
-                  }}
-                  disabled={generatingVch}
-                  className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium bg-white/15 hover:bg-white/25 transition-colors disabled:opacity-50"
-                  style={{ color: 'var(--dash-text)' }}
-                >
-                  {generatingVch ? <Loader2 className="w-3 h-3 animate-spin" /> : <Clock className="w-3 h-3" />}
-                  VCH Sheet
-                </button>
+                    }}
+                    disabled={generatingVch}
+                    className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium bg-white/15 hover:bg-white/25 transition-colors disabled:opacity-50"
+                    style={{ color: 'var(--dash-text)' }}
+                  >
+                    {generatingVch ? <Loader2 className="w-3 h-3 animate-spin" /> : <Clock className="w-3 h-3" />}
+                    VCH Sheet
+                  </button>
+                  {/* Toggle shift panel (for time mode) */}
+                  {vchMode === 'time' && (
+                    <button
+                      onClick={() => setShowShiftPanel(!showShiftPanel)}
+                      className="px-2 py-1 rounded-lg text-[10px] font-medium bg-white/10 hover:bg-white/20 transition-colors"
+                      style={{ color: 'var(--dash-text-sub)' }}
+                    >
+                      {shiftSegments.length > 0 ? `${shiftSegments.length} seg` : 'Add'}
+                    </button>
+                  )}
+                </>
               ) : (
                 <>
                   <select
@@ -1160,6 +1215,27 @@ export default function HomePage() {
           </div>
         </div>
       </header>
+
+      {/* VCH Time-Based Shift Panel */}
+      {isTimeBased() && vchMode === 'time' && showShiftPanel && (
+        <div className="bg-[var(--card-bg)] border-b border-[var(--border)] sticky top-[92px] z-20">
+          <div className="max-w-2xl mx-auto px-4 py-3">
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-sm font-semibold text-[var(--text-primary)]">Shift Time Segments</h3>
+              <button
+                onClick={() => setShowShiftPanel(false)}
+                className="p-1 text-[var(--text-muted)] hover:text-[var(--text-secondary)]"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <VchTimeBasedShiftPanel
+              segments={shiftSegments}
+              onSaveSegments={handleSaveShiftSegments}
+            />
+          </div>
+        </div>
+      )}
 
       {/* Pending Watch Recordings */}
       <PendingAudioBanner onProcessed={() => fetchPatients(false)} />
