@@ -295,44 +295,58 @@ export default function SettingsPage() {
     setDetecting(true);
     setTestResult(null);
     try {
-      // Ask AI to detect format — with or without user-identified fields
-      const detectRes = await fetch('/api/detect-format', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+      const name = formatName.trim() || 'Custom';
+
+      if (hasFields) {
+        // User has identified fields — test AI-based parsing directly
+        // The format example IS the training data; no regex needed
+        const formatExample = {
           sampleText: sampleInput,
-          ...(hasFields ? {
-            fields: {
-              name: fieldName,
-              age: fieldAge,
-              gender: fieldGender,
-              dob: fieldDob,
-              mrn: fieldMrn,
-              hcn: fieldHcn,
-            },
-          } : {}),
-        }),
-      });
-      if (!detectRes.ok) throw new Error('Detection failed');
-      const { rules: newRules } = await detectRes.json();
+          fieldName, fieldAge, fieldGender, fieldDob, fieldMrn, fieldHcn,
+        };
 
-      // Add format name
-      if (formatName.trim()) {
-        newRules.formatName = formatName.trim();
-      }
+        // Test parse the same sample to verify it works
+        const parseRes = await fetch('/api/parse', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text: sampleInput, formatExample }),
+        });
+        if (parseRes.ok) {
+          setTestResult(await parseRes.json());
+        }
 
-      // Save detected rules as active
-      setParseRules(newRules);
-      saveParseRules(newRules);
+        // Save the format name as active parse rules
+        const rules: ParseRules = {
+          formatName: name,
+          ageDobPattern: '',
+          hcnPattern: '',
+          mrnPattern: '',
+          nameCleanup: '',
+        };
+        setParseRules(rules);
+        saveParseRules(rules);
+      } else {
+        // No fields identified — use legacy auto-detect (regex generation)
+        const detectRes = await fetch('/api/detect-format', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sampleText: sampleInput }),
+        });
+        if (!detectRes.ok) throw new Error('Detection failed');
+        const { rules: newRules } = await detectRes.json();
+        newRules.formatName = name;
 
-      // Auto-run test parse
-      const parseRes = await fetch('/api/parse', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: sampleInput, parseRules: newRules }),
-      });
-      if (parseRes.ok) {
-        setTestResult(await parseRes.json());
+        setParseRules(newRules);
+        saveParseRules(newRules);
+
+        const parseRes = await fetch('/api/parse', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text: sampleInput, parseRules: newRules }),
+        });
+        if (parseRes.ok) {
+          setTestResult(await parseRes.json());
+        }
       }
     } catch (err) {
       console.error('Format detection failed:', err);
@@ -908,7 +922,7 @@ export default function SettingsPage() {
                   className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium disabled:opacity-40 flex items-center gap-2"
                 >
                   {detecting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Search className="w-3.5 h-3.5" />}
-                  {detecting ? 'Detecting...' : 'Detect Format'}
+                  {detecting ? 'Testing...' : 'Test Format'}
                 </button>
                 <button
                   onClick={handleSaveFormat}

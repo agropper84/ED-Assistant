@@ -120,11 +120,31 @@ export function ParseModal({ isOpen, onClose, onSave }: ParseModalProps) {
     setError('');
 
     try {
+      // Try to get active format example for AI-based parsing
+      let formatExample: any = null;
+      try {
+        const parseRules = getParseRules();
+        if (parseRules.formatName) {
+          const fmtRes = await fetch('/api/parse-formats');
+          if (fmtRes.ok) {
+            const formats = await fmtRes.json();
+            const active = formats.find((f: any) => f.name === parseRules.formatName);
+            if (active?.sampleText && active?.fieldName) {
+              formatExample = active;
+            }
+          }
+        }
+      } catch {}
+
       const parseRules = getParseRules();
       const res = await fetch('/api/parse', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: pasteText, parseRules }),
+        body: JSON.stringify({
+          text: pasteText,
+          parseRules,
+          ...(formatExample ? { formatExample } : {}),
+        }),
       });
 
       if (!res.ok) throw new Error('Failed to parse');
