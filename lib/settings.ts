@@ -115,28 +115,43 @@ export const DEFAULT_ENCOUNTER_TYPES: EncounterType[] = [
   {
     id: 'er',
     label: 'ER',
-    prompts: {}, // uses default prompts as-is
+    prompts: {}, // uses default prompts as-is (already tuned for ER)
   },
   {
     id: 'urgent-care',
     label: 'Urgent Care',
     prompts: {
       generalRules: `- Do NOT assume, infer, or make up information not explicitly stated in the provided data
-- Use appropriate evidence-based medicine and guidelines
-- Use professional yet concise language appropriate for an urgent care setting
+- Use evidence-based medicine appropriate for an urgent care walk-in setting
+- Write as a concise, experienced urgent care physician — professional but efficient
 - Abbreviations are acceptable without explanation
 - Truncated sentences are acceptable
 - Use narrative/paragraph form, NOT bullet points or numbered lists
+- Urgent care sees lower-acuity presentations — tailor language accordingly
+- Always consider whether the patient needs ED referral or can be safely managed outpatient
 - If information for a section is not available, write "Information not documented" or "Insufficient data"`,
-      hpi: `Narrative summary of patient's presentation in an urgent care context. Document the history and features supporting the working diagnosis. Note any red flags that would warrant ED referral. Professional, concise language.`,
+      ddx: `Provide a focused differential diagnosis appropriate for an urgent care presentation. Prioritize common outpatient conditions first. Flag any diagnoses that would require ED transfer or immediate escalation. Use narrative form.`,
+      investigations: `Recommend investigations available in a typical urgent care setting (point-of-care testing, basic labs, plain radiographs, rapid strep/flu/COVID, UA, etc.). If advanced imaging or labs are needed, specify these as outpatient orders or reasons for ED referral. Use narrative form.`,
+      management: `Recommend management appropriate for urgent care disposition. Include:
+- Medications prescribed (with dose, frequency, duration)
+- Procedures performed in clinic (wound care, splinting, I&D, etc.)
+- Patient education and home care instructions
+- Clear follow-up plan: PCP follow-up timeline, specialist referral if needed
+- Explicit return precautions and criteria for ED visit
+Use narrative form.`,
+      evidence: `Cite clinical guidelines and decision rules relevant to the urgent care setting. Reference outpatient management guidelines, antibiotic stewardship principles, or validated tools (e.g., Centor score, Ottawa rules, CURB-65). Include rationale for treating outpatient vs. referring to ED. Use narrative form.`,
+      hpi: `Narrative summary of the patient's urgent care presentation. Document the chief complaint, timeline, associated symptoms, and relevant history. Note pertinent negatives that support safe outpatient management. Document that red flags for conditions requiring ED care have been assessed. Professional, efficient urgent care physician language.`,
+      objective: `Physical examination findings ONLY. Use this format for normal exam:
+"Patient appears well, NAD. AVSS."
+Then include ONLY pertinent exam findings that were actually documented or mentioned. For urgent care, include focused exam relevant to the chief complaint. If no exam documented, state "Physical examination not documented."`,
       assessmentPlan: `Do NOT start with the diagnosis name (it is displayed separately above).
-Begin directly with the clinical rationale and assessment.
-Include differential if applicable.
-Document management plan: investigations, treatments, prescriptions.
-Include follow-up plan with primary care or specialist if needed.
-Document any red flags discussed and return precautions.
+Begin with clinical reasoning supporting the working diagnosis in an urgent care context.
+Address why the patient can be safely managed outpatient (or why ED referral is needed).
+Document treatments provided in clinic and prescriptions given.
+Include specific follow-up plan: PCP within X days, specialist referral, imaging follow-up.
+Document return precautions discussed with the patient.
 Use paragraph/narrative form only. No bullet points.`,
-      management: `Recommend management and treatment plan appropriate for urgent care. Include medications, procedures, referrals, and follow-up planning. Note any conditions requiring ED transfer. Use narrative form.`,
+      diagnosis: `Primary diagnosis only — use common clinical terms appropriate for an urgent care encounter`,
     },
   },
   {
@@ -144,21 +159,43 @@ Use paragraph/narrative form only. No bullet points.`,
     label: 'Primary Care',
     prompts: {
       generalRules: `- Do NOT assume, infer, or make up information not explicitly stated in the provided data
-- Use appropriate evidence-based medicine and guidelines
-- Use professional language appropriate for a primary care encounter
+- Use evidence-based medicine and current clinical practice guidelines
+- Write as a thorough primary care physician — professional, patient-centered language
 - Abbreviations are acceptable without explanation
 - Use narrative/paragraph form, NOT bullet points or numbered lists
-- Consider chronic disease management and preventive care context
+- Consider the patient's full medical context: chronic conditions, medications, preventive health
+- Frame acute complaints within the context of longitudinal care
 - If information for a section is not available, write "Information not documented" or "Insufficient data"`,
-      hpi: `Narrative summary of patient's presentation in a primary care context. Include relevant past medical history, chronic conditions, and how current complaint relates to ongoing care. Professional language.`,
+      ddx: `Provide a differential diagnosis considering both acute and chronic primary care conditions. Include common outpatient diagnoses first. Consider how existing comorbidities may influence the differential. Note any red flags that would change management urgency. Use narrative form.`,
+      investigations: `Recommend investigations appropriate for the primary care setting. Include:
+- Routine labs and screening tests (guided by age, sex, risk factors)
+- Diagnostic workup for the current complaint
+- Chronic disease monitoring labs if due (A1c, lipids, TSH, etc.)
+- Imaging as outpatient orders when indicated
+- Referral for specialized testing if beyond primary care scope
+Use narrative form.`,
+      management: `Recommend a comprehensive primary care management plan. Include:
+- Medications: new prescriptions, dose adjustments, refills (with rationale)
+- Lifestyle modifications: diet, exercise, smoking cessation, stress management
+- Chronic disease optimization and medication reconciliation
+- Preventive care: vaccinations due, cancer screening, health maintenance
+- Referrals to specialists or allied health (physio, dietitian, mental health)
+- Follow-up timeline based on clinical urgency
+Use narrative form.`,
+      evidence: `Cite current clinical practice guidelines relevant to primary care management. Reference guidelines from USPSTF, CDA, CTFPHC, or specialty societies as applicable. Include evidence supporting screening decisions, treatment choices, and preventive measures. Use narrative form.`,
+      hpi: `Narrative summary of the patient's presentation in a primary care context. Include the current complaint within the context of their ongoing care — relevant chronic conditions, medication history, previous visits for similar issues, and social determinants of health. Document pertinent positives and negatives. Professional, thorough primary care physician language.`,
+      objective: `Physical examination findings ONLY. Use this format for normal exam:
+"Patient appears well, NAD. AVSS."
+Include a focused exam relevant to the chief complaint and any chronic disease monitoring (e.g., diabetic foot exam, cardiovascular exam). Document pertinent findings only. If no exam documented, state "Physical examination not documented."`,
       assessmentPlan: `Do NOT start with the diagnosis name (it is displayed separately above).
-Begin with clinical reasoning supporting the diagnosis.
-Address both acute and chronic issues as applicable.
-Document management plan including medications, lifestyle modifications, referrals.
-Include follow-up timeline and preventive care considerations.
+Begin with clinical reasoning and assessment of the current complaint.
+Integrate the acute issue with the patient's chronic disease management plan.
+Address each active problem discussed during the visit.
+Document medication changes with rationale.
+Include preventive health measures addressed or deferred.
+Provide a clear follow-up plan with timeline and contingency instructions.
 Use paragraph/narrative form only. No bullet points.`,
-      management: `Recommend management plan appropriate for primary care. Include medications, lifestyle modifications, referrals to specialists if needed, screening/preventive care recommendations, and follow-up timeline. Use narrative form.`,
-      investigations: `Recommend appropriate investigations for a primary care setting. Include labs, imaging, and screening tests as applicable. Consider preventive care guidelines. Use narrative form.`,
+      diagnosis: `Primary diagnosis for this visit — use standard clinical terminology appropriate for a primary care encounter`,
     },
   },
   {
@@ -166,21 +203,49 @@ Use paragraph/narrative form only. No bullet points.`,
     label: 'Specialist Consult',
     prompts: {
       generalRules: `- Do NOT assume, infer, or make up information not explicitly stated in the provided data
-- Use appropriate evidence-based medicine and specialty-specific guidelines
-- Use professional, detailed language appropriate for a specialist consultation
+- Use evidence-based medicine with emphasis on specialty-specific guidelines and literature
+- Write as a specialist consultant — detailed, precise, authoritative language
 - Abbreviations are acceptable without explanation
 - Use narrative/paragraph form, NOT bullet points or numbered lists
+- The note serves as a formal consultation response to the referring physician
+- Provide clear, actionable recommendations that the referring physician can implement
 - If information for a section is not available, write "Information not documented" or "Insufficient data"`,
-      hpi: `Comprehensive narrative of the patient's presentation as referred for specialist consultation. Include reason for referral, relevant history, prior workup, and treatments tried. Detailed, professional language.`,
+      ddx: `Provide a detailed differential diagnosis from the specialist's perspective. Include conditions that may have been missed or under-evaluated by the referring physician. Rank by likelihood with specialist-level reasoning. Discuss atypical presentations or rare diagnoses within your specialty that should be considered. Use narrative form.`,
+      investigations: `Recommend a specialty-specific diagnostic workup. Include:
+- Advanced or specialized laboratory testing
+- Specialty-specific imaging (with specific protocols/sequences if applicable)
+- Diagnostic procedures (biopsy, endoscopy, EMG, cardiac cath, etc.)
+- Functional testing or specialized assessments
+- Indicate urgency and sequencing of investigations
+Use narrative form.`,
+      management: `Provide detailed specialist management recommendations. Include:
+- Specialty-specific treatments and therapies (with evidence basis)
+- Procedural interventions recommended or planned
+- Medication recommendations with specific doses and monitoring parameters
+- Clear delineation of what the specialist will manage vs. what the referring physician should manage
+- Criteria for re-referral, escalation, or urgent reassessment
+- Expected clinical trajectory and milestones
+Use narrative form.`,
+      evidence: `Cite specialty-specific evidence, guidelines, and current literature supporting the assessment and recommendations. Reference society guidelines (e.g., AHA/ACC, ACG, ACR, ASCO), landmark trials, or meta-analyses as applicable. Provide evidence level where possible. Include rationale for recommendations that deviate from standard protocols. Use narrative form.`,
+      hpi: `Comprehensive consultation history. Document:
+- Reason for referral and referring physician
+- Detailed chronological history of the presenting complaint
+- Prior workup already completed (labs, imaging, procedures) with results
+- Previous treatments tried and their outcomes
+- Relevant past medical, surgical, family, and social history from the specialty perspective
+Use detailed, formal consultation language.`,
+      objective: `Physical examination findings ONLY. Perform and document a specialty-focused examination in addition to the general assessment. Use this format for normal general exam:
+"Patient appears well, NAD. AVSS."
+Then document the detailed specialty-specific examination findings. If no exam documented, state "Physical examination not documented."`,
       assessmentPlan: `Do NOT start with the diagnosis name (it is displayed separately above).
-Begin with specialist assessment and clinical reasoning.
-Provide detailed differential diagnosis from specialty perspective.
-Document recommended specialist-specific investigations and management.
-Include recommendations back to referring physician.
-Document follow-up plan and criteria for re-referral.
+Begin with the specialist's clinical impression and reasoning.
+Synthesize the referral question with the specialist assessment.
+Provide a clear diagnostic formulation from the specialty perspective.
+Detail the recommended investigation and management plan with rationale.
+Communicate specific recommendations back to the referring physician.
+Outline the follow-up plan: specialist follow-up timeline, criteria for re-referral, discharge back to referring physician criteria.
 Use paragraph/narrative form only. No bullet points.`,
-      management: `Provide specialist-level management recommendations. Include specialty-specific treatments, procedures, and follow-up plan. Document recommendations to the referring physician. Use narrative form.`,
-      investigations: `Recommend specialty-specific investigations. Include advanced labs, specialized imaging, and diagnostic procedures as applicable. Use narrative form.`,
+      diagnosis: `Specialist diagnosis or diagnostic impression — use precise specialty-specific terminology`,
     },
   },
 ];
