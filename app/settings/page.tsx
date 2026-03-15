@@ -84,6 +84,7 @@ export default function SettingsPage() {
   const [formatName, setFormatName] = useState('');
   const [fieldName, setFieldName] = useState('');
   const [fieldAge, setFieldAge] = useState('');
+  const [fieldGender, setFieldGender] = useState('');
   const [fieldDob, setFieldDob] = useState('');
   const [fieldMrn, setFieldMrn] = useState('');
   const [fieldHcn, setFieldHcn] = useState('');
@@ -290,7 +291,7 @@ export default function SettingsPage() {
 
   const handleDetectFormat = async () => {
     if (!sampleInput.trim()) return;
-    const hasFields = fieldName || fieldAge || fieldDob || fieldMrn || fieldHcn;
+    const hasFields = fieldName || fieldAge || fieldGender || fieldDob || fieldMrn || fieldHcn;
     setDetecting(true);
     setTestResult(null);
     try {
@@ -304,6 +305,7 @@ export default function SettingsPage() {
             fields: {
               name: fieldName,
               age: fieldAge,
+              gender: fieldGender,
               dob: fieldDob,
               mrn: fieldMrn,
               hcn: fieldHcn,
@@ -349,7 +351,7 @@ export default function SettingsPage() {
         body: JSON.stringify({
           name,
           sampleText: sampleInput,
-          fieldName, fieldAge, fieldDob, fieldMrn, fieldHcn,
+          fieldName, fieldAge, fieldGender, fieldDob, fieldMrn, fieldHcn,
           ageDobPattern: parseRules.ageDobPattern || '',
           hcnPattern: parseRules.hcnPattern || '',
           mrnPattern: parseRules.mrnPattern || '',
@@ -369,6 +371,7 @@ export default function SettingsPage() {
     setSampleInput(format.sampleText || '');
     setFieldName(format.fieldName || '');
     setFieldAge(format.fieldAge || '');
+    setFieldGender(format.fieldGender || '');
     setFieldDob(format.fieldDob || '');
     setFieldMrn(format.fieldMrn || '');
     setFieldHcn(format.fieldHcn || '');
@@ -878,6 +881,7 @@ export default function SettingsPage() {
                   {[
                     { label: 'Name', value: fieldName, setter: setFieldName, placeholder: 'e.g. SMITH, John' },
                     { label: 'Age', value: fieldAge, setter: setFieldAge, placeholder: 'e.g. 45' },
+                    { label: 'Gender', value: fieldGender, setter: setFieldGender, placeholder: 'e.g. M or F' },
                     { label: 'DOB', value: fieldDob, setter: setFieldDob, placeholder: 'e.g. 01/15/1981' },
                     { label: 'MRN', value: fieldMrn, setter: setFieldMrn, placeholder: 'e.g. A12345' },
                     { label: 'HCN', value: fieldHcn, setter: setFieldHcn, placeholder: 'e.g. 9876543210' },
@@ -920,7 +924,7 @@ export default function SettingsPage() {
                     saveParseRules(DEFAULT_PARSE_RULES);
                     setTestResult(null);
                     setFormatName('');
-                    setFieldName(''); setFieldAge(''); setFieldDob(''); setFieldMrn(''); setFieldHcn('');
+                    setFieldName(''); setFieldAge(''); setFieldGender(''); setFieldDob(''); setFieldMrn(''); setFieldHcn('');
                     setSampleInput('');
                   }}
                   className="px-3 py-2 text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] rounded-lg text-xs font-medium transition-colors flex items-center gap-1"

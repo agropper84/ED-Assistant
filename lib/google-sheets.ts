@@ -1565,6 +1565,7 @@ export interface StoredParseFormat {
   sampleText: string;
   fieldName: string;
   fieldAge: string;
+  fieldGender: string;
   fieldDob: string;
   fieldMrn: string;
   fieldHcn: string;
@@ -1591,10 +1592,10 @@ async function ensureParseFormatsSheet(ctx: SheetsContext): Promise<void> {
 
   await sheets.spreadsheets.values.update({
     spreadsheetId,
-    range: `'${PARSE_FORMATS_SHEET}'!A1:K1`,
+    range: `'${PARSE_FORMATS_SHEET}'!A1:L1`,
     valueInputOption: 'RAW',
     requestBody: {
-      values: [['Name', 'Sample Text', 'Field: Name', 'Field: Age', 'Field: DOB', 'Field: MRN', 'Field: HCN', 'Age/DOB Pattern', 'HCN Pattern', 'MRN Pattern', 'Name Cleanup']],
+      values: [['Name', 'Sample Text', 'Field: Name', 'Field: Age', 'Field: Gender', 'Field: DOB', 'Field: MRN', 'Field: HCN', 'Age/DOB Pattern', 'HCN Pattern', 'MRN Pattern', 'Name Cleanup']],
     },
   });
 }
@@ -1611,7 +1612,7 @@ export async function getParseFormats(ctx: SheetsContext): Promise<StoredParseFo
 
   const response = await sheets.spreadsheets.values.get({
     spreadsheetId,
-    range: `'${PARSE_FORMATS_SHEET}'!A2:K100`,
+    range: `'${PARSE_FORMATS_SHEET}'!A2:L100`,
   });
 
   const rows = response.data.values || [];
@@ -1622,13 +1623,14 @@ export async function getParseFormats(ctx: SheetsContext): Promise<StoredParseFo
       sampleText: row[1]?.toString() || '',
       fieldName: row[2]?.toString() || '',
       fieldAge: row[3]?.toString() || '',
-      fieldDob: row[4]?.toString() || '',
-      fieldMrn: row[5]?.toString() || '',
-      fieldHcn: row[6]?.toString() || '',
-      ageDobPattern: row[7]?.toString() || '',
-      hcnPattern: row[8]?.toString() || '',
-      mrnPattern: row[9]?.toString() || '',
-      nameCleanup: row[10]?.toString() || '',
+      fieldGender: row[4]?.toString() || '',
+      fieldDob: row[5]?.toString() || '',
+      fieldMrn: row[6]?.toString() || '',
+      fieldHcn: row[7]?.toString() || '',
+      ageDobPattern: row[8]?.toString() || '',
+      hcnPattern: row[9]?.toString() || '',
+      mrnPattern: row[10]?.toString() || '',
+      nameCleanup: row[11]?.toString() || '',
     }));
 }
 
@@ -1642,7 +1644,7 @@ export async function saveParseFormat(ctx: SheetsContext, format: StoredParseFor
 
   const row = [
     format.name, format.sampleText, format.fieldName, format.fieldAge,
-    format.fieldDob, format.fieldMrn, format.fieldHcn,
+    format.fieldGender, format.fieldDob, format.fieldMrn, format.fieldHcn,
     format.ageDobPattern, format.hcnPattern, format.mrnPattern, format.nameCleanup,
   ];
 
@@ -1650,14 +1652,14 @@ export async function saveParseFormat(ctx: SheetsContext, format: StoredParseFor
     const sheetRow = existingIdx + 2;
     await sheets.spreadsheets.values.update({
       spreadsheetId,
-      range: `'${PARSE_FORMATS_SHEET}'!A${sheetRow}:K${sheetRow}`,
+      range: `'${PARSE_FORMATS_SHEET}'!A${sheetRow}:L${sheetRow}`,
       valueInputOption: 'RAW',
       requestBody: { values: [row] },
     });
   } else {
     await sheets.spreadsheets.values.append({
       spreadsheetId,
-      range: `'${PARSE_FORMATS_SHEET}'!A:K`,
+      range: `'${PARSE_FORMATS_SHEET}'!A:L`,
       valueInputOption: 'RAW',
       requestBody: { values: [row] },
     });
@@ -1671,15 +1673,15 @@ export async function deleteParseFormat(ctx: SheetsContext, name: string): Promi
   const existing = await getParseFormats(ctx);
   const remaining = existing.filter(f => f.name !== name);
 
-  const header = [['Name', 'Sample Text', 'Field: Name', 'Field: Age', 'Field: DOB', 'Field: MRN', 'Field: HCN', 'Age/DOB Pattern', 'HCN Pattern', 'MRN Pattern', 'Name Cleanup']];
+  const header = [['Name', 'Sample Text', 'Field: Name', 'Field: Age', 'Field: Gender', 'Field: DOB', 'Field: MRN', 'Field: HCN', 'Age/DOB Pattern', 'HCN Pattern', 'MRN Pattern', 'Name Cleanup']];
   const rows = remaining.map(f => [
-    f.name, f.sampleText, f.fieldName, f.fieldAge, f.fieldDob,
-    f.fieldMrn, f.fieldHcn, f.ageDobPattern, f.hcnPattern, f.mrnPattern, f.nameCleanup,
+    f.name, f.sampleText, f.fieldName, f.fieldAge, f.fieldGender,
+    f.fieldDob, f.fieldMrn, f.fieldHcn, f.ageDobPattern, f.hcnPattern, f.mrnPattern, f.nameCleanup,
   ]);
 
   await sheets.spreadsheets.values.clear({
     spreadsheetId,
-    range: `'${PARSE_FORMATS_SHEET}'!A1:K100`,
+    range: `'${PARSE_FORMATS_SHEET}'!A1:L100`,
   });
 
   await sheets.spreadsheets.values.update({

@@ -36,6 +36,7 @@ ${sampleText}
 USER-IDENTIFIED FIELDS:
 ${fields.name ? `- Patient Name: "${fields.name}"` : '- Patient Name: (not identified)'}
 ${fields.age ? `- Age: "${fields.age}"` : '- Age: (not identified)'}
+${fields.gender ? `- Gender: "${fields.gender}"` : '- Gender: (not identified)'}
 ${fields.dob ? `- Date of Birth: "${fields.dob}"` : '- DOB: (not identified)'}
 ${fields.mrn ? `- MRN: "${fields.mrn}"` : '- MRN: (not identified)'}
 ${fields.hcn ? `- HCN: "${fields.hcn}"` : '- HCN: (not identified)'}
