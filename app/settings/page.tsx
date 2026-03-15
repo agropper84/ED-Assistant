@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Trash2, Plus, Pencil, RotateCcw, Loader2, X, Sun, Moon, Monitor, Search, ChevronRight, Check, Smartphone, Copy, Key, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Trash2, Plus, Pencil, RotateCcw, Loader2, X, Sun, Moon, Monitor, Search, ChevronRight, Check, Copy, Key, AlertCircle } from 'lucide-react';
 import { useTheme } from '@/lib/theme';
 import {
   StyleGuide,
@@ -1004,17 +1004,16 @@ export default function SettingsPage() {
               )}
             </div>
 
-            {/* iOS Shortcut Section */}
+            {/* API Token (used by Watch app) */}
             <div className="bg-[var(--card-bg)] rounded-2xl border border-[var(--card-border)] p-5 space-y-4" style={{ boxShadow: 'var(--card-shadow)' }}>
               <div className="flex items-center gap-2">
-                <Smartphone className="w-5 h-5 text-[var(--text-secondary)]" />
-                <h3 className="font-semibold text-[var(--text-primary)]">iOS Shortcut</h3>
+                <Key className="w-5 h-5 text-[var(--text-secondary)]" />
+                <h3 className="font-semibold text-[var(--text-primary)]">API Token</h3>
               </div>
               <p className="text-xs text-[var(--text-muted)]">
-                Send voice memos directly from your iPhone to the app. Generate a token below, then build the Shortcut.
+                Token for Watch app and external integrations.
               </p>
 
-              {/* Token status + actions */}
               <div className="space-y-3">
                 {shortcutToken ? (
                   <div className="space-y-2">
@@ -1090,37 +1089,6 @@ export default function SettingsPage() {
                   )}
                   {shortcutHasToken ? 'Regenerate Token' : 'Generate Token'}
                 </button>
-              </div>
-
-              {/* Setup instructions */}
-              <div className="border-t border-[var(--border)] pt-4 space-y-3">
-                <h4 className="text-sm font-semibold text-[var(--text-primary)]">Setup Instructions</h4>
-                <ol className="space-y-2.5 text-sm text-[var(--text-secondary)]">
-                  <li className="flex gap-2.5">
-                    <span className="flex-shrink-0 w-5 h-5 rounded-full bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 text-xs font-bold flex items-center justify-center">1</span>
-                    <span>Open the <strong>Shortcuts</strong> app and create a new Shortcut</span>
-                  </li>
-                  <li className="flex gap-2.5">
-                    <span className="flex-shrink-0 w-5 h-5 rounded-full bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 text-xs font-bold flex items-center justify-center">2</span>
-                    <span>Add <strong>&quot;Receive&quot;</strong> input — set to accept <strong>Audio</strong>. Enable &quot;Show in Share Sheet&quot;</span>
-                  </li>
-                  <li className="flex gap-2.5">
-                    <span className="flex-shrink-0 w-5 h-5 rounded-full bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 text-xs font-bold flex items-center justify-center">3</span>
-                    <div>
-                      <span>Add <strong>&quot;Get Contents of URL&quot;</strong>:</span>
-                      <ul className="mt-1 ml-4 space-y-0.5 text-xs text-[var(--text-muted)]">
-                        <li>URL: <code className="bg-[var(--bg-tertiary)] px-1 rounded">{typeof window !== 'undefined' ? window.location.origin : 'https://your-app.vercel.app'}/api/shortcuts/upload</code></li>
-                        <li>Method: <strong>POST</strong></li>
-                        <li>Header: <code className="bg-[var(--bg-tertiary)] px-1 rounded">Authorization</code> = <code className="bg-[var(--bg-tertiary)] px-1 rounded">Bearer YOUR_TOKEN</code></li>
-                        <li>Request Body: <strong>Form</strong> — add field <code className="bg-[var(--bg-tertiary)] px-1 rounded">audio</code> = <strong>Shortcut Input</strong></li>
-                      </ul>
-                    </div>
-                  </li>
-                  <li className="flex gap-2.5">
-                    <span className="flex-shrink-0 w-5 h-5 rounded-full bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 text-xs font-bold flex items-center justify-center">4</span>
-                    <span>Add <strong>&quot;Get Dictionary Value&quot;</strong> for key <code className="bg-[var(--bg-tertiary)] px-1 rounded">url</code>, then add <strong>&quot;Open URL&quot;</strong></span>
-                  </li>
-                </ol>
               </div>
             </div>
           </>
