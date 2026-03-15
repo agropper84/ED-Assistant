@@ -9,7 +9,7 @@ const anthropic = new Anthropic({
 
 export async function POST(request: NextRequest) {
   try {
-    const { sampleText } = await request.json();
+    const { sampleText, fields } = await request.json();
 
     if (!sampleText || !sampleText.trim()) {
       return NextResponse.json(
@@ -18,6 +18,57 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // New mode: user provides sample text + manually identified field values
+    if (fields) {
+      const response = await anthropic.messages.create({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 1024,
+        temperature: 0,
+        messages: [{
+          role: 'user',
+          content: `You are analyzing a sample of patient data from a hospital EMR system. The user has identified specific field values within the sample text. Your job is to create JavaScript regex patterns that will reliably extract these fields from similar text.
+
+SAMPLE EMR TEXT:
+---
+${sampleText}
+---
+
+USER-IDENTIFIED FIELDS:
+${fields.name ? `- Patient Name: "${fields.name}"` : '- Patient Name: (not identified)'}
+${fields.age ? `- Age: "${fields.age}"` : '- Age: (not identified)'}
+${fields.dob ? `- Date of Birth: "${fields.dob}"` : '- DOB: (not identified)'}
+${fields.mrn ? `- MRN: "${fields.mrn}"` : '- MRN: (not identified)'}
+${fields.hcn ? `- HCN: "${fields.hcn}"` : '- HCN: (not identified)'}
+
+INSTRUCTIONS:
+Look at where each identified value appears in the sample text. Create regex patterns that would extract these values from similarly formatted text. Consider the surrounding context (labels, separators, line positions) to make robust patterns.
+
+Return a JSON object with these fields:
+- "ageDobPattern": JavaScript regex where group 1 = age, group 2 = gender (M/F), group 3 = DOB. If gender isn't in the text, make group 2 optional. Use double-escaped backslashes (e.g. "\\\\d+" not "\\d+").
+- "hcnPattern": JavaScript regex where group 1 = HCN. Use double-escaped backslashes.
+- "mrnPattern": JavaScript regex where group 1 = MRN. Use double-escaped backslashes.
+- "nameCleanup": comma-separated words/markers near the name that are NOT part of the patient name (e.g. "ED, ER, IP, Patient:")
+
+Return ONLY valid JSON, no explanation or markdown.`,
+        }],
+      });
+
+      const text = response.content[0].type === 'text' ? response.content[0].text : '';
+      const match = text.match(/\{[\s\S]*\}/);
+      if (!match) {
+        return NextResponse.json({ error: 'Failed to parse AI response' }, { status: 500 });
+      }
+
+      const rules = JSON.parse(match[0]);
+      const required = ['ageDobPattern', 'hcnPattern', 'mrnPattern', 'nameCleanup'];
+      for (const key of required) {
+        if (typeof rules[key] !== 'string') rules[key] = '';
+      }
+
+      return NextResponse.json({ rules });
+    }
+
+    // Legacy mode: auto-detect from sample text only
     const response = await anthropic.messages.create({
       model: 'claude-haiku-4-5-20251001',
       max_tokens: 512,
@@ -41,24 +92,15 @@ ${sampleText}`,
     });
 
     const text = response.content[0].type === 'text' ? response.content[0].text : '';
-
-    // Extract JSON object from response
     const match = text.match(/\{[\s\S]*\}/);
     if (!match) {
-      return NextResponse.json(
-        { error: 'Failed to parse AI response' },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: 'Failed to parse AI response' }, { status: 500 });
     }
 
     const rules = JSON.parse(match[0]);
-
-    // Validate required fields exist
     const required = ['formatName', 'ageDobPattern', 'hcnPattern', 'mrnPattern', 'nameCleanup'];
     for (const key of required) {
-      if (typeof rules[key] !== 'string') {
-        rules[key] = '';
-      }
+      if (typeof rules[key] !== 'string') rules[key] = '';
     }
 
     return NextResponse.json({ rules });

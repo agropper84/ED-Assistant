@@ -80,6 +80,17 @@ export default function SettingsPage() {
   const [testResult, setTestResult] = useState<Record<string, string> | null>(null);
   const [detecting, setDetecting] = useState(false);
 
+  // Parse format training fields
+  const [formatName, setFormatName] = useState('');
+  const [fieldName, setFieldName] = useState('');
+  const [fieldAge, setFieldAge] = useState('');
+  const [fieldDob, setFieldDob] = useState('');
+  const [fieldMrn, setFieldMrn] = useState('');
+  const [fieldHcn, setFieldHcn] = useState('');
+  const [savedFormats, setSavedFormats] = useState<any[]>([]);
+  const [formatsLoading, setFormatsLoading] = useState(false);
+  const [savingFormat, setSavingFormat] = useState(false);
+
   // Prompt templates state
   const [promptTemplates, setPromptTemplates] = useState<PromptTemplates>(DEFAULT_PROMPT_TEMPLATES);
   const [expandedPromptSections, setExpandedPromptSections] = useState<Set<string>>(new Set());
@@ -264,25 +275,55 @@ export default function SettingsPage() {
     saveSettings(newSettings);
   };
 
+  // Load saved parse formats from Google Sheet
+  const loadFormats = async () => {
+    try {
+      const res = await fetch('/api/parse-formats');
+      if (res.ok) {
+        const data = await res.json();
+        setSavedFormats(Array.isArray(data) ? data : []);
+      }
+    } catch {}
+  };
+
+  useEffect(() => { loadFormats(); }, []);
+
   const handleDetectFormat = async () => {
     if (!sampleInput.trim()) return;
+    const hasFields = fieldName || fieldAge || fieldDob || fieldMrn || fieldHcn;
     setDetecting(true);
     setTestResult(null);
     try {
-      // Step 1: Ask AI to detect the format
+      // Ask AI to detect format — with or without user-identified fields
       const detectRes = await fetch('/api/detect-format', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sampleText: sampleInput }),
+        body: JSON.stringify({
+          sampleText: sampleInput,
+          ...(hasFields ? {
+            fields: {
+              name: fieldName,
+              age: fieldAge,
+              dob: fieldDob,
+              mrn: fieldMrn,
+              hcn: fieldHcn,
+            },
+          } : {}),
+        }),
       });
       if (!detectRes.ok) throw new Error('Detection failed');
       const { rules: newRules } = await detectRes.json();
 
-      // Save detected rules
+      // Add format name
+      if (formatName.trim()) {
+        newRules.formatName = formatName.trim();
+      }
+
+      // Save detected rules as active
       setParseRules(newRules);
       saveParseRules(newRules);
 
-      // Step 2: Auto-run test parse with the detected rules
+      // Auto-run test parse
       const parseRes = await fetch('/api/parse', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -295,6 +336,64 @@ export default function SettingsPage() {
       console.error('Format detection failed:', err);
     } finally {
       setDetecting(false);
+    }
+  };
+
+  const handleSaveFormat = async () => {
+    const name = formatName.trim() || parseRules.formatName || 'Custom';
+    setSavingFormat(true);
+    try {
+      await fetch('/api/parse-formats', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name,
+          sampleText: sampleInput,
+          fieldName, fieldAge, fieldDob, fieldMrn, fieldHcn,
+          ageDobPattern: parseRules.ageDobPattern || '',
+          hcnPattern: parseRules.hcnPattern || '',
+          mrnPattern: parseRules.mrnPattern || '',
+          nameCleanup: parseRules.nameCleanup || '',
+        }),
+      });
+      await loadFormats();
+    } catch (err) {
+      console.error('Failed to save format:', err);
+    } finally {
+      setSavingFormat(false);
+    }
+  };
+
+  const handleLoadFormat = (format: any) => {
+    setFormatName(format.name);
+    setSampleInput(format.sampleText || '');
+    setFieldName(format.fieldName || '');
+    setFieldAge(format.fieldAge || '');
+    setFieldDob(format.fieldDob || '');
+    setFieldMrn(format.fieldMrn || '');
+    setFieldHcn(format.fieldHcn || '');
+    const rules: ParseRules = {
+      formatName: format.name,
+      ageDobPattern: format.ageDobPattern || '',
+      hcnPattern: format.hcnPattern || '',
+      mrnPattern: format.mrnPattern || '',
+      nameCleanup: format.nameCleanup || '',
+    };
+    setParseRules(rules);
+    saveParseRules(rules);
+    setTestResult(null);
+  };
+
+  const handleDeleteFormat = async (name: string) => {
+    try {
+      await fetch('/api/parse-formats', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name }),
+      });
+      await loadFormats();
+    } catch (err) {
+      console.error('Failed to delete format:', err);
     }
   };
 
@@ -729,36 +828,109 @@ export default function SettingsPage() {
                     {parseRules.formatName || 'Custom'}
                   </span>
                 </div>
+                {/* Format dropdown — only if >1 saved format */}
+                {savedFormats.length > 0 && (
+                  <select
+                    value={parseRules.formatName || ''}
+                    onChange={(e) => {
+                      const f = savedFormats.find((f: any) => f.name === e.target.value);
+                      if (f) handleLoadFormat(f);
+                    }}
+                    className="px-2 py-1 border border-[var(--input-border)] rounded-lg text-xs bg-[var(--input-bg)] text-[var(--text-primary)] focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="">Select format...</option>
+                    {savedFormats.map((f: any) => (
+                      <option key={f.name} value={f.name}>{f.name}</option>
+                    ))}
+                  </select>
+                )}
+              </div>
+              <p className="text-xs text-[var(--text-muted)]">
+                Paste sample patient data from your EMR on the left, then identify each field on the right. AI will learn the pattern.
+              </p>
+
+              {/* Format name */}
+              <input
+                type="text"
+                value={formatName}
+                onChange={(e) => setFormatName(e.target.value)}
+                placeholder="Format name (e.g. Meditech, EPIC, Cerner)..."
+                className="w-full p-2 border border-[var(--input-border)] rounded-lg text-sm bg-[var(--input-bg)] text-[var(--text-primary)] focus:ring-2 focus:ring-blue-500 focus:border-blue-500 placeholder:text-[var(--text-muted)]"
+              />
+
+              {/* Side-by-side: paste area + field identification */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {/* Left: paste EMR data */}
+                <div>
+                  <label className="block text-xs font-medium text-[var(--text-muted)] mb-1">EMR Sample Data</label>
+                  <textarea
+                    value={sampleInput}
+                    onChange={(e) => setSampleInput(e.target.value)}
+                    placeholder="Paste sample patient data from your EMR here..."
+                    className="w-full h-48 p-3 border border-[var(--input-border)] rounded-lg text-xs font-mono resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)]"
+                  />
+                </div>
+
+                {/* Right: identify fields */}
+                <div className="space-y-2">
+                  <label className="block text-xs font-medium text-[var(--text-muted)]">Identify Fields</label>
+                  <p className="text-[10px] text-[var(--text-muted)]">Type the exact values as they appear in the pasted text.</p>
+                  {[
+                    { label: 'Name', value: fieldName, setter: setFieldName, placeholder: 'e.g. SMITH, John' },
+                    { label: 'Age', value: fieldAge, setter: setFieldAge, placeholder: 'e.g. 45' },
+                    { label: 'DOB', value: fieldDob, setter: setFieldDob, placeholder: 'e.g. 01/15/1981' },
+                    { label: 'MRN', value: fieldMrn, setter: setFieldMrn, placeholder: 'e.g. A12345' },
+                    { label: 'HCN', value: fieldHcn, setter: setFieldHcn, placeholder: 'e.g. 9876543210' },
+                  ].map(({ label, value, setter, placeholder }) => (
+                    <div key={label} className="flex items-center gap-2">
+                      <label className="w-10 text-xs font-medium text-[var(--text-secondary)] text-right flex-shrink-0">{label}</label>
+                      <input
+                        type="text"
+                        value={value}
+                        onChange={(e) => setter(e.target.value)}
+                        placeholder={placeholder}
+                        className="flex-1 p-1.5 border border-[var(--input-border)] rounded-lg text-xs bg-[var(--input-bg)] text-[var(--text-primary)] focus:ring-2 focus:ring-blue-500 focus:border-blue-500 placeholder:text-[var(--text-muted)]"
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Action buttons */}
+              <div className="flex items-center gap-2 flex-wrap">
+                <button
+                  onClick={handleDetectFormat}
+                  disabled={detecting || !sampleInput.trim()}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium disabled:opacity-40 flex items-center gap-2"
+                >
+                  {detecting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Search className="w-3.5 h-3.5" />}
+                  {detecting ? 'Detecting...' : 'Detect Format'}
+                </button>
+                <button
+                  onClick={handleSaveFormat}
+                  disabled={savingFormat || !parseRules.ageDobPattern}
+                  className="px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium disabled:opacity-40 flex items-center gap-2"
+                >
+                  {savingFormat ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+                  Save Format
+                </button>
                 <button
                   onClick={() => {
                     setParseRules(DEFAULT_PARSE_RULES);
                     saveParseRules(DEFAULT_PARSE_RULES);
                     setTestResult(null);
+                    setFormatName('');
+                    setFieldName(''); setFieldAge(''); setFieldDob(''); setFieldMrn(''); setFieldHcn('');
+                    setSampleInput('');
                   }}
-                  className="flex items-center gap-1 px-2.5 py-1.5 text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] rounded-lg text-xs font-medium transition-colors"
+                  className="px-3 py-2 text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] rounded-lg text-xs font-medium transition-colors flex items-center gap-1"
                 >
-                  <RotateCcw className="w-3.5 h-3.5" />
-                  Reset to Meditech
+                  <RotateCcw className="w-3 h-3" />
+                  Reset
                 </button>
               </div>
-              <p className="text-xs text-[var(--text-muted)]">
-                Paste sample patient data from your EMR and the AI will automatically detect the format.
-              </p>
 
-              <textarea
-                value={sampleInput}
-                onChange={(e) => setSampleInput(e.target.value)}
-                placeholder="Paste sample patient data from your EMR here..."
-                className="w-full h-24 p-3 border border-[var(--input-border)] rounded-lg text-sm font-mono resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)]"
-              />
-              <button
-                onClick={handleDetectFormat}
-                disabled={detecting || !sampleInput.trim()}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium disabled:opacity-40 flex items-center gap-2"
-              >
-                {detecting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Search className="w-3.5 h-3.5" />}
-                {detecting ? 'Detecting...' : 'Detect Format'}
-              </button>
+              {/* Parse result */}
               {testResult && (
                 <div className="bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 rounded-lg p-3 animate-fadeIn">
                   <div className="flex items-center gap-2 text-emerald-700 dark:text-emerald-300 font-medium mb-2 text-sm">
@@ -771,6 +943,35 @@ export default function SettingsPage() {
                     <div><span className="text-[var(--text-muted)]">DOB:</span> <span className="text-[var(--text-primary)]">{testResult.birthday || '—'}</span></div>
                     <div><span className="text-[var(--text-muted)]">HCN:</span> <span className="text-[var(--text-primary)]">{testResult.hcn || '—'}</span></div>
                     <div><span className="text-[var(--text-muted)]">MRN:</span> <span className="text-[var(--text-primary)]">{testResult.mrn || '—'}</span></div>
+                  </div>
+                </div>
+              )}
+
+              {/* Saved formats list */}
+              {savedFormats.length > 0 && (
+                <div>
+                  <label className="block text-xs font-medium text-[var(--text-muted)] mb-1">Saved Formats</label>
+                  <div className="border border-[var(--border)] rounded-lg divide-y divide-[var(--border)]">
+                    {savedFormats.map((f: any) => (
+                      <div key={f.name} className="flex items-center justify-between px-3 py-2">
+                        <button
+                          onClick={() => handleLoadFormat(f)}
+                          className={`text-sm font-medium ${
+                            parseRules.formatName === f.name
+                              ? 'text-blue-600 dark:text-blue-400'
+                              : 'text-[var(--text-primary)] hover:text-blue-600'
+                          }`}
+                        >
+                          {f.name}
+                        </button>
+                        <button
+                          onClick={() => handleDeleteFormat(f.name)}
+                          className="p-1 text-[var(--text-muted)] hover:text-red-500 rounded"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ))}
                   </div>
                 </div>
               )}
