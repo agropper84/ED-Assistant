@@ -550,3 +550,129 @@ export function clearLocalBillingData(): void {
   localStorage.removeItem(STORAGE_KEY);
   localStorage.removeItem(DELETED_KEY);
 }
+
+// ────────────────────────────────────────────────────────────────────────────
+// Time-Based Billing (per-patient)
+// ────────────────────────────────────────────────────────────────────────────
+
+export interface TimeSegment {
+  start: string;       // "HH:MM" 24-hour
+  end: string;         // "HH:MM" 24-hour
+  scheduled: boolean;
+  onsite: boolean;
+  directPct: number;   // 0–100
+}
+
+const TB_MODE_ITEM: BillingItem = {
+  code: 'TB-MODE',
+  description: 'Time Based Billing',
+  fee: '',
+  unit: '0',
+  category: 'additional',
+};
+
+/** Check if a billing item array uses time-based billing */
+export function isTimeBasedBilling(items: BillingItem[]): boolean {
+  return items.some(i => i.code === 'TB-MODE');
+}
+
+/** Add or remove the TB-MODE marker. When disabling, also strips TB-* segment items. */
+export function setTimeBasedMode(items: BillingItem[], enabled: boolean): BillingItem[] {
+  const withoutTB = items.filter(i => !i.code.startsWith('TB-'));
+  if (enabled) {
+    return [TB_MODE_ITEM, ...withoutTB];
+  }
+  return withoutTB;
+}
+
+/** Encode a TimeSegment into a BillingItem */
+export function encodeTimeSegment(seg: TimeSegment, index: number): BillingItem {
+  return {
+    code: `TB-${index}`,
+    description: JSON.stringify(seg),
+    fee: '',
+    unit: String(calculateSegmentMinutes(seg.start, seg.end)),
+    category: 'additional',
+  };
+}
+
+/** Decode TimeSegments from a BillingItem array */
+export function decodeTimeSegments(items: BillingItem[]): TimeSegment[] {
+  return items
+    .filter(i => i.code.startsWith('TB-') && i.code !== 'TB-MODE')
+    .map(i => {
+      try {
+        return JSON.parse(i.description) as TimeSegment;
+      } catch {
+        return null;
+      }
+    })
+    .filter((s): s is TimeSegment => s !== null);
+}
+
+/** Calculate minutes between two HH:MM times (handles overnight) */
+export function calculateSegmentMinutes(start: string, end: string): number {
+  const [sh, sm] = start.split(':').map(Number);
+  const [eh, em] = end.split(':').map(Number);
+  let startMin = sh * 60 + sm;
+  let endMin = eh * 60 + em;
+  if (endMin <= startMin) endMin += 24 * 60; // overnight
+  return endMin - startMin;
+}
+
+/** Calculate hours breakdown for a time segment */
+export function calculateSegmentHours(seg: TimeSegment): {
+  totalHrs: number;
+  directHrs: number;
+  indirectHrs: number;
+} {
+  const totalMin = calculateSegmentMinutes(seg.start, seg.end);
+  const totalHrs = totalMin / 60;
+  const directHrs = totalHrs * (seg.directPct / 100);
+  const indirectHrs = totalHrs - directHrs;
+  return { totalHrs, directHrs, indirectHrs };
+}
+
+/** Rate period categories matching the Bella Coola billing sheet */
+export const RATE_PERIODS = [
+  'Daytime (08:00-18:00)',
+  'Evenings (18:00-23:00)',
+  'Nights (23:00-08:00)',
+  'Weekends/Holidays (08:00-23:00)',
+] as const;
+
+export type RatePeriod = typeof RATE_PERIODS[number];
+
+/** Determine the rate period from a start time and day of week */
+export function getSegmentRatePeriod(startTime: string, dayOfWeek: number): RatePeriod {
+  const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+  const [h] = startTime.split(':').map(Number);
+
+  if (isWeekend) {
+    if (h >= 23 || h < 8) return 'Nights (23:00-08:00)';
+    return 'Weekends/Holidays (08:00-23:00)';
+  }
+  if (h >= 8 && h < 18) return 'Daytime (08:00-18:00)';
+  if (h >= 18 && h < 23) return 'Evenings (18:00-23:00)';
+  return 'Nights (23:00-08:00)';
+}
+
+/** Compute total hours summary for all time segments */
+export function getTimeBasedSummary(items: BillingItem[]): {
+  totalHrs: number;
+  directHrs: number;
+  indirectHrs: number;
+  segmentCount: number;
+} {
+  const segments = decodeTimeSegments(items);
+  let totalHrs = 0;
+  let directHrs = 0;
+  let indirectHrs = 0;
+  for (const seg of segments) {
+    const h = calculateSegmentHours(seg);
+    totalHrs += h.totalHrs;
+    directHrs += h.directHrs;
+    indirectHrs += h.indirectHrs;
+  }
+  return { totalHrs, directHrs, indirectHrs, segmentCount: segments.length };
+}
