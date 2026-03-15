@@ -5,10 +5,7 @@ import { X, ChevronDown, ChevronUp, DollarSign, Search, Info, Plus, Trash2 } fro
 import {
   BillingItem, BillingCategory, BillingCode,
   addBillingCode, calculateTotal, getAdditionalCodes, filterAdditionalCodes,
-  getCategoryForCode, BILLING_CATEGORIES,
-  isTimeBasedBilling, setTimeBasedMode, TimeSegment,
-  decodeTimeSegments, encodeTimeSegment, calculateSegmentHours,
-  getTimeBasedSummary, getSegmentRatePeriod,
+  getCategoryForCode, BILLING_CATEGORIES, isTimeBased,
 } from '@/lib/billing';
 
 /** Documentation requirements and billing tips per code, from the Yukon Fee Guide */
@@ -102,28 +99,25 @@ function BillingHints({ code }: { code: string | undefined }) {
 export function BillingSection({
   billingItems, comments, onSave, onSaveComments, showBilling, setShowBilling,
 }: BillingSectionProps) {
-  const isTB = isTimeBasedBilling(billingItems);
+  const vchMode = isTimeBased();
   const total = calculateTotal(billingItems);
-  const tbSummary = isTB ? getTimeBasedSummary(billingItems) : null;
-
-  const handleToggle = (timeBased: boolean) => {
-    onSave(setTimeBasedMode(billingItems, timeBased));
-  };
+  // For VCH patient-based: compute total minutes from VCH-DO/VCH-IO items
+  const vchTotalMin = vchMode
+    ? billingItems.filter(i => i.code.startsWith('VCH-')).reduce((sum, i) => sum + (parseInt(i.unit || '0', 10) || 0), 0)
+    : 0;
 
   return (
     <div className="bg-[var(--card-bg)] rounded-2xl border border-[var(--card-border)] overflow-hidden" style={{ boxShadow: 'var(--card-shadow)' }}>
-      <div className="flex items-center justify-between p-4">
-        <button
-          onClick={() => setShowBilling(!showBilling)}
-          className="flex items-center gap-2 cursor-pointer flex-1 min-w-0"
-        >
+      <button
+        onClick={() => setShowBilling(!showBilling)}
+        className="w-full flex items-center justify-between p-4 cursor-pointer"
+      >
+        <div className="flex items-center gap-2">
           <DollarSign className="w-5 h-5 text-[var(--text-muted)]" />
           <h3 className="font-semibold text-[var(--text-primary)]">Billing</h3>
-          {isTB && tbSummary ? (
-            tbSummary.segmentCount > 0 && (
-              <span className="text-sm font-semibold text-green-700 dark:text-green-400">
-                {tbSummary.totalHrs.toFixed(1)}h ({tbSummary.segmentCount} seg)
-              </span>
+          {vchMode ? (
+            vchTotalMin > 0 && (
+              <span className="text-sm font-semibold text-green-700 dark:text-green-400">{vchTotalMin}m</span>
             )
           ) : (
             <>
@@ -137,40 +131,30 @@ export function BillingSection({
               )}
             </>
           )}
-          {showBilling ? (
-            <ChevronUp className="w-5 h-5 text-[var(--text-muted)]" />
-          ) : (
-            <ChevronDown className="w-5 h-5 text-[var(--text-muted)]" />
-          )}
-        </button>
-        {/* Mode toggle — always visible in header */}
-        <div className="flex rounded-lg overflow-hidden border border-[var(--border)] ml-3 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
-          <button
-            onClick={() => handleToggle(false)}
-            className={`px-2.5 py-1 text-[10px] font-medium transition-colors ${
-              !isTB ? 'bg-blue-600 text-white' : 'bg-[var(--bg-tertiary)] text-[var(--text-muted)]'
-            }`}
-          >
-            Patient
-          </button>
-          <button
-            onClick={() => handleToggle(true)}
-            className={`px-2.5 py-1 text-[10px] font-medium transition-colors ${
-              isTB ? 'bg-blue-600 text-white' : 'bg-[var(--bg-tertiary)] text-[var(--text-muted)]'
-            }`}
-          >
-            Time
-          </button>
         </div>
-      </div>
+        {showBilling ? (
+          <ChevronUp className="w-5 h-5 text-[var(--text-muted)]" />
+        ) : (
+          <ChevronDown className="w-5 h-5 text-[var(--text-muted)]" />
+        )}
+      </button>
       {showBilling && (
         <div className="px-4 pb-4">
-          <BillingBody
-            billingItems={billingItems}
-            comments={comments}
-            onSave={onSave}
-            onSaveComments={onSaveComments}
-          />
+          {vchMode ? (
+            <VchPatientBilling
+              billingItems={billingItems}
+              comments={comments}
+              onSave={onSave}
+              onSaveComments={onSaveComments}
+            />
+          ) : (
+            <PatientBasedBilling
+              billingItems={billingItems}
+              comments={comments}
+              onSave={onSave}
+              onSaveComments={onSaveComments}
+            />
+          )}
         </div>
       )}
     </div>
@@ -186,49 +170,33 @@ export function InlineBilling({
   onSave: (items: BillingItem[], comments?: string) => void;
   onSaveComments: (comments: string) => void;
 }) {
-  const isTB = isTimeBasedBilling(billingItems);
-  const handleToggle = (timeBased: boolean) => {
-    onSave(setTimeBasedMode(billingItems, timeBased));
-  };
-
+  const vchMode = isTimeBased();
   return (
     <div className="bg-[var(--bg-tertiary)] border border-[var(--border)] rounded-xl p-4 space-y-3" onClick={(e) => e.stopPropagation()}>
-      {/* Mode toggle */}
-      <div className="flex justify-end">
-        <div className="flex rounded-lg overflow-hidden border border-[var(--border)]">
-          <button
-            onClick={() => handleToggle(false)}
-            className={`px-2.5 py-1 text-[10px] font-medium transition-colors ${
-              !isTB ? 'bg-blue-600 text-white' : 'bg-[var(--bg-tertiary)] text-[var(--text-muted)]'
-            }`}
-          >
-            Patient
-          </button>
-          <button
-            onClick={() => handleToggle(true)}
-            className={`px-2.5 py-1 text-[10px] font-medium transition-colors ${
-              isTB ? 'bg-blue-600 text-white' : 'bg-[var(--bg-tertiary)] text-[var(--text-muted)]'
-            }`}
-          >
-            Time
-          </button>
-        </div>
-      </div>
-      <BillingBody
-        billingItems={billingItems}
-        comments={comments}
-        onSave={onSave}
-        onSaveComments={onSaveComments}
-      />
+      {vchMode ? (
+        <VchPatientBilling
+          billingItems={billingItems}
+          comments={comments}
+          onSave={onSave}
+          onSaveComments={onSaveComments}
+        />
+      ) : (
+        <PatientBasedBilling
+          billingItems={billingItems}
+          comments={comments}
+          onSave={onSave}
+          onSaveComments={onSaveComments}
+        />
+      )}
     </div>
   );
 }
 
 // ────────────────────────────────────────────────────────────────────────────
-// Time-Based Billing UI
+// VCH Patient-Based Billing (per patient: direct min, indirect min, sched, onsite)
 // ────────────────────────────────────────────────────────────────────────────
 
-function TimeBasedBilling({
+function VchPatientBilling({
   billingItems, comments, onSave, onSaveComments,
 }: {
   billingItems: BillingItem[];
@@ -236,45 +204,221 @@ function TimeBasedBilling({
   onSave: (items: BillingItem[]) => void;
   onSaveComments: (c: string) => void;
 }) {
-  const segments = decodeTimeSegments(billingItems);
-  // Keep non-segment items (TB-MODE marker + any patient-based items preserved)
-  const nonSegmentItems = billingItems.filter(i => !i.code.startsWith('TB-') || i.code === 'TB-MODE');
-
-  const saveSegments = (updated: TimeSegment[]) => {
-    const encoded = updated.map((seg, i) => encodeTimeSegment(seg, i));
-    onSave([...nonSegmentItems, ...encoded]);
+  const getMinutes = (code: string) => {
+    const item = billingItems.find(i => i.code === code);
+    return item ? parseInt(item.unit || '0', 10) : 0;
   };
 
+  const getFlag = (code: string): boolean => {
+    return billingItems.some(i => i.code === code);
+  };
+
+  const setMinutes = (code: string, label: string, minutes: number) => {
+    const others = billingItems.filter(i => i.code !== code);
+    if (minutes <= 0) {
+      onSave(others);
+    } else {
+      const item: BillingItem = {
+        code,
+        description: label,
+        fee: '',
+        unit: minutes.toString(),
+        category: 'additional',
+      };
+      onSave([...others, item]);
+    }
+  };
+
+  const toggleFlag = (code: string, label: string) => {
+    if (getFlag(code)) {
+      onSave(billingItems.filter(i => i.code !== code));
+    } else {
+      onSave([...billingItems, {
+        code,
+        description: label,
+        fee: '',
+        unit: '1',
+        category: 'additional',
+      }]);
+    }
+  };
+
+  const directMin = getMinutes('VCH-DO');
+  const indirectMin = getMinutes('VCH-IO');
+  const totalMin = directMin + indirectMin;
+  const isScheduled = getFlag('VCH-SCHED');
+  const isOnsite = !getFlag('VCH-OFFSITE'); // default onsite
+
+  return (
+    <div className="space-y-4">
+      {/* Direct Time */}
+      <div>
+        <label className="block text-xs font-medium text-[var(--text-muted)] mb-1">Direct Time (with patient)</label>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setMinutes('VCH-DO', 'Direct', Math.max(0, directMin - 15))}
+            disabled={directMin <= 0}
+            className="w-8 h-8 flex items-center justify-center rounded-lg bg-[var(--bg-tertiary)] text-[var(--text-secondary)] hover:bg-[var(--border)] disabled:opacity-30 font-bold text-lg transition-colors"
+          >
+            -
+          </button>
+          <span className="w-20 text-center text-sm font-semibold text-[var(--text-primary)]">
+            {directMin} min
+          </span>
+          <button
+            onClick={() => setMinutes('VCH-DO', 'Direct', directMin + 15)}
+            className="w-8 h-8 flex items-center justify-center rounded-lg bg-[var(--bg-tertiary)] text-[var(--text-secondary)] hover:bg-[var(--border)] font-bold text-lg transition-colors"
+          >
+            +
+          </button>
+        </div>
+      </div>
+
+      {/* Indirect Time */}
+      <div>
+        <label className="block text-xs font-medium text-[var(--text-muted)] mb-1">Indirect Time (charting, orders, review)</label>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setMinutes('VCH-IO', 'Indirect', Math.max(0, indirectMin - 15))}
+            disabled={indirectMin <= 0}
+            className="w-8 h-8 flex items-center justify-center rounded-lg bg-[var(--bg-tertiary)] text-[var(--text-secondary)] hover:bg-[var(--border)] disabled:opacity-30 font-bold text-lg transition-colors"
+          >
+            -
+          </button>
+          <span className="w-20 text-center text-sm font-semibold text-[var(--text-primary)]">
+            {indirectMin} min
+          </span>
+          <button
+            onClick={() => setMinutes('VCH-IO', 'Indirect', indirectMin + 15)}
+            className="w-8 h-8 flex items-center justify-center rounded-lg bg-[var(--bg-tertiary)] text-[var(--text-secondary)] hover:bg-[var(--border)] font-bold text-lg transition-colors"
+          >
+            +
+          </button>
+        </div>
+      </div>
+
+      {/* Scheduled / Onsite toggles */}
+      <div className="flex gap-3">
+        <div className="flex-1">
+          <label className="block text-xs font-medium text-[var(--text-muted)] mb-1">Schedule</label>
+          <div className="flex rounded-lg overflow-hidden border border-[var(--border)]">
+            <button
+              onClick={() => { if (!isScheduled) toggleFlag('VCH-SCHED', 'Scheduled'); }}
+              className={`flex-1 px-2 py-1.5 text-xs font-medium transition-colors ${
+                isScheduled ? 'bg-blue-600 text-white' : 'bg-[var(--bg-tertiary)] text-[var(--text-secondary)]'
+              }`}
+            >
+              Scheduled
+            </button>
+            <button
+              onClick={() => { if (isScheduled) toggleFlag('VCH-SCHED', 'Scheduled'); }}
+              className={`flex-1 px-2 py-1.5 text-xs font-medium transition-colors ${
+                !isScheduled ? 'bg-blue-600 text-white' : 'bg-[var(--bg-tertiary)] text-[var(--text-secondary)]'
+              }`}
+            >
+              Unscheduled
+            </button>
+          </div>
+        </div>
+        <div className="flex-1">
+          <label className="block text-xs font-medium text-[var(--text-muted)] mb-1">Location</label>
+          <div className="flex rounded-lg overflow-hidden border border-[var(--border)]">
+            <button
+              onClick={() => { if (!isOnsite) toggleFlag('VCH-OFFSITE', 'Offsite'); }}
+              className={`flex-1 px-2 py-1.5 text-xs font-medium transition-colors ${
+                isOnsite ? 'bg-blue-600 text-white' : 'bg-[var(--bg-tertiary)] text-[var(--text-secondary)]'
+              }`}
+            >
+              Onsite
+            </button>
+            <button
+              onClick={() => { if (isOnsite) toggleFlag('VCH-OFFSITE', 'Offsite'); }}
+              className={`flex-1 px-2 py-1.5 text-xs font-medium transition-colors ${
+                !isOnsite ? 'bg-blue-600 text-white' : 'bg-[var(--bg-tertiary)] text-[var(--text-secondary)]'
+              }`}
+            >
+              Offsite
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Total */}
+      {totalMin > 0 && (
+        <div className="flex justify-end border-t border-[var(--border)] pt-2">
+          <span className="text-sm font-bold text-[var(--text-primary)]">
+            Total: {totalMin} min ({(totalMin / 60).toFixed(2)} hrs)
+          </span>
+        </div>
+      )}
+
+      {/* Comments */}
+      <div>
+        <label className="block text-xs font-medium text-[var(--text-muted)] mb-1">Comments</label>
+        <input
+          type="text"
+          value={comments}
+          onChange={(e) => onSaveComments(e.target.value)}
+          onBlur={(e) => onSaveComments(e.target.value)}
+          className="w-full p-2 border border-[var(--input-border)] rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)]"
+        />
+      </div>
+    </div>
+  );
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// VCH Time-Based Shift Billing (day-level, displayed below header)
+// ────────────────────────────────────────────────────────────────────────────
+
+import {
+  TimeSegment, calculateSegmentHours, getSegmentRatePeriod,
+} from '@/lib/billing';
+
+export function VchTimeBasedShiftPanel({
+  segments,
+  onSaveSegments,
+}: {
+  segments: TimeSegment[];
+  onSaveSegments: (segments: TimeSegment[]) => void;
+}) {
   const addSegment = () => {
     const lastSeg = segments[segments.length - 1];
     const newSeg: TimeSegment = {
       start: lastSeg?.end || '08:00',
-      end: lastSeg ? '' : '18:00',
+      end: '',
       scheduled: true,
       onsite: true,
       directPct: 50,
     };
-    saveSegments([...segments, newSeg]);
+    onSaveSegments([...segments, newSeg]);
   };
 
   const updateSegment = (index: number, updates: Partial<TimeSegment>) => {
-    const updated = segments.map((seg, i) =>
+    onSaveSegments(segments.map((seg, i) =>
       i === index ? { ...seg, ...updates } : seg
-    );
-    saveSegments(updated);
+    ));
   };
 
   const removeSegment = (index: number) => {
-    saveSegments(segments.filter((_, i) => i !== index));
+    onSaveSegments(segments.filter((_, i) => i !== index));
   };
 
   // Summary
-  const summary = getTimeBasedSummary(billingItems);
+  let totalHrs = 0, directHrs = 0, indirectHrs = 0;
+  for (const seg of segments) {
+    if (seg.start && seg.end) {
+      const h = calculateSegmentHours(seg);
+      totalHrs += h.totalHrs;
+      directHrs += h.directHrs;
+      indirectHrs += h.indirectHrs;
+    }
+  }
 
   return (
     <div className="space-y-3">
       {segments.map((seg, idx) => {
-        const hrs = calculateSegmentHours(seg);
+        const hrs = seg.start && seg.end ? calculateSegmentHours(seg) : null;
         const ratePeriod = seg.start ? getSegmentRatePeriod(seg.start, new Date().getDay()) : '';
 
         return (
@@ -282,7 +426,6 @@ function TimeBasedBilling({
             key={idx}
             className="border border-[var(--border)] rounded-lg p-3 bg-[var(--card-bg)] space-y-2"
           >
-            {/* Header: segment number + delete */}
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wide">
                 Segment {idx + 1}
@@ -295,7 +438,7 @@ function TimeBasedBilling({
               </button>
             </div>
 
-            {/* Start / End time */}
+            {/* Start / End */}
             <div className="flex gap-2">
               <div className="flex-1">
                 <label className="block text-[10px] font-medium text-[var(--text-muted)] mb-0.5">Start</label>
@@ -317,7 +460,7 @@ function TimeBasedBilling({
               </div>
             </div>
 
-            {/* Scheduled / Onsite toggles */}
+            {/* Scheduled / Onsite */}
             <div className="flex gap-2">
               <div className="flex-1">
                 <label className="block text-[10px] font-medium text-[var(--text-muted)] mb-0.5">Schedule</label>
@@ -385,8 +528,8 @@ function TimeBasedBilling({
               </div>
             </div>
 
-            {/* Summary row */}
-            {seg.start && seg.end && (
+            {/* Summary */}
+            {hrs && (
               <div className="flex items-center justify-between text-xs text-[var(--text-secondary)] bg-[var(--bg-tertiary)] rounded-lg px-2.5 py-1.5">
                 {ratePeriod && (
                   <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300">
@@ -394,11 +537,11 @@ function TimeBasedBilling({
                   </span>
                 )}
                 <span>
-                  {hrs.totalHrs.toFixed(2)}h total
+                  {hrs.totalHrs.toFixed(2)}h
                   <span className="mx-1 text-[var(--text-muted)]">|</span>
-                  {hrs.directHrs.toFixed(2)}h direct
+                  D: {hrs.directHrs.toFixed(2)}h
                   <span className="mx-1 text-[var(--text-muted)]">|</span>
-                  {hrs.indirectHrs.toFixed(2)}h indirect
+                  I: {hrs.indirectHrs.toFixed(2)}h
                 </span>
               </div>
             )}
@@ -416,70 +559,22 @@ function TimeBasedBilling({
       </button>
 
       {/* Grand Total */}
-      {segments.length > 0 && (
+      {segments.length > 0 && totalHrs > 0 && (
         <div className="flex justify-end border-t border-[var(--border)] pt-2">
           <span className="text-sm font-bold text-[var(--text-primary)]">
-            Total: {summary.totalHrs.toFixed(2)}h
+            Total: {totalHrs.toFixed(2)}h
             <span className="font-normal text-[var(--text-muted)] ml-2">
-              (D: {summary.directHrs.toFixed(2)}h / I: {summary.indirectHrs.toFixed(2)}h)
+              (D: {directHrs.toFixed(2)}h / I: {indirectHrs.toFixed(2)}h)
             </span>
           </span>
         </div>
       )}
-
-      {/* Comments */}
-      <div>
-        <label className="block text-xs font-medium text-[var(--text-muted)] mb-1">Comments</label>
-        <input
-          type="text"
-          value={comments}
-          onChange={(e) => onSaveComments(e.target.value)}
-          onBlur={(e) => onSaveComments(e.target.value)}
-          className="w-full p-2 border border-[var(--input-border)] rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)]"
-        />
-      </div>
     </div>
   );
 }
 
 // ────────────────────────────────────────────────────────────────────────────
-// Shared Billing Body
-// ────────────────────────────────────────────────────────────────────────────
-
-/** Shared billing body */
-function BillingBody({
-  billingItems, comments, onSave, onSaveComments,
-}: {
-  billingItems: BillingItem[];
-  comments: string;
-  onSave: (items: BillingItem[]) => void;
-  onSaveComments: (c: string) => void;
-}) {
-  const isTB = isTimeBasedBilling(billingItems);
-
-  return (
-    <div>
-      {isTB ? (
-        <TimeBasedBilling
-          billingItems={billingItems}
-          comments={comments}
-          onSave={onSave}
-          onSaveComments={onSaveComments}
-        />
-      ) : (
-        <PatientBasedBilling
-          billingItems={billingItems}
-          comments={comments}
-          onSave={onSave}
-          onSaveComments={onSaveComments}
-        />
-      )}
-    </div>
-  );
-}
-
-// ────────────────────────────────────────────────────────────────────────────
-// Patient-Based Billing (existing Yukon-style)
+// Patient-Based Billing (Yukon codes)
 // ────────────────────────────────────────────────────────────────────────────
 
 function PatientBasedBilling({
@@ -497,7 +592,6 @@ function PatientBasedBilling({
   const [searchQuery, setSearchQuery] = useState('');
   const [sheetCodes, setSheetCodes] = useState<BillingCode[] | null>(null);
 
-  // Fetch billing codes from Google Sheet on mount
   useEffect(() => {
     fetch('/api/billing-codes')
       .then(res => res.ok ? res.json() : null)
@@ -509,20 +603,17 @@ function PatientBasedBilling({
       .catch(() => {});
   }, []);
 
-  // Use sheet codes if available, otherwise fall back to local defaults
   const additionalCodes = sheetCodes
     ? filterAdditionalCodes(sheetCodes)
     : getAdditionalCodes();
 
   const total = calculateTotal(billingItems);
 
-  // Use code-based category lookup (source of truth) rather than the mutable .category property
   const currentVisit = billingItems.find(i => getCategoryForCode(i.code) === 'visitType');
   const currentAcuteCare = billingItems.find(i => getCategoryForCode(i.code) === 'acuteCare');
   const currentPremium = billingItems.find(i => getCategoryForCode(i.code) === 'premium');
   const additionalItems = billingItems.filter(i => getCategoryForCode(i.code) === 'additional');
 
-  // Filter additional codes by search query
   const filteredCodes = searchQuery.trim()
     ? additionalCodes.filter(c =>
         c.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -531,21 +622,17 @@ function PatientBasedBilling({
     : additionalCodes;
 
   const setCategoryItem = (category: BillingCategory, item: BillingItem | null) => {
-    // Filter by code-based category lookup, not the .category property
     const filtered = billingItems.filter(i => getCategoryForCode(i.code) !== category);
     const updated = item ? [...filtered, item] : filtered;
     onSave(updated);
   };
 
-  /** Select acute care fee: replaces any existing acute care, and by default removes visit type */
   const handleAcuteCareSelect = (item: BillingItem) => {
-    // If already selected, toggle it off
     if (currentAcuteCare?.code === item.code) {
       const filtered = billingItems.filter(i => getCategoryForCode(i.code) !== 'acuteCare');
       onSave(filtered);
       return;
     }
-    // Remove existing acute care AND visit type
     const filtered = billingItems.filter(i => {
       const cat = getCategoryForCode(i.code);
       return cat !== 'acuteCare' && cat !== 'visitType';
@@ -730,7 +817,6 @@ function PatientBasedBilling({
       {/* Additional Fees */}
       <div>
         <label className="block text-xs font-medium text-[var(--text-muted)] mb-1">Additional Fees</label>
-        {/* Search */}
         <div className="relative mb-1">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[var(--text-muted)]" />
           <input
