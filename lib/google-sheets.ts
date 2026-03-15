@@ -1553,3 +1553,139 @@ export async function saveUserPhrases(ctx: SheetsContext, phrases: string[]): Pr
     requestBody: { values },
   });
 }
+
+// ────────────────────────────────────────────────────────────────────────────
+// Parse Formats (EMR data format patterns stored in Google Sheet)
+// ────────────────────────────────────────────────────────────────────────────
+
+const PARSE_FORMATS_SHEET = 'Parse Formats';
+
+export interface StoredParseFormat {
+  name: string;
+  sampleText: string;
+  fieldName: string;
+  fieldAge: string;
+  fieldDob: string;
+  fieldMrn: string;
+  fieldHcn: string;
+  ageDobPattern: string;
+  hcnPattern: string;
+  mrnPattern: string;
+  nameCleanup: string;
+}
+
+async function ensureParseFormatsSheet(ctx: SheetsContext): Promise<void> {
+  const { sheets, spreadsheetId } = ctx;
+  const spreadsheet = await sheets.spreadsheets.get({ spreadsheetId });
+  const exists = spreadsheet.data.sheets?.some(
+    (s: any) => s.properties.title === PARSE_FORMATS_SHEET
+  );
+  if (exists) return;
+
+  await sheets.spreadsheets.batchUpdate({
+    spreadsheetId,
+    requestBody: {
+      requests: [{ addSheet: { properties: { title: PARSE_FORMATS_SHEET } } }],
+    },
+  });
+
+  await sheets.spreadsheets.values.update({
+    spreadsheetId,
+    range: `'${PARSE_FORMATS_SHEET}'!A1:K1`,
+    valueInputOption: 'RAW',
+    requestBody: {
+      values: [['Name', 'Sample Text', 'Field: Name', 'Field: Age', 'Field: DOB', 'Field: MRN', 'Field: HCN', 'Age/DOB Pattern', 'HCN Pattern', 'MRN Pattern', 'Name Cleanup']],
+    },
+  });
+}
+
+/** Get all saved parse formats */
+export async function getParseFormats(ctx: SheetsContext): Promise<StoredParseFormat[]> {
+  const { sheets, spreadsheetId } = ctx;
+
+  const spreadsheet = await sheets.spreadsheets.get({ spreadsheetId });
+  const exists = spreadsheet.data.sheets?.some(
+    (s: any) => s.properties.title === PARSE_FORMATS_SHEET
+  );
+  if (!exists) return [];
+
+  const response = await sheets.spreadsheets.values.get({
+    spreadsheetId,
+    range: `'${PARSE_FORMATS_SHEET}'!A2:K100`,
+  });
+
+  const rows = response.data.values || [];
+  return rows
+    .filter((row: any[]) => row[0]?.toString().trim())
+    .map((row: any[]) => ({
+      name: row[0]?.toString() || '',
+      sampleText: row[1]?.toString() || '',
+      fieldName: row[2]?.toString() || '',
+      fieldAge: row[3]?.toString() || '',
+      fieldDob: row[4]?.toString() || '',
+      fieldMrn: row[5]?.toString() || '',
+      fieldHcn: row[6]?.toString() || '',
+      ageDobPattern: row[7]?.toString() || '',
+      hcnPattern: row[8]?.toString() || '',
+      mrnPattern: row[9]?.toString() || '',
+      nameCleanup: row[10]?.toString() || '',
+    }));
+}
+
+/** Save a parse format (append or update by name) */
+export async function saveParseFormat(ctx: SheetsContext, format: StoredParseFormat): Promise<void> {
+  const { sheets, spreadsheetId } = ctx;
+  await ensureParseFormatsSheet(ctx);
+
+  const existing = await getParseFormats(ctx);
+  const existingIdx = existing.findIndex(f => f.name === format.name);
+
+  const row = [
+    format.name, format.sampleText, format.fieldName, format.fieldAge,
+    format.fieldDob, format.fieldMrn, format.fieldHcn,
+    format.ageDobPattern, format.hcnPattern, format.mrnPattern, format.nameCleanup,
+  ];
+
+  if (existingIdx >= 0) {
+    const sheetRow = existingIdx + 2;
+    await sheets.spreadsheets.values.update({
+      spreadsheetId,
+      range: `'${PARSE_FORMATS_SHEET}'!A${sheetRow}:K${sheetRow}`,
+      valueInputOption: 'RAW',
+      requestBody: { values: [row] },
+    });
+  } else {
+    await sheets.spreadsheets.values.append({
+      spreadsheetId,
+      range: `'${PARSE_FORMATS_SHEET}'!A:K`,
+      valueInputOption: 'RAW',
+      requestBody: { values: [row] },
+    });
+  }
+}
+
+/** Delete a parse format by name */
+export async function deleteParseFormat(ctx: SheetsContext, name: string): Promise<void> {
+  const { sheets, spreadsheetId } = ctx;
+
+  const existing = await getParseFormats(ctx);
+  const remaining = existing.filter(f => f.name !== name);
+
+  const header = [['Name', 'Sample Text', 'Field: Name', 'Field: Age', 'Field: DOB', 'Field: MRN', 'Field: HCN', 'Age/DOB Pattern', 'HCN Pattern', 'MRN Pattern', 'Name Cleanup']];
+  const rows = remaining.map(f => [
+    f.name, f.sampleText, f.fieldName, f.fieldAge, f.fieldDob,
+    f.fieldMrn, f.fieldHcn, f.ageDobPattern, f.hcnPattern, f.mrnPattern, f.nameCleanup,
+  ]);
+
+  await sheets.spreadsheets.values.clear({
+    spreadsheetId,
+    range: `'${PARSE_FORMATS_SHEET}'!A1:K100`,
+  });
+
+  await sheets.spreadsheets.values.update({
+    spreadsheetId,
+    range: `'${PARSE_FORMATS_SHEET}'!A1`,
+    valueInputOption: 'RAW',
+    requestBody: { values: [...header, ...rows] },
+  });
+}
