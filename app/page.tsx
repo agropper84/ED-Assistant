@@ -17,6 +17,8 @@ import {
   parseBillingItems,
   serializeBillingItems,
   isTimeBased,
+  isTimeBasedBilling,
+  getTimeBasedSummary,
 } from '@/lib/billing';
 import {
   Plus, RefreshCw, Loader2, ChevronLeft, ChevronRight,
@@ -803,11 +805,11 @@ export default function HomePage() {
       patient.visitProcedure || '', patient.procCode || '',
       patient.fee || '', patient.unit || ''
     );
-    const timeBased = isTimeBased();
-    const codes = timeBased
+    const patientTimeBased = isTimeBasedBilling(items);
+    const codes = patientTimeBased
       ? (() => {
-          const totalMin = items.filter(i => i.code.startsWith('VCH-')).reduce((sum, i) => sum + (parseInt(i.unit || '0', 10) || 0), 0);
-          return totalMin > 0 ? `${totalMin}m` : '';
+          const summary = getTimeBasedSummary(items);
+          return summary.segmentCount > 0 ? `${summary.totalHrs.toFixed(1)}h` : '';
         })()
       : items.length > 0 ? items.map(i => i.code).join(', ') : '';
     const isBillingOpen = billingPatientIdx === patient.rowIndex;
