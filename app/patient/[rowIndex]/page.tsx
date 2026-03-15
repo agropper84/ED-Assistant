@@ -1096,6 +1096,33 @@ function DiagnosisSection({
 }
 
 // Output Section Component with inline editing
+/** Convert markdown-style links [text](url) and bare URLs to clickable <a> elements */
+function renderWithLinks(text: string): React.ReactNode[] {
+  if (!text) return [text];
+  // Match markdown links [text](url) or bare https:// URLs
+  const parts = text.split(/(\[[^\]]+\]\(https?:\/\/[^)]+\)|https?:\/\/[^\s)<>]+)/g);
+  return parts.map((part, i) => {
+    // Markdown link: [text](url)
+    const mdMatch = part.match(/^\[([^\]]+)\]\((https?:\/\/[^)]+)\)$/);
+    if (mdMatch) {
+      return (
+        <a key={i} href={mdMatch[2]} target="_blank" rel="noopener noreferrer"
+          className="text-blue-600 dark:text-blue-400 underline hover:text-blue-700 dark:hover:text-blue-300"
+        >{mdMatch[1]}</a>
+      );
+    }
+    // Bare URL
+    if (/^https?:\/\//.test(part)) {
+      return (
+        <a key={i} href={part} target="_blank" rel="noopener noreferrer"
+          className="text-blue-600 dark:text-blue-400 underline hover:text-blue-700 dark:hover:text-blue-300"
+        >{part}</a>
+      );
+    }
+    return part;
+  });
+}
+
 function OutputSection({
   title,
   content,
@@ -1288,7 +1315,7 @@ function OutputSection({
             <InteractiveContent content={content} onSave={onSave} />
           ) : (
             <p className="text-[var(--text-secondary)] whitespace-pre-wrap text-sm leading-relaxed">
-              {content}
+              {renderWithLinks(content)}
             </p>
           )}
 
@@ -1489,7 +1516,7 @@ function InteractiveContent({
               }`}
               onClick={(e) => { e.stopPropagation(); toggleSelect(idx); }}
             >
-              {part.text}
+              {renderWithLinks(part.text)}
             </span>
             {' '}
           </span>

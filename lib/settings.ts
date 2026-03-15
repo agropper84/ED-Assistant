@@ -65,7 +65,7 @@ export const DEFAULT_PROMPT_TEMPLATES: PromptTemplates = {
   ddx: `Provide differential diagnosis based on presentation. List most likely diagnosis first, followed by other considerations. Use narrative form.`,
   investigations: `Recommend appropriate investigations based on the presentation. Include labs, imaging, and other diagnostic tests as applicable. Use narrative form.`,
   management: `Recommend management and treatment plan based on the presentation and differential. Include medications, procedures, disposition planning, and follow-up. Use narrative form.`,
-  evidence: `Cite pertinent evidence, clinical guidelines, or decision rules supporting the workup and management (e.g., Ottawa Ankle Rules, HEART score, Wells criteria). Include brief rationale for key decisions. For each guideline or study cited, include a direct URL link to the primary source (e.g., PubMed, journal website, or society guideline page). Format links inline or parenthetically. Use narrative form.`,
+  evidence: `Cite pertinent evidence, clinical guidelines, or decision rules supporting the workup and management (e.g., Ottawa Ankle Rules, HEART score, Wells criteria). Include brief rationale for key decisions. For each guideline or study cited, include a clickable markdown hyperlink to the primary source using the format [Guideline/Study Name](URL). Link to PubMed, journal websites, or society guideline pages. Use narrative form.`,
   hpi: `Narrative summary of patient's presentation. Thoroughly document the history and features supporting the working diagnosis. Document that appropriate red flags have been ruled out. Professional, concise ED physician language.`,
   objective: `Physical examination findings ONLY. Use this format for normal exam:
 "Patient appears well, NAD. AVSS."
@@ -139,7 +139,7 @@ export const DEFAULT_ENCOUNTER_TYPES: EncounterType[] = [
 - Clear follow-up plan: PCP follow-up timeline, specialist referral if needed
 - Explicit return precautions and criteria for ED visit
 Use narrative form.`,
-      evidence: `Cite clinical guidelines and decision rules relevant to the urgent care setting. Reference outpatient management guidelines, antibiotic stewardship principles, or validated tools (e.g., Centor score, Ottawa rules, CURB-65). Include rationale for treating outpatient vs. referring to ED. For each guideline or study cited, include a direct URL link to the primary source (e.g., PubMed, journal website, or society guideline page). Format links inline or parenthetically. Use narrative form.`,
+      evidence: `Cite clinical guidelines and decision rules relevant to the urgent care setting. Reference outpatient management guidelines, antibiotic stewardship principles, or validated tools (e.g., Centor score, Ottawa rules, CURB-65). Include rationale for treating outpatient vs. referring to ED. For each guideline or study cited, include a clickable markdown hyperlink to the primary source using the format [Guideline/Study Name](URL). Link to PubMed, journal websites, or society guideline pages. Use narrative form.`,
       hpi: `Narrative summary of the patient's urgent care presentation. Document the chief complaint, timeline, associated symptoms, and relevant history. Note pertinent negatives that support safe outpatient management. Document that red flags for conditions requiring ED care have been assessed. Professional, efficient urgent care physician language.`,
       objective: `Physical examination findings ONLY. Use this format for normal exam:
 "Patient appears well, NAD. AVSS."
@@ -182,7 +182,7 @@ Use narrative form.`,
 - Referrals to specialists or allied health (physio, dietitian, mental health)
 - Follow-up timeline based on clinical urgency
 Use narrative form.`,
-      evidence: `Cite current clinical practice guidelines relevant to primary care management. Reference guidelines from USPSTF, CDA, CTFPHC, or specialty societies as applicable. Include evidence supporting screening decisions, treatment choices, and preventive measures. For each guideline or study cited, include a direct URL link to the primary source (e.g., PubMed, journal website, or society guideline page). Format links inline or parenthetically. Use narrative form.`,
+      evidence: `Cite current clinical practice guidelines relevant to primary care management. Reference guidelines from USPSTF, CDA, CTFPHC, or specialty societies as applicable. Include evidence supporting screening decisions, treatment choices, and preventive measures. For each guideline or study cited, include a clickable markdown hyperlink to the primary source using the format [Guideline/Study Name](URL). Link to PubMed, journal websites, or society guideline pages. Use narrative form.`,
       hpi: `Narrative summary of the patient's presentation in a primary care context. Include the current complaint within the context of their ongoing care — relevant chronic conditions, medication history, previous visits for similar issues, and social determinants of health. Document pertinent positives and negatives. Professional, thorough primary care physician language.`,
       objective: `Physical examination findings ONLY. Use this format for normal exam:
 "Patient appears well, NAD. AVSS."
@@ -226,7 +226,7 @@ Use narrative form.`,
 - Criteria for re-referral, escalation, or urgent reassessment
 - Expected clinical trajectory and milestones
 Use narrative form.`,
-      evidence: `Cite specialty-specific evidence, guidelines, and current literature supporting the assessment and recommendations. Reference society guidelines (e.g., AHA/ACC, ACG, ACR, ASCO), landmark trials, or meta-analyses as applicable. Provide evidence level where possible. Include rationale for recommendations that deviate from standard protocols. For each guideline or study cited, include a direct URL link to the primary source (e.g., PubMed, journal website, or society guideline page). Format links inline or parenthetically. Use narrative form.`,
+      evidence: `Cite specialty-specific evidence, guidelines, and current literature supporting the assessment and recommendations. Reference society guidelines (e.g., AHA/ACC, ACG, ACR, ASCO), landmark trials, or meta-analyses as applicable. Provide evidence level where possible. Include rationale for recommendations that deviate from standard protocols. For each guideline or study cited, include a clickable markdown hyperlink to the primary source using the format [Guideline/Study Name](URL). Link to PubMed, journal websites, or society guideline pages. Use narrative form.`,
       hpi: `Comprehensive consultation history. Document:
 - Reason for referral and referring physician
 - Detailed chronological history of the presenting complaint
