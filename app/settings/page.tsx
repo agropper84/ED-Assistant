@@ -13,7 +13,13 @@ import {
   getStyleGuide,
   clearLocalStyleGuide,
 } from '@/lib/style-guide';
-import { getSettings, saveSettings, AppSettings, DEFAULT_SETTINGS, PromptTemplates, DEFAULT_PROMPT_TEMPLATES, getPromptTemplates, savePromptTemplates, ParseRules, DEFAULT_PARSE_RULES, getParseRules, saveParseRules } from '@/lib/settings';
+import {
+  getSettings, saveSettings, AppSettings, DEFAULT_SETTINGS,
+  PromptTemplates, DEFAULT_PROMPT_TEMPLATES, getPromptTemplates, savePromptTemplates,
+  ParseRules, DEFAULT_PARSE_RULES, getParseRules, saveParseRules,
+  EncounterType, DEFAULT_ENCOUNTER_TYPES, getEncounterTypes, saveEncounterTypes,
+  getEncounterType, saveEncounterType,
+} from '@/lib/settings';
 import { getExamPresets, saveExamPresets, resetExamPresets, ExamPreset } from '@/lib/exam-presets';
 import {
   BillingCode, BillingGroup,
@@ -77,6 +83,13 @@ export default function SettingsPage() {
   // Prompt templates state
   const [promptTemplates, setPromptTemplates] = useState<PromptTemplates>(DEFAULT_PROMPT_TEMPLATES);
   const [expandedPromptSections, setExpandedPromptSections] = useState<Set<string>>(new Set());
+
+  // Encounter types state
+  const [encounterTypesList, setEncounterTypesList] = useState<EncounterType[]>(() => getEncounterTypes());
+  const [activeEncounterType, setActiveEncounterType] = useState(() => getEncounterType());
+  const [editingEncounterType, setEditingEncounterType] = useState<string | null>(null);
+  const [addingEncounterType, setAddingEncounterType] = useState(false);
+  const [newEncounterLabel, setNewEncounterLabel] = useState('');
 
   // Debounce timer for guidance textarea
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -888,6 +901,202 @@ export default function SettingsPage() {
         {/* Prompts Tab */}
         {activeTab === 'prompts' && (
           <>
+            {/* Encounter Types */}
+            <div className="bg-[var(--card-bg)] rounded-2xl border border-[var(--card-border)] p-5 space-y-3" style={{ boxShadow: 'var(--card-shadow)' }}>
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="font-semibold text-[var(--text-primary)]">Encounter Types</h3>
+                  <p className="text-xs text-[var(--text-muted)] mt-0.5">Each type has its own section instruction overrides. Select the active type from the dashboard header.</p>
+                </div>
+                <button
+                  onClick={() => {
+                    setEncounterTypesList(DEFAULT_ENCOUNTER_TYPES);
+                    saveEncounterTypes(DEFAULT_ENCOUNTER_TYPES);
+                  }}
+                  className="flex items-center gap-1 px-2 py-1 text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] rounded-lg text-xs transition-colors"
+                >
+                  <RotateCcw className="w-3 h-3" />
+                  Reset
+                </button>
+              </div>
+
+              {/* List of encounter types */}
+              <div className="space-y-2">
+                {encounterTypesList.map(et => {
+                  const isEditing = editingEncounterType === et.id;
+                  const isActive = activeEncounterType === et.id;
+                  const overrideCount = Object.keys(et.prompts).length;
+                  const isDefault = DEFAULT_ENCOUNTER_TYPES.some(d => d.id === et.id);
+
+                  return (
+                    <div key={et.id} className="border border-[var(--border)] rounded-lg overflow-hidden">
+                      <div className="flex items-center justify-between px-3 py-2">
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => {
+                              setActiveEncounterType(et.id);
+                              saveEncounterType(et.id);
+                            }}
+                            className={`w-2 h-2 rounded-full flex-shrink-0 ${isActive ? 'bg-blue-500' : 'bg-[var(--border)]'}`}
+                            title={isActive ? 'Active' : 'Click to activate'}
+                          />
+                          <span className="text-sm font-medium text-[var(--text-primary)]">{et.label}</span>
+                          {overrideCount > 0 && (
+                            <span className="text-[10px] text-[var(--text-muted)]">{overrideCount} override{overrideCount !== 1 ? 's' : ''}</span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={() => setEditingEncounterType(isEditing ? null : et.id)}
+                            className="p-1 text-[var(--text-muted)] hover:text-[var(--text-secondary)] rounded"
+                          >
+                            <Pencil className="w-3 h-3" />
+                          </button>
+                          {!isDefault && (
+                            <button
+                              onClick={() => {
+                                const updated = encounterTypesList.filter(t => t.id !== et.id);
+                                setEncounterTypesList(updated);
+                                saveEncounterTypes(updated);
+                                if (activeEncounterType === et.id) {
+                                  setActiveEncounterType('er');
+                                  saveEncounterType('er');
+                                }
+                              }}
+                              className="p-1 text-[var(--text-muted)] hover:text-red-500 rounded"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Expanded edit panel */}
+                      {isEditing && (
+                        <div className="border-t border-[var(--border)] px-3 py-3 space-y-3 bg-[var(--bg-tertiary)]">
+                          <p className="text-xs text-[var(--text-muted)]">
+                            Override section instructions for &quot;{et.label}&quot;. Leave blank to use the default prompt.
+                          </p>
+                          {([
+                            { key: 'generalRules', label: 'General Rules' },
+                            { key: 'hpi', label: 'HPI' },
+                            { key: 'objective', label: 'Objective' },
+                            { key: 'assessmentPlan', label: 'Assessment & Plan' },
+                            { key: 'ddx', label: 'DDx' },
+                            { key: 'investigations', label: 'Investigations' },
+                            { key: 'management', label: 'Management' },
+                            { key: 'evidence', label: 'Evidence' },
+                            { key: 'diagnosis', label: 'Diagnosis' },
+                          ] as { key: keyof PromptTemplates; label: string }[]).map(({ key, label }) => {
+                            const hasOverride = key in et.prompts;
+                            return (
+                              <div key={key}>
+                                <div className="flex items-center justify-between mb-0.5">
+                                  <label className="text-xs font-medium text-[var(--text-secondary)]">{label}</label>
+                                  {hasOverride && (
+                                    <button
+                                      onClick={() => {
+                                        const updated = encounterTypesList.map(t => {
+                                          if (t.id !== et.id) return t;
+                                          const newPrompts = { ...t.prompts };
+                                          delete newPrompts[key];
+                                          return { ...t, prompts: newPrompts };
+                                        });
+                                        setEncounterTypesList(updated);
+                                        saveEncounterTypes(updated);
+                                      }}
+                                      className="text-[10px] text-red-500 hover:text-red-400"
+                                    >
+                                      Clear override
+                                    </button>
+                                  )}
+                                </div>
+                                <textarea
+                                  value={(et.prompts[key] as string) || ''}
+                                  onChange={(e) => {
+                                    const val = e.target.value;
+                                    const updated = encounterTypesList.map(t => {
+                                      if (t.id !== et.id) return t;
+                                      const newPrompts = { ...t.prompts };
+                                      if (val.trim()) {
+                                        newPrompts[key] = val;
+                                      } else {
+                                        delete newPrompts[key];
+                                      }
+                                      return { ...t, prompts: newPrompts };
+                                    });
+                                    setEncounterTypesList(updated);
+                                    saveEncounterTypes(updated);
+                                  }}
+                                  placeholder={`Default: ${DEFAULT_PROMPT_TEMPLATES[key].substring(0, 80)}...`}
+                                  className="w-full h-20 p-2 border border-[var(--input-border)] rounded-lg text-xs resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)] font-mono leading-relaxed"
+                                />
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Add new encounter type */}
+              {addingEncounterType ? (
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={newEncounterLabel}
+                    onChange={(e) => setNewEncounterLabel(e.target.value)}
+                    placeholder="Encounter type name..."
+                    className="flex-1 p-2 border border-[var(--input-border)] rounded-lg text-sm bg-[var(--input-bg)] text-[var(--text-primary)] focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    autoFocus
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && newEncounterLabel.trim()) {
+                        const id = newEncounterLabel.trim().toLowerCase().replace(/\s+/g, '-');
+                        if (encounterTypesList.some(t => t.id === id)) return;
+                        const updated = [...encounterTypesList, { id, label: newEncounterLabel.trim(), prompts: {} }];
+                        setEncounterTypesList(updated);
+                        saveEncounterTypes(updated);
+                        setNewEncounterLabel('');
+                        setAddingEncounterType(false);
+                      }
+                    }}
+                  />
+                  <button
+                    onClick={() => {
+                      if (!newEncounterLabel.trim()) return;
+                      const id = newEncounterLabel.trim().toLowerCase().replace(/\s+/g, '-');
+                      if (encounterTypesList.some(t => t.id === id)) return;
+                      const updated = [...encounterTypesList, { id, label: newEncounterLabel.trim(), prompts: {} }];
+                      setEncounterTypesList(updated);
+                      saveEncounterTypes(updated);
+                      setNewEncounterLabel('');
+                      setAddingEncounterType(false);
+                    }}
+                    disabled={!newEncounterLabel.trim()}
+                    className="px-3 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium disabled:opacity-50"
+                  >
+                    Add
+                  </button>
+                  <button
+                    onClick={() => { setAddingEncounterType(false); setNewEncounterLabel(''); }}
+                    className="px-3 py-2 bg-[var(--bg-primary)] text-[var(--text-secondary)] rounded-lg text-sm font-medium"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setAddingEncounterType(true)}
+                  className="flex items-center gap-1.5 text-xs text-blue-600 dark:text-blue-400 font-medium"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  Add encounter type
+                </button>
+              )}
+            </div>
+
             {/* Reset All */}
             <div className="flex justify-end">
               <button

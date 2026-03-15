@@ -18,7 +18,7 @@ import {
   parseBillingItems,
 } from '@/lib/billing';
 import { BillingSection } from '@/components/BillingSection';
-import { getPromptTemplates } from '@/lib/settings';
+import { getPromptTemplates, getEffectivePromptTemplates } from '@/lib/settings';
 
 export default function PatientPage() {
   const router = useRouter();
@@ -132,7 +132,7 @@ export default function PatientPage() {
           sheetName,
           modifications: mods,
           settings,
-          promptTemplates: getPromptTemplates(),
+          promptTemplates: getEffectivePromptTemplates(),
         }),
       });
 
@@ -1427,7 +1427,7 @@ function InteractiveContent({
         .join(' ');
       const fullContext = partsToText(parts);
 
-      const templates = getPromptTemplates();
+      const templates = getEffectivePromptTemplates();
       const res = await fetch('/api/edit-text', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

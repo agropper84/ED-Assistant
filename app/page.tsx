@@ -3,7 +3,11 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Patient } from '@/lib/google-sheets';
-import { getPromptTemplates, getSettings } from '@/lib/settings';
+import {
+  getPromptTemplates, getSettings, getEffectivePromptTemplates,
+  getEncounterType, saveEncounterType, getEncounterTypes,
+  EncounterType,
+} from '@/lib/settings';
 import { PatientCard } from '@/components/PatientCard';
 import { ParseModal } from '@/components/ParseModal';
 import { PatientDataModal } from '@/components/PatientDataModal';
@@ -22,7 +26,8 @@ import {
 import {
   Plus, RefreshCw, Loader2, ChevronLeft, ChevronRight,
   Calendar, Settings, CheckSquare, Square, Play, Clock, EyeOff, Eye,
-  Search, ArrowUpDown, X, LogOut, Upload, Shield, Monitor, RotateCcw, Sparkles
+  Search, ArrowUpDown, X, LogOut, Upload, Shield, Monitor, RotateCcw, Sparkles,
+  Stethoscope
 } from 'lucide-react';
 
 function formatDateForSheet(date: Date): string {
@@ -302,6 +307,12 @@ export default function HomePage() {
   // VCH time-based shift segments
   const [shiftSegments, setShiftSegments] = useState<TimeSegment[]>([]);
   const [showShiftPanel, setShowShiftPanel] = useState(false);
+
+  // Encounter type
+  const [activeEncounterType, setActiveEncounterType] = useState(() => getEncounterType());
+  const [encounterTypes, setEncounterTypes] = useState<EncounterType[]>(() => getEncounterTypes());
+  const [encounterMenuOpen, setEncounterMenuOpen] = useState(false);
+  const encounterMenuRef = useRef<HTMLDivElement>(null);
 
   // Date picker ref
   const datePickerRef = useRef<HTMLInputElement>(null);
@@ -662,13 +673,16 @@ export default function HomePage() {
     return () => clearInterval(interval);
   }, [awayScreen, awayWeather]);
 
-  // Close privacy menu on outside click
+  // Close dropdown menus on outside click
   const privacyRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    if (!privacyMenuOpen) return;
+    if (!privacyMenuOpen && !encounterMenuOpen) return;
     const handleClick = (e: MouseEvent) => {
-      if (privacyRef.current && !privacyRef.current.contains(e.target as Node)) {
+      if (privacyMenuOpen && privacyRef.current && !privacyRef.current.contains(e.target as Node)) {
         setPrivacyMenuOpen(false);
+      }
+      if (encounterMenuOpen && encounterMenuRef.current && !encounterMenuRef.current.contains(e.target as Node)) {
+        setEncounterMenuOpen(false);
       }
     };
     document.addEventListener('mousedown', handleClick);
@@ -728,7 +742,7 @@ export default function HomePage() {
         const res = await fetch('/api/process', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ rowIndex: toProcess[i].rowIndex, sheetName, promptTemplates: getPromptTemplates() }),
+          body: JSON.stringify({ rowIndex: toProcess[i].rowIndex, sheetName, promptTemplates: getEffectivePromptTemplates() }),
         });
         if (!res.ok) {
           const err = await res.json().catch(() => ({}));
@@ -850,7 +864,7 @@ export default function HomePage() {
             const res = await fetch('/api/process', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ rowIndex: patient.rowIndex, sheetName: patient.sheetName, settings, promptTemplates: getPromptTemplates() }),
+              body: JSON.stringify({ rowIndex: patient.rowIndex, sheetName: patient.sheetName, settings, promptTemplates: getEffectivePromptTemplates() }),
             });
             if (res.ok) fetchPatients();
           }}
@@ -982,7 +996,45 @@ export default function HomePage() {
         <div className="max-w-2xl mx-auto px-4">
           {/* Top row: title + actions */}
           <div className="flex items-center justify-between pt-3 pb-2">
-            <h1 className="text-xl font-bold tracking-tight">My ER Dashboard</h1>
+            <div className="flex items-center gap-2">
+              <h1 className="text-xl font-bold tracking-tight">My Patient Dashboard</h1>
+              {/* Encounter Type Selector */}
+              <div className="relative" ref={encounterMenuRef}>
+                <button
+                  onClick={() => setEncounterMenuOpen(!encounterMenuOpen)}
+                  className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium bg-white/15 hover:bg-white/25 transition-colors"
+                  style={{ color: 'var(--dash-text-sub)' }}
+                  title="Encounter type"
+                >
+                  <Stethoscope className="w-3.5 h-3.5" />
+                  {encounterTypes.find(t => t.id === activeEncounterType)?.label || 'ER'}
+                </button>
+                {encounterMenuOpen && (
+                  <div className="absolute left-0 top-full mt-1 z-50 w-48 bg-gray-900 rounded-lg shadow-xl ring-1 ring-white/10 py-1 text-sm">
+                    {encounterTypes.map(et => (
+                      <button
+                        key={et.id}
+                        onClick={() => {
+                          setActiveEncounterType(et.id);
+                          saveEncounterType(et.id);
+                          setEncounterMenuOpen(false);
+                        }}
+                        className={`w-full flex items-center gap-2.5 px-3 py-2 text-left transition-colors ${
+                          activeEncounterType === et.id
+                            ? 'text-blue-400 bg-white/10'
+                            : 'text-gray-100 hover:bg-white/10'
+                        }`}
+                      >
+                        {et.label}
+                        {activeEncounterType === et.id && (
+                          <span className="ml-auto text-blue-400 text-xs">Active</span>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
             <div className="flex items-center gap-0.5">
               {userEmail && (
                 <span className="text-[11px] hidden sm:block mr-1.5 max-w-[120px] truncate" style={{ color: 'var(--dash-text-muted)' }} title={userEmail}>
