@@ -75,6 +75,7 @@ export function ClinicalChatModal({ isOpen, onClose, patient, onUpdate }: Clinic
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [useOpenEvidence, setUseOpenEvidence] = useState(false);
+  const [useUpToDate, setUseUpToDate] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -129,7 +130,7 @@ export function ClinicalChatModal({ isOpen, onClose, patient, onUpdate }: Clinic
           sheetName: patient.sheetName,
           question,
           history: messages.map(m => ({ role: m.role, content: m.content })),
-          useOpenEvidence,
+          useOpenEvidence: useOpenEvidence || useUpToDate,
         }),
       });
 
@@ -139,10 +140,14 @@ export function ClinicalChatModal({ isOpen, onClose, patient, onUpdate }: Clinic
       }
 
       const { answer, oeQuery } = await res.json();
+      const reframedQuery = oeQuery || question;
 
-      if (useOpenEvidence && oeQuery) {
-        const oeUrl = `https://www.openevidence.com/?oe_q=${encodeURIComponent(oeQuery)}`;
-        window.open(oeUrl, '_blank', 'noopener,noreferrer');
+      // Open external evidence sources with the reframed query
+      if (useOpenEvidence && reframedQuery) {
+        window.open(`https://www.openevidence.com/?oe_q=${encodeURIComponent(reframedQuery)}`, '_blank', 'noopener,noreferrer');
+      }
+      if (useUpToDate && reframedQuery) {
+        window.open(`https://www.uptodate.com/contents/search?search=${encodeURIComponent(reframedQuery)}`, '_blank', 'noopener,noreferrer');
       }
 
       const assistantMsg: QAMessage = { role: 'assistant', content: answer, ts: new Date().toISOString() };
@@ -231,17 +236,29 @@ export function ClinicalChatModal({ isOpen, onClose, patient, onUpdate }: Clinic
 
         {/* Input area */}
         <div className="px-3 py-2.5 pb-safe border-t border-[var(--border)] bg-[var(--card-bg)] sm:rounded-b-3xl flex-shrink-0">
-          {/* Open Evidence toggle */}
-          <label className="flex items-center gap-1.5 mb-1.5 ml-1 cursor-pointer select-none">
-            <input
-              type="checkbox"
-              checked={useOpenEvidence}
-              onChange={(e) => setUseOpenEvidence(e.target.checked)}
-              className="w-3.5 h-3.5 rounded border-[var(--input-border)] text-teal-600 focus:ring-teal-500 accent-teal-600"
-            />
-            <span className="text-[11px] text-[var(--text-muted)]">Open Evidence</span>
-            <ExternalLink className="w-2.5 h-2.5 text-[var(--text-muted)]" />
-          </label>
+          {/* External evidence source toggles */}
+          <div className="flex items-center gap-4 mb-1.5 ml-1">
+            <label className="flex items-center gap-1.5 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={useOpenEvidence}
+                onChange={(e) => setUseOpenEvidence(e.target.checked)}
+                className="w-3.5 h-3.5 rounded border-[var(--input-border)] text-teal-600 focus:ring-teal-500 accent-teal-600"
+              />
+              <span className="text-[11px] text-[var(--text-muted)]">Open Evidence</span>
+              <ExternalLink className="w-2.5 h-2.5 text-[var(--text-muted)]" />
+            </label>
+            <label className="flex items-center gap-1.5 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={useUpToDate}
+                onChange={(e) => setUseUpToDate(e.target.checked)}
+                className="w-3.5 h-3.5 rounded border-[var(--input-border)] text-teal-600 focus:ring-teal-500 accent-teal-600"
+              />
+              <span className="text-[11px] text-[var(--text-muted)]">UpToDate</span>
+              <ExternalLink className="w-2.5 h-2.5 text-[var(--text-muted)]" />
+            </label>
+          </div>
           <div className="flex items-end gap-2">
             <textarea
               ref={inputRef}
