@@ -46,7 +46,7 @@ function LoginContent() {
             <div className="space-y-2">
               <h1 className="text-xl font-semibold tracking-wide text-[var(--text-primary)]">My Patient Dashboard</h1>
               <p className="text-[13px] text-[var(--text-muted)] leading-relaxed">
-                AI-powered clinical documentation, transcription, and workflow — designed for physicians across any care setting.
+                AI-powered clinical documentation, transcription, and workflow.
               </p>
             </div>
           </div>
