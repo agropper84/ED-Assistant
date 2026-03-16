@@ -1430,9 +1430,14 @@ export async function writeVchBillingSheet(
     });
   }
 
+  // Clear existing data (keep header) and rewrite
+  await sheets.spreadsheets.values.clear({
+    spreadsheetId,
+    range: `'${VCH_BILLING_SHEET}'!A2:P500`,
+  });
+
   if (rows.length === 0) return;
 
-  // Append rows
   const values = rows.map(r => [
     r.cprpId, r.siteFacility, r.pracNumber, r.practitionerName,
     r.serviceDate, r.serviceDate, r.ratePeriod,
@@ -1440,9 +1445,9 @@ export async function writeVchBillingSheet(
     r.directIndirectHrs, r.directHrs, r.indirectHrs, r.other, r.total,
   ]);
 
-  await sheets.spreadsheets.values.append({
+  await sheets.spreadsheets.values.update({
     spreadsheetId,
-    range: `'${VCH_BILLING_SHEET}'!A:P`,
+    range: `'${VCH_BILLING_SHEET}'!A2:P${rows.length + 1}`,
     valueInputOption: 'RAW',
     requestBody: { values },
   });
