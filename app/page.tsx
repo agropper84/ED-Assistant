@@ -312,7 +312,7 @@ export default function HomePage() {
 
   // Track VCH mode in state (not just localStorage) to ensure consistent rendering after hydration
   const [isVchMode, setIsVchMode] = useState(false);
-  useEffect(() => { setIsVchMode(isVchMode); }, []);
+  useEffect(() => { setIsVchMode(isTimeBased()); }, []);
   const [encounterMenuOpen, setEncounterMenuOpen] = useState(false);
   const encounterMenuRef = useRef<HTMLDivElement>(null);
 
