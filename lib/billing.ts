@@ -32,6 +32,20 @@ export function isTimeBased(region?: string): boolean {
   return r === 'vch';
 }
 
+/** Get billing region for a specific day (falls back to global setting) */
+export function getDayRegion(sheetName: string): string {
+  if (typeof window === 'undefined') return getRegion();
+  const key = `ed-app-billing-region-${sheetName}`;
+  return localStorage.getItem(key) || getRegion();
+}
+
+/** Save billing region for a specific day */
+export function saveDayRegion(sheetName: string, region: string): void {
+  if (typeof window === 'undefined') return;
+  const key = `ed-app-billing-region-${sheetName}`;
+  localStorage.setItem(key, region);
+}
+
 /** VCH billing mode: 'patient' or 'time' (day-level) */
 export type VchBillingMode = 'patient' | 'time';
 

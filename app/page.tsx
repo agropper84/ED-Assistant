@@ -22,6 +22,9 @@ import {
   serializeBillingItems,
   isTimeBased,
   TimeSegment,
+  BILLING_REGIONS,
+  getDayRegion,
+  saveDayRegion,
 } from '@/lib/billing';
 import {
   Plus, Loader2, ChevronLeft, ChevronRight,
@@ -310,9 +313,13 @@ export default function HomePage() {
   const [activeEncounterType, setActiveEncounterType] = useState(() => getEncounterType());
   const [encounterTypes, setEncounterTypes] = useState<EncounterType[]>(() => getEncounterTypes());
 
-  // Track VCH mode in state (not just localStorage) to ensure consistent rendering after hydration
+  // Track billing mode per day — falls back to global setting
   const [isVchMode, setIsVchMode] = useState(false);
-  useEffect(() => { setIsVchMode(isTimeBased()); }, []);
+  const [billingMenuOpen, setBillingMenuOpen] = useState(false);
+  const billingMenuRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    setIsVchMode(getDayRegion(sheetName) === 'vch');
+  }, [sheetName]);
   const [encounterMenuOpen, setEncounterMenuOpen] = useState(false);
   const encounterMenuRef = useRef<HTMLDivElement>(null);
 
@@ -710,13 +717,16 @@ export default function HomePage() {
   // Close dropdown menus on outside click
   const privacyRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    if (!privacyMenuOpen && !encounterMenuOpen) return;
+    if (!privacyMenuOpen && !encounterMenuOpen && !billingMenuOpen) return;
     const handleClick = (e: MouseEvent) => {
       if (privacyMenuOpen && privacyRef.current && !privacyRef.current.contains(e.target as Node)) {
         setPrivacyMenuOpen(false);
       }
       if (encounterMenuOpen && encounterMenuRef.current && !encounterMenuRef.current.contains(e.target as Node)) {
         setEncounterMenuOpen(false);
+      }
+      if (billingMenuOpen && billingMenuRef.current && !billingMenuRef.current.contains(e.target as Node)) {
+        setBillingMenuOpen(false);
       }
     };
     document.addEventListener('mousedown', handleClick);
@@ -1230,6 +1240,41 @@ export default function HomePage() {
                   )}
                 </>
               )}
+              {/* Billing settings (per-day) */}
+              <div className="relative" ref={billingMenuRef}>
+                <button
+                  onClick={() => setBillingMenuOpen(!billingMenuOpen)}
+                  className="p-1 hover:bg-white/10 rounded-full transition-colors"
+                  style={{ color: 'var(--dash-text-muted)' }}
+                  title="Billing settings for this day"
+                >
+                  <Settings className="w-3 h-3" />
+                </button>
+                {billingMenuOpen && (
+                  <div className="absolute right-0 top-full mt-1 z-50 w-44 bg-gray-900 rounded-lg shadow-xl ring-1 ring-white/10 py-1 text-sm">
+                    {BILLING_REGIONS.map(r => (
+                      <button
+                        key={r.id}
+                        onClick={() => {
+                          saveDayRegion(sheetName, r.id);
+                          setIsVchMode(r.id === 'vch');
+                          setBillingMenuOpen(false);
+                        }}
+                        className={`w-full flex items-center justify-between px-3 py-2 text-left transition-colors ${
+                          getDayRegion(sheetName) === r.id
+                            ? 'text-teal-400 bg-white/10'
+                            : 'text-gray-100 hover:bg-white/10'
+                        }`}
+                      >
+                        {r.label}
+                        {getDayRegion(sheetName) === r.id && (
+                          <span className="text-[10px] text-teal-400">Active</span>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
