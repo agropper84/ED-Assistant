@@ -318,8 +318,9 @@ export default function HomePage() {
   const [billingMenuOpen, setBillingMenuOpen] = useState(false);
   const billingMenuRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    setIsVchMode(getDayRegion(sheetName) === 'vch');
-  }, [sheetName]);
+    const daySheet = formatDateForSheet(currentDate);
+    setIsVchMode(getDayRegion(daySheet) === 'vch');
+  }, [currentDate]);
   const [encounterMenuOpen, setEncounterMenuOpen] = useState(false);
   const encounterMenuRef = useRef<HTMLDivElement>(null);
 
