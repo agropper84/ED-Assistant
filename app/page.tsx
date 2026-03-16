@@ -24,9 +24,9 @@ import {
   TimeSegment,
 } from '@/lib/billing';
 import {
-  Plus, RefreshCw, Loader2, ChevronLeft, ChevronRight,
+  Plus, Loader2, ChevronLeft, ChevronRight,
   Calendar, Settings, CheckSquare, Square, Play, Clock, EyeOff, Eye,
-  Search, ArrowUpDown, X, LogOut, Upload, Shield, Monitor, RotateCcw, Sparkles,
+  Search, ArrowUpDown, X, LogOut, Upload, Monitor, RotateCcw, Sparkles,
   ChevronDown
 } from 'lucide-react';
 
@@ -1077,61 +1077,53 @@ export default function HomePage() {
               </div>
             </div>
             <div className="flex items-center gap-0.5">
+              {/* User name — click to show logout */}
               {userEmail && (
-                <span className="text-[11px] hidden sm:block mr-1.5 max-w-[120px] truncate" style={{ color: 'var(--dash-text-muted)' }} title={userEmail}>
-                  {anonymize ? 'Dr. ***' : userName ? `Dr. ${userName.trim().split(/\s+/).pop()}` : userEmail}
-                </span>
+                <div className="relative" ref={privacyRef}>
+                  <button
+                    onClick={() => setPrivacyMenuOpen(!privacyMenuOpen)}
+                    className="text-[11px] hidden sm:flex items-center gap-1 mr-1 px-2 py-1 rounded-lg hover:bg-white/10 transition-colors"
+                    style={{ color: 'var(--dash-text-muted)' }}
+                    title={userEmail}
+                  >
+                    <span className="max-w-[120px] truncate">
+                      {anonymize ? 'Dr. ***' : userName ? `Dr. ${userName.trim().split(/\s+/).pop()}` : userEmail}
+                    </span>
+                  </button>
+                  {privacyMenuOpen && (
+                    <div className="absolute right-0 top-full mt-1 z-50 w-48 bg-gray-900 rounded-lg shadow-xl ring-1 ring-white/10 py-1 text-sm">
+                      <button
+                        onClick={() => { setAnonymize(!anonymize); setPrivacyMenuOpen(false); }}
+                        className="w-full flex items-center gap-2.5 px-3 py-2 text-left text-gray-100 hover:bg-white/10 transition-colors"
+                      >
+                        {anonymize ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+                        {anonymize ? 'Show Names' : 'Anonymize Names'}
+                      </button>
+                      <button
+                        onClick={() => { setAwayPhotoIndex(Math.floor(Math.random() * AWAY_PHOTOS.length)); setAwayScreen(true); setPrivacyMenuOpen(false); }}
+                        className="w-full flex items-center gap-2.5 px-3 py-2 text-left text-gray-100 hover:bg-white/10 transition-colors"
+                      >
+                        <Monitor className="w-4 h-4" />
+                        Away Screen
+                      </button>
+                      <div className="border-t border-white/10 my-1" />
+                      <button
+                        onClick={() => { setPrivacyMenuOpen(false); handleLogout(); }}
+                        className="w-full flex items-center gap-2.5 px-3 py-2 text-left text-gray-100 hover:bg-white/10 transition-colors"
+                      >
+                        <LogOut className="w-4 h-4" />
+                        Sign Out
+                      </button>
+                    </div>
+                  )}
+                </div>
               )}
-              <div className="relative" ref={privacyRef}>
-                <button
-                  onClick={() => setPrivacyMenuOpen(!privacyMenuOpen)}
-                  className={`p-2 hover:bg-white/10 rounded-full transition-colors ${anonymize ? 'text-amber-400' : ''}`}
-                  style={anonymize ? undefined : { color: 'var(--dash-text-sub)' }}
-                  title="Privacy"
-                >
-                  <Shield className="w-[18px] h-[18px]" />
-                </button>
-                {privacyMenuOpen && (
-                  <div className="absolute right-0 top-full mt-1 z-50 w-48 bg-gray-900 rounded-lg shadow-xl ring-1 ring-white/10 py-1 text-sm">
-                    <button
-                      onClick={() => { setAnonymize(!anonymize); setPrivacyMenuOpen(false); }}
-                      className="w-full flex items-center gap-2.5 px-3 py-2 text-left text-gray-100 hover:bg-white/10 transition-colors"
-                    >
-                      {anonymize ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
-                      {anonymize ? 'Show Names' : 'Anonymize Names'}
-                    </button>
-                    <button
-                      onClick={() => { setAwayPhotoIndex(Math.floor(Math.random() * AWAY_PHOTOS.length)); setAwayScreen(true); setPrivacyMenuOpen(false); }}
-                      className="w-full flex items-center gap-2.5 px-3 py-2 text-left text-gray-100 hover:bg-white/10 transition-colors"
-                    >
-                      <Monitor className="w-4 h-4" />
-                      Away Screen
-                    </button>
-                  </div>
-                )}
-              </div>
               <button
                 onClick={() => router.push('/settings')}
                 className="p-2 hover:bg-white/10 rounded-full transition-colors"
                 style={{ color: 'var(--dash-text-sub)' }}
               >
                 <Settings className="w-[18px] h-[18px]" />
-              </button>
-              <button
-                onClick={() => fetchPatients(true)}
-                disabled={refreshing}
-                className="p-2 hover:bg-white/10 rounded-full transition-colors"
-                style={{ color: 'var(--dash-text-sub)' }}
-              >
-                <RefreshCw className={`w-[18px] h-[18px] ${refreshing ? 'animate-spin' : ''}`} />
-              </button>
-              <button
-                onClick={handleLogout}
-                className="p-2 hover:bg-white/10 rounded-full transition-colors"
-                style={{ color: 'var(--dash-text-sub)' }}
-                title="Sign out"
-              >
-                <LogOut className="w-[18px] h-[18px]" />
               </button>
             </div>
           </div>
