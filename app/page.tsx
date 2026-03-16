@@ -877,8 +877,8 @@ export default function HomePage() {
           onDelete={() => setDeleteConfirm(patient)}
           anonymize={anonymize}
           onTimeChange={(time) => handleTimeChange(patient, time)}
-          onBillingToggle={() => toggleBilling(patient.rowIndex)}
-          billingCodes={codes}
+          onBillingToggle={isTimeBased() ? undefined : () => toggleBilling(patient.rowIndex)}
+          billingCodes={isTimeBased() ? undefined : codes}
           onNavigate={() => router.push(`/patient/${patient.rowIndex}?sheet=${encodeURIComponent(patient.sheetName)}`)}
           onProcess={async () => {
             let settings: any;
@@ -1182,7 +1182,7 @@ export default function HomePage() {
                   style={{ color: 'var(--dash-text)' }}
                 >
                   <Clock className="w-3 h-3" />
-                  Time{shiftSegments.length > 0 ? ` (${shiftSegments.length})` : ''}
+                  Log Time{shiftSegments.length > 0 ? ` (${shiftSegments.length})` : ''}
                 </button>
               ) : (
                 <>
