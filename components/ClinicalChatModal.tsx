@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { X, Loader2, Send } from 'lucide-react';
+import { X, Loader2, Send, ExternalLink } from 'lucide-react';
 import { Patient } from '@/lib/google-sheets';
 
 interface QAMessage {
@@ -21,6 +21,7 @@ export function ClinicalChatModal({ isOpen, onClose, patient, onUpdate }: Clinic
   const [messages, setMessages] = useState<QAMessage[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
+  const [useOpenEvidence, setUseOpenEvidence] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -57,6 +58,12 @@ export function ClinicalChatModal({ isOpen, onClose, patient, onUpdate }: Clinic
 
     setInput('');
     setLoading(true);
+
+    // Open on OpenEvidence if checkbox is checked
+    if (useOpenEvidence) {
+      const oeUrl = `https://www.openevidence.com/?oe_q=${encodeURIComponent(question)}`;
+      window.open(oeUrl, '_blank', 'noopener,noreferrer');
+    }
 
     // Optimistically add user message
     const userMsg: QAMessage = { role: 'user', content: question, ts: new Date().toISOString() };
@@ -149,6 +156,19 @@ export function ClinicalChatModal({ isOpen, onClose, patient, onUpdate }: Clinic
 
         {/* Input */}
         <div className="px-4 py-3 border-t border-[var(--border)] bg-[var(--bg-tertiary)] sm:rounded-b-3xl flex-shrink-0">
+          {/* Open Evidence toggle */}
+          <label className="flex items-center gap-1.5 mb-2 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={useOpenEvidence}
+              onChange={(e) => setUseOpenEvidence(e.target.checked)}
+              className="w-3.5 h-3.5 rounded border-[var(--input-border)] text-teal-600 focus:ring-teal-500 accent-teal-600"
+            />
+            <span className="text-xs text-[var(--text-muted)]">
+              Open Evidence
+            </span>
+            <ExternalLink className="w-2.5 h-2.5 text-[var(--text-muted)]" />
+          </label>
           <div className="flex items-end gap-2">
             <textarea
               ref={inputRef}
