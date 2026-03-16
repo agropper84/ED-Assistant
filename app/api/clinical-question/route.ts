@@ -17,7 +17,7 @@ interface QAMessage {
 export async function POST(request: NextRequest) {
   try {
     const ctx = await getSheetsContext();
-    const { rowIndex, sheetName, question, history } = await request.json();
+    const { rowIndex, sheetName, question, history, useOpenEvidence } = await request.json();
 
     if (!question?.trim()) {
       return NextResponse.json({ error: 'Question is required' }, { status: 400 });
@@ -55,6 +55,32 @@ export async function POST(request: NextRequest) {
 ## Patient Data
 ${contextParts.join('\n\n')}`;
 
+    // If Open Evidence is requested, reframe the question with clinical context
+    // in parallel with the main AI answer
+    let oeQueryPromise: Promise<string> | null = null;
+    if (useOpenEvidence) {
+      oeQueryPromise = (async () => {
+        const reframeRes = await anthropic.messages.create({
+          model: 'claude-haiku-4-5-20251001',
+          max_tokens: 200,
+          temperature: 0,
+          messages: [{
+            role: 'user',
+            content: `Rewrite this clinical question to be a standalone, specific medical query suitable for a medical evidence search engine. Include the relevant patient context (age, sex, diagnosis, key findings) directly in the question so it can be understood without any other context. Keep it under 2 sentences. Do NOT include patient name or identifiers.
+
+Patient context:
+${contextParts.slice(0, 5).join('\n')}
+
+Original question: "${question.trim()}"
+
+Output ONLY the reframed question, nothing else.`,
+          }],
+        });
+        const text = reframeRes.content[0].type === 'text' ? reframeRes.content[0].text : '';
+        return text.trim();
+      })();
+    }
+
     // Build Claude messages from history + new question
     const messages: Array<{ role: 'user' | 'assistant'; content: string }> = [];
     if (history && Array.isArray(history)) {
@@ -77,6 +103,9 @@ ${contextParts.join('\n\n')}`;
       .map(block => block.text)
       .join('\n');
 
+    // Await the reframed OE query if requested
+    const oeQuery = oeQueryPromise ? await oeQueryPromise : undefined;
+
     // Build updated QA history
     const now = new Date().toISOString();
     const existingQA: QAMessage[] = (() => {
@@ -96,7 +125,7 @@ ${contextParts.join('\n\n')}`;
       clinicalQA: JSON.stringify(existingQA),
     }, sheetName);
 
-    return NextResponse.json({ answer });
+    return NextResponse.json({ answer, ...(oeQuery ? { oeQuery } : {}) });
   } catch (error: any) {
     console.error('Error in clinical question:', error);
     if (error?.message?.includes('Not approved')) {

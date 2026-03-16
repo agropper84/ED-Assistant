@@ -59,12 +59,6 @@ export function ClinicalChatModal({ isOpen, onClose, patient, onUpdate }: Clinic
     setInput('');
     setLoading(true);
 
-    // Open on OpenEvidence if checkbox is checked
-    if (useOpenEvidence) {
-      const oeUrl = `https://www.openevidence.com/?oe_q=${encodeURIComponent(question)}`;
-      window.open(oeUrl, '_blank', 'noopener,noreferrer');
-    }
-
     // Optimistically add user message
     const userMsg: QAMessage = { role: 'user', content: question, ts: new Date().toISOString() };
     setMessages(prev => [...prev, userMsg]);
@@ -78,6 +72,7 @@ export function ClinicalChatModal({ isOpen, onClose, patient, onUpdate }: Clinic
           sheetName: patient.sheetName,
           question,
           history: messages.map(m => ({ role: m.role, content: m.content })),
+          useOpenEvidence,
         }),
       });
 
@@ -86,7 +81,14 @@ export function ClinicalChatModal({ isOpen, onClose, patient, onUpdate }: Clinic
         throw new Error(data.error || 'Failed to get answer');
       }
 
-      const { answer } = await res.json();
+      const { answer, oeQuery } = await res.json();
+
+      // Open reframed question on OpenEvidence
+      if (useOpenEvidence && oeQuery) {
+        const oeUrl = `https://www.openevidence.com/?oe_q=${encodeURIComponent(oeQuery)}`;
+        window.open(oeUrl, '_blank', 'noopener,noreferrer');
+      }
+
       const assistantMsg: QAMessage = { role: 'assistant', content: answer, ts: new Date().toISOString() };
       setMessages(prev => [...prev, assistantMsg]);
       onUpdate();
