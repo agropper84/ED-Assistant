@@ -77,6 +77,9 @@ export function VoiceRecorder({
   const segmentTextsRef = useRef<string[]>([]);
   const [canUndo, setCanUndo] = useState(false);
 
+  // Silent audio keepalive for iOS background/lock screen recording
+  const keepaliveAudioRef = useRef<HTMLAudioElement | null>(null);
+
   // Medicalize toggle (default ON, persisted via fastDictation setting inverted)
   const [medicalize, setMedicalize] = useState(true);
   const medicalizeRef = useRef(true);
@@ -128,7 +131,58 @@ export function VoiceRecorder({
       if (recognitionRef.current) {
         try { recognitionRef.current.abort(); } catch {}
       }
+      if (keepaliveAudioRef.current) {
+        keepaliveAudioRef.current.pause();
+        keepaliveAudioRef.current = null;
+      }
     };
+  }, []);
+
+  // --- iOS background keepalive via silent audio ---
+  // iOS suspends JS when screen locks. Playing silent audio keeps the page alive.
+  const startKeepalive = useCallback(() => {
+    try {
+      if (keepaliveAudioRef.current) return;
+      // Generate a tiny silent WAV (44 bytes header + 1 second of silence at 8kHz mono 8-bit)
+      const sampleRate = 8000;
+      const duration = 1; // 1 second loop
+      const numSamples = sampleRate * duration;
+      const buffer = new ArrayBuffer(44 + numSamples);
+      const view = new DataView(buffer);
+      // WAV header
+      const writeStr = (offset: number, str: string) => { for (let i = 0; i < str.length; i++) view.setUint8(offset + i, str.charCodeAt(i)); };
+      writeStr(0, 'RIFF');
+      view.setUint32(4, 36 + numSamples, true);
+      writeStr(8, 'WAVE');
+      writeStr(12, 'fmt ');
+      view.setUint32(16, 16, true); // chunk size
+      view.setUint16(20, 1, true); // PCM
+      view.setUint16(22, 1, true); // mono
+      view.setUint32(24, sampleRate, true);
+      view.setUint32(28, sampleRate, true); // byte rate
+      view.setUint16(32, 1, true); // block align
+      view.setUint16(34, 8, true); // bits per sample
+      writeStr(36, 'data');
+      view.setUint32(40, numSamples, true);
+      // Fill with silence (128 = zero for 8-bit unsigned PCM)
+      for (let i = 0; i < numSamples; i++) view.setUint8(44 + i, 128);
+
+      const blob = new Blob([buffer], { type: 'audio/wav' });
+      const url = URL.createObjectURL(blob);
+      const audio = new Audio(url);
+      audio.loop = true;
+      audio.volume = 0.01; // near-silent but not zero (iOS may optimize away zero volume)
+      audio.play().catch(() => {});
+      keepaliveAudioRef.current = audio;
+    } catch {}
+  }, []);
+
+  const stopKeepalive = useCallback(() => {
+    if (keepaliveAudioRef.current) {
+      keepaliveAudioRef.current.pause();
+      keepaliveAudioRef.current.src = '';
+      keepaliveAudioRef.current = null;
+    }
   }, []);
 
   const getMimeType = (): string => {
@@ -392,6 +446,7 @@ export function VoiceRecorder({
       mimeTypeRef.current = mimeType;
 
       onRecordingStart?.();
+      startKeepalive(); // Keep iOS alive when screen locks
 
       if (useStreaming) {
         // --- Streaming dictation mode ---
@@ -560,9 +615,11 @@ export function VoiceRecorder({
     } catch (err: any) {
       setState('error');
     }
-  }, [onTranscript, onInterimTranscript, onRecordingStart, mode, useStreaming, startSegment, startSilenceDetection, startAudioLevelViz, stopAudioLevelViz]);
+  }, [onTranscript, onInterimTranscript, onRecordingStart, mode, useStreaming, startSegment, startSilenceDetection, startAudioLevelViz, stopAudioLevelViz, startKeepalive]);
 
   const stopRecording = useCallback(async () => {
+    stopKeepalive(); // Stop iOS background keepalive
+
     // Stop Web Speech API (encounter mode)
     if (recognitionRef.current) {
       try { recognitionRef.current.abort(); } catch {}
@@ -636,7 +693,7 @@ export function VoiceRecorder({
         mediaRecorderRef.current.stop();
       }
     }
-  }, [useStreaming, processSegmentBlob, stopAudioLevelViz]);
+  }, [useStreaming, processSegmentBlob, stopAudioLevelViz, stopKeepalive]);
 
   // --- Click-to-toggle / hold-to-talk ---
   const handlePointerDown = useCallback((e: React.PointerEvent) => {
