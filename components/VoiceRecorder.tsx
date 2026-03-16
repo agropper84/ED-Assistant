@@ -711,7 +711,7 @@ export function VoiceRecorder({
   })() : undefined;
 
   return (
-    <span className="inline-flex items-center gap-0.5">
+    <span className="inline-flex items-center gap-1">
       {/* Mic + medicalize as a single visual unit */}
       <span className="inline-flex items-center">
         <button
@@ -719,9 +719,9 @@ export function VoiceRecorder({
           onPointerDown={handlePointerDown}
           onPointerUp={handlePointerUp}
           disabled={disabled || state === 'transcribing'}
-          className={`p-1 rounded-full select-none touch-none flex items-center justify-center ${
+          className={`p-2.5 min-w-[44px] min-h-[44px] rounded-full select-none touch-none flex items-center justify-center ${
             state === 'recording'
-              ? 'text-red-500' /* red mic icon, glow via inline style */
+              ? 'text-red-500'
               : state === 'transcribing'
               ? 'text-blue-500 animate-pulse'
               : state === 'error'
@@ -735,20 +735,20 @@ export function VoiceRecorder({
             : 'Click to dictate, or hold to talk'
           }
         >
-          <Mic className="w-3.5 h-3.5" />
+          <Mic className="w-5 h-5" />
         </button>
         {mode === 'dictation' && state !== 'transcribing' && (
           <button
             type="button"
             onClick={toggleMedicalize}
-            className={`-ml-0.5 transition-colors ${
+            className={`-ml-1 p-1.5 min-w-[32px] min-h-[32px] flex items-center justify-center rounded-full transition-colors ${
               medicalize
                 ? 'text-blue-500/40 dark:text-blue-400/40 hover:text-blue-500 dark:hover:text-blue-400'
                 : 'text-[var(--text-muted)] opacity-25 hover:opacity-50'
             }`}
             title={medicalize ? 'Medicalize Dictation ON' : 'Medicalize Dictation OFF'}
           >
-            <Stethoscope className="w-2.5 h-2.5" />
+            <Stethoscope className="w-3 h-3" />
           </button>
         )}
       </span>
@@ -756,10 +756,10 @@ export function VoiceRecorder({
         <button
           type="button"
           onClick={(e) => { e.stopPropagation(); undoLastSegment(); }}
-          className="p-0.5 text-[var(--text-muted)] hover:text-[var(--text-secondary)] rounded transition-colors"
+          className="p-2 min-w-[36px] min-h-[36px] flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text-secondary)] rounded-full transition-colors"
           title="Undo last segment"
         >
-          <RotateCcw className="w-3 h-3" />
+          <RotateCcw className="w-4 h-4" />
         </button>
       )}
       {showUpload && state === 'idle' && (
@@ -768,10 +768,10 @@ export function VoiceRecorder({
             type="button"
             onClick={() => fileInputRef.current?.click()}
             disabled={disabled}
-            className="p-1 text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] rounded-full transition-colors disabled:opacity-50"
+            className="p-2 min-w-[36px] min-h-[36px] flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] rounded-full transition-colors disabled:opacity-50"
             title="Upload audio file"
           >
-            <Upload className="w-3 h-3" />
+            <Upload className="w-4 h-4" />
           </button>
           <input
             ref={fileInputRef}

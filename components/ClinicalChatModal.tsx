@@ -121,7 +121,7 @@ export function ClinicalChatModal({ isOpen, onClose, patient, onUpdate }: Clinic
             <h2 className="text-lg font-semibold text-[var(--text-primary)] truncate">Clinical Questions</h2>
             <p className="text-xs text-[var(--text-muted)] truncate">{patient.name}</p>
           </div>
-          <button onClick={onClose} className="p-2 hover:bg-[var(--bg-tertiary)] rounded-full flex-shrink-0">
+          <button onClick={onClose} className="p-3 min-w-[44px] min-h-[44px] flex items-center justify-center hover:bg-[var(--bg-tertiary)] rounded-full flex-shrink-0">
             <X className="w-5 h-5 text-[var(--text-muted)]" />
           </button>
         </div>
@@ -157,19 +157,19 @@ export function ClinicalChatModal({ isOpen, onClose, patient, onUpdate }: Clinic
         </div>
 
         {/* Input */}
-        <div className="px-4 py-3 border-t border-[var(--border)] bg-[var(--bg-tertiary)] sm:rounded-b-3xl flex-shrink-0">
+        <div className="px-4 py-3 pb-safe border-t border-[var(--border)] bg-[var(--bg-tertiary)] sm:rounded-b-3xl flex-shrink-0">
           {/* Open Evidence toggle */}
-          <label className="flex items-center gap-1.5 mb-2 cursor-pointer select-none">
+          <label className="flex items-center gap-2 mb-2 cursor-pointer select-none min-h-[36px]">
             <input
               type="checkbox"
               checked={useOpenEvidence}
               onChange={(e) => setUseOpenEvidence(e.target.checked)}
-              className="w-3.5 h-3.5 rounded border-[var(--input-border)] text-teal-600 focus:ring-teal-500 accent-teal-600"
+              className="w-4 h-4 rounded border-[var(--input-border)] text-teal-600 focus:ring-teal-500 accent-teal-600"
             />
-            <span className="text-xs text-[var(--text-muted)]">
+            <span className="text-sm text-[var(--text-muted)]">
               Open Evidence
             </span>
-            <ExternalLink className="w-2.5 h-2.5 text-[var(--text-muted)]" />
+            <ExternalLink className="w-3 h-3 text-[var(--text-muted)]" />
           </label>
           <div className="flex items-end gap-2">
             <textarea
@@ -179,7 +179,7 @@ export function ClinicalChatModal({ isOpen, onClose, patient, onUpdate }: Clinic
               onKeyDown={handleKeyDown}
               placeholder="Ask a question..."
               rows={1}
-              className="flex-1 resize-none p-3 border border-[var(--input-border)] rounded-xl text-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500 bg-[var(--input-bg)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)]"
+              className="flex-1 resize-none p-3 border border-[var(--input-border)] rounded-xl text-base focus:ring-2 focus:ring-teal-500 focus:border-teal-500 bg-[var(--input-bg)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)]"
               style={{ maxHeight: '120px' }}
               onInput={(e) => {
                 const t = e.currentTarget;
@@ -190,9 +190,9 @@ export function ClinicalChatModal({ isOpen, onClose, patient, onUpdate }: Clinic
             <button
               onClick={handleSend}
               disabled={!input.trim() || loading}
-              className="p-3 bg-teal-600 text-white rounded-xl disabled:opacity-40 hover:bg-teal-700 active:scale-95 transition-all flex-shrink-0"
+              className="p-3 min-w-[48px] min-h-[48px] flex items-center justify-center bg-teal-600 text-white rounded-xl disabled:opacity-40 hover:bg-teal-700 active:scale-95 transition-all flex-shrink-0"
             >
-              <Send className="w-4 h-4" />
+              <Send className="w-5 h-5" />
             </button>
           </div>
         </div>

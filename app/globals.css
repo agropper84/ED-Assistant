@@ -243,3 +243,30 @@ button, .btn {
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
 }
+
+/* ── Mobile / iPhone optimizations ── */
+
+/* Prevent iOS auto-zoom on input focus (requires 16px minimum) */
+@media screen and (max-width: 768px) {
+  input, textarea, select {
+    font-size: 16px !important;
+  }
+  /* Smooth scroll in modals and overflow containers */
+  .overflow-y-auto, .overflow-auto {
+    -webkit-overflow-scrolling: touch;
+  }
+  /* Larger shift selectors on mobile */
+  .shift-select-header {
+    min-height: 36px;
+    font-size: 0.75rem;
+    padding: 4px 8px;
+    width: 84px;
+  }
+}
+
+/* Safe area insets for iPhone notch / home indicator */
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+  .pb-safe {
+    padding-bottom: max(1.5rem, env(safe-area-inset-bottom));
+  }
+}

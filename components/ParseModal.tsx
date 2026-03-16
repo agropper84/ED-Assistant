@@ -226,7 +226,7 @@ export function ParseModal({ isOpen, onClose, onSave }: ParseModalProps) {
         {/* Header */}
         <div className="dash-header flex items-center justify-between px-5 py-4 sm:rounded-t-3xl">
           <h2 className="text-lg font-semibold" style={{ color: 'var(--dash-text)' }}>Add Patient</h2>
-          <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-full">
+          <button onClick={onClose} className="p-3 min-w-[44px] min-h-[44px] flex items-center justify-center hover:bg-white/10 rounded-full">
             <X className="w-5 h-5" style={{ color: 'var(--dash-text-sub)' }} />
           </button>
         </div>
@@ -476,12 +476,12 @@ export function ParseModal({ isOpen, onClose, onSave }: ParseModalProps) {
           </div>
         </div>
 
-        {/* Footer */}
-        <div className="px-5 py-4 border-t border-[var(--border)] bg-[var(--bg-tertiary)] sm:rounded-b-3xl">
+        {/* Footer — with safe area padding for iPhone home indicator */}
+        <div className="px-5 py-4 pb-safe border-t border-[var(--border)] bg-[var(--bg-tertiary)] sm:rounded-b-3xl">
           <button
             onClick={handleSave}
             disabled={!parsedData}
-            className="w-full py-3 bg-emerald-600 dark:bg-emerald-500 text-white rounded-xl font-medium disabled:opacity-40 flex items-center justify-center gap-2 hover:bg-emerald-700 dark:hover:bg-emerald-600 active:scale-[0.97] transition-all"
+            className="w-full py-3.5 min-h-[48px] bg-emerald-600 dark:bg-emerald-500 text-white rounded-xl font-medium disabled:opacity-40 flex items-center justify-center gap-2 hover:bg-emerald-700 dark:hover:bg-emerald-600 active:scale-[0.97] transition-all"
           >
             <Check className="w-4 h-4" />
             Save Patient
