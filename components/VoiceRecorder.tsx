@@ -382,17 +382,69 @@ export function VoiceRecorder({
         segmentTextsRef.current = [];
         setCanUndo(false);
         stoppingRef.current = false;
-        startSegment();
 
         setState('recording');
 
-        // Start adaptive silence detection (also sets up analyserRef)
-        startSilenceDetection(stream);
+        if (!medicalizeRef.current) {
+          // --- Fast mode: Web Speech API for instant text ---
+          const SpeechAPI = typeof window !== 'undefined'
+            ? (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
+            : null;
+          if (SpeechAPI) {
+            try {
+              const recognition = new SpeechAPI();
+              recognition.continuous = true;
+              recognition.interimResults = true;
+              recognition.lang = 'en-US';
+              let finalTranscript = '';
+              recognition.onresult = (event: any) => {
+                let interim = '';
+                for (let i = event.resultIndex; i < event.results.length; i++) {
+                  if (event.results[i].isFinal) {
+                    finalTranscript += event.results[i][0].transcript + ' ';
+                  } else {
+                    interim += event.results[i][0].transcript;
+                  }
+                }
+                const full = (finalTranscript + interim).trim();
+                accumulatedTextRef.current = full;
+                onInterimRef.current?.(full);
+              };
+              recognition.onerror = () => {};
+              recognition.onend = () => {
+                // Auto-restart if still recording
+                if (!stoppingRef.current && streamRef.current) {
+                  try { recognition.start(); } catch {}
+                }
+              };
+              recognition.start();
+              recognitionRef.current = recognition;
+            } catch {}
+          }
 
-        // Start audio level visualization using the analyser from silence detection
-        setTimeout(() => {
-          if (analyserRef.current) startAudioLevelViz(analyserRef.current);
-        }, 50);
+          // Audio level visualization
+          try {
+            const vizCtx = new AudioContext();
+            const vizSource = vizCtx.createMediaStreamSource(stream);
+            const vizAnalyser = vizCtx.createAnalyser();
+            vizAnalyser.fftSize = 2048;
+            vizSource.connect(vizAnalyser);
+            audioContextRef.current = vizCtx;
+            analyserRef.current = vizAnalyser;
+            startAudioLevelViz(vizAnalyser);
+          } catch {}
+        } else {
+          // --- Medicalize mode: Whisper segment pipeline ---
+          startSegment();
+
+          // Start adaptive silence detection (also sets up analyserRef)
+          startSilenceDetection(stream);
+
+          // Start audio level visualization using the analyser from silence detection
+          setTimeout(() => {
+            if (analyserRef.current) startAudioLevelViz(analyserRef.current);
+          }, 50);
+        }
       } else {
         // --- Single-shot mode (encounter recording) ---
         const recorder = new MediaRecorder(stream, { mimeType });
@@ -511,42 +563,55 @@ export function VoiceRecorder({
       if (audioContextRef.current) { try { audioContextRef.current.close(); } catch {} audioContextRef.current = null; }
       analyserRef.current = null;
 
-      setState('transcribing');
+      if (!medicalizeRef.current) {
+        // --- Fast mode stop: Web Speech API was primary, no Whisper segments ---
+        // Release microphone
+        streamRef.current?.getTracks().forEach(t => t.stop());
+        streamRef.current = null;
 
-      // Stop current recorder and process final segment
-      const recorder = mediaRecorderRef.current;
-      if (recorder && recorder.state === 'recording') {
-        const blob = await new Promise<Blob>((resolve) => {
-          recorder.onstop = () => {
-            resolve(new Blob(chunksRef.current, { type: mimeTypeRef.current }));
-          };
-          recorder.stop();
-        });
+        // accumulatedTextRef already has the final text from Web Speech API
+        // onInterimTranscript already updated the field — no need for onTranscript
+        accumulatedTextRef.current = '';
+        segmentTextsRef.current = [];
+        setCanUndo(false);
+        setState('idle');
+      } else {
+        // --- Medicalize mode stop: process final Whisper segment ---
+        setState('transcribing');
 
-        if (blob.size > 0) {
-          await processSegmentBlob(blob);
+        const recorder = mediaRecorderRef.current;
+        if (recorder && recorder.state === 'recording') {
+          const blob = await new Promise<Blob>((resolve) => {
+            recorder.onstop = () => {
+              resolve(new Blob(chunksRef.current, { type: mimeTypeRef.current }));
+            };
+            recorder.stop();
+          });
+
+          if (blob.size > 0) {
+            await processSegmentBlob(blob);
+          }
         }
-      }
 
-      // Release microphone
-      streamRef.current?.getTracks().forEach(t => t.stop());
-      streamRef.current = null;
+        // Release microphone
+        streamRef.current?.getTracks().forEach(t => t.stop());
+        streamRef.current = null;
 
-      // Wait for any in-flight segment transcriptions
-      while (pendingCountRef.current > 0) {
-        await new Promise(r => setTimeout(r, 100));
-      }
+        // Wait for any in-flight segment transcriptions
+        while (pendingCountRef.current > 0) {
+          await new Promise(r => setTimeout(r, 100));
+        }
 
-      // Final delivery: onInterimTranscript already has the full text in the field,
-      // so only call onTranscript if there was NO interim handler (non-streaming callers).
-      // With interim updates, the field is already correct — calling onTranscript would duplicate.
-      if (accumulatedTextRef.current.trim() && !onInterimRef.current) {
-        onTranscriptRef.current(accumulatedTextRef.current.trim());
+        // Final delivery: onInterimTranscript already has the full text in the field,
+        // so only call onTranscript if there was NO interim handler (non-streaming callers).
+        if (accumulatedTextRef.current.trim() && !onInterimRef.current) {
+          onTranscriptRef.current(accumulatedTextRef.current.trim());
+        }
+        accumulatedTextRef.current = '';
+        segmentTextsRef.current = [];
+        setCanUndo(false);
+        setState('idle');
       }
-      accumulatedTextRef.current = '';
-      segmentTextsRef.current = [];
-      setCanUndo(false);
-      setState('idle');
     } else {
       // --- Single-shot stop ---
       if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
