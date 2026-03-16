@@ -155,11 +155,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ text: punctuated });
     }
 
-    // Convert to medical language, passing last ~100 words of context for continuity
-    const contextTail = context
-      ? context.split(/\s+/).slice(-100).join(' ')
-      : undefined;
-    const medicalText = await medicalize(punctuated, mode, contextTail);
+    // Convert to medical language, reusing context tail for continuity
+    const medicalText = await medicalize(punctuated, mode, contextTail || undefined);
 
     return NextResponse.json({ text: medicalText });
   } catch (error: any) {
