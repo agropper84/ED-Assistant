@@ -150,13 +150,15 @@ const ED_TERMS = [
   'return precautions', 'discharge instructions',
 ].join(', ');
 
-/** Whisper prompt for physician dictation (single speaker) */
+/** Whisper prompt for physician dictation (single speaker).
+ * Whisper works best when the prompt looks like a transcript sample
+ * in the expected style, not just a keyword list. We combine both. */
 export const DICTATION_WHISPER_PROMPT =
-  `Emergency department physician dictation. Medical terminology: ${ED_TERMS}`;
+  `Patient presents with chest pain, troponin negative, ECG showing sinus tachycardia. Started on IV normal saline bolus, ordered CTA chest to rule out PE. D-dimer elevated at 1.2. CVA tenderness noted on exam. SpO2 94% on room air, started high-flow nasal cannula. Medical terminology: ${ED_TERMS}`;
 
 /** Whisper prompt for doctor-patient encounter recording (two speakers) */
 export const ENCOUNTER_WHISPER_PROMPT =
-  `Emergency department doctor-patient encounter. Two speakers: physician and patient. Medical terminology: ${ED_TERMS}`;
+  `Dr: What brings you in today? Pt: I've been having this chest pain since yesterday. Dr: Can you describe the pain? Is it sharp or pressure-like? Pt: It's more like pressure, right in the middle. Dr: Any shortness of breath, nausea, diaphoresis? Let me check your vitals. BP 145/90, heart rate 98, SpO2 96% on room air. Medical terminology: ${ED_TERMS}`;
 
 /** Whisper prompt for device API (watch app, shortcuts) */
 export const DEVICE_WHISPER_PROMPT = DICTATION_WHISPER_PROMPT;
