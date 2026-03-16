@@ -176,6 +176,36 @@ export function VoiceRecorder({
     segmentStartRef.current = Date.now();
   }, []);
 
+  /** Check if new text is a duplicate/repetition of recent accumulated text */
+  const isDuplicateSegment = useCallback((newText: string): boolean => {
+    const accumulated = accumulatedTextRef.current;
+    if (!accumulated) return false;
+
+    const normalizedNew = newText.toLowerCase().replace(/[^a-z0-9\s]/g, '').trim();
+    if (!normalizedNew || normalizedNew.length < 5) return true; // too short = noise
+
+    // Check if the new text is substantially contained in the last part of accumulated text
+    const accLower = accumulated.toLowerCase().replace(/[^a-z0-9\s]/g, '');
+    const lastChunk = accLower.slice(-normalizedNew.length * 2); // look at last 2x the new text length
+
+    // Exact or near-exact duplicate of tail
+    if (lastChunk.includes(normalizedNew)) return true;
+
+    // Check against last 2 segments for repetition
+    const recentSegments = segmentTextsRef.current.slice(-2);
+    for (const seg of recentSegments) {
+      const normalizedSeg = seg.toLowerCase().replace(/[^a-z0-9\s]/g, '').trim();
+      // If >80% similar to a recent segment, it's a repeat
+      if (normalizedNew === normalizedSeg) return true;
+      // Check if one contains the other
+      if (normalizedNew.length > 10 && normalizedSeg.length > 10) {
+        if (normalizedSeg.includes(normalizedNew) || normalizedNew.includes(normalizedSeg)) return true;
+      }
+    }
+
+    return false;
+  }, []);
+
   /** Send a blob to /api/transcribe and accumulate the result (with retry) */
   const processSegmentBlob = useCallback(async (blob: Blob) => {
     pendingCountRef.current++;
@@ -200,6 +230,10 @@ export function VoiceRecorder({
             const { text } = await res.json();
             if (text?.trim()) {
               const trimmed = text.trim();
+              // Skip if Whisper hallucinated a repeat of recent text
+              if (isDuplicateSegment(trimmed)) {
+                return;
+              }
               accumulatedTextRef.current = accumulatedTextRef.current
                 ? `${accumulatedTextRef.current} ${trimmed}`
                 : trimmed;
@@ -218,7 +252,7 @@ export function VoiceRecorder({
     } finally {
       pendingCountRef.current--;
     }
-  }, []);
+  }, [isDuplicateSegment]);
 
   /** Stop current recorder, get its blob, start a new segment, process the blob */
   const flushSegment = useCallback(async () => {
@@ -243,7 +277,7 @@ export function VoiceRecorder({
     isFlushingRef.current = false;
 
     // Process blob in background (skip tiny blobs — likely just silence)
-    if (blob.size > 1000) {
+    if (blob.size > 2000) {
       processSegmentBlob(blob);
     }
   }, [startSegment, processSegmentBlob]);

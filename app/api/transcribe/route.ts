@@ -45,7 +45,7 @@ function convertSpokenPunctuation(text: string): string {
  * Detect common Whisper hallucinations produced from silence or noise.
  * Whisper often generates these phrases when given near-empty audio.
  */
-function isWhisperHallucination(text: string): boolean {
+function isWhisperHallucination(text: string, context?: string): boolean {
   const normalized = text.toLowerCase().replace(/[^a-z\s]/g, '').trim();
   // Too short to be meaningful (just punctuation or 1-2 words)
   if (normalized.length < 3) return true;
@@ -58,7 +58,19 @@ function isWhisperHallucination(text: string): boolean {
     'you', 'the end', 'gene',
     'and more', 'and after',
   ];
-  return hallucinations.some(h => normalized === h || normalized.startsWith(h + ' '));
+  if (hallucinations.some(h => normalized === h || normalized.startsWith(h + ' '))) return true;
+
+  // Check if Whisper just echoed back the context (hallucination from silence)
+  if (context) {
+    const normalizedCtx = context.toLowerCase().replace(/[^a-z\s]/g, '').trim();
+    // If the transcription is a substring of the last part of context, it's an echo
+    const ctxTail = normalizedCtx.slice(-normalized.length * 2);
+    if (normalized.length > 10 && ctxTail.includes(normalized)) return true;
+    // If context ends with essentially the same text
+    if (normalized.length > 10 && normalizedCtx.endsWith(normalized)) return true;
+  }
+
+  return false;
 }
 
 async function medicalize(rawText: string, mode: string, context?: string): Promise<string> {
@@ -142,8 +154,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ text: '' });
     }
 
-    // Filter out Whisper hallucinations (common artifacts from silence/noise)
-    if (isWhisperHallucination(rawText)) {
+    // Filter out Whisper hallucinations (common artifacts from silence/noise/echo)
+    if (isWhisperHallucination(rawText, context)) {
       return NextResponse.json({ text: '' });
     }
 
