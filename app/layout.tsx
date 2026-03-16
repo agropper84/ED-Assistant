@@ -3,13 +3,13 @@ import './globals.css'
 import { ThemeProvider } from '@/lib/theme'
 
 export const metadata: Metadata = {
-  title: 'ER Dashboard',
-  description: 'Emergency Department Documentation System',
+  title: 'My Patient Dashboard',
+  description: 'AI-powered clinical documentation, transcription, and workflow for physicians',
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
-    title: 'ER Dashboard',
+    title: 'My Patient Dashboard',
   },
 }
 

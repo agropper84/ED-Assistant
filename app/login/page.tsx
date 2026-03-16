@@ -19,36 +19,51 @@ function LoginContent() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-[var(--bg-primary)] px-4 relative overflow-hidden">
       {/* Background gradient accents */}
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[600px] bg-blue-500/5 dark:bg-blue-500/10 rounded-full blur-3xl -translate-y-1/2 pointer-events-none" />
-      <div className="absolute bottom-0 right-0 w-[400px] h-[400px] bg-indigo-500/5 dark:bg-indigo-500/8 rounded-full blur-3xl translate-y-1/2 pointer-events-none" />
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[600px] bg-teal-500/5 dark:bg-teal-500/10 rounded-full blur-3xl -translate-y-1/2 pointer-events-none" />
+      <div className="absolute bottom-0 right-0 w-[400px] h-[400px] bg-blue-500/5 dark:bg-blue-500/8 rounded-full blur-3xl translate-y-1/2 pointer-events-none" />
 
-      <div className="w-full max-w-[380px] animate-fadeIn relative">
+      <div className="w-full max-w-[400px] animate-fadeIn relative">
         {/* Card */}
         <div className="bg-[var(--card-bg)] border border-[var(--card-border)] rounded-2xl p-8 space-y-7" style={{ boxShadow: 'var(--card-shadow-elevated)' }}>
           {/* Logo / Title */}
           <div className="text-center space-y-4">
-            <div className="w-16 h-16 bg-gradient-to-br from-[#5ba3c4] to-[#3d8aab] rounded-full flex items-center justify-center mx-auto shadow-lg shadow-[#5ba3c4]/25 dark:shadow-[#5ba3c4]/15">
+            <div className="w-16 h-16 bg-gradient-to-br from-teal-400 to-teal-600 rounded-2xl flex items-center justify-center mx-auto shadow-lg shadow-teal-500/25 dark:shadow-teal-500/15">
               <svg className="w-9 h-9 text-white" viewBox="0 0 24 24" fill="none">
                 {/* Clipboard body */}
                 <rect x="5" y="4" width="14" height="17" rx="2" fill="white" />
                 {/* Clip tab */}
                 <path d="M9 2.5h6a1 1 0 011 1V5H8V3.5a1 1 0 011-1z" fill="white" />
-                <rect x="8" y="2" width="8" height="3" rx="1" fill="white" stroke="#4a97b9" strokeWidth="0.75" />
-                <circle cx="12" cy="2.75" r="0.6" fill="#4a97b9" />
+                <rect x="8" y="2" width="8" height="3" rx="1" fill="white" stroke="#2d8a7e" strokeWidth="0.75" />
+                <circle cx="12" cy="2.75" r="0.6" fill="#2d8a7e" />
                 {/* Heartbeat line */}
-                <polyline points="6.5,14 9.5,14 10.5,10 12,17 13.5,12 14.5,14 17.5,14" fill="none" stroke="#4a97b9" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+                <polyline points="6.5,14 9.5,14 10.5,10 12,17 13.5,12 14.5,14 17.5,14" fill="none" stroke="#2d8a7e" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
                 {/* Dots */}
-                <circle cx="12" cy="18.5" r="0.6" fill="#4a97b9" />
-                <circle cx="14" cy="18.5" r="0.6" fill="#4a97b9" />
-                <circle cx="16" cy="18.5" r="0.6" fill="#4a97b9" />
+                <circle cx="12" cy="18.5" r="0.6" fill="#2d8a7e" />
+                <circle cx="14" cy="18.5" r="0.6" fill="#2d8a7e" />
+                <circle cx="16" cy="18.5" r="0.6" fill="#2d8a7e" />
               </svg>
             </div>
-            <div className="space-y-1">
-              <h1 className="text-xl font-semibold tracking-widest text-[var(--text-primary)]">MINI ER DASHBOARD</h1>
-              <p className="text-[13px] text-[var(--text-muted)]">
-                Patient management system for ER physicians
+            <div className="space-y-2">
+              <h1 className="text-xl font-semibold tracking-wide text-[var(--text-primary)]">My Patient Dashboard</h1>
+              <p className="text-[13px] text-[var(--text-muted)] leading-relaxed">
+                AI-powered clinical documentation, transcription, and workflow — designed for physicians across any care setting.
               </p>
             </div>
+          </div>
+
+          {/* Feature highlights */}
+          <div className="grid grid-cols-2 gap-2">
+            {[
+              { icon: '🎙', label: 'Voice Dictation' },
+              { icon: '📋', label: 'Auto Charting' },
+              { icon: '🔍', label: 'Evidence Search' },
+              { icon: '🔒', label: 'Privacy Controls' },
+            ].map(({ icon, label }) => (
+              <div key={label} className="flex items-center gap-2 px-3 py-2 bg-[var(--bg-tertiary)] rounded-lg">
+                <span className="text-sm">{icon}</span>
+                <span className="text-[11px] font-medium text-[var(--text-secondary)]">{label}</span>
+              </div>
+            ))}
           </div>
 
           {/* Error Message */}
@@ -71,7 +86,7 @@ function LoginContent() {
           {/* Sign In Button */}
           <a
             href="/api/auth/login"
-            className="group flex items-center justify-center gap-3 w-full py-3 px-4 bg-[var(--bg-primary)] border border-[var(--card-border)] rounded-xl hover:border-blue-300 dark:hover:border-blue-800 hover:shadow-md hover:shadow-blue-500/5 active:scale-[0.98] transition-all duration-200 font-medium text-[14px] text-[var(--text-primary)]"
+            className="group flex items-center justify-center gap-3 w-full py-3.5 px-4 bg-[var(--bg-primary)] border border-[var(--card-border)] rounded-xl hover:border-teal-300 dark:hover:border-teal-800 hover:shadow-md hover:shadow-teal-500/5 active:scale-[0.98] transition-all duration-200 font-medium text-[14px] text-[var(--text-primary)]"
           >
             <svg className="w-[18px] h-[18px]" viewBox="0 0 24 24">
               <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/>
@@ -88,13 +103,18 @@ function LoginContent() {
               <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
               </svg>
-              <span>Your data is stored in your own Google Sheet</span>
+              <span>Your data stays in your own Google Sheet</span>
             </div>
             <p className="text-[11px] text-center text-[var(--text-muted)]">
-              New users will need admin approval before accessing the app
+              Bring your own API keys or use shared access
             </p>
           </div>
         </div>
+
+        {/* Domain */}
+        <p className="text-center text-[10px] text-[var(--text-muted)] mt-4 tracking-wide">
+          mypatientboard.com
+        </p>
       </div>
     </div>
   );
@@ -104,7 +124,7 @@ export default function LoginPage() {
   return (
     <Suspense fallback={
       <div className="min-h-screen flex items-center justify-center bg-[var(--bg-primary)]">
-        <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+        <div className="w-8 h-8 border-2 border-teal-600 border-t-transparent rounded-full animate-spin" />
       </div>
     }>
       <LoginContent />

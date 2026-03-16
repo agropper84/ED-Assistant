@@ -1,11 +1,11 @@
 {
-  "name": "ED Documentation",
-  "short_name": "ED Docs",
-  "description": "Emergency Department Documentation System",
+  "name": "My Patient Dashboard",
+  "short_name": "PatientBoard",
+  "description": "AI-powered clinical documentation, transcription, and workflow for physicians",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#f8fafc",
-  "theme_color": "#1e40af",
+  "theme_color": "#0d9488",
   "icons": [
     {
       "src": "/icon-192.png",
