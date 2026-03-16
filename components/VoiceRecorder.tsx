@@ -18,15 +18,15 @@ interface VoiceRecorderProps {
 }
 
 // Streaming dictation constants
-const MIN_SEGMENT_MS = 1500;    // Don't flush segments shorter than 1.5s
-const MAX_SEGMENT_MS = 15000;   // Force flush after 15s even if still speaking
-const SILENCE_FLUSH_MS = 1200;  // Flush after 1.2s of silence
+const MIN_SEGMENT_MS = 1000;    // Don't flush segments shorter than 1s
+const MAX_SEGMENT_MS = 12000;   // Force flush after 12s even if still speaking
+const SILENCE_FLUSH_MS = 800;   // Flush after 0.8s of silence
 const NOISE_FLOOR_MULTIPLIER = 2.5;
 const MIN_SILENCE_THRESHOLD = 0.015;
 const DEFAULT_SILENCE_THRESHOLD = 0.04;
-const CALIBRATION_MS = 800;
+const CALIBRATION_MS = 500;
 const RMS_SMOOTHING = 0.3;
-const CHECK_INTERVAL_MS = 100;
+const CHECK_INTERVAL_MS = 80;
 
 export function VoiceRecorder({
   onTranscript, onInterimTranscript, onRecordingStart,

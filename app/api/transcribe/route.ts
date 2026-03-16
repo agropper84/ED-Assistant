@@ -79,15 +79,14 @@ async function medicalize(rawText: string, mode: string, context?: string): Prom
 
 Recording:
 ${rawText}`
-    : `Convert this voice-dictated emergency department note into proper medical documentation. Rules:
-- The text already has punctuation applied — respect the existing sentence structure
-- Replace colloquial or informal terms with correct medical terminology and standard abbreviations (e.g., "belly" → "abdomen", "heart attack" → "MI", "blood pressure" → "BP")
-- Correct any misheard medical terms based on context (e.g., "CPA tenderness" → "CVA tenderness", "tendered" → "tender/tenderness")
-- Do NOT add, infer, or remove clinical information — preserve meaning exactly
-- Use concise ED physician charting style
-- Output as a single continuous block of text — do NOT add line breaks or paragraph breaks unless the input explicitly contains them
-- Output ONLY the converted text, nothing else — no explanations, no questions, no commentary
-- If the input contains no clinical content (e.g. just greetings, filler, noise artifacts, or meaningless fragments), output exactly: EMPTY${contextBlock}
+    : `Convert voice-dictated physician notes into proper medical documentation. Rules:
+- Replace colloquial terms with medical terminology (e.g., "belly"→"abdomen", "heart attack"→"MI", "blood pressure"→"BP", "sugar"→"glucose", "blood thinner"→"anticoagulant")
+- Fix common speech-to-text errors: "CPA"→"CVA", "tendered"→"tender", "new Monya"→"pneumonia", "be a pap"→"BiPAP", "see pap"→"CPAP", "sack row"→"sacro", "die a bee tees"→"diabetes", "epigastric"→"epigastric", "anti-buy-otics"→"antibiotics"
+- Preserve all clinical information exactly — do NOT add, infer, or remove details
+- Use concise physician charting style and standard abbreviations
+- Output as a single continuous block — no added line breaks unless input has them
+- Output ONLY the converted text, nothing else
+- If no clinical content (greetings, filler, noise), output exactly: EMPTY${contextBlock}
 
 Dictation:
 ${rawText}`;
@@ -118,13 +117,24 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No audio file provided' }, { status: 400 });
     }
 
-    const whisperPrompt = mode === 'encounter' ? ENCOUNTER_WHISPER_PROMPT : DICTATION_WHISPER_PROMPT;
+    const basePrompt = mode === 'encounter' ? ENCOUNTER_WHISPER_PROMPT : DICTATION_WHISPER_PROMPT;
+
+    // Whisper uses the prompt for style/vocabulary conditioning AND context continuity.
+    // Appending the last ~50 words of previous text helps Whisper maintain context
+    // across segments (correct spelling, terminology consistency, fewer hallucinations).
+    const contextTail = context
+      ? context.split(/\s+/).slice(-50).join(' ')
+      : '';
+    const whisperPrompt = contextTail
+      ? `${basePrompt}. Previous context: ${contextTail}`
+      : basePrompt;
 
     const transcription = await getOpenAI().audio.transcriptions.create({
       file: audioFile,
       model: 'whisper-1',
       prompt: whisperPrompt,
       language: 'en',
+      temperature: 0,
     });
 
     const rawText = transcription.text?.trim();
