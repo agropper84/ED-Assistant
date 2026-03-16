@@ -301,8 +301,6 @@ export default function HomePage() {
   const [mergeSource, setMergeSource] = useState<Patient | null>(null);
 
   // VCH sheet generation
-  const [generatingVch, setGeneratingVch] = useState(false);
-  const [vchResult, setVchResult] = useState<string | null>(null);
 
   // VCH time-based shift segments
   const [shiftSegments, setShiftSegments] = useState<TimeSegment[]>([]);
@@ -394,9 +392,26 @@ export default function HomePage() {
     }
   }, [segmentsKey]);
 
-  const handleSaveShiftSegments = (segs: TimeSegment[]) => {
+  const handleSaveShiftSegments = async (segs: TimeSegment[]) => {
     setShiftSegments(segs);
     localStorage.setItem(segmentsKey, JSON.stringify(segs));
+
+    // Auto-sync to VCH billing sheet
+    try {
+      const appSettings = getSettings();
+      await fetch('/api/vch-billing-sheet', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sheetName,
+          cprpId: appSettings.vchCprpId,
+          siteFacility: appSettings.vchSiteFacility,
+          pracNumber: appSettings.vchPracNumber,
+          practitionerName: appSettings.vchPractitionerName,
+          shiftSegments: segs,
+        }),
+      });
+    } catch {}
   };
 
   const lastFetchRef = useRef(Date.now());
@@ -1159,58 +1174,16 @@ export default function HomePage() {
             {/* Shift times / VCH controls */}
             <div className="flex items-center gap-1.5">
               {isTimeBased() ? (
-                <>
-                  {/* Time segments toggle */}
-                  <button
-                    onClick={() => setShowShiftPanel(!showShiftPanel)}
-                    className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium transition-colors ${
-                      showShiftPanel ? 'bg-white/25 text-white' : 'bg-white/10 hover:bg-white/20'
-                    }`}
-                    style={{ color: 'var(--dash-text)' }}
-                  >
-                    <Clock className="w-3 h-3" />
-                    Time{shiftSegments.length > 0 ? ` (${shiftSegments.length})` : ''}
-                  </button>
-                  {/* VCH Sheet export button */}
-                  <button
-                    onClick={async () => {
-                      setGeneratingVch(true);
-                      setVchResult(null);
-                      try {
-                        const appSettings = getSettings();
-                        const res = await fetch('/api/vch-billing-sheet', {
-                          method: 'POST',
-                          headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify({
-                            sheetName,
-                            cprpId: appSettings.vchCprpId,
-                            siteFacility: appSettings.vchSiteFacility,
-                            pracNumber: appSettings.vchPracNumber,
-                            practitionerName: appSettings.vchPractitionerName,
-                            shiftSegments,
-                          }),
-                        });
-                        const data = await res.json();
-                        if (res.ok) {
-                          setVchResult(`VCH sheet: ${data.count} rows`);
-                        } else {
-                          setVchResult(data.error || 'Failed');
-                        }
-                      } catch {
-                        setVchResult('Failed to generate');
-                      } finally {
-                        setGeneratingVch(false);
-                        setTimeout(() => setVchResult(null), 4000);
-                      }
-                    }}
-                    disabled={generatingVch}
-                    className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium bg-white/15 hover:bg-white/25 transition-colors disabled:opacity-50"
-                    style={{ color: 'var(--dash-text)' }}
-                  >
-                    {generatingVch ? <Loader2 className="w-3 h-3 animate-spin" /> : null}
-                    VCH Sheet
-                  </button>
-                </>
+                <button
+                  onClick={() => setShowShiftPanel(!showShiftPanel)}
+                  className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium transition-colors ${
+                    showShiftPanel ? 'bg-white/25 text-white' : 'bg-white/10 hover:bg-white/20'
+                  }`}
+                  style={{ color: 'var(--dash-text)' }}
+                >
+                  <Clock className="w-3 h-3" />
+                  Time{shiftSegments.length > 0 ? ` (${shiftSegments.length})` : ''}
+                </button>
               ) : (
                 <>
                   <select
@@ -1245,9 +1218,6 @@ export default function HomePage() {
                     <span className="text-[11px] font-mono font-medium flex-shrink-0" style={{ color: 'var(--dash-text-sub)' }}>{shiftCode}</span>
                   )}
                 </>
-              )}
-              {vchResult && (
-                <span className="text-[11px] font-medium flex-shrink-0" style={{ color: 'var(--dash-text-sub)' }}>{vchResult}</span>
               )}
             </div>
           </div>

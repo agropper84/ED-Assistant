@@ -99,12 +99,10 @@ function BillingHints({ code }: { code: string | undefined }) {
 export function BillingSection({
   billingItems, comments, onSave, onSaveComments, showBilling, setShowBilling,
 }: BillingSectionProps) {
-  const vchMode = isTimeBased();
+  // Hide billing section entirely when VCH time-based is active
+  if (isTimeBased()) return null;
+
   const total = calculateTotal(billingItems);
-  // For VCH patient-based: compute total minutes from VCH-DO/VCH-IO items
-  const vchTotalMin = vchMode
-    ? billingItems.filter(i => i.code.startsWith('VCH-')).reduce((sum, i) => sum + (parseInt(i.unit || '0', 10) || 0), 0)
-    : 0;
 
   return (
     <div className="bg-[var(--card-bg)] rounded-2xl border border-[var(--card-border)] overflow-hidden" style={{ boxShadow: 'var(--card-shadow)' }}>
@@ -115,21 +113,13 @@ export function BillingSection({
         <div className="flex items-center gap-2">
           <DollarSign className="w-5 h-5 text-[var(--text-muted)]" />
           <h3 className="font-semibold text-[var(--text-primary)]">Billing</h3>
-          {vchMode ? (
-            vchTotalMin > 0 && (
-              <span className="text-sm font-semibold text-green-700 dark:text-green-400">{vchTotalMin}m</span>
-            )
-          ) : (
-            <>
-              {billingItems.length > 0 && (
-                <span className="text-xs bg-green-100 dark:bg-green-950/50 text-green-700 dark:text-green-300 px-2 py-0.5 rounded-full">
-                  {billingItems.length} item{billingItems.length !== 1 ? 's' : ''}
-                </span>
-              )}
-              {total && (
-                <span className="text-sm font-semibold text-green-700 dark:text-green-400">${total}</span>
-              )}
-            </>
+          {billingItems.length > 0 && (
+            <span className="text-xs bg-green-100 dark:bg-green-950/50 text-green-700 dark:text-green-300 px-2 py-0.5 rounded-full">
+              {billingItems.length} item{billingItems.length !== 1 ? 's' : ''}
+            </span>
+          )}
+          {total && (
+            <span className="text-sm font-semibold text-green-700 dark:text-green-400">${total}</span>
           )}
         </div>
         {showBilling ? (
@@ -140,21 +130,12 @@ export function BillingSection({
       </button>
       {showBilling && (
         <div className="px-4 pb-4">
-          {vchMode ? (
-            <VchPatientBilling
-              billingItems={billingItems}
-              comments={comments}
-              onSave={onSave}
-              onSaveComments={onSaveComments}
-            />
-          ) : (
-            <PatientBasedBilling
-              billingItems={billingItems}
-              comments={comments}
-              onSave={onSave}
-              onSaveComments={onSaveComments}
-            />
-          )}
+          <PatientBasedBilling
+            billingItems={billingItems}
+            comments={comments}
+            onSave={onSave}
+            onSaveComments={onSaveComments}
+          />
         </div>
       )}
     </div>
@@ -170,199 +151,17 @@ export function InlineBilling({
   onSave: (items: BillingItem[], comments?: string) => void;
   onSaveComments: (comments: string) => void;
 }) {
-  const vchMode = isTimeBased();
+  // Hide when VCH time-based is active
+  if (isTimeBased()) return null;
+
   return (
     <div className="bg-[var(--bg-tertiary)] border border-[var(--border)] rounded-xl p-4 space-y-3" onClick={(e) => e.stopPropagation()}>
-      {vchMode ? (
-        <VchPatientBilling
-          billingItems={billingItems}
-          comments={comments}
-          onSave={onSave}
-          onSaveComments={onSaveComments}
-        />
-      ) : (
-        <PatientBasedBilling
-          billingItems={billingItems}
-          comments={comments}
-          onSave={onSave}
-          onSaveComments={onSaveComments}
-        />
-      )}
-    </div>
-  );
-}
-
-// ────────────────────────────────────────────────────────────────────────────
-// VCH Patient-Based Billing (per patient: direct min, indirect min, sched, onsite)
-// ────────────────────────────────────────────────────────────────────────────
-
-function VchPatientBilling({
-  billingItems, comments, onSave, onSaveComments,
-}: {
-  billingItems: BillingItem[];
-  comments: string;
-  onSave: (items: BillingItem[]) => void;
-  onSaveComments: (c: string) => void;
-}) {
-  const getMinutes = (code: string) => {
-    const item = billingItems.find(i => i.code === code);
-    return item ? parseInt(item.unit || '0', 10) : 0;
-  };
-
-  const getFlag = (code: string): boolean => {
-    return billingItems.some(i => i.code === code);
-  };
-
-  const setMinutes = (code: string, label: string, minutes: number) => {
-    const others = billingItems.filter(i => i.code !== code);
-    if (minutes <= 0) {
-      onSave(others);
-    } else {
-      const item: BillingItem = {
-        code,
-        description: label,
-        fee: '',
-        unit: minutes.toString(),
-        category: 'additional',
-      };
-      onSave([...others, item]);
-    }
-  };
-
-  const toggleFlag = (code: string, label: string) => {
-    if (getFlag(code)) {
-      onSave(billingItems.filter(i => i.code !== code));
-    } else {
-      onSave([...billingItems, {
-        code,
-        description: label,
-        fee: '',
-        unit: '1',
-        category: 'additional',
-      }]);
-    }
-  };
-
-  const directMin = getMinutes('VCH-DO');
-  const indirectMin = getMinutes('VCH-IO');
-  const totalMin = directMin + indirectMin;
-  const isScheduled = getFlag('VCH-SCHED');
-  const isOnsite = !getFlag('VCH-OFFSITE'); // default onsite
-
-  return (
-    <div className="space-y-4">
-      {/* Direct Time */}
-      <div>
-        <label className="block text-xs font-medium text-[var(--text-muted)] mb-1">Direct Time (with patient)</label>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setMinutes('VCH-DO', 'Direct', Math.max(0, directMin - 15))}
-            disabled={directMin <= 0}
-            className="w-8 h-8 flex items-center justify-center rounded-lg bg-[var(--bg-tertiary)] text-[var(--text-secondary)] hover:bg-[var(--border)] disabled:opacity-30 font-bold text-lg transition-colors"
-          >
-            -
-          </button>
-          <span className="w-20 text-center text-sm font-semibold text-[var(--text-primary)]">
-            {directMin} min
-          </span>
-          <button
-            onClick={() => setMinutes('VCH-DO', 'Direct', directMin + 15)}
-            className="w-8 h-8 flex items-center justify-center rounded-lg bg-[var(--bg-tertiary)] text-[var(--text-secondary)] hover:bg-[var(--border)] font-bold text-lg transition-colors"
-          >
-            +
-          </button>
-        </div>
-      </div>
-
-      {/* Indirect Time */}
-      <div>
-        <label className="block text-xs font-medium text-[var(--text-muted)] mb-1">Indirect Time (charting, orders, review)</label>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setMinutes('VCH-IO', 'Indirect', Math.max(0, indirectMin - 15))}
-            disabled={indirectMin <= 0}
-            className="w-8 h-8 flex items-center justify-center rounded-lg bg-[var(--bg-tertiary)] text-[var(--text-secondary)] hover:bg-[var(--border)] disabled:opacity-30 font-bold text-lg transition-colors"
-          >
-            -
-          </button>
-          <span className="w-20 text-center text-sm font-semibold text-[var(--text-primary)]">
-            {indirectMin} min
-          </span>
-          <button
-            onClick={() => setMinutes('VCH-IO', 'Indirect', indirectMin + 15)}
-            className="w-8 h-8 flex items-center justify-center rounded-lg bg-[var(--bg-tertiary)] text-[var(--text-secondary)] hover:bg-[var(--border)] font-bold text-lg transition-colors"
-          >
-            +
-          </button>
-        </div>
-      </div>
-
-      {/* Scheduled / Onsite toggles */}
-      <div className="flex gap-3">
-        <div className="flex-1">
-          <label className="block text-xs font-medium text-[var(--text-muted)] mb-1">Schedule</label>
-          <div className="flex rounded-lg overflow-hidden border border-[var(--border)]">
-            <button
-              onClick={() => { if (!isScheduled) toggleFlag('VCH-SCHED', 'Scheduled'); }}
-              className={`flex-1 px-2 py-1.5 text-xs font-medium transition-colors ${
-                isScheduled ? 'bg-blue-600 text-white' : 'bg-[var(--bg-tertiary)] text-[var(--text-secondary)]'
-              }`}
-            >
-              Scheduled
-            </button>
-            <button
-              onClick={() => { if (isScheduled) toggleFlag('VCH-SCHED', 'Scheduled'); }}
-              className={`flex-1 px-2 py-1.5 text-xs font-medium transition-colors ${
-                !isScheduled ? 'bg-blue-600 text-white' : 'bg-[var(--bg-tertiary)] text-[var(--text-secondary)]'
-              }`}
-            >
-              Unscheduled
-            </button>
-          </div>
-        </div>
-        <div className="flex-1">
-          <label className="block text-xs font-medium text-[var(--text-muted)] mb-1">Location</label>
-          <div className="flex rounded-lg overflow-hidden border border-[var(--border)]">
-            <button
-              onClick={() => { if (!isOnsite) toggleFlag('VCH-OFFSITE', 'Offsite'); }}
-              className={`flex-1 px-2 py-1.5 text-xs font-medium transition-colors ${
-                isOnsite ? 'bg-blue-600 text-white' : 'bg-[var(--bg-tertiary)] text-[var(--text-secondary)]'
-              }`}
-            >
-              Onsite
-            </button>
-            <button
-              onClick={() => { if (isOnsite) toggleFlag('VCH-OFFSITE', 'Offsite'); }}
-              className={`flex-1 px-2 py-1.5 text-xs font-medium transition-colors ${
-                !isOnsite ? 'bg-blue-600 text-white' : 'bg-[var(--bg-tertiary)] text-[var(--text-secondary)]'
-              }`}
-            >
-              Offsite
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Total */}
-      {totalMin > 0 && (
-        <div className="flex justify-end border-t border-[var(--border)] pt-2">
-          <span className="text-sm font-bold text-[var(--text-primary)]">
-            Total: {totalMin} min ({(totalMin / 60).toFixed(2)} hrs)
-          </span>
-        </div>
-      )}
-
-      {/* Comments */}
-      <div>
-        <label className="block text-xs font-medium text-[var(--text-muted)] mb-1">Comments</label>
-        <input
-          type="text"
-          value={comments}
-          onChange={(e) => onSaveComments(e.target.value)}
-          onBlur={(e) => onSaveComments(e.target.value)}
-          className="w-full p-2 border border-[var(--input-border)] rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)]"
-        />
-      </div>
+      <PatientBasedBilling
+        billingItems={billingItems}
+        comments={comments}
+        onSave={onSave}
+        onSaveComments={onSaveComments}
+      />
     </div>
   );
 }
