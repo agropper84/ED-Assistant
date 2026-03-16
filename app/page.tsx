@@ -391,7 +391,7 @@ export default function HomePage() {
     if (!isVchMode) return;
     (async () => {
       try {
-        const res = await fetch('/api/vch-billing-sheet');
+        const res = await fetch(`/api/vch-billing-sheet?sheet=${encodeURIComponent(sheetName)}`);
         if (res.ok) {
           const data = await res.json();
           if (Array.isArray(data) && data.length > 0) {

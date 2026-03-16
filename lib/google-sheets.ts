@@ -1442,31 +1442,49 @@ export async function writeVchBillingSheet(
     });
   }
 
-  // Clear existing data (keep header) and rewrite
-  await sheets.spreadsheets.values.clear({
+  // Read all existing rows, filter out rows for this date, then append new rows
+  const existingRes = await sheets.spreadsheets.values.get({
     spreadsheetId,
     range: `'${VCH_BILLING_SHEET}'!A2:P500`,
   });
+  const existingRows = existingRes.data.values || [];
 
-  if (rows.length === 0) return;
+  // Determine the date being written (from the new rows, or empty)
+  const targetDate = rows.length > 0 ? rows[0].serviceDate : '';
 
-  const values = rows.map(r => [
+  // Keep rows from other dates
+  const otherDateRows = targetDate
+    ? existingRows.filter((row: any[]) => (row[4]?.toString().trim() || '') !== targetDate)
+    : [];
+
+  // Build new values for this date
+  const newDateRows = rows.map(r => [
     r.cprpId, r.siteFacility, r.pracNumber, r.practitionerName,
     r.serviceDate, r.serviceDate, r.ratePeriod,
     r.startTime, r.endTime, r.scheduled, r.onsiteOffsite,
     r.directIndirectHrs, r.directHrs, r.indirectHrs, r.other, r.total,
   ]);
 
+  const allRows = [...otherDateRows, ...newDateRows];
+
+  // Clear and rewrite all
+  await sheets.spreadsheets.values.clear({
+    spreadsheetId,
+    range: `'${VCH_BILLING_SHEET}'!A2:P500`,
+  });
+
+  if (allRows.length === 0) return;
+
   await sheets.spreadsheets.values.update({
     spreadsheetId,
-    range: `'${VCH_BILLING_SHEET}'!A2:P${rows.length + 1}`,
+    range: `'${VCH_BILLING_SHEET}'!A2:P${allRows.length + 1}`,
     valueInputOption: 'RAW',
-    requestBody: { values },
+    requestBody: { values: allRows },
   });
 }
 
-/** Read VCH billing rows and convert back to TimeSegment[] */
-export async function readVchBillingSegments(ctx: SheetsContext): Promise<{
+/** Read VCH billing rows for a specific date and convert back to TimeSegment[] */
+export async function readVchBillingSegments(ctx: SheetsContext, dateStr?: string): Promise<{
   start: string; end: string; scheduled: boolean; onsite: boolean; directPct: number;
 }[]> {
   const { sheets, spreadsheetId } = ctx;
@@ -1484,7 +1502,15 @@ export async function readVchBillingSegments(ctx: SheetsContext): Promise<{
 
   const rows = response.data.values || [];
   return rows
-    .filter((row: any[]) => row[7]?.toString().trim()) // must have start time
+    .filter((row: any[]) => {
+      if (!row[7]?.toString().trim()) return false; // must have start time
+      // Filter by date if provided (column E = index 4)
+      if (dateStr) {
+        const rowDate = row[4]?.toString().trim() || '';
+        if (rowDate !== dateStr) return false;
+      }
+      return true;
+    })
     .map((row: any[]) => {
       const startTime = row[7]?.toString() || '';
       const endTime = row[8]?.toString() || '';

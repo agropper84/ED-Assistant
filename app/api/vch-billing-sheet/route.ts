@@ -11,11 +11,23 @@ import {
   type TimeSegment,
 } from '@/lib/billing';
 
-// GET - read saved time segments from VCH Billing sheet
-export async function GET() {
+// GET - read saved time segments from VCH Billing sheet for a specific date
+export async function GET(req: NextRequest) {
   try {
     const ctx = await getSheetsContext();
-    const segments = await readVchBillingSegments(ctx);
+    const { searchParams } = new URL(req.url);
+    const sheetName = searchParams.get('sheet') || '';
+
+    // Convert sheet name (e.g. "Mar 16, 2026") to date string (e.g. "3/16/2026")
+    let dateStr = '';
+    if (sheetName) {
+      const d = new Date(sheetName);
+      if (!isNaN(d.getTime())) {
+        dateStr = `${d.getMonth() + 1}/${d.getDate()}/${d.getFullYear()}`;
+      }
+    }
+
+    const segments = await readVchBillingSegments(ctx, dateStr || undefined);
     return NextResponse.json(segments);
   } catch (err: any) {
     if (err.message === 'Not authenticated') {
