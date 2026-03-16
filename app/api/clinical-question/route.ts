@@ -50,7 +50,12 @@ export async function POST(request: NextRequest) {
     if (patient.management) contextParts.push(`**Management:**\n${patient.management}`);
     if (patient.evidence) contextParts.push(`**Evidence:**\n${patient.evidence}`);
 
-    const systemPrompt = `You are a clinical decision support assistant for an emergency department physician. You have access to the following patient data and should answer questions based on this context. Provide concise, evidence-based answers. When relevant, cite guidelines or key studies. Be direct and clinically practical.
+    const systemPrompt = useOpenEvidence
+      ? `You are a clinical decision support assistant for a physician. Answer based on the patient data below. Provide thorough, evidence-based answers with citations. Include guideline references with markdown hyperlinks [Name](URL) where possible.
+
+## Patient Data
+${contextParts.join('\n\n')}`
+      : `You are a clinical decision support assistant. Answer concisely based on the patient data below. Be direct — lead with the answer, then brief rationale. Use 2-4 sentences unless the question requires more. Cite key guidelines by name when relevant.
 
 ## Patient Data
 ${contextParts.join('\n\n')}`;
@@ -91,9 +96,9 @@ Output ONLY the reframed question, nothing else.`,
     messages.push({ role: 'user', content: question.trim() });
 
     const response = await anthropic.messages.create({
-      model: 'claude-sonnet-4-20250514',
-      max_tokens: 2048,
-      temperature: 0.3,
+      model: useOpenEvidence ? 'claude-sonnet-4-20250514' : 'claude-haiku-4-5-20251001',
+      max_tokens: useOpenEvidence ? 2048 : 1024,
+      temperature: 0.2,
       system: systemPrompt,
       messages,
     });
