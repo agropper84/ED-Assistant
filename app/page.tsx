@@ -309,6 +309,10 @@ export default function HomePage() {
   // Encounter type
   const [activeEncounterType, setActiveEncounterType] = useState(() => getEncounterType());
   const [encounterTypes, setEncounterTypes] = useState<EncounterType[]>(() => getEncounterTypes());
+
+  // Track VCH mode in state (not just localStorage) to ensure consistent rendering after hydration
+  const [isVchMode, setIsVchMode] = useState(false);
+  useEffect(() => { setIsVchMode(isVchMode); }, []);
   const [encounterMenuOpen, setEncounterMenuOpen] = useState(false);
   const encounterMenuRef = useRef<HTMLDivElement>(null);
 
@@ -860,7 +864,7 @@ export default function HomePage() {
       patient.visitProcedure || '', patient.procCode || '',
       patient.fee || '', patient.unit || ''
     );
-    const vchRegion = isTimeBased();
+    const vchRegion = isVchMode;
     const codes = vchRegion
       ? (() => {
           const totalMin = items.filter(i => i.code.startsWith('VCH-')).reduce((sum, i) => sum + (parseInt(i.unit || '0', 10) || 0), 0);
@@ -877,8 +881,8 @@ export default function HomePage() {
           onDelete={() => setDeleteConfirm(patient)}
           anonymize={anonymize}
           onTimeChange={(time) => handleTimeChange(patient, time)}
-          onBillingToggle={isTimeBased() ? undefined : () => toggleBilling(patient.rowIndex)}
-          billingCodes={isTimeBased() ? undefined : codes}
+          onBillingToggle={isVchMode ? undefined : () => toggleBilling(patient.rowIndex)}
+          billingCodes={isVchMode ? undefined : codes}
           onNavigate={() => router.push(`/patient/${patient.rowIndex}?sheet=${encodeURIComponent(patient.sheetName)}`)}
           onProcess={async () => {
             let settings: any;
@@ -1173,7 +1177,7 @@ export default function HomePage() {
 
             {/* Shift times / VCH controls */}
             <div className="flex items-center gap-1.5">
-              {isTimeBased() ? (
+              {isVchMode ? (
                 <button
                   onClick={() => setShowShiftPanel(!showShiftPanel)}
                   className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium transition-colors ${
@@ -1225,7 +1229,7 @@ export default function HomePage() {
       </header>
 
       {/* VCH Time-Based Shift Panel */}
-      {isTimeBased() && showShiftPanel && (
+      {isVchMode && showShiftPanel && (
         <div className="bg-[var(--card-bg)] border-b border-[var(--border)] sticky top-[92px] z-20">
           <div className="max-w-2xl mx-auto px-4 py-3">
             <div className="flex items-center justify-between mb-2">
