@@ -385,16 +385,31 @@ export default function HomePage() {
     return d.getTime() === t.getTime();
   })();
 
-  // Load/save shift segments from localStorage (day-level, keyed by sheet name)
+  // Load shift segments from Google Sheet (VCH Billing tab), fall back to localStorage
   const segmentsKey = `ed-vch-segments-${sheetName}`;
   useEffect(() => {
-    try {
-      const stored = localStorage.getItem(segmentsKey);
-      setShiftSegments(stored ? JSON.parse(stored) : []);
-    } catch {
-      setShiftSegments([]);
-    }
-  }, [segmentsKey]);
+    if (!isVchMode) return;
+    (async () => {
+      try {
+        const res = await fetch('/api/vch-billing-sheet');
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data) && data.length > 0) {
+            setShiftSegments(data);
+            localStorage.setItem(segmentsKey, JSON.stringify(data));
+            return;
+          }
+        }
+      } catch {}
+      // Fall back to localStorage
+      try {
+        const stored = localStorage.getItem(segmentsKey);
+        setShiftSegments(stored ? JSON.parse(stored) : []);
+      } catch {
+        setShiftSegments([]);
+      }
+    })();
+  }, [segmentsKey, isVchMode]);
 
   const handleSaveShiftSegments = async (segs: TimeSegment[]) => {
     setShiftSegments(segs);

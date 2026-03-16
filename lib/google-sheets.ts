@@ -1453,6 +1453,38 @@ export async function writeVchBillingSheet(
   });
 }
 
+/** Read VCH billing rows and convert back to TimeSegment[] */
+export async function readVchBillingSegments(ctx: SheetsContext): Promise<{
+  start: string; end: string; scheduled: boolean; onsite: boolean; directPct: number;
+}[]> {
+  const { sheets, spreadsheetId } = ctx;
+
+  const spreadsheet = await sheets.spreadsheets.get({ spreadsheetId });
+  const exists = spreadsheet.data.sheets?.some(
+    (s: any) => s.properties.title === VCH_BILLING_SHEET
+  );
+  if (!exists) return [];
+
+  const response = await sheets.spreadsheets.values.get({
+    spreadsheetId,
+    range: `'${VCH_BILLING_SHEET}'!A2:P500`,
+  });
+
+  const rows = response.data.values || [];
+  return rows
+    .filter((row: any[]) => row[7]?.toString().trim()) // must have start time
+    .map((row: any[]) => {
+      const startTime = row[7]?.toString() || '';
+      const endTime = row[8]?.toString() || '';
+      const scheduled = row[9]?.toString() === 'Scheduled';
+      const onsite = row[10]?.toString() === 'Onsite';
+      const totalHrs = parseFloat(row[11]?.toString() || '0') || 0;
+      const directHrs = parseFloat(row[12]?.toString() || '0') || 0;
+      const directPct = totalHrs > 0 ? Math.round((directHrs / totalHrs) * 100) : 50;
+      return { start: startTime, end: endTime, scheduled, onsite, directPct };
+    });
+}
+
 // ────────────────────────────────────────────────────────────────────────────
 // User Phrases (autocomplete suggestions learned from user input)
 // ────────────────────────────────────────────────────────────────────────────

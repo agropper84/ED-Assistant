@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import {
   getSheetsContext,
   writeVchBillingSheet,
+  readVchBillingSegments,
   type VchBillingRow,
 } from '@/lib/google-sheets';
 import {
@@ -9,6 +10,20 @@ import {
   getSegmentRatePeriod,
   type TimeSegment,
 } from '@/lib/billing';
+
+// GET - read saved time segments from VCH Billing sheet
+export async function GET() {
+  try {
+    const ctx = await getSheetsContext();
+    const segments = await readVchBillingSegments(ctx);
+    return NextResponse.json(segments);
+  } catch (err: any) {
+    if (err.message === 'Not authenticated') {
+      return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
+    }
+    return NextResponse.json({ error: 'Failed to read segments' }, { status: 500 });
+  }
+}
 
 export async function POST(req: NextRequest) {
   try {
