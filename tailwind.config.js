@@ -35,11 +35,25 @@ module.exports = {
           from: { opacity: '0', transform: 'scale(0.95)' },
           to: { opacity: '1', transform: 'scale(1)' },
         },
+        msgIn: {
+          from: { opacity: '0', transform: 'translateY(8px) scale(0.96)' },
+          to: { opacity: '1', transform: 'translateY(0) scale(1)' },
+        },
+        msgSent: {
+          from: { opacity: '0', transform: 'translateY(6px) scale(0.95) translateX(10px)' },
+          to: { opacity: '1', transform: 'translateY(0) scale(1) translateX(0)' },
+        },
+        typingDot: {
+          '0%, 60%, 100%': { opacity: '0.3', transform: 'scale(0.8)' },
+          '30%': { opacity: '1', transform: 'scale(1)' },
+        },
       },
       animation: {
         fadeIn: 'fadeIn 200ms ease-out',
         slideUp: 'slideUp 300ms cubic-bezier(0.16, 1, 0.3, 1)',
         scaleIn: 'scaleIn 200ms cubic-bezier(0.16, 1, 0.3, 1)',
+        msgIn: 'msgIn 250ms cubic-bezier(0.16, 1, 0.3, 1)',
+        msgSent: 'msgSent 200ms cubic-bezier(0.16, 1, 0.3, 1)',
       },
     },
   },
