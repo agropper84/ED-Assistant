@@ -4,6 +4,23 @@ import { useState, useRef, useCallback, useEffect } from 'react';
 import { Mic, Upload, RotateCcw, Stethoscope } from 'lucide-react';
 import { getSettings, saveSettings } from '@/lib/settings';
 
+/** Convert spoken punctuation commands to actual punctuation (client-side mirror of server function) */
+function convertSpokenPunctuation(text: string): string {
+  return text
+    .replace(/(?<!\bmenstrual)\s*\b(?:period|full stop)\b(?!\s+of)\s*/gi, '. ')
+    .replace(/\s*\bcomma\b\s*/gi, ', ')
+    .replace(/\s*\b(?:question mark)\b\s*/gi, '? ')
+    .replace(/\s*\b(?:exclamation (?:mark|point))\b\s*/gi, '! ')
+    .replace(/\s*\bcolon\b\s*/gi, ': ')
+    .replace(/\s*\bsemicolon\b\s*/gi, '; ')
+    .replace(/\s*\b(?:dash|hyphen)\b\s*/gi, ' — ')
+    .replace(/\s*\b(?:new line|newline|next line)\b\s*/gi, '\n')
+    .replace(/\s*\b(?:new paragraph|next paragraph)\b\s*/gi, '\n\n')
+    .replace(/([.!?]\s+)([a-z])/g, (_, punct, letter) => punct + letter.toUpperCase())
+    .replace(/ {2,}/g, ' ')
+    .trim();
+}
+
 type RecorderState = 'idle' | 'recording' | 'transcribing' | 'error';
 
 interface VoiceRecorderProps {
@@ -406,7 +423,8 @@ export function VoiceRecorder({
                     interim += event.results[i][0].transcript;
                   }
                 }
-                const full = (finalTranscript + interim).trim();
+                const raw = (finalTranscript + interim).trim();
+                const full = convertSpokenPunctuation(raw);
                 accumulatedTextRef.current = full;
                 onInterimRef.current?.(full);
               };
