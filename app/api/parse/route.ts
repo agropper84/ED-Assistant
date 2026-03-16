@@ -1,10 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { parsePatientInfo, getRoundedTime } from '@/lib/parse-patient';
 import Anthropic from '@anthropic-ai/sdk';
-
-const anthropic = new Anthropic({
-  apiKey: process.env.CLAUDE_API_KEY,
-});
+import { getAnthropicClient } from '@/lib/api-keys';
 
 export const maxDuration = 30;
 
@@ -22,7 +19,8 @@ export async function POST(request: NextRequest) {
 
     // If a format example is provided, use AI to parse by analogy
     if (formatExample?.sampleText && formatExample?.fieldName) {
-      const result = await parseWithAI(text, formatExample);
+      const anthropic = await getAnthropicClient();
+      const result = await parseWithAI(anthropic, text, formatExample);
       const timestamp = getRoundedTime();
       return NextResponse.json({ ...result, timestamp });
     }
@@ -55,6 +53,7 @@ interface FormatExample {
 }
 
 async function parseWithAI(
+  anthropic: Anthropic,
   newText: string,
   example: FormatExample,
 ): Promise<{ name: string; age: string; gender: string; birthday: string; hcn: string; mrn: string }> {

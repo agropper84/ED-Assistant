@@ -1,15 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import Anthropic from '@anthropic-ai/sdk';
+import { getAnthropicClient } from '@/lib/api-keys';
 import { getSheetsContext, getPatient, updatePatientFields } from '@/lib/google-sheets';
 
 export const maxDuration = 30;
 
-const anthropic = new Anthropic({
-  apiKey: process.env.CLAUDE_API_KEY,
-});
-
 export async function POST(request: NextRequest) {
   try {
+    const anthropic = await getAnthropicClient();
     const ctx = await getSheetsContext();
     const { rowIndex, sheetName } = await request.json();
 

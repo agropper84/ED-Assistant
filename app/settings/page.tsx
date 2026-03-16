@@ -97,6 +97,13 @@ export default function SettingsPage() {
   const [encryptionEnabled, setEncryptionEnabled] = useState(false);
   const [privacyLoading, setPrivacyLoading] = useState(true);
 
+  // API key state
+  const [claudeApiKey, setClaudeApiKey] = useState('');
+  const [openaiApiKey, setOpenaiApiKey] = useState('');
+  const [claudeKeyMasked, setClaudeKeyMasked] = useState<string | null>(null);
+  const [openaiKeyMasked, setOpenaiKeyMasked] = useState<string | null>(null);
+  const [savingKey, setSavingKey] = useState(false);
+
   // Prompt templates state
   const [promptTemplates, setPromptTemplates] = useState<PromptTemplates>(DEFAULT_PROMPT_TEMPLATES);
   const [expandedPromptSections, setExpandedPromptSections] = useState<Set<string>>(new Set());
@@ -290,6 +297,8 @@ export default function SettingsPage() {
           const data = await res.json();
           setPhiProtection(data.phiProtection || false);
           setEncryptionEnabled(data.encryptionEnabled || false);
+          setClaudeKeyMasked(data.claudeApiKeyMasked || null);
+          setOpenaiKeyMasked(data.openaiApiKeyMasked || null);
         }
       } catch {}
       setPrivacyLoading(false);
@@ -307,6 +316,27 @@ export default function SettingsPage() {
         await fetch('/api/privacy-settings/encryption', { method: 'POST' });
       }
     } catch {}
+  };
+
+  const saveApiKey = async (key: 'claudeApiKey' | 'openaiApiKey', value: string) => {
+    setSavingKey(true);
+    try {
+      await fetch('/api/privacy-settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ [key]: value.trim() || '' }),
+      });
+      // Reload to get masked key
+      const res = await fetch('/api/privacy-settings');
+      if (res.ok) {
+        const data = await res.json();
+        setClaudeKeyMasked(data.claudeApiKeyMasked || null);
+        setOpenaiKeyMasked(data.openaiApiKeyMasked || null);
+      }
+      if (key === 'claudeApiKey') setClaudeApiKey('');
+      if (key === 'openaiApiKey') setOpenaiApiKey('');
+    } catch {}
+    setSavingKey(false);
   };
 
   // Load saved parse formats from Google Sheet
@@ -1825,6 +1855,92 @@ export default function SettingsPage() {
               </div>
             ) : (
               <>
+                {/* API Keys */}
+                <div className="bg-[var(--card-bg)] rounded-2xl border border-[var(--card-border)] p-5 space-y-4" style={{ boxShadow: 'var(--card-shadow)' }}>
+                  <div>
+                    <h3 className="font-semibold text-[var(--text-primary)]">API Keys</h3>
+                    <p className="text-xs text-[var(--text-muted)] mt-0.5">
+                      Add your own API keys. If not set, the admin&apos;s keys are used as fallback.
+                    </p>
+                  </div>
+
+                  {/* Claude API Key */}
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-medium text-[var(--text-secondary)]">Claude API Key (Anthropic)</label>
+                    {claudeKeyMasked ? (
+                      <div className="flex items-center gap-2">
+                        <code className="flex-1 p-2 bg-[var(--bg-tertiary)] rounded-lg text-xs font-mono text-[var(--text-muted)]">
+                          {claudeKeyMasked}
+                        </code>
+                        <button
+                          onClick={() => saveApiKey('claudeApiKey', '')}
+                          disabled={savingKey}
+                          className="px-3 py-1.5 text-xs font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg transition-colors"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="flex gap-2">
+                        <input
+                          type="password"
+                          value={claudeApiKey}
+                          onChange={(e) => setClaudeApiKey(e.target.value)}
+                          placeholder="sk-ant-..."
+                          className="flex-1 p-2 border border-[var(--input-border)] rounded-lg text-sm bg-[var(--input-bg)] text-[var(--text-primary)] focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono"
+                        />
+                        <button
+                          onClick={() => saveApiKey('claudeApiKey', claudeApiKey)}
+                          disabled={savingKey || !claudeApiKey.trim()}
+                          className="px-3 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium disabled:opacity-40"
+                        >
+                          Save
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* OpenAI API Key */}
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-medium text-[var(--text-secondary)]">OpenAI API Key (Whisper transcription)</label>
+                    {openaiKeyMasked ? (
+                      <div className="flex items-center gap-2">
+                        <code className="flex-1 p-2 bg-[var(--bg-tertiary)] rounded-lg text-xs font-mono text-[var(--text-muted)]">
+                          {openaiKeyMasked}
+                        </code>
+                        <button
+                          onClick={() => saveApiKey('openaiApiKey', '')}
+                          disabled={savingKey}
+                          className="px-3 py-1.5 text-xs font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg transition-colors"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="flex gap-2">
+                        <input
+                          type="password"
+                          value={openaiApiKey}
+                          onChange={(e) => setOpenaiApiKey(e.target.value)}
+                          placeholder="sk-..."
+                          className="flex-1 p-2 border border-[var(--input-border)] rounded-lg text-sm bg-[var(--input-bg)] text-[var(--text-primary)] focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono"
+                        />
+                        <button
+                          onClick={() => saveApiKey('openaiApiKey', openaiApiKey)}
+                          disabled={savingKey || !openaiApiKey.trim()}
+                          className="px-3 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium disabled:opacity-40"
+                        >
+                          Save
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  <p className="text-[10px] text-[var(--text-muted)]">
+                    Keys are stored securely server-side and never exposed to the browser. If no key is set, the app uses the admin&apos;s shared key.
+                  </p>
+                </div>
+
                 {/* PHI Protection */}
                 <div className="bg-[var(--card-bg)] rounded-2xl border border-[var(--card-border)] p-5 space-y-3" style={{ boxShadow: 'var(--card-shadow)' }}>
                   <div

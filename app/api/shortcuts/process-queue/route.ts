@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import OpenAI from 'openai';
+import { getOpenAIClient } from '@/lib/api-keys';
 import { del as deleteBlob } from '@vercel/blob';
 import { getSessionFromCookies } from '@/lib/session';
 import {
@@ -21,10 +21,6 @@ import { processEncounter } from '@/lib/claude';
 import { DEVICE_WHISPER_PROMPT } from '@/lib/whisper-prompts';
 
 export const maxDuration = 60;
-
-function getOpenAI() {
-  return new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-}
 
 // POST /api/shortcuts/process-queue — Process pending audio uploads
 // Called from the web app (session-authenticated)
@@ -110,7 +106,8 @@ async function processOne(pending: PendingAudio): Promise<{ transcript: string; 
   const audioBuffer = Buffer.from(await audioResponse.arrayBuffer());
   const audioFile = new File([audioBuffer], pending.filename, { type: 'audio/m4a' });
 
-  const transcription = await getOpenAI().audio.transcriptions.create({
+  const openai = await getOpenAIClient();
+  const transcription = await openai.audio.transcriptions.create({
     file: audioFile,
     model: 'whisper-1',
     prompt: DEVICE_WHISPER_PROMPT,

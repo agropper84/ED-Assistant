@@ -10,9 +10,15 @@ export async function GET() {
       return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
     }
     const settings = await getUserSettings(session.userId);
+    const claudeKey = (settings?.claudeApiKey as string) || '';
+    const openaiKey = (settings?.openaiApiKey as string) || '';
     return NextResponse.json({
       phiProtection: (settings?.phiProtection as boolean) || false,
       encryptionEnabled: (settings?.encryptionEnabled as boolean) || false,
+      hasClaudeApiKey: !!claudeKey,
+      claudeApiKeyMasked: claudeKey ? `sk-ant-...${claudeKey.slice(-4)}` : null,
+      hasOpenaiApiKey: !!openaiKey,
+      openaiApiKeyMasked: openaiKey ? `sk-...${openaiKey.slice(-4)}` : null,
     });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });

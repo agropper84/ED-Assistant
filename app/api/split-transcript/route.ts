@@ -1,12 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import Anthropic from '@anthropic-ai/sdk';
+import { getAnthropicClient } from '@/lib/api-keys';
 import { getSessionFromCookies } from '@/lib/session';
 
 export const maxDuration = 60;
-
-const anthropic = new Anthropic({
-  apiKey: process.env.CLAUDE_API_KEY,
-});
 
 interface SplitSegment {
   patientName: string;
@@ -16,6 +12,7 @@ interface SplitSegment {
 
 export async function POST(request: NextRequest) {
   try {
+    const anthropic = await getAnthropicClient();
     // Auth check
     const session = await getSessionFromCookies();
     if (!session.userId || !session.accessToken) {

@@ -1,10 +1,6 @@
-import Anthropic from '@anthropic-ai/sdk';
 import { PromptTemplates, DEFAULT_PROMPT_TEMPLATES } from './settings';
 import { buildPHIMapping, deidentifyText, reidentifyText } from './phi-filter';
-
-const anthropic = new Anthropic({
-  apiKey: process.env.CLAUDE_API_KEY,
-});
+import { getAnthropicClient } from './api-keys';
 
 export interface ProcessedNote {
   ddx: string;
@@ -61,6 +57,7 @@ export async function processEncounter(
   const maxTokens = options?.settings?.maxTokens || 4096;
   const temperature = options?.settings?.temperature ?? 0.3;
 
+  const anthropic = await getAnthropicClient();
   const response = await anthropic.messages.create({
     model,
     max_tokens: maxTokens,
@@ -249,6 +246,7 @@ export async function generateReferral(
   encounterNote: ProcessedNote,
   referralInfo: { specialty: string; urgency: string; reason: string }
 ): Promise<string> {
+  const anthropic = await getAnthropicClient();
   const response = await anthropic.messages.create({
     model: 'claude-sonnet-4-20250514',
     max_tokens: 2048,
@@ -293,6 +291,7 @@ export async function lookupICDCodes(diagnosisText: string): Promise<{
   icd9: string;
   icd10: string;
 }> {
+  const anthropic = await getAnthropicClient();
   const response = await anthropic.messages.create({
     model: 'claude-sonnet-4-20250514',
     max_tokens: 200,

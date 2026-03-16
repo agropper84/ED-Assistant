@@ -1,12 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
+import { getAnthropicClient } from '@/lib/api-keys';
 import { getSheetsContext, getPatient, updatePatientFields } from '@/lib/google-sheets';
 
 export const maxDuration = 60;
-
-const anthropic = new Anthropic({
-  apiKey: process.env.CLAUDE_API_KEY,
-});
 
 interface QAMessage {
   role: 'user' | 'assistant';
@@ -16,6 +13,7 @@ interface QAMessage {
 
 export async function POST(request: NextRequest) {
   try {
+    const anthropic = await getAnthropicClient();
     const ctx = await getSheetsContext();
     const { rowIndex, sheetName, question, history, useOpenEvidence } = await request.json();
 

@@ -1,15 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import OpenAI from 'openai';
-import Anthropic from '@anthropic-ai/sdk';
 import { DICTATION_WHISPER_PROMPT, ENCOUNTER_WHISPER_PROMPT } from '@/lib/whisper-prompts';
+import { getAnthropicClient, getOpenAIClient } from '@/lib/api-keys';
 
 export const maxDuration = 60;
-
-function getOpenAI() {
-  return new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-}
-
-const anthropic = new Anthropic({ apiKey: process.env.CLAUDE_API_KEY });
 
 /**
  * Convert spoken punctuation commands to actual punctuation.
@@ -103,6 +96,7 @@ ${rawText}`
 Dictation:
 ${rawText}`;
 
+  const anthropic = await getAnthropicClient();
   const response = await anthropic.messages.create({
     model: 'claude-haiku-4-5-20251001',
     max_tokens: 2048,
@@ -141,7 +135,8 @@ export async function POST(request: NextRequest) {
       ? `${basePrompt}. Previous context: ${contextTail}`
       : basePrompt;
 
-    const transcription = await getOpenAI().audio.transcriptions.create({
+    const openai = await getOpenAIClient();
+    const transcription = await openai.audio.transcriptions.create({
       file: audioFile,
       model: 'whisper-1',
       prompt: whisperPrompt,

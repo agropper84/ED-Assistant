@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createHash, randomBytes } from 'crypto';
-import OpenAI from 'openai';
+import { getOpenAIClient } from '@/lib/api-keys';
 import { getShortcutTokenUser, setShortcutTranscript } from '@/lib/kv';
 import { getSheetsContextForUser, updatePatientFields } from '@/lib/google-sheets';
 import { DEVICE_WHISPER_PROMPT } from '@/lib/whisper-prompts';
@@ -9,10 +9,6 @@ export const maxDuration = 60;
 
 function sha256(input: string): string {
   return createHash('sha256').update(input).digest('hex');
-}
-
-function getOpenAI() {
-  return new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 }
 
 export async function POST(request: NextRequest) {
@@ -40,7 +36,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Transcribe with Whisper
-    const transcription = await getOpenAI().audio.transcriptions.create({
+    const openai = await getOpenAIClient();
+    const transcription = await openai.audio.transcriptions.create({
       file: audioFile,
       model: 'whisper-1',
       prompt: DEVICE_WHISPER_PROMPT,

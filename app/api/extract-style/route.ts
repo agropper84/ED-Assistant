@@ -1,14 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import Anthropic from '@anthropic-ai/sdk';
+import { getAnthropicClient } from '@/lib/api-keys';
 
 export const maxDuration = 30;
 
-const anthropic = new Anthropic({
-  apiKey: process.env.CLAUDE_API_KEY,
-});
-
 export async function POST(request: NextRequest) {
   try {
+    const anthropic = await getAnthropicClient();
     const { example, section, existingFeatures } = await request.json();
 
     if (!example || !section) {

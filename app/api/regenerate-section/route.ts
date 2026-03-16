@@ -1,12 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import Anthropic from '@anthropic-ai/sdk';
+import { getAnthropicClient } from '@/lib/api-keys';
 import { getSheetsContext, getPatient, updatePatientFields, getStyleGuideFromSheet } from '@/lib/google-sheets';
 
 export const maxDuration = 60;
-
-const anthropic = new Anthropic({
-  apiKey: process.env.CLAUDE_API_KEY,
-});
 
 const SECTION_LABELS: Record<string, string> = {
   hpi: 'HPI (History of Present Illness)',
@@ -22,6 +18,7 @@ const SECTION_INSTRUCTIONS: Record<string, string> = {
 
 export async function POST(request: NextRequest) {
   try {
+    const anthropic = await getAnthropicClient();
     const ctx = await getSheetsContext();
     const { rowIndex, sheetName, section, updates } = await request.json();
 
