@@ -11,6 +11,7 @@ import { getUserSpreadsheetId, getUserStatus, getUserRefreshToken } from '@/lib/
 export interface SheetsContext {
   sheets: sheets_v4.Sheets;
   spreadsheetId: string;
+  encryptionKey?: string;
 }
 
 /**
@@ -62,7 +63,18 @@ export async function getSheetsContext(): Promise<SheetsContext> {
     throw new Error('No spreadsheet found for user - please re-login');
   }
 
-  return { sheets, spreadsheetId };
+  // Load encryption key if enabled
+  let encryptionKey: string | undefined;
+  try {
+    const { getUserSettings, getUserEncryptionKey } = await import('./kv');
+    const userSettings = await getUserSettings(session.userId);
+    if (userSettings?.encryptionEnabled) {
+      const key = await getUserEncryptionKey(session.userId);
+      if (key) encryptionKey = key;
+    }
+  } catch {}
+
+  return { sheets, spreadsheetId, encryptionKey };
 }
 
 /**

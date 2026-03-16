@@ -1,5 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { PromptTemplates, DEFAULT_PROMPT_TEMPLATES } from './settings';
+import { buildPHIMapping, deidentifyText, reidentifyText } from './phi-filter';
 
 const anthropic = new Anthropic({
   apiKey: process.env.CLAUDE_API_KEY,
@@ -39,13 +40,22 @@ export interface ProcessOptions {
     temperature?: number;
   };
   promptTemplates?: PromptTemplates;
+  phiProtection?: boolean;
 }
 
 export async function processEncounter(
   patientData: PatientData,
   options?: ProcessOptions
 ): Promise<ProcessedNote> {
-  const prompt = buildPrompt(patientData, options);
+  let prompt = buildPrompt(patientData, options);
+
+  // PHI protection: strip identifying info before sending to AI
+  const phiMapping = options?.phiProtection
+    ? buildPHIMapping(patientData)
+    : null;
+  if (phiMapping) {
+    prompt = deidentifyText(prompt, phiMapping);
+  }
 
   const model = options?.settings?.model || 'claude-sonnet-4-20250514';
   const maxTokens = options?.settings?.maxTokens || 4096;
@@ -58,7 +68,13 @@ export async function processEncounter(
     messages: [{ role: 'user', content: prompt }],
   });
 
-  const text = response.content[0].type === 'text' ? response.content[0].text : '';
+  let text = response.content[0].type === 'text' ? response.content[0].text : '';
+
+  // Re-identify: restore PHI in the response
+  if (phiMapping) {
+    text = reidentifyText(text, phiMapping);
+  }
+
   return parseClaudeResponse(text);
 }
 

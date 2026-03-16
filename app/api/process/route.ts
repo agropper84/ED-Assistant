@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { processEncounter, ProcessedNote } from '@/lib/claude';
 import { getSheetsContext, getPatient, updatePatientFields, saveBillingRows, getStyleGuideFromSheet, upsertDiagnosisCode } from '@/lib/google-sheets';
 import { getAutoBilling, BillingItem } from '@/lib/billing';
+import { getSessionFromCookies } from '@/lib/session';
+import { getUserSettings } from '@/lib/kv';
 
 // Allow longer execution for Claude API calls
 export const maxDuration = 60;
@@ -79,6 +81,14 @@ export async function POST(request: NextRequest) {
         styleGuidance: effectiveStyleGuidance,
         settings,
         promptTemplates,
+        phiProtection: await (async () => {
+          try {
+            const session = await getSessionFromCookies();
+            if (!session.userId) return false;
+            const s = await getUserSettings(session.userId);
+            return (s?.phiProtection as boolean) || false;
+          } catch { return false; }
+        })(),
       }
     );
 

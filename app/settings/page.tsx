@@ -33,7 +33,7 @@ import {
   clearLocalBillingData,
 } from '@/lib/billing';
 
-type Tab = 'style' | 'settings' | 'billing' | 'prompts';
+type Tab = 'style' | 'settings' | 'billing' | 'prompts' | 'privacy';
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -91,6 +91,11 @@ export default function SettingsPage() {
   const [savedFormats, setSavedFormats] = useState<any[]>([]);
   const [formatsLoading, setFormatsLoading] = useState(false);
   const [savingFormat, setSavingFormat] = useState(false);
+
+  // Privacy settings state
+  const [phiProtection, setPhiProtection] = useState(false);
+  const [encryptionEnabled, setEncryptionEnabled] = useState(false);
+  const [privacyLoading, setPrivacyLoading] = useState(true);
 
   // Prompt templates state
   const [promptTemplates, setPromptTemplates] = useState<PromptTemplates>(DEFAULT_PROMPT_TEMPLATES);
@@ -274,6 +279,34 @@ export default function SettingsPage() {
     const newSettings = { ...settings, [key]: value };
     setSettings(newSettings);
     saveSettings(newSettings);
+  };
+
+  // Load privacy settings
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch('/api/privacy-settings');
+        if (res.ok) {
+          const data = await res.json();
+          setPhiProtection(data.phiProtection || false);
+          setEncryptionEnabled(data.encryptionEnabled || false);
+        }
+      } catch {}
+      setPrivacyLoading(false);
+    })();
+  }, []);
+
+  const updatePrivacySetting = async (key: string, value: boolean) => {
+    try {
+      await fetch('/api/privacy-settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ [key]: value }),
+      });
+      if (key === 'encryptionEnabled' && value) {
+        await fetch('/api/privacy-settings/encryption', { method: 'POST' });
+      }
+    } catch {}
   };
 
   // Load saved parse formats from Google Sheet
@@ -463,6 +496,7 @@ export default function SettingsPage() {
             { id: 'settings' as const, label: 'Processing' },
             { id: 'prompts' as const, label: 'Prompts' },
             { id: 'billing' as const, label: 'Billing' },
+            { id: 'privacy' as const, label: 'Privacy' },
           ]).map(({ id, label }) => (
             <button
               key={id}
@@ -1780,6 +1814,91 @@ export default function SettingsPage() {
               });
             })()}
             </>)}
+          </>
+        )}
+        {/* Privacy Tab */}
+        {activeTab === 'privacy' && (
+          <>
+            {privacyLoading ? (
+              <div className="flex justify-center py-12">
+                <Loader2 className="w-6 h-6 animate-spin text-[var(--text-muted)]" />
+              </div>
+            ) : (
+              <>
+                {/* PHI Protection */}
+                <div className="bg-[var(--card-bg)] rounded-2xl border border-[var(--card-border)] p-5 space-y-3" style={{ boxShadow: 'var(--card-shadow)' }}>
+                  <div
+                    className="flex items-start gap-3 p-3 rounded-lg"
+                    style={{
+                      background: phiProtection ? 'rgba(34,197,94,0.06)' : 'rgba(245,158,11,0.06)',
+                      border: `1px solid ${phiProtection ? 'rgba(34,197,94,0.2)' : 'rgba(245,158,11,0.2)'}`,
+                    }}
+                  >
+                    <label className="flex items-center gap-3 cursor-pointer flex-1">
+                      <input
+                        type="checkbox"
+                        checked={phiProtection}
+                        onChange={(e) => {
+                          setPhiProtection(e.target.checked);
+                          updatePrivacySetting('phiProtection', e.target.checked);
+                        }}
+                        className="rounded w-4 h-4 flex-shrink-0"
+                      />
+                      <div>
+                        <span className="text-sm font-medium block text-[var(--text-primary)]">
+                          De-identify data before sending to AI
+                        </span>
+                        <span className="text-[11px] block mt-0.5 text-[var(--text-muted)]">
+                          Strips patient names, MRN, HCN, and DOB from prompts sent to Claude. The AI receives only clinical data (age, gender, diagnoses, labs, vitals, medications). Identifying info is restored in the response automatically.
+                        </span>
+                      </div>
+                    </label>
+                  </div>
+                  <div className="text-[10px] space-y-1 text-[var(--text-muted)]">
+                    <p><strong>What gets stripped:</strong> Patient name, MRN, HCN, DOB, and these values wherever they appear in document text.</p>
+                    <p><strong>What stays:</strong> Age, gender, all clinical data (labs, vitals, medications, diagnoses, exam findings, imaging).</p>
+                    <p><strong>Quality impact:</strong> None. Clinical reasoning does not depend on patient identity. Names are restored in the generated output.</p>
+                  </div>
+                </div>
+
+                {/* Encryption */}
+                <div className="bg-[var(--card-bg)] rounded-2xl border border-[var(--card-border)] p-5 space-y-3" style={{ boxShadow: 'var(--card-shadow)' }}>
+                  <div
+                    className="flex items-start gap-3 p-3 rounded-lg"
+                    style={{
+                      background: encryptionEnabled ? 'rgba(34,197,94,0.06)' : 'rgba(245,158,11,0.06)',
+                      border: `1px solid ${encryptionEnabled ? 'rgba(34,197,94,0.2)' : 'rgba(245,158,11,0.2)'}`,
+                    }}
+                  >
+                    <label className="flex items-center gap-3 cursor-pointer flex-1">
+                      <input
+                        type="checkbox"
+                        checked={encryptionEnabled}
+                        onChange={(e) => {
+                          setEncryptionEnabled(e.target.checked);
+                          updatePrivacySetting('encryptionEnabled', e.target.checked);
+                        }}
+                        className="rounded w-4 h-4 flex-shrink-0"
+                      />
+                      <div>
+                        <span className="text-sm font-medium block text-[var(--text-primary)]">
+                          Encrypt patient data at rest (HIPAA)
+                        </span>
+                        <span className="text-[11px] block mt-0.5 text-[var(--text-muted)]">
+                          All patient data written to Google Sheets will be encrypted with AES-256-GCM. Data is encrypted before leaving the server and decrypted on read. The encryption key is stored securely in the server database.
+                        </span>
+                      </div>
+                    </label>
+                  </div>
+                  <div className="text-[10px] space-y-1 text-[var(--text-muted)]">
+                    <p><strong>What gets encrypted:</strong> All patient fields in Google Sheets — demographics, clinical notes, generated output, billing data.</p>
+                    <p><strong>What stays readable:</strong> Sheet tab names and column headers (structural data only, no PHI).</p>
+                    <p><strong>Backward compatible:</strong> Unencrypted data (written before enabling) is still readable. New writes will be encrypted.</p>
+                    <p><strong>Warning:</strong> If you lose access to your account, encrypted data cannot be recovered. The encryption key is tied to your user account.</p>
+                  </div>
+                </div>
+              </>
+            )}
           </>
         )}
       </main>

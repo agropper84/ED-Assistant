@@ -111,6 +111,28 @@ export async function getUserRefreshToken(userId: string): Promise<string | null
   return getRedis().get(`user:${userId}:refresh-token`);
 }
 
+// --- User settings (per-user JSON blob for privacy/encryption) ---
+
+export async function getUserSettings(userId: string): Promise<Record<string, unknown> | null> {
+  const val = await getRedis().get(`user:${userId}:settings`);
+  if (!val) return null;
+  return JSON.parse(val);
+}
+
+export async function setUserSettings(userId: string, settings: Record<string, unknown>): Promise<void> {
+  await getRedis().set(`user:${userId}:settings`, JSON.stringify(settings));
+}
+
+// --- Encryption key (per-user) ---
+
+export async function getUserEncryptionKey(userId: string): Promise<string | null> {
+  return getRedis().get(`user:${userId}:encryption-key`);
+}
+
+export async function setUserEncryptionKey(userId: string, key: string): Promise<void> {
+  await getRedis().set(`user:${userId}:encryption-key`, key);
+}
+
 // --- Pending audio queue for async watch uploads ---
 
 export interface PendingAudio {
