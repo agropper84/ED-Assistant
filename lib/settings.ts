@@ -280,18 +280,65 @@ export function saveEncounterTypes(types: EncounterType[]): void {
   localStorage.setItem(ENCOUNTER_TYPES_KEY, JSON.stringify(types));
 }
 
+// --- Literature Sources ---
+
+export interface LiteratureSourcesConfig {
+  enabled: boolean;
+  sources: Record<string, string>; // encounterTypeId -> comma-separated sources
+}
+
+const LIT_SOURCES_KEY = 'ed-app-literature-sources';
+
+export const DEFAULT_LITERATURE_SOURCES: Record<string, string> = {
+  er: 'UpToDate, NEJM, BMJ, The American Journal of Emergency Medicine, CJEM, Annals of Emergency Medicine, Rosen\'s Emergency Medicine, Tintinalli\'s Emergency Medicine, ACEP clinical policies, Ottawa Rules, HEART Pathway',
+  'urgent-care': 'UpToDate, NEJM, BMJ, American Family Physician, JUCM (Journal of Urgent Care Medicine), IDSA guidelines, Sanford Guide, CDC treatment guidelines',
+  'primary-care': 'UpToDate, NEJM, BMJ, American Family Physician, CMAJ, USPSTF recommendations, CDA guidelines, CTFPHC guidelines, Cochrane Reviews, NICE guidelines',
+  'specialist-consult': 'UpToDate, NEJM, BMJ, Lancet, specialty society guidelines (AHA/ACC, ACG, ACR, ASCO)',
+};
+
+export function getLiteratureSourcesConfig(): LiteratureSourcesConfig {
+  if (typeof window === 'undefined') return { enabled: false, sources: DEFAULT_LITERATURE_SOURCES };
+  try {
+    const stored = localStorage.getItem(LIT_SOURCES_KEY);
+    if (!stored) return { enabled: false, sources: DEFAULT_LITERATURE_SOURCES };
+    return JSON.parse(stored);
+  } catch {
+    return { enabled: false, sources: DEFAULT_LITERATURE_SOURCES };
+  }
+}
+
+export function saveLiteratureSourcesConfig(config: LiteratureSourcesConfig): void {
+  if (typeof window === 'undefined') return;
+  localStorage.setItem(LIT_SOURCES_KEY, JSON.stringify(config));
+}
+
 /** Get effective prompt templates for a given encounter type */
 export function getEffectivePromptTemplates(encounterTypeId?: string): PromptTemplates {
   const base = getPromptTemplates(); // user's global customizations
   const typeId = encounterTypeId || getEncounterType();
-  if (typeId === 'er') return base; // ER uses base prompts
 
   const types = getEncounterTypes();
   const encounterType = types.find(t => t.id === typeId);
-  if (!encounterType) return base;
+  let merged = encounterType && typeId !== 'er'
+    ? { ...base, ...encounterType.prompts }
+    : base;
 
-  // Merge: defaults -> user customizations -> encounter type overrides
-  return { ...base, ...encounterType.prompts };
+  // Append literature source constraints if enabled
+  const litConfig = getLiteratureSourcesConfig();
+  if (litConfig.enabled) {
+    const sources = litConfig.sources[typeId] || litConfig.sources['er'] || '';
+    if (sources.trim()) {
+      const constraint = `\nIMPORTANT: Prioritize and cite from the following sources: ${sources}. Use other sources only if these do not address the topic.`;
+      merged = {
+        ...merged,
+        investigations: merged.investigations + constraint,
+        management: merged.management + constraint,
+        evidence: merged.evidence + constraint,
+      };
+    }
+  }
+
+  return merged;
 }
 
 // --- Parse Rules ---
