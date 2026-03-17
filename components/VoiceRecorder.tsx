@@ -513,13 +513,50 @@ export function VoiceRecorder({
             startAudioLevelViz(vizAnalyser);
           } catch {}
         } else {
-          // --- Medicalize mode: Whisper segment pipeline ---
-          startSegment();
+          // --- Medicalize mode: Web Speech for instant display + Whisper+Claude for quality ---
 
-          // Start adaptive silence detection (also sets up analyserRef)
+          // Web Speech API for instant interim text
+          const SpeechAPI = typeof window !== 'undefined'
+            ? (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
+            : null;
+          if (SpeechAPI) {
+            try {
+              const recognition = new SpeechAPI();
+              recognition.continuous = true;
+              recognition.interimResults = true;
+              recognition.lang = 'en-US';
+              let finalTranscript = '';
+              recognition.onresult = (event: any) => {
+                let interim = '';
+                for (let i = event.resultIndex; i < event.results.length; i++) {
+                  if (event.results[i].isFinal) {
+                    finalTranscript += event.results[i][0].transcript + ' ';
+                  } else {
+                    interim += event.results[i][0].transcript;
+                  }
+                }
+                const raw = (finalTranscript + interim).trim();
+                const speechText = convertSpokenPunctuation(raw);
+                // Only show Web Speech text if Whisper+Claude hasn't produced anything yet
+                if (!accumulatedTextRef.current || accumulatedTextRef.current.length < speechText.length * 0.5) {
+                  onInterimRef.current?.(speechText);
+                }
+              };
+              recognition.onerror = () => {};
+              recognition.onend = () => {
+                if (!stoppingRef.current && streamRef.current) {
+                  try { recognition.start(); } catch {}
+                }
+              };
+              recognition.start();
+              recognitionRef.current = recognition;
+            } catch {}
+          }
+
+          // Whisper+Claude segment pipeline (runs in parallel, replaces Web Speech text as segments complete)
+          startSegment();
           startSilenceDetection(stream);
 
-          // Start audio level visualization using the analyser from silence detection
           setTimeout(() => {
             if (analyserRef.current) startAudioLevelViz(analyserRef.current);
           }, 50);
