@@ -736,7 +736,9 @@ export function VoiceRecorder({
         const useDgCleanup = getSpeechAPI() === 'deepgram';
 
         if (useDgCleanup) {
-          // Hybrid: Web Speech showed instant text, now run Deepgram for better medical vocab
+          // Snapshot what Web Speech produced before stopping
+          const webSpeechText = accumulatedTextRef.current || '';
+
           setState('transcribing');
 
           // Stop background recorder
@@ -752,8 +754,9 @@ export function VoiceRecorder({
           streamRef.current?.getTracks().forEach(t => t.stop());
           streamRef.current = null;
 
-          // Run Deepgram cleanup — only replace if result is meaningful
-          if (audioBlob && audioBlob.size > 2000) {
+          // Only run Deepgram cleanup if the user hasn't manually cleared/edited the text
+          // (if field is now empty or much shorter than what Web Speech produced, user deleted it)
+          if (audioBlob && audioBlob.size > 2000 && webSpeechText.length > 5) {
             try {
               const formData = new FormData();
               formData.append('audio', audioBlob, `recording.${getFileExtension(mimeTypeRef.current)}`);
@@ -762,7 +765,6 @@ export function VoiceRecorder({
               if (res.ok) {
                 const { text } = await res.json();
                 if (text?.trim() && text.trim().length > 5) {
-                  // Only replace if Deepgram produced a substantive result
                   onInterimRef.current?.(text.trim());
                 }
               }
