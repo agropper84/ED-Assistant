@@ -84,25 +84,28 @@ async function medicalize(rawText: string, mode: string, context?: string): Prom
 
 Recording:
 ${rawText}`
-    : `Clean up voice-dictated physician notes. Rules:
-- PRESERVE ALL CONTENT — history, mechanism of injury, social context, patient narrative, and clinical details must ALL be kept. Do NOT skip or remove anything the physician dictated.
-- Replace medical colloquialisms with proper terminology ONLY where clearly medical (e.g., "belly"→"abdomen", "heart attack"→"MI", "blood pressure"→"BP", "sugar"→"glucose", "blood thinner"→"anticoagulant")
-- Do NOT medicalize non-medical descriptions — keep mechanism of injury, activities, and context as dictated (e.g., "injured shoulder throwing wood into fire" stays as-is)
-- Fix speech-to-text errors: "CPA"→"CVA", "tendered"→"tender", "new Monya"→"pneumonia", "be a pap"→"BiPAP", "see pap"→"CPAP", "die a bee tees"→"diabetes", "anti-buy-otics"→"antibiotics"
-- Clean up filler words, false starts, and repetition
-- Use concise physician charting style
-- Output as a single continuous block — no added line breaks unless input has them
-- Output ONLY the cleaned text, nothing else
-- ONLY output EMPTY if the input is truly just noise, silence artifacts, or greetings with zero medical or contextual content${contextBlock}
+    : `${rawText}`;
 
-Dictation:
-${rawText}`;
+  const systemPrompt = mode === 'encounter'
+    ? undefined
+    : `You are a medical transcription processor. You receive raw transcribed text from a physician's dictation. Your ONLY job is to clean it up and output the cleaned version. NEVER ask questions, request clarification, or add commentary. Just process whatever text you receive, even if it seems incomplete.
+
+Rules:
+- PRESERVE ALL CONTENT — every word the physician dictated must be kept
+- Replace medical colloquialisms with proper terminology ONLY where clearly medical (e.g., "belly"→"abdomen", "heart attack"→"MI", "BP", "sugar"→"glucose")
+- Do NOT medicalize non-medical descriptions (mechanism of injury, activities, context)
+- Fix speech-to-text errors: "CPA"→"CVA", "tendered"→"tender", "new Monya"→"pneumonia"
+- Clean up filler words, false starts, and repetition
+- Output as a single continuous block
+- Output ONLY the cleaned text — no explanations, no questions
+- If input is just noise/silence, output EMPTY${contextBlock}`;
 
   const anthropic = await getAnthropicClient();
   const response = await anthropic.messages.create({
     model: 'claude-haiku-4-5-20251001',
     max_tokens: 2048,
     temperature: 0,
+    ...(systemPrompt ? { system: systemPrompt } : {}),
     messages: [{ role: 'user', content: prompt }],
   });
 
