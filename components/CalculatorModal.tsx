@@ -62,6 +62,7 @@ function BasicCalc() {
   const [prev, setPrev] = useState<number | null>(null);
   const [op, setOp] = useState<string | null>(null);
   const [fresh, setFresh] = useState(true);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   const handleNum = (n: string) => {
     if (fresh) { setDisplay(n === '.' ? '0.' : n); setFresh(false); }
@@ -95,6 +96,13 @@ function BasicCalc() {
     setDisplay('0'); setPrev(null); setOp(null); setFresh(true);
   };
 
+  const handleBackspace = () => {
+    setDisplay(d => {
+      if (d.length <= 1 || d === '0') return '0';
+      return d.slice(0, -1);
+    });
+  };
+
   const calc = (a: number, b: number, o: string) => {
     switch (o) {
       case '+': return a + b;
@@ -105,6 +113,27 @@ function BasicCalc() {
     }
   };
 
+  // Keyboard support
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key >= '0' && e.key <= '9') { handleNum(e.key); e.preventDefault(); }
+      else if (e.key === '.') { handleNum('.'); e.preventDefault(); }
+      else if (e.key === '+') { handleOp('+'); e.preventDefault(); }
+      else if (e.key === '-') { handleOp('-'); e.preventDefault(); }
+      else if (e.key === '*') { handleOp('*'); e.preventDefault(); }
+      else if (e.key === '/') { handleOp('/'); e.preventDefault(); }
+      else if (e.key === 'Enter' || e.key === '=') { handleEq(); e.preventDefault(); }
+      else if (e.key === 'Backspace' || e.key === 'Delete') { handleBackspace(); e.preventDefault(); }
+      else if (e.key === 'Escape' || e.key === 'c' || e.key === 'C') { handleClear(); e.preventDefault(); }
+      else if (e.key === '%') { setDisplay(d => String(parseFloat(d) / 100)); e.preventDefault(); }
+    };
+    window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
+  });
+
+  // Auto-focus container for keyboard capture
+  useEffect(() => { containerRef.current?.focus(); }, []);
+
   const btn = (label: string, action: () => void, cls: string = '') => (
     <button onClick={action}
       className={`py-3 rounded-xl text-base font-medium transition-colors active:scale-95 ${cls}`}
@@ -112,7 +141,7 @@ function BasicCalc() {
   );
 
   return (
-    <div className="space-y-2 animate-fadeIn">
+    <div className="space-y-2 animate-fadeIn" ref={containerRef} tabIndex={-1} style={{ outline: 'none' }}>
       <div className="bg-[var(--bg-tertiary)] rounded-xl px-4 py-3 text-right">
         <div className="text-[10px] text-[var(--text-muted)] h-4">
           {prev !== null && op ? `${prev} ${op}` : ''}
