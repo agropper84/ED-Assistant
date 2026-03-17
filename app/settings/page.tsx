@@ -1453,110 +1453,6 @@ export default function SettingsPage() {
             {/* Section Instructions */}
             <h3 className="font-semibold text-[var(--text-primary)] text-sm">Section Instructions</h3>
 
-            {/* Literature Sources */}
-            <div className="bg-[var(--card-bg)] rounded-2xl border border-[var(--card-border)] p-5 space-y-3" style={{ boxShadow: 'var(--card-shadow)' }}>
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="font-semibold text-[var(--text-primary)]">Literature Sources</h3>
-                  <p className="text-xs text-[var(--text-muted)] mt-0.5">
-                    Narrow the scope of sources used for investigations, management, and evidence sections.
-                  </p>
-                </div>
-                <label className="flex items-center gap-2 cursor-pointer flex-shrink-0">
-                  <span className="text-xs text-[var(--text-muted)]">{litSources.enabled ? 'On' : 'Off'}</span>
-                  <input
-                    type="checkbox"
-                    checked={litSources.enabled}
-                    onChange={(e) => {
-                      const updated = { ...litSources, enabled: e.target.checked };
-                      setLitSources(updated);
-                      saveLiteratureSourcesConfig(updated);
-                    }}
-                    className="w-4 h-4 rounded text-teal-600 focus:ring-teal-500 accent-teal-600"
-                  />
-                </label>
-              </div>
-
-              {litSources.enabled && (
-                <div className="space-y-3">
-                  {encounterTypesList.map(et => {
-                    const sources = litSources.sources[et.id] || DEFAULT_LITERATURE_SOURCES[et.id] || '';
-                    return (
-                      <div key={et.id}>
-                        <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">{et.label}</label>
-                        <textarea
-                          value={sources}
-                          onChange={(e) => {
-                            const updated = {
-                              ...litSources,
-                              sources: { ...litSources.sources, [et.id]: e.target.value },
-                            };
-                            setLitSources(updated);
-                            saveLiteratureSourcesConfig(updated);
-                          }}
-                          placeholder="e.g. UpToDate, NEJM, BMJ..."
-                          className="w-full h-16 p-2 border border-[var(--input-border)] rounded-lg text-xs resize-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 bg-[var(--input-bg)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)]"
-                        />
-                      </div>
-                    );
-                  })}
-                  <button
-                    onClick={() => {
-                      const updated = { ...litSources, sources: { ...DEFAULT_LITERATURE_SOURCES } };
-                      setLitSources(updated);
-                      saveLiteratureSourcesConfig(updated);
-                    }}
-                    className="flex items-center gap-1 text-xs text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-colors"
-                  >
-                    <RotateCcw className="w-3 h-3" />
-                    Reset to defaults
-                  </button>
-                </div>
-              )}
-            </div>
-            {/* Education Mode */}
-            <div className="bg-[var(--card-bg)] rounded-2xl border border-[var(--card-border)] p-5 space-y-3" style={{ boxShadow: 'var(--card-shadow)' }}>
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="font-semibold text-[var(--text-primary)]">Education Mode</h3>
-                  <p className="text-xs text-[var(--text-muted)] mt-0.5">
-                    Generate recommended reading (textbook chapters, guidelines, key studies) for each case.
-                  </p>
-                </div>
-                <label className="flex items-center gap-2 cursor-pointer flex-shrink-0">
-                  <span className="text-xs text-[var(--text-muted)]">{eduConfig.enabled ? 'On' : 'Off'}</span>
-                  <input
-                    type="checkbox"
-                    checked={eduConfig.enabled}
-                    onChange={(e) => {
-                      const updated = { ...eduConfig, enabled: e.target.checked };
-                      setEduConfig(updated);
-                      saveEducationConfig(updated);
-                    }}
-                    className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 accent-emerald-600"
-                  />
-                </label>
-              </div>
-              {eduConfig.enabled && (
-                <div className="space-y-2">
-                  <label className="block text-xs font-medium text-[var(--text-secondary)]">Narrow sources (optional)</label>
-                  <textarea
-                    value={eduConfig.sources}
-                    onChange={(e) => {
-                      const updated = { ...eduConfig, sources: e.target.value };
-                      setEduConfig(updated);
-                      saveEducationConfig(updated);
-                    }}
-                    placeholder="Leave empty for all sources, or specify: e.g. Rosen's, Tintinalli's, UpToDate, NEJM..."
-                    className="w-full h-16 p-2 border border-[var(--input-border)] rounded-lg text-xs resize-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 bg-[var(--input-bg)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)]"
-                  />
-                  <p className="text-[10px] text-[var(--text-muted)]">
-                    When enabled, a graduation cap icon appears on each patient card. Click it to generate learning resources for that case.
-                  </p>
-                </div>
-              )}
-            </div>
-
             {([
               { key: 'ddx' as const, label: 'DDx (Differential Diagnosis)' },
               { key: 'investigations' as const, label: 'Investigations' },
@@ -1608,6 +1504,110 @@ export default function SettingsPage() {
                 </div>
               );
             })}
+
+            {/* Literature Sources */}
+            <div className="bg-[var(--card-bg)] rounded-2xl border border-[var(--card-border)] p-5 space-y-3" style={{ boxShadow: 'var(--card-shadow)' }}>
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="font-semibold text-[var(--text-primary)]">Literature Sources</h3>
+                  <p className="text-xs text-[var(--text-muted)] mt-0.5">
+                    Narrow the scope of sources used for investigations, management, and evidence sections.
+                  </p>
+                </div>
+                <label className="flex items-center gap-2 cursor-pointer flex-shrink-0">
+                  <span className="text-xs text-[var(--text-muted)]">{litSources.enabled ? 'On' : 'Off'}</span>
+                  <input
+                    type="checkbox"
+                    checked={litSources.enabled}
+                    onChange={(e) => {
+                      const updated = { ...litSources, enabled: e.target.checked };
+                      setLitSources(updated);
+                      saveLiteratureSourcesConfig(updated);
+                    }}
+                    className="w-4 h-4 rounded text-teal-600 focus:ring-teal-500 accent-teal-600"
+                  />
+                </label>
+              </div>
+              {litSources.enabled && (
+                <div className="space-y-3">
+                  {encounterTypesList.map(et => {
+                    const sources = litSources.sources[et.id] || DEFAULT_LITERATURE_SOURCES[et.id] || '';
+                    return (
+                      <div key={et.id}>
+                        <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">{et.label}</label>
+                        <textarea
+                          value={sources}
+                          onChange={(e) => {
+                            const updated = {
+                              ...litSources,
+                              sources: { ...litSources.sources, [et.id]: e.target.value },
+                            };
+                            setLitSources(updated);
+                            saveLiteratureSourcesConfig(updated);
+                          }}
+                          placeholder="e.g. UpToDate, NEJM, BMJ..."
+                          className="w-full h-16 p-2 border border-[var(--input-border)] rounded-lg text-xs resize-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 bg-[var(--input-bg)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)]"
+                        />
+                      </div>
+                    );
+                  })}
+                  <button
+                    onClick={() => {
+                      const updated = { ...litSources, sources: { ...DEFAULT_LITERATURE_SOURCES } };
+                      setLitSources(updated);
+                      saveLiteratureSourcesConfig(updated);
+                    }}
+                    className="flex items-center gap-1 text-xs text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-colors"
+                  >
+                    <RotateCcw className="w-3 h-3" />
+                    Reset to defaults
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Education Mode */}
+            <div className="bg-[var(--card-bg)] rounded-2xl border border-[var(--card-border)] p-5 space-y-3" style={{ boxShadow: 'var(--card-shadow)' }}>
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="font-semibold text-[var(--text-primary)]">Education Mode</h3>
+                  <p className="text-xs text-[var(--text-muted)] mt-0.5">
+                    Generate recommended reading (textbook chapters, guidelines, key studies) for each case.
+                  </p>
+                </div>
+                <label className="flex items-center gap-2 cursor-pointer flex-shrink-0">
+                  <span className="text-xs text-[var(--text-muted)]">{eduConfig.enabled ? 'On' : 'Off'}</span>
+                  <input
+                    type="checkbox"
+                    checked={eduConfig.enabled}
+                    onChange={(e) => {
+                      const updated = { ...eduConfig, enabled: e.target.checked };
+                      setEduConfig(updated);
+                      saveEducationConfig(updated);
+                    }}
+                    className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 accent-emerald-600"
+                  />
+                </label>
+              </div>
+              {eduConfig.enabled && (
+                <div className="space-y-2">
+                  <label className="block text-xs font-medium text-[var(--text-secondary)]">Narrow sources (optional)</label>
+                  <textarea
+                    value={eduConfig.sources}
+                    onChange={(e) => {
+                      const updated = { ...eduConfig, sources: e.target.value };
+                      setEduConfig(updated);
+                      saveEducationConfig(updated);
+                    }}
+                    placeholder="Leave empty for all sources, or specify: e.g. Rosen's, Tintinalli's, UpToDate, NEJM..."
+                    className="w-full h-16 p-2 border border-[var(--input-border)] rounded-lg text-xs resize-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 bg-[var(--input-bg)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)]"
+                  />
+                  <p className="text-[10px] text-[var(--text-muted)]">
+                    When enabled, a graduation cap icon appears on each patient card. Click it to generate learning resources for that case.
+                  </p>
+                </div>
+              )}
+            </div>
           </>
         )}
 
