@@ -1329,13 +1329,14 @@ export default function HomePage() {
                               onClick={async () => {
                                 if (!exportStart || !exportEnd) return;
                                 try {
-                                  const res = await fetch(`/api/export-billing?start=${exportStart}&end=${exportEnd}`);
+                                  const billingFormat = isVchMode ? 'vch' : 'yukon';
+                                  const res = await fetch(`/api/export-billing?start=${exportStart}&end=${exportEnd}&format=${billingFormat}`);
                                   if (!res.ok) throw new Error('Export failed');
                                   const blob = await res.blob();
                                   const url = URL.createObjectURL(blob);
                                   const a = document.createElement('a');
                                   a.href = url;
-                                  a.download = `billing-${exportStart}-to-${exportEnd}.csv`;
+                                  a.download = `billing-${billingFormat}-${exportStart}-to-${exportEnd}.csv`;
                                   a.click();
                                   URL.revokeObjectURL(url);
                                 } catch (err) {
