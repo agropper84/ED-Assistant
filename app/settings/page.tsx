@@ -1860,7 +1860,7 @@ export default function SettingsPage() {
                   <div>
                     <h3 className="font-semibold text-[var(--text-primary)]">API Keys</h3>
                     <p className="text-xs text-[var(--text-muted)] mt-0.5">
-                      Add your own API keys. If not set, the admin&apos;s keys are used as fallback.
+                      Add your API keys to use AI features (note generation, transcription, clinical questions).
                     </p>
                   </div>
 
@@ -1937,7 +1937,7 @@ export default function SettingsPage() {
                   </div>
 
                   <p className="text-[10px] text-[var(--text-muted)]">
-                    Keys are stored securely server-side and never exposed to the browser. If no key is set, the app uses the admin&apos;s shared key.
+                    Keys are stored securely server-side and never exposed to the browser. Both keys are required for full functionality.
                   </p>
                 </div>
 

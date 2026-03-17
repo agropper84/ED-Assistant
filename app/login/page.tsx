@@ -106,7 +106,7 @@ function LoginContent() {
               <span>Your data stays in your own Google Sheet</span>
             </div>
             <p className="text-[11px] text-center text-[var(--text-muted)]">
-              Bring your own API keys or use shared access
+              Bring your own Claude and OpenAI API keys
             </p>
           </div>
         </div>
