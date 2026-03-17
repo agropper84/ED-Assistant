@@ -27,6 +27,7 @@ export interface ParsedData {
   transcript: string;
   additional: string;
   pastDocs: string;
+  _generateNote?: boolean;
 }
 
 /** Combine transcript + encounter notes into one string for storage */
