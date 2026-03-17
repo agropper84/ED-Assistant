@@ -458,7 +458,7 @@ export function VoiceRecorder({
         setState('recording');
 
         if (!medicalizeRef.current) {
-          // --- Fast mode: Web Speech API for instant text + background audio recording for Whisper cleanup ---
+          // --- Fast mode: Web Speech API only for instant text ---
           const SpeechAPI = typeof window !== 'undefined'
             ? (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
             : null;
@@ -493,13 +493,6 @@ export function VoiceRecorder({
               recognitionRef.current = recognition;
             } catch {}
           }
-
-          // Also record audio in background for Whisper cleanup on stop
-          const bgRecorder = new MediaRecorder(stream, { mimeType: mimeType });
-          mediaRecorderRef.current = bgRecorder;
-          chunksRef.current = [];
-          bgRecorder.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data); };
-          bgRecorder.start();
 
           // Audio level visualization
           try {
@@ -682,44 +675,9 @@ export function VoiceRecorder({
       analyserRef.current = null;
 
       if (!medicalizeRef.current) {
-        // --- Fast mode stop: Web Speech API showed instant text, now run Whisper for better medical vocab ---
-        setState('transcribing');
-
-        // Stop background recorder and get the full audio blob
-        const bgRecorder = mediaRecorderRef.current;
-        let whisperBlob: Blob | null = null;
-        if (bgRecorder && bgRecorder.state !== 'inactive') {
-          whisperBlob = await new Promise<Blob>((resolve) => {
-            bgRecorder.onstop = () => {
-              resolve(new Blob(chunksRef.current, { type: mimeTypeRef.current }));
-            };
-            bgRecorder.stop();
-          });
-        }
-
-        // Release microphone
+        // --- Fast mode stop: Web Speech API text is final ---
         streamRef.current?.getTracks().forEach(t => t.stop());
         streamRef.current = null;
-
-        // Run Whisper cleanup for medical vocabulary (skipMedicalize — just get Whisper transcription)
-        if (whisperBlob && whisperBlob.size > 2000) {
-          try {
-            const formData = new FormData();
-            formData.append('audio', whisperBlob, `recording.${getFileExtension(mimeTypeRef.current)}`);
-            formData.append('mode', 'dictation');
-            formData.append('skipMedicalize', 'true');
-            const res = await fetch('/api/transcribe', { method: 'POST', body: formData });
-            if (res.ok) {
-              const { text } = await res.json();
-              if (text?.trim()) {
-                const cleaned = convertSpokenPunctuation(text.trim());
-                // Replace Web Speech text with Whisper's better medical vocab
-                accumulatedTextRef.current = cleaned;
-                onInterimRef.current?.(cleaned);
-              }
-            }
-          } catch {}
-        }
 
         accumulatedTextRef.current = '';
         segmentTextsRef.current = [];
