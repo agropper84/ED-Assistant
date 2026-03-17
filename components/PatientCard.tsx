@@ -2,7 +2,7 @@
 
 import { useState, useRef } from 'react';
 import { Patient } from '@/lib/google-sheets';
-import { Clock, User, FileText, Trash2, DollarSign, Stethoscope, Copy, Check, Brain, ClipboardList, BookOpen, Play, Loader2, X, MessageCircleQuestion, Merge, CalendarDays, GraduationCap, ExternalLink, Calculator } from 'lucide-react';
+import { Clock, User, FileText, Trash2, DollarSign, Stethoscope, Copy, Check, Brain, ClipboardList, BookOpen, Play, Loader2, X, MessageCircleQuestion, Merge, CalendarDays, GraduationCap, ExternalLink, Calculator, Bookmark } from 'lucide-react';
 
 interface PatientCardProps {
   patient: Patient;
@@ -22,6 +22,8 @@ interface PatientCardProps {
   onGenerateEducation?: () => Promise<void>;
   showEducation?: boolean;
   onCalculator?: () => void;
+  onSaveResource?: (resource: { type: 'evidence' | 'education'; content: string; patientName: string; diagnosis: string }) => void;
+  savedResourceKey?: (type: 'evidence' | 'education') => boolean;
 }
 
 /** Convert a full name to initials, e.g. "John Smith" → "J.S." */
@@ -37,7 +39,35 @@ function toInitials(name: string): string {
 // Unified empty-state color for unfilled icons
 const EMPTY = 'text-slate-300 dark:text-slate-600';
 
-export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChange, onBillingToggle, billingCodes, onNavigate, onProcess, onGenerateAnalysis, onUpdateFields, onClinicalChat, onMerge, onDateChange, onGenerateEducation, showEducation, onCalculator }: PatientCardProps) {
+/** Render text with markdown links [text](url) and bare URLs as clickable <a> tags */
+function Linkified({ text }: { text: string }) {
+  // Match markdown links [text](url) or bare https:// URLs
+  const parts = text.split(/(\[[^\]]+\]\(https?:\/\/[^)]+\)|https?:\/\/[^\s)]+)/g);
+  return (
+    <>
+      {parts.map((part, i) => {
+        const mdMatch = part.match(/^\[([^\]]+)\]\((https?:\/\/[^)]+)\)$/);
+        if (mdMatch) {
+          return (
+            <a key={i} href={mdMatch[2]} target="_blank" rel="noopener noreferrer" className="text-blue-400 underline hover:text-blue-300">
+              {mdMatch[1]}
+            </a>
+          );
+        }
+        if (/^https?:\/\//.test(part)) {
+          return (
+            <a key={i} href={part} target="_blank" rel="noopener noreferrer" className="text-blue-400 underline hover:text-blue-300">
+              {part}
+            </a>
+          );
+        }
+        return <span key={i}>{part}</span>;
+      })}
+    </>
+  );
+}
+
+export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChange, onBillingToggle, billingCodes, onNavigate, onProcess, onGenerateAnalysis, onUpdateFields, onClinicalChat, onMerge, onDateChange, onGenerateEducation, showEducation, onCalculator, onSaveResource, savedResourceKey }: PatientCardProps) {
   const [editingTime, setEditingTime] = useState(false);
   const [timeValue, setTimeValue] = useState(patient.timestamp || '');
   const [noteCopied, setNoteCopied] = useState(false);
@@ -264,8 +294,19 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
                       className="absolute left-0 top-full mt-2 z-50 hidden group-hover/evidence:block w-72 max-h-48 overflow-y-auto p-3 bg-gray-900 text-gray-100 text-xs rounded-lg shadow-xl ring-1 ring-white/10"
                       onClick={(e) => e.stopPropagation()}
                     >
-                      <span className="text-amber-400 font-medium block mb-1">Evidence</span>
-                      <p className="whitespace-pre-wrap leading-relaxed">{patient.evidence}</p>
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-amber-400 font-medium">Evidence</span>
+                        {onSaveResource && (
+                          <button
+                            onClick={(e) => { e.stopPropagation(); onSaveResource({ type: 'evidence', content: patient.evidence, patientName: patient.name, diagnosis: patient.diagnosis }); }}
+                            className="p-0.5 rounded hover:bg-white/10 transition-colors"
+                            title={savedResourceKey?.('evidence') ? 'Saved' : 'Save to library'}
+                          >
+                            <Bookmark className="w-3.5 h-3.5 text-amber-400" fill={savedResourceKey?.('evidence') ? 'currentColor' : 'none'} />
+                          </button>
+                        )}
+                      </div>
+                      <p className="whitespace-pre-wrap leading-relaxed"><Linkified text={patient.evidence} /></p>
                     </div>
                   </>
                 )}
@@ -300,8 +341,19 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
                         className="absolute left-0 top-full mt-2 z-50 hidden group-hover/edu:block w-72 max-h-48 overflow-y-auto p-3 bg-gray-900 text-gray-100 text-xs rounded-lg shadow-xl ring-1 ring-white/10"
                         onClick={(e) => e.stopPropagation()}
                       >
-                        <span className="text-emerald-400 font-medium block mb-1">Learning Resources</span>
-                        <p className="whitespace-pre-wrap leading-relaxed">{patient.education}</p>
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-emerald-400 font-medium">Learning Resources</span>
+                          {onSaveResource && (
+                            <button
+                              onClick={(e) => { e.stopPropagation(); onSaveResource({ type: 'education', content: patient.education, patientName: patient.name, diagnosis: patient.diagnosis }); }}
+                              className="p-0.5 rounded hover:bg-white/10 transition-colors"
+                              title={savedResourceKey?.('education') ? 'Saved' : 'Save to library'}
+                            >
+                              <Bookmark className="w-3.5 h-3.5 text-emerald-400" fill={savedResourceKey?.('education') ? 'currentColor' : 'none'} />
+                            </button>
+                          )}
+                        </div>
+                        <p className="whitespace-pre-wrap leading-relaxed"><Linkified text={patient.education} /></p>
                       </div>
                     </>
                   )}
