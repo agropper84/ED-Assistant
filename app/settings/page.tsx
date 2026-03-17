@@ -21,6 +21,7 @@ import {
   getEncounterType, saveEncounterType,
   LiteratureSourcesConfig, DEFAULT_LITERATURE_SOURCES, getLiteratureSourcesConfig, saveLiteratureSourcesConfig,
   EducationConfig, getEducationConfig, saveEducationConfig,
+  getAutoAnalysis, saveAutoAnalysis,
 } from '@/lib/settings';
 import { getExamPresets, saveExamPresets, resetExamPresets, ExamPreset } from '@/lib/exam-presets';
 import {
@@ -122,6 +123,9 @@ export default function SettingsPage() {
 
   // Education mode state
   const [eduConfig, setEduConfig] = useState<EducationConfig>(() => getEducationConfig());
+
+  // Auto-analysis state
+  const [autoAnalysis, setAutoAnalysis] = useState(() => getAutoAnalysis());
 
   // Debounce timer for guidance textarea
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -880,6 +884,29 @@ export default function SettingsPage() {
                   <span>1 (Creative)</span>
                 </div>
               </div>
+            </div>
+
+            {/* Auto-generate analysis */}
+            <div className="bg-[var(--card-bg)] rounded-2xl border border-[var(--card-border)] p-5" style={{ boxShadow: 'var(--card-shadow)' }}>
+              <label className="flex items-center justify-between cursor-pointer">
+                <div>
+                  <span className="text-sm font-medium text-[var(--text-primary)] block">Auto-generate synopsis &amp; analysis</span>
+                  <span className="text-xs text-[var(--text-muted)]">
+                    {autoAnalysis
+                      ? 'Synopsis, management, and evidence generate automatically when a patient is processed'
+                      : 'Click the icons on the patient card to generate on demand'}
+                  </span>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={autoAnalysis}
+                  onChange={(e) => {
+                    setAutoAnalysis(e.target.checked);
+                    saveAutoAnalysis(e.target.checked);
+                  }}
+                  className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 accent-blue-600 flex-shrink-0 ml-3"
+                />
+              </label>
             </div>
 
             {/* Dictation */}

@@ -341,6 +341,21 @@ export function getEffectivePromptTemplates(encounterTypeId?: string): PromptTem
   return merged;
 }
 
+// --- Auto-generate analysis ---
+
+const AUTO_ANALYSIS_KEY = 'ed-app-auto-analysis';
+
+export function getAutoAnalysis(): boolean {
+  if (typeof window === 'undefined') return true;
+  const stored = localStorage.getItem(AUTO_ANALYSIS_KEY);
+  return stored === null ? true : stored === 'true';
+}
+
+export function saveAutoAnalysis(enabled: boolean): void {
+  if (typeof window === 'undefined') return;
+  localStorage.setItem(AUTO_ANALYSIS_KEY, String(enabled));
+}
+
 // --- Education Mode ---
 
 export interface EducationConfig {

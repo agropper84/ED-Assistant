@@ -26,7 +26,7 @@ import {
   getDayRegion,
   saveDayRegion,
 } from '@/lib/billing';
-import { getEducationConfig } from '@/lib/settings';
+import { getEducationConfig, getAutoAnalysis } from '@/lib/settings';
 import {
   Plus, Loader2, ChevronLeft, ChevronRight,
   Calendar, Settings, CheckSquare, Square, Play, Clock, EyeOff, Eye,
@@ -605,11 +605,13 @@ export default function HomePage() {
         fetchPatients();
         router.push(`/patient/${rowIndex}?sheet=${encodeURIComponent(savedSheet)}`);
 
-        // Fire-and-forget: auto-generate synopsis and DDx/management/evidence
-        const body = JSON.stringify({ rowIndex, sheetName: savedSheet });
-        const headers = { 'Content-Type': 'application/json' };
-        fetch('/api/synopsis', { method: 'POST', headers, body }).catch(() => {});
-        fetch('/api/analysis', { method: 'POST', headers, body }).catch(() => {});
+        // Auto-generate synopsis and DDx/management/evidence (if enabled)
+        if (getAutoAnalysis()) {
+          const body = JSON.stringify({ rowIndex, sheetName: savedSheet });
+          const headers = { 'Content-Type': 'application/json' };
+          fetch('/api/synopsis', { method: 'POST', headers, body }).catch(() => {});
+          fetch('/api/analysis', { method: 'POST', headers, body }).catch(() => {});
+        }
       }
     } catch (error) {
       console.error('Failed to save patient:', error);
