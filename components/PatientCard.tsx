@@ -492,7 +492,7 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
             className="p-1.5 hover:bg-orange-50 dark:hover:bg-orange-900/30 rounded-lg transition-colors"
             title="Calculator"
           >
-            <Calculator className="w-4 h-4 text-orange-400 dark:text-orange-500 hover:text-orange-600 dark:hover:text-orange-400 transition-colors" />
+            <Calculator className={`w-4 h-4 ${(patient as any).hasCalcHistory ? 'text-orange-500 dark:text-orange-400' : EMPTY} transition-colors`} />
           </button>
         )}
 

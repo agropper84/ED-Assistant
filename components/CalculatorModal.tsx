@@ -56,6 +56,100 @@ function TypingDots() {
   );
 }
 
+/** Basic calculator widget */
+function BasicCalc() {
+  const [display, setDisplay] = useState('0');
+  const [prev, setPrev] = useState<number | null>(null);
+  const [op, setOp] = useState<string | null>(null);
+  const [fresh, setFresh] = useState(true);
+
+  const handleNum = (n: string) => {
+    if (fresh) { setDisplay(n === '.' ? '0.' : n); setFresh(false); }
+    else { setDisplay(prev => prev === '0' && n !== '.' ? n : prev + n); }
+  };
+
+  const handleOp = (o: string) => {
+    const cur = parseFloat(display);
+    if (prev !== null && op && !fresh) {
+      const r = calc(prev, cur, op);
+      setDisplay(String(r));
+      setPrev(r);
+    } else {
+      setPrev(cur);
+    }
+    setOp(o);
+    setFresh(true);
+  };
+
+  const handleEq = () => {
+    if (prev === null || !op) return;
+    const cur = parseFloat(display);
+    const r = calc(prev, cur, op);
+    setDisplay(String(r));
+    setPrev(null);
+    setOp(null);
+    setFresh(true);
+  };
+
+  const handleClear = () => {
+    setDisplay('0'); setPrev(null); setOp(null); setFresh(true);
+  };
+
+  const calc = (a: number, b: number, o: string) => {
+    switch (o) {
+      case '+': return a + b;
+      case '-': return a - b;
+      case '*': return a * b;
+      case '/': return b !== 0 ? a / b : 0;
+      default: return b;
+    }
+  };
+
+  const btn = (label: string, action: () => void, cls: string = '') => (
+    <button onClick={action}
+      className={`py-3 rounded-xl text-base font-medium transition-colors active:scale-95 ${cls}`}
+    >{label}</button>
+  );
+
+  return (
+    <div className="space-y-2 animate-fadeIn">
+      <div className="bg-[var(--bg-tertiary)] rounded-xl px-4 py-3 text-right">
+        <div className="text-[10px] text-[var(--text-muted)] h-4">
+          {prev !== null && op ? `${prev} ${op}` : ''}
+        </div>
+        <div className="text-2xl font-mono text-[var(--text-primary)] truncate">{display}</div>
+      </div>
+      <div className="grid grid-cols-4 gap-1.5">
+        {btn('C', handleClear, 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400')}
+        {btn('±', () => setDisplay(d => String(-parseFloat(d))), 'bg-[var(--bg-tertiary)] text-[var(--text-secondary)]')}
+        {btn('%', () => setDisplay(d => String(parseFloat(d) / 100)), 'bg-[var(--bg-tertiary)] text-[var(--text-secondary)]')}
+        {btn('÷', () => handleOp('/'), 'bg-orange-500 text-white')}
+
+        {btn('7', () => handleNum('7'), 'bg-[var(--bg-tertiary)] text-[var(--text-primary)]')}
+        {btn('8', () => handleNum('8'), 'bg-[var(--bg-tertiary)] text-[var(--text-primary)]')}
+        {btn('9', () => handleNum('9'), 'bg-[var(--bg-tertiary)] text-[var(--text-primary)]')}
+        {btn('×', () => handleOp('*'), 'bg-orange-500 text-white')}
+
+        {btn('4', () => handleNum('4'), 'bg-[var(--bg-tertiary)] text-[var(--text-primary)]')}
+        {btn('5', () => handleNum('5'), 'bg-[var(--bg-tertiary)] text-[var(--text-primary)]')}
+        {btn('6', () => handleNum('6'), 'bg-[var(--bg-tertiary)] text-[var(--text-primary)]')}
+        {btn('−', () => handleOp('-'), 'bg-orange-500 text-white')}
+
+        {btn('1', () => handleNum('1'), 'bg-[var(--bg-tertiary)] text-[var(--text-primary)]')}
+        {btn('2', () => handleNum('2'), 'bg-[var(--bg-tertiary)] text-[var(--text-primary)]')}
+        {btn('3', () => handleNum('3'), 'bg-[var(--bg-tertiary)] text-[var(--text-primary)]')}
+        {btn('+', () => handleOp('+'), 'bg-orange-500 text-white')}
+
+        <button onClick={() => handleNum('0')}
+          className="col-span-2 py-3 rounded-xl text-base font-medium bg-[var(--bg-tertiary)] text-[var(--text-primary)] transition-colors active:scale-95"
+        >0</button>
+        {btn('.', () => handleNum('.'), 'bg-[var(--bg-tertiary)] text-[var(--text-primary)]')}
+        {btn('=', handleEq, 'bg-orange-500 text-white')}
+      </div>
+    </div>
+  );
+}
+
 const QUICK_CALCS = [
   'CrCl (Cockcroft-Gault)',
   'GFR (CKD-EPI)',
@@ -75,6 +169,7 @@ export function CalculatorModal({ isOpen, onClose, patient }: CalculatorModalPro
   const [varValues, setVarValues] = useState<Record<string, string>>({});
   const [calculating, setCalculating] = useState(false);
   const [result, setResult] = useState<string | null>(null);
+  const [showBasicCalc, setShowBasicCalc] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -232,6 +327,14 @@ export function CalculatorModal({ isOpen, onClose, patient }: CalculatorModalPro
               {loading || calculating ? 'Working...' : patient.name || 'Patient'}
             </p>
           </div>
+          {/* Basic calc toggle */}
+          <button
+            onClick={() => setShowBasicCalc(!showBasicCalc)}
+            className={`p-1.5 rounded transition-colors ${showBasicCalc ? 'text-orange-500 bg-orange-50 dark:bg-orange-900/30' : 'text-[var(--text-muted)] hover:text-orange-500'}`}
+            title={showBasicCalc ? 'Medical calculators' : 'Basic calculator'}
+          >
+            <Calculator className="w-3.5 h-3.5" />
+          </button>
           {calcSpec?.mdcalcUrl && (
             <a href={calcSpec.mdcalcUrl} target="_blank" rel="noopener noreferrer"
               className="p-1.5 text-[var(--text-muted)] hover:text-orange-500 rounded transition-colors" title="Open on MDCalc">
@@ -245,8 +348,13 @@ export function CalculatorModal({ isOpen, onClose, patient }: CalculatorModalPro
 
         {/* Content */}
         <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
+          {/* Basic calculator */}
+          {showBasicCalc && (
+            <BasicCalc />
+          )}
+
           {/* Variable input form */}
-          {calcSpec && !result && (
+          {!showBasicCalc && calcSpec && !result && (
             <div className="animate-fadeIn space-y-3">
               {calcSpec.formula && (
                 <p className="text-xs text-[var(--text-muted)] italic">{calcSpec.formula}</p>
@@ -295,14 +403,14 @@ export function CalculatorModal({ isOpen, onClose, patient }: CalculatorModalPro
           )}
 
           {/* Result */}
-          {result && (
+          {!showBasicCalc && result && (
             <div className="animate-msgIn bg-[var(--bg-tertiary)] rounded-2xl p-4 text-sm leading-relaxed text-[var(--text-primary)]">
               <div className="whitespace-pre-wrap">{renderWithLinks(result)}</div>
             </div>
           )}
 
           {/* Chat messages (free-form mode) */}
-          {!calcSpec && messages.map((msg, i) => (
+          {!showBasicCalc && !calcSpec && messages.map((msg, i) => (
             <div key={i} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
               <div className={`max-w-[85%] px-3.5 py-2.5 text-sm leading-relaxed ${
                 msg.role === 'user'
@@ -317,7 +425,7 @@ export function CalculatorModal({ isOpen, onClose, patient }: CalculatorModalPro
           {loading && <TypingDots />}
 
           {/* Empty state */}
-          {!calcSpec && messages.length === 0 && !loading && (
+          {!showBasicCalc && !calcSpec && messages.length === 0 && !loading && (
             <div className="space-y-4 animate-fadeIn">
               <div className="flex flex-col items-center justify-center py-6 text-center">
                 <div className="w-14 h-14 rounded-full bg-gradient-to-br from-orange-400/20 to-orange-600/20 flex items-center justify-center mb-3">
@@ -343,7 +451,8 @@ export function CalculatorModal({ isOpen, onClose, patient }: CalculatorModalPro
           )}
         </div>
 
-        {/* Input — always available for free-form questions */}
+        {/* Input — available for medical calc mode */}
+        {!showBasicCalc && (
         <div className="px-3 py-2.5 pb-safe border-t border-[var(--border)] bg-[var(--card-bg)] sm:rounded-b-3xl flex-shrink-0">
           <div className="flex items-end gap-2">
             <textarea
@@ -377,6 +486,7 @@ export function CalculatorModal({ isOpen, onClose, patient }: CalculatorModalPro
             </button>
           </div>
         </div>
+        )}
       </div>
     </div>
   );
