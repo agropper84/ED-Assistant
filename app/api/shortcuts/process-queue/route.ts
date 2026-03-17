@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getOpenAIClient, getDeepgramApiKey } from '@/lib/api-keys';
+import { getUserSettings } from '@/lib/kv';
 import { del as deleteBlob } from '@vercel/blob';
 import { getSessionFromCookies } from '@/lib/session';
 import {
@@ -106,10 +107,13 @@ async function processOne(pending: PendingAudio): Promise<{ transcript: string; 
   const audioBuffer = Buffer.from(await audioResponse.arrayBuffer());
   const audioFile = new File([audioBuffer], pending.filename, { type: 'audio/m4a' });
 
-  // Deepgram (preferred) or Whisper (fallback)
+  // Check user's watch transcribe preference
+  const userSettings = await getUserSettings(pending.userId);
+  const watchApi = (userSettings?.watchTranscribeApi as string) || 'deepgram';
+
   let transcript = '';
   const dgKey = await getDeepgramApiKey();
-  if (dgKey) {
+  if (watchApi === 'deepgram' && dgKey) {
     const dgRes = await fetch('https://api.deepgram.com/v1/listen?model=nova-3-medical&smart_format=true&punctuate=true&language=en', {
       method: 'POST',
       headers: { 'Authorization': `Token ${dgKey}`, 'Content-Type': 'audio/m4a' },

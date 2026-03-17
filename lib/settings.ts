@@ -318,6 +318,31 @@ export function saveTranscribeAPI(api: TranscribeAPI): void {
   localStorage.setItem(TRANSCRIBE_API_KEY, api);
 }
 
+// --- Transcription engine (encounter recording / watch) ---
+
+const TRANSCRIBE_WEB_KEY = 'ed-app-transcribe-web';
+const TRANSCRIBE_WATCH_KEY = 'ed-app-transcribe-watch';
+
+export function getTranscribeWebAPI(): TranscribeAPI {
+  if (typeof window === 'undefined') return 'deepgram';
+  return (localStorage.getItem(TRANSCRIBE_WEB_KEY) as TranscribeAPI) || 'deepgram';
+}
+
+export function saveTranscribeWebAPI(api: TranscribeAPI): void {
+  if (typeof window === 'undefined') return;
+  localStorage.setItem(TRANSCRIBE_WEB_KEY, api);
+}
+
+export function getTranscribeWatchAPI(): TranscribeAPI {
+  if (typeof window === 'undefined') return 'deepgram';
+  return (localStorage.getItem(TRANSCRIBE_WATCH_KEY) as TranscribeAPI) || 'deepgram';
+}
+
+export function saveTranscribeWatchAPI(api: TranscribeAPI): void {
+  if (typeof window === 'undefined') return;
+  localStorage.setItem(TRANSCRIBE_WATCH_KEY, api);
+}
+
 // --- Auto-generate analysis ---
 
 const AUTO_ANALYSIS_KEY = 'ed-app-auto-analysis';

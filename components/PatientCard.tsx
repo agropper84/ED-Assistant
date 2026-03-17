@@ -42,7 +42,7 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
   const [timeValue, setTimeValue] = useState(patient.timestamp || '');
   const [noteCopied, setNoteCopied] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [isGenerating, setIsGenerating] = useState(false);
+  const [generatingIcon, setGeneratingIcon] = useState<'synopsis' | 'management' | 'evidence' | 'education' | null>(null);
   const [editingDemo, setEditingDemo] = useState(false);
   const [editName, setEditName] = useState('');
   const [editAge, setEditAge] = useState('');
@@ -171,9 +171,9 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
                 <span
                   onClick={(e) => {
                     e.stopPropagation();
-                    if (!patient.synopsis && onGenerateAnalysis && !isGenerating) {
-                      setIsGenerating(true);
-                      onGenerateAnalysis().finally(() => setIsGenerating(false));
+                    if (!patient.synopsis && onGenerateAnalysis && !generatingIcon) {
+                      setGeneratingIcon('synopsis');
+                      onGenerateAnalysis().finally(() => setGeneratingIcon(null));
                     } else if (patient.synopsis && onNavigate) {
                       onNavigate();
                     }
@@ -181,7 +181,7 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
                   className={`p-0.5 rounded transition-colors inline-flex ${patient.synopsis || onGenerateAnalysis ? 'hover:bg-blue-50 dark:hover:bg-blue-900/30 cursor-pointer' : ''}`}
                   title={patient.synopsis ? '' : 'Generate synopsis & analysis'}
                 >
-                  {isGenerating ? (
+                  {generatingIcon === 'synopsis' ? (
                     <Loader2 className="w-4 h-4 text-blue-400 animate-spin" />
                   ) : (
                     <Brain className={`w-4 h-4 ${patient.synopsis ? 'text-blue-600 dark:text-blue-400' : EMPTY}`} />
@@ -206,9 +206,9 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
                 <span
                   onClick={(e) => {
                     e.stopPropagation();
-                    if (!patient.management && onGenerateAnalysis && !isGenerating) {
-                      setIsGenerating(true);
-                      onGenerateAnalysis().finally(() => setIsGenerating(false));
+                    if (!patient.management && onGenerateAnalysis && !generatingIcon) {
+                      setGeneratingIcon('management');
+                      onGenerateAnalysis().finally(() => setGeneratingIcon(null));
                     } else if (patient.management && onNavigate) {
                       onNavigate();
                     }
@@ -216,7 +216,7 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
                   className={`p-0.5 rounded transition-colors inline-flex ${patient.management || onGenerateAnalysis ? 'hover:bg-violet-50 dark:hover:bg-violet-900/30 cursor-pointer' : ''}`}
                   title={patient.management ? '' : 'Generate synopsis & analysis'}
                 >
-                  {isGenerating ? (
+                  {generatingIcon === 'management' ? (
                     <Loader2 className="w-4 h-4 text-violet-400 animate-spin" />
                   ) : (
                     <ClipboardList className={`w-4 h-4 ${patient.management ? 'text-violet-600 dark:text-violet-400' : EMPTY}`} />
@@ -241,9 +241,9 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
                 <span
                   onClick={(e) => {
                     e.stopPropagation();
-                    if (!patient.evidence && onGenerateAnalysis && !isGenerating) {
-                      setIsGenerating(true);
-                      onGenerateAnalysis().finally(() => setIsGenerating(false));
+                    if (!patient.evidence && onGenerateAnalysis && !generatingIcon) {
+                      setGeneratingIcon('evidence');
+                      onGenerateAnalysis().finally(() => setGeneratingIcon(null));
                     } else if (patient.evidence && onNavigate) {
                       onNavigate();
                     }
@@ -251,7 +251,7 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
                   className={`p-0.5 rounded transition-colors inline-flex ${patient.evidence || onGenerateAnalysis ? 'hover:bg-amber-50 dark:hover:bg-amber-900/30 cursor-pointer' : ''}`}
                   title={patient.evidence ? '' : 'Generate synopsis & analysis'}
                 >
-                  {isGenerating ? (
+                  {generatingIcon === 'evidence' ? (
                     <Loader2 className="w-4 h-4 text-amber-400 animate-spin" />
                   ) : (
                     <BookOpen className={`w-4 h-4 ${patient.evidence ? 'text-amber-600 dark:text-amber-400' : EMPTY}`} />
@@ -277,9 +277,9 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
                   <span
                     onClick={(e) => {
                       e.stopPropagation();
-                      if (!patient.education && onGenerateEducation && !isGenerating) {
-                        setIsGenerating(true);
-                        onGenerateEducation().finally(() => setIsGenerating(false));
+                      if (!patient.education && onGenerateEducation && !generatingIcon) {
+                        setGeneratingIcon('education');
+                        onGenerateEducation().finally(() => setGeneratingIcon(null));
                       } else if (patient.education && onNavigate) {
                         onNavigate();
                       }
@@ -287,7 +287,7 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
                     className={`p-0.5 rounded transition-colors inline-flex ${patient.education || onGenerateEducation ? 'hover:bg-emerald-50 dark:hover:bg-emerald-900/30 cursor-pointer' : ''}`}
                     title={patient.education ? '' : 'Generate learning resources'}
                   >
-                    {isGenerating ? (
+                    {generatingIcon === 'education' ? (
                       <Loader2 className="w-4 h-4 text-emerald-400 animate-spin" />
                     ) : (
                       <GraduationCap className={`w-4 h-4 ${patient.education ? 'text-emerald-600 dark:text-emerald-400' : EMPTY}`} />

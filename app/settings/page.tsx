@@ -24,6 +24,8 @@ import {
   getAutoAnalysis, saveAutoAnalysis,
   SpeechAPI, getSpeechAPI, saveSpeechAPI,
   TranscribeAPI, getTranscribeAPI, saveTranscribeAPI,
+  getTranscribeWebAPI, saveTranscribeWebAPI,
+  getTranscribeWatchAPI, saveTranscribeWatchAPI,
 } from '@/lib/settings';
 import { getExamPresets, saveExamPresets, resetExamPresets, ExamPreset } from '@/lib/exam-presets';
 import {
@@ -132,6 +134,8 @@ export default function SettingsPage() {
   // Speech API state
   const [speechApi, setSpeechApi] = useState<SpeechAPI>(() => getSpeechAPI());
   const [transcribeApi, setTranscribeApi] = useState<TranscribeAPI>(() => getTranscribeAPI());
+  const [transcribeWebApi, setTranscribeWebApi] = useState<TranscribeAPI>(() => getTranscribeWebAPI());
+  const [transcribeWatchApi, setTranscribeWatchApi] = useState<TranscribeAPI>(() => getTranscribeWatchAPI());
   const [deepgramApiKey, setDeepgramApiKey] = useState('');
   const [deepgramKeyMasked, setDeepgramKeyMasked] = useState<string | null>(null);
 
@@ -945,30 +949,72 @@ export default function SettingsPage() {
                 </button>
               </div>
 
+              <h4 className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider pt-1">Dictation Engines</h4>
+
               {/* Speech API (non-medicalize) */}
               <div>
-                <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Fast Dictation Engine</label>
+                <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Fast Dictation (no medicalize)</label>
                 <select
                   value={speechApi}
                   onChange={(e) => { const v = e.target.value as SpeechAPI; setSpeechApi(v); saveSpeechAPI(v); }}
                   className="w-full p-2.5 border border-[var(--input-border)] rounded-lg text-sm bg-[var(--input-bg)] text-[var(--text-primary)] focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="webspeech">Web Speech API (instant, browser-based)</option>
-                  <option value="deepgram">Deepgram Nova-3 Medical (more accurate, requires API key)</option>
+                  <option value="deepgram">Deepgram Nova-3 Medical</option>
                 </select>
               </div>
 
-              {/* Transcribe API (medicalize) */}
+              {/* Medicalize dictation */}
               <div>
-                <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Medicalize Engine</label>
+                <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Medicalize Dictation</label>
                 <select
                   value={transcribeApi}
                   onChange={(e) => { const v = e.target.value as TranscribeAPI; setTranscribeApi(v); saveTranscribeAPI(v); }}
                   className="w-full p-2.5 border border-[var(--input-border)] rounded-lg text-sm bg-[var(--input-bg)] text-[var(--text-primary)] focus:ring-2 focus:ring-blue-500"
                 >
-                  <option value="whisper">OpenAI Whisper + Claude (current)</option>
-                  <option value="deepgram">Deepgram Nova-3 Medical + Claude (more accurate)</option>
+                  <option value="whisper">OpenAI Whisper + Claude</option>
+                  <option value="deepgram">Deepgram Nova-3 Medical + Claude</option>
                 </select>
+              </div>
+
+              <h4 className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider pt-2">Transcription Engines</h4>
+
+              {/* Transcribe — web/phone */}
+              <div>
+                <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Encounter Recording (Web / Phone)</label>
+                <select
+                  value={transcribeWebApi}
+                  onChange={(e) => { const v = e.target.value as TranscribeAPI; setTranscribeWebApi(v); saveTranscribeWebAPI(v); }}
+                  className="w-full p-2.5 border border-[var(--input-border)] rounded-lg text-sm bg-[var(--input-bg)] text-[var(--text-primary)] focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="whisper">OpenAI Whisper</option>
+                  <option value="deepgram">Deepgram Nova-3 Medical</option>
+                </select>
+                <p className="text-[10px] text-[var(--text-muted)] mt-0.5">Used for full encounter recordings in the Add Patient modal</p>
+              </div>
+
+              {/* Transcribe — watch */}
+              <div>
+                <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Watch App</label>
+                <select
+                  value={transcribeWatchApi}
+                  onChange={(e) => {
+                    const v = e.target.value as TranscribeAPI;
+                    setTranscribeWatchApi(v);
+                    saveTranscribeWatchAPI(v);
+                    // Also save to server for watch endpoints
+                    fetch('/api/privacy-settings', {
+                      method: 'PUT',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ watchTranscribeApi: v }),
+                    }).catch(() => {});
+                  }}
+                  className="w-full p-2.5 border border-[var(--input-border)] rounded-lg text-sm bg-[var(--input-bg)] text-[var(--text-primary)] focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="whisper">OpenAI Whisper</option>
+                  <option value="deepgram">Deepgram Nova-3 Medical</option>
+                </select>
+                <p className="text-[10px] text-[var(--text-muted)] mt-0.5">Used for audio uploaded from the Watch app</p>
               </div>
             </div>
 

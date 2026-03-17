@@ -2,7 +2,7 @@
 
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { Mic, Upload, RotateCcw, Stethoscope } from 'lucide-react';
-import { getSettings, saveSettings, getSpeechAPI, getTranscribeAPI } from '@/lib/settings';
+import { getSettings, saveSettings, getSpeechAPI, getTranscribeAPI, getTranscribeWebAPI } from '@/lib/settings';
 
 /** Convert spoken punctuation commands to actual punctuation (client-side mirror of server function) */
 function convertSpokenPunctuation(text: string): string {
@@ -622,8 +622,8 @@ export function VoiceRecorder({
             formData.append('mode', mode);
             if (!medicalizeRef.current) formData.append('skipMedicalize', 'true');
 
-            // Use Deepgram or Whisper based on settings
-            const useDeepgram = getTranscribeAPI() === 'deepgram';
+            // Encounter recording uses the web/phone transcribe engine
+            const useDeepgram = getTranscribeWebAPI() === 'deepgram';
             let endpoint = useDeepgram ? '/api/transcribe-deepgram' : '/api/transcribe';
             let res = await fetch(endpoint, { method: 'POST', body: formData });
 
@@ -823,8 +823,8 @@ export function VoiceRecorder({
       formData.append('audio', file, file.name);
       formData.append('mode', mode);
       if (!medicalizeRef.current) formData.append('skipMedicalize', 'true');
-      const useDeepgram = getTranscribeAPI() === 'deepgram';
-      const endpoint = useDeepgram ? '/api/transcribe-deepgram' : '/api/transcribe';
+      const useDeepgramUpload = getTranscribeWebAPI() === 'deepgram';
+      const endpoint = useDeepgramUpload ? '/api/transcribe-deepgram' : '/api/transcribe';
       const res = await fetch(endpoint, { method: 'POST', body: formData });
       if (!res.ok) {
         const err = await res.json().catch(() => ({ error: 'Transcription failed' }));

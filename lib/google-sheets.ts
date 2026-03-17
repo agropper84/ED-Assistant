@@ -859,7 +859,7 @@ export async function updatePatientFields(
   // If writing to columns beyond Z, ensure the sheet has enough columns
   const needsExpand = data.some(d => /![A-Z]{2,}/.test(d.range));
   if (needsExpand) {
-    await ensureColumnCount(ctx, sheet, 32);
+    await ensureColumnCount(ctx, sheet, 33);
   }
 
   await sheets.spreadsheets.values.batchUpdate({
