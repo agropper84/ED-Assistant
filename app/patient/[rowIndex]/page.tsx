@@ -16,6 +16,7 @@ import { fetchStyleGuide, addExampleAsync, persistStyleGuide, StyleGuide } from 
 import {
   BillingItem,
   parseBillingItems,
+  getDayRegion,
 } from '@/lib/billing';
 import { BillingSection } from '@/components/BillingSection';
 import { getPromptTemplates, getEffectivePromptTemplates } from '@/lib/settings';
@@ -798,15 +799,17 @@ export default function PatientPage() {
           </>
         )}
 
-        {/* Billing Section */}
-        <BillingSection
-          billingItems={billingItems}
-          comments={billingComments}
-          onSave={handleBillingSave}
-          onSaveComments={(c) => { setBillingComments(c); handleSaveField('comments', c); }}
-          showBilling={showBilling}
-          setShowBilling={setShowBilling}
-        />
+        {/* Billing Section — hidden when VCH time-based is active for this day */}
+        {getDayRegion(sheetName || '') !== 'vch' && (
+          <BillingSection
+            billingItems={billingItems}
+            comments={billingComments}
+            onSave={handleBillingSave}
+            onSaveComments={(c) => { setBillingComments(c); handleSaveField('comments', c); }}
+            showBilling={showBilling}
+            setShowBilling={setShowBilling}
+          />
+        )}
 
         {/* Input Data (Triage, Transcript) */}
         <div className="mt-8 pt-6 border-t border-[var(--border)]">
