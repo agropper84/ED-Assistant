@@ -2085,7 +2085,7 @@ export default function SettingsPage() {
                 <div className="flex items-center justify-between">
                   <label className="text-sm font-medium text-[var(--text-secondary)]">Deepgram API Key (Nova-3 Medical)</label>
                   <a href="https://console.deepgram.com/api-keys" target="_blank" rel="noopener noreferrer"
-                    className="text-[10px] text-blue-500 hover:text-blue-600 dark:text-blue-400">Get key ($200 free credit)</a>
+                    className="text-[10px] text-blue-500 hover:text-blue-600 dark:text-blue-400">Get key</a>
                 </div>
                 {deepgramKeyMasked ? (
                   <div className="flex items-center gap-2">
