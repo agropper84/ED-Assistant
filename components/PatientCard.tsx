@@ -2,7 +2,7 @@
 
 import { useState, useRef } from 'react';
 import { Patient } from '@/lib/google-sheets';
-import { Clock, User, FileText, ChevronRight, Trash2, DollarSign, Stethoscope, Copy, Check, Brain, ClipboardList, BookOpen, Play, Loader2, X, MessageCircleQuestion, Merge, CalendarDays, GraduationCap } from 'lucide-react';
+import { Clock, User, FileText, Trash2, DollarSign, Stethoscope, Copy, Check, Brain, ClipboardList, BookOpen, Play, Loader2, X, MessageCircleQuestion, Merge, CalendarDays, GraduationCap, ExternalLink } from 'lucide-react';
 
 interface PatientCardProps {
   patient: Patient;
@@ -481,16 +481,16 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
           </button>
         )}
 
-        {/* Chevron — subtle to blue on hover */}
+        {/* Open full view */}
         <button
           onClick={(e) => {
             e.stopPropagation();
             onNavigate?.();
           }}
-          className="p-1.5 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg transition-all"
+          className="p-1.5 rounded-lg transition-all opacity-0 group-hover/card:opacity-100 hover:bg-blue-50 dark:hover:bg-blue-900/30"
           title="Open full view"
         >
-          <ChevronRight className="w-5 h-5 text-slate-300 dark:text-slate-600 transition-all duration-200 group-hover/card:translate-x-0.5 group-hover/card:text-blue-500 dark:group-hover/card:text-blue-400" />
+          <ExternalLink className="w-4 h-4 text-blue-400 dark:text-blue-500 transition-colors hover:text-blue-600 dark:hover:text-blue-400" />
         </button>
       </div>
 
