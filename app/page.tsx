@@ -30,7 +30,7 @@ import {
   Plus, Loader2, ChevronLeft, ChevronRight,
   Calendar, Settings, CheckSquare, Square, Play, Clock, EyeOff, Eye,
   Search, ArrowUpDown, X, LogOut, Upload, Monitor, RotateCcw, Sparkles,
-  ChevronDown
+  ChevronDown, SlidersHorizontal, FileSpreadsheet
 } from 'lucide-react';
 
 function formatDateForSheet(date: Date): string {
@@ -317,6 +317,9 @@ export default function HomePage() {
   const [isVchMode, setIsVchMode] = useState(false);
   const [billingMenuOpen, setBillingMenuOpen] = useState(false);
   const billingMenuRef = useRef<HTMLDivElement>(null);
+  const [exportingBilling, setExportingBilling] = useState(false);
+  const [exportStart, setExportStart] = useState('');
+  const [exportEnd, setExportEnd] = useState('');
   useEffect(() => {
     const daySheet = formatDateForSheet(currentDate);
     setIsVchMode(getDayRegion(daySheet) === 'vch');
@@ -1245,14 +1248,16 @@ export default function HomePage() {
               <div className="relative" ref={billingMenuRef}>
                 <button
                   onClick={() => setBillingMenuOpen(!billingMenuOpen)}
-                  className="p-1 hover:bg-white/10 rounded-full transition-colors"
+                  className="p-1.5 hover:bg-white/10 rounded transition-colors"
                   style={{ color: 'var(--dash-text-muted)' }}
-                  title="Billing settings for this day"
+                  title="Billing"
                 >
-                  <Settings className="w-3 h-3" />
+                  <SlidersHorizontal className="w-3 h-3" />
                 </button>
                 {billingMenuOpen && (
-                  <div className="absolute right-0 top-full mt-1 z-50 w-44 bg-gray-900 rounded-lg shadow-xl ring-1 ring-white/10 py-1 text-sm">
+                  <div className="absolute right-0 top-full mt-1 z-50 w-52 bg-gray-900 rounded-lg shadow-xl ring-1 ring-white/10 py-1 text-sm">
+                    {/* Fee region selector */}
+                    <div className="px-3 py-1.5 text-[10px] uppercase tracking-wider text-gray-500 font-medium">Fee Region</div>
                     {BILLING_REGIONS.map(r => (
                       <button
                         key={r.id}
@@ -1273,6 +1278,68 @@ export default function HomePage() {
                         )}
                       </button>
                     ))}
+                    {/* Export */}
+                    <div className="border-t border-white/10 mt-1 pt-1">
+                      <div className="px-3 py-1.5 text-[10px] uppercase tracking-wider text-gray-500 font-medium">Export Billing</div>
+                      {!exportingBilling ? (
+                        <button
+                          onClick={() => setExportingBilling(true)}
+                          className="w-full flex items-center gap-2 px-3 py-2 text-left text-gray-100 hover:bg-white/10 transition-colors"
+                        >
+                          <FileSpreadsheet className="w-3.5 h-3.5" />
+                          Export to CSV...
+                        </button>
+                      ) : (
+                        <div className="px-3 py-2 space-y-2">
+                          <div className="flex gap-1.5">
+                            <input
+                              type="date"
+                              value={exportStart}
+                              onChange={(e) => setExportStart(e.target.value)}
+                              className="flex-1 px-2 py-1 bg-gray-800 border border-gray-700 rounded text-xs text-gray-100"
+                            />
+                            <input
+                              type="date"
+                              value={exportEnd}
+                              onChange={(e) => setExportEnd(e.target.value)}
+                              className="flex-1 px-2 py-1 bg-gray-800 border border-gray-700 rounded text-xs text-gray-100"
+                            />
+                          </div>
+                          <div className="flex gap-1.5">
+                            <button
+                              onClick={async () => {
+                                if (!exportStart || !exportEnd) return;
+                                try {
+                                  const res = await fetch(`/api/export-billing?start=${exportStart}&end=${exportEnd}`);
+                                  if (!res.ok) throw new Error('Export failed');
+                                  const blob = await res.blob();
+                                  const url = URL.createObjectURL(blob);
+                                  const a = document.createElement('a');
+                                  a.href = url;
+                                  a.download = `billing-${exportStart}-to-${exportEnd}.csv`;
+                                  a.click();
+                                  URL.revokeObjectURL(url);
+                                } catch (err) {
+                                  console.error('Export error:', err);
+                                }
+                                setExportingBilling(false);
+                                setBillingMenuOpen(false);
+                              }}
+                              disabled={!exportStart || !exportEnd}
+                              className="flex-1 px-2 py-1.5 bg-teal-600 text-white rounded text-xs font-medium disabled:opacity-40"
+                            >
+                              Download
+                            </button>
+                            <button
+                              onClick={() => setExportingBilling(false)}
+                              className="px-2 py-1.5 text-gray-400 hover:text-gray-200 text-xs"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 )}
               </div>
