@@ -619,7 +619,7 @@ export async function clearPatientRow(
 
   await sheets.spreadsheets.values.clear({
     spreadsheetId,
-    range: `'${sheet}'!A${rowIndex}:AF${rowIndex}`,
+    range: `'${sheet}'!A${rowIndex}:AG${rowIndex}`,
   });
 }
 
@@ -635,7 +635,7 @@ export async function movePatientToSheet(
   // 1. Read the patient row + up to 20 continuation rows
   const response = await sheets.spreadsheets.values.get({
     spreadsheetId,
-    range: `'${sourceSheet}'!A${rowIndex}:AF${rowIndex + 20}`,
+    range: `'${sourceSheet}'!A${rowIndex}:AG${rowIndex + 20}`,
   });
   const allRows = response.data.values || [];
   if (allRows.length === 0) throw new Error('Patient row not found');
@@ -665,7 +665,7 @@ export async function movePatientToSheet(
 
   // 5. Write all rows to target
   const batchData = rowsToMove.map((row, i) => ({
-    range: `'${newSheetName}'!A${newRowIndex + i}:AF${newRowIndex + i}`,
+    range: `'${newSheetName}'!A${newRowIndex + i}:AG${newRowIndex + i}`,
     values: [row],
   }));
 
@@ -699,7 +699,7 @@ export async function getPatients(ctx: SheetsContext, sheetName?: string): Promi
 
   const response = await sheets.spreadsheets.values.get({
     spreadsheetId,
-    range: `'${sheet}'!A${DATA_START_ROW}:AF200`,
+    range: `'${sheet}'!A${DATA_START_ROW}:AG200`,
   });
 
   const rows = response.data.values || [];
@@ -743,7 +743,7 @@ export async function searchPatientsAcrossSheets(
   const { sheets, spreadsheetId } = ctx;
 
   // Fetch all sheets in a single batchGet call (instead of N sequential calls)
-  const ranges = sheetNames.map(s => `'${s}'!A${DATA_START_ROW}:AF200`);
+  const ranges = sheetNames.map(s => `'${s}'!A${DATA_START_ROW}:AG200`);
   const response = await sheets.spreadsheets.values.batchGet({
     spreadsheetId,
     ranges,
@@ -789,7 +789,7 @@ export async function getPatient(ctx: SheetsContext, rowIndex: number, sheetName
   // Read patient row + up to 20 continuation rows below
   const response = await sheets.spreadsheets.values.get({
     spreadsheetId,
-    range: `'${sheet}'!A${rowIndex}:AF${rowIndex + 20}`,
+    range: `'${sheet}'!A${rowIndex}:AG${rowIndex + 20}`,
   });
 
   const rows = response.data.values || [];

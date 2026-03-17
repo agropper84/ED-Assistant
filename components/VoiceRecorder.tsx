@@ -2,7 +2,7 @@
 
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { Mic, Upload, RotateCcw, Stethoscope } from 'lucide-react';
-import { getSettings, saveSettings } from '@/lib/settings';
+import { getSettings, saveSettings, getSpeechAPI, getTranscribeAPI } from '@/lib/settings';
 
 /** Convert spoken punctuation commands to actual punctuation (client-side mirror of server function) */
 function convertSpokenPunctuation(text: string): string {
@@ -277,26 +277,48 @@ export function VoiceRecorder({
     return false;
   }, []);
 
-  /** Send a blob to /api/transcribe and accumulate the result (with retry) */
+  /** Send a blob to transcription API and accumulate the result (with retry) */
   const processSegmentBlob = useCallback(async (blob: Blob) => {
     pendingCountRef.current++;
     try {
       let lastError: unknown;
       for (let attempt = 0; attempt < 2; attempt++) {
         try {
-          // Recreate FormData on each attempt (fetch consumes the body)
           const formData = new FormData();
           formData.append('audio', blob, `segment.${getFileExtension(mimeTypeRef.current)}`);
           formData.append('mode', 'dictation');
-          // Context carry-forward
           if (accumulatedTextRef.current) {
             formData.append('context', accumulatedTextRef.current);
           }
-          // Skip medicalization when toggle is off
           if (!medicalizeRef.current) {
             formData.append('skipMedicalize', 'true');
           }
-          const res = await fetch('/api/transcribe', { method: 'POST', body: formData });
+          // Choose transcription API
+          const useDeepgram = getTranscribeAPI() === 'deepgram';
+          let res: Response;
+          if (useDeepgram) {
+            // Deepgram for transcription
+            const dgRes = await fetch('/api/transcribe-deepgram', { method: 'POST', body: formData });
+            if (dgRes.ok && medicalizeRef.current) {
+              const { text: dgText } = await dgRes.json();
+              if (dgText?.trim()) {
+                // Then Claude for medicalization
+                const medRes = await fetch('/api/medicalize', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ text: dgText.trim(), context: accumulatedTextRef.current || '' }),
+                });
+                res = medRes.ok ? medRes : new Response(JSON.stringify({ text: dgText.trim() }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+              } else {
+                res = dgRes;
+              }
+            } else {
+              res = dgRes;
+            }
+          } else {
+            // Whisper (+Claude medicalize built-in)
+            res = await fetch('/api/transcribe', { method: 'POST', body: formData });
+          }
           if (res.ok) {
             const { text } = await res.json();
             if (text?.trim()) {
@@ -458,7 +480,18 @@ export function VoiceRecorder({
         setState('recording');
 
         if (!medicalizeRef.current) {
-          // --- Fast mode: Web Speech API only for instant text ---
+          // --- Fast mode: Web Speech API or Deepgram segments ---
+          const useDgFast = getSpeechAPI() === 'deepgram';
+
+          if (useDgFast) {
+            // Deepgram segment mode (same as medicalize pipeline but skipMedicalize)
+            startSegment();
+            startSilenceDetection(stream);
+            setTimeout(() => {
+              if (analyserRef.current) startAudioLevelViz(analyserRef.current);
+            }, 50);
+          } else {
+          // Web Speech API for instant text
           const SpeechAPI = typeof window !== 'undefined'
             ? (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
             : null;
@@ -505,8 +538,9 @@ export function VoiceRecorder({
             analyserRef.current = vizAnalyser;
             startAudioLevelViz(vizAnalyser);
           } catch {}
+          } // close Web Speech else
         } else {
-          // --- Medicalize mode: Web Speech for instant display + Whisper+Claude for quality ---
+          // --- Medicalize mode: Web Speech for instant display + transcription pipeline for quality ---
 
           // Web Speech API for instant interim text
           const SpeechAPI = typeof window !== 'undefined'
@@ -674,8 +708,10 @@ export function VoiceRecorder({
       if (audioContextRef.current) { try { audioContextRef.current.close(); } catch {} audioContextRef.current = null; }
       analyserRef.current = null;
 
-      if (!medicalizeRef.current) {
-        // --- Fast mode stop: Web Speech API text is final ---
+      const useDgFast = !medicalizeRef.current && getSpeechAPI() === 'deepgram';
+
+      if (!medicalizeRef.current && !useDgFast) {
+        // --- Web Speech only stop ---
         streamRef.current?.getTracks().forEach(t => t.stop());
         streamRef.current = null;
 
@@ -684,7 +720,7 @@ export function VoiceRecorder({
         setCanUndo(false);
         setState('idle');
       } else {
-        // --- Medicalize mode stop: process final Whisper segment ---
+        // --- Segment pipeline stop (Medicalize OR Deepgram fast) ---
         setState('transcribing');
 
         const recorder = mediaRecorderRef.current;

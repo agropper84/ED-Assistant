@@ -22,6 +22,8 @@ import {
   LiteratureSourcesConfig, DEFAULT_LITERATURE_SOURCES, getLiteratureSourcesConfig, saveLiteratureSourcesConfig,
   EducationConfig, getEducationConfig, saveEducationConfig,
   getAutoAnalysis, saveAutoAnalysis,
+  SpeechAPI, getSpeechAPI, saveSpeechAPI,
+  TranscribeAPI, getTranscribeAPI, saveTranscribeAPI,
 } from '@/lib/settings';
 import { getExamPresets, saveExamPresets, resetExamPresets, ExamPreset } from '@/lib/exam-presets';
 import {
@@ -126,6 +128,12 @@ export default function SettingsPage() {
 
   // Auto-analysis state
   const [autoAnalysis, setAutoAnalysis] = useState(() => getAutoAnalysis());
+
+  // Speech API state
+  const [speechApi, setSpeechApi] = useState<SpeechAPI>(() => getSpeechAPI());
+  const [transcribeApi, setTranscribeApi] = useState<TranscribeAPI>(() => getTranscribeAPI());
+  const [deepgramApiKey, setDeepgramApiKey] = useState('');
+  const [deepgramKeyMasked, setDeepgramKeyMasked] = useState<string | null>(null);
 
   // Debounce timer for guidance textarea
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -311,6 +319,7 @@ export default function SettingsPage() {
           setEncryptionEnabled(data.encryptionEnabled || false);
           setClaudeKeyMasked(data.claudeApiKeyMasked || null);
           setOpenaiKeyMasked(data.openaiApiKeyMasked || null);
+          setDeepgramKeyMasked(data.deepgramApiKeyMasked || null);
         }
       } catch {}
       setPrivacyLoading(false);
@@ -330,7 +339,7 @@ export default function SettingsPage() {
     } catch {}
   };
 
-  const saveApiKey = async (key: 'claudeApiKey' | 'openaiApiKey', value: string) => {
+  const saveApiKey = async (key: 'claudeApiKey' | 'openaiApiKey' | 'deepgramApiKey', value: string) => {
     setSavingKey(true);
     try {
       await fetch('/api/privacy-settings', {
@@ -338,15 +347,16 @@ export default function SettingsPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ [key]: value.trim() || '' }),
       });
-      // Reload to get masked key
       const res = await fetch('/api/privacy-settings');
       if (res.ok) {
         const data = await res.json();
         setClaudeKeyMasked(data.claudeApiKeyMasked || null);
         setOpenaiKeyMasked(data.openaiApiKeyMasked || null);
+        setDeepgramKeyMasked(data.deepgramApiKeyMasked || null);
       }
       if (key === 'claudeApiKey') setClaudeApiKey('');
       if (key === 'openaiApiKey') setOpenaiApiKey('');
+      if (key === 'deepgramApiKey') setDeepgramApiKey('');
     } catch {}
     setSavingKey(false);
   };
@@ -910,7 +920,7 @@ export default function SettingsPage() {
             </div>
 
             {/* Dictation */}
-            <div className="bg-[var(--card-bg)] rounded-2xl border border-[var(--card-border)] p-5 space-y-3" style={{ boxShadow: 'var(--card-shadow)' }}>
+            <div className="bg-[var(--card-bg)] rounded-2xl border border-[var(--card-border)] p-5 space-y-4" style={{ boxShadow: 'var(--card-shadow)' }}>
               <h3 className="font-semibold text-[var(--text-primary)]">Dictation</h3>
               <div className="flex items-center justify-between">
                 <div>
@@ -932,6 +942,32 @@ export default function SettingsPage() {
                     }`}
                   />
                 </button>
+              </div>
+
+              {/* Speech API (non-medicalize) */}
+              <div>
+                <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Fast Dictation Engine</label>
+                <select
+                  value={speechApi}
+                  onChange={(e) => { const v = e.target.value as SpeechAPI; setSpeechApi(v); saveSpeechAPI(v); }}
+                  className="w-full p-2.5 border border-[var(--input-border)] rounded-lg text-sm bg-[var(--input-bg)] text-[var(--text-primary)] focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="webspeech">Web Speech API (instant, browser-based)</option>
+                  <option value="deepgram">Deepgram Nova-3 Medical (more accurate, requires API key)</option>
+                </select>
+              </div>
+
+              {/* Transcribe API (medicalize) */}
+              <div>
+                <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Medicalize Engine</label>
+                <select
+                  value={transcribeApi}
+                  onChange={(e) => { const v = e.target.value as TranscribeAPI; setTranscribeApi(v); saveTranscribeAPI(v); }}
+                  className="w-full p-2.5 border border-[var(--input-border)] rounded-lg text-sm bg-[var(--input-bg)] text-[var(--text-primary)] focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="whisper">OpenAI Whisper + Claude (current)</option>
+                  <option value="deepgram">Deepgram Nova-3 Medical + Claude (more accurate)</option>
+                </select>
               </div>
             </div>
 
@@ -2076,8 +2112,44 @@ export default function SettingsPage() {
                     )}
                   </div>
 
+                  {/* Deepgram API Key */}
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-medium text-[var(--text-secondary)]">Deepgram API Key (optional — Nova-3 Medical)</label>
+                    {deepgramKeyMasked ? (
+                      <div className="flex items-center gap-2">
+                        <code className="flex-1 p-2 bg-[var(--bg-tertiary)] rounded-lg text-xs font-mono text-[var(--text-muted)]">
+                          {deepgramKeyMasked}
+                        </code>
+                        <button
+                          onClick={() => saveApiKey('deepgramApiKey', '')}
+                          disabled={savingKey}
+                          className="px-3 py-1.5 text-xs font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg transition-colors"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="flex gap-2">
+                        <input
+                          type="password"
+                          value={deepgramApiKey}
+                          onChange={(e) => setDeepgramApiKey(e.target.value)}
+                          placeholder="Deepgram API key..."
+                          className="flex-1 p-2 border border-[var(--input-border)] rounded-lg text-sm bg-[var(--input-bg)] text-[var(--text-primary)] focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono"
+                        />
+                        <button
+                          onClick={() => saveApiKey('deepgramApiKey', deepgramApiKey)}
+                          disabled={savingKey || !deepgramApiKey.trim()}
+                          className="px-3 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium disabled:opacity-40"
+                        >
+                          Save
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
                   <p className="text-[10px] text-[var(--text-muted)]">
-                    Keys are stored securely server-side and never exposed to the browser. Both keys are required for full functionality.
+                    Keys are stored securely server-side. Claude + OpenAI required for full functionality. Deepgram optional for enhanced transcription.
                   </p>
                 </div>
 

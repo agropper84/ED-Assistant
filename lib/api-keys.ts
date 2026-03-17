@@ -30,6 +30,18 @@ export async function getOpenAIApiKey(): Promise<string> {
   return '';
 }
 
+export async function getDeepgramApiKey(): Promise<string> {
+  try {
+    const session = await getSessionFromCookies();
+    if (session.userId) {
+      const settings = await getUserSettings(session.userId);
+      const userKey = settings?.deepgramApiKey as string;
+      if (userKey) return userKey;
+    }
+  } catch {}
+  return '';
+}
+
 import Anthropic from '@anthropic-ai/sdk';
 import OpenAI from 'openai';
 

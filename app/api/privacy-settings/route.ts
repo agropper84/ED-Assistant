@@ -12,6 +12,7 @@ export async function GET() {
     const settings = await getUserSettings(session.userId);
     const claudeKey = (settings?.claudeApiKey as string) || '';
     const openaiKey = (settings?.openaiApiKey as string) || '';
+    const deepgramKey = (settings?.deepgramApiKey as string) || '';
     return NextResponse.json({
       phiProtection: (settings?.phiProtection as boolean) || false,
       encryptionEnabled: (settings?.encryptionEnabled as boolean) || false,
@@ -19,6 +20,8 @@ export async function GET() {
       claudeApiKeyMasked: claudeKey ? `sk-ant-...${claudeKey.slice(-4)}` : null,
       hasOpenaiApiKey: !!openaiKey,
       openaiApiKeyMasked: openaiKey ? `sk-...${openaiKey.slice(-4)}` : null,
+      hasDeepgramApiKey: !!deepgramKey,
+      deepgramApiKeyMasked: deepgramKey ? `...${deepgramKey.slice(-4)}` : null,
     });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });

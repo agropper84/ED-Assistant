@@ -341,6 +341,34 @@ export function getEffectivePromptTemplates(encounterTypeId?: string): PromptTem
   return merged;
 }
 
+// --- Speech API selection ---
+
+export type SpeechAPI = 'webspeech' | 'deepgram';
+export type TranscribeAPI = 'whisper' | 'deepgram';
+
+const SPEECH_API_KEY = 'ed-app-speech-api';
+const TRANSCRIBE_API_KEY = 'ed-app-transcribe-api';
+
+export function getSpeechAPI(): SpeechAPI {
+  if (typeof window === 'undefined') return 'webspeech';
+  return (localStorage.getItem(SPEECH_API_KEY) as SpeechAPI) || 'webspeech';
+}
+
+export function saveSpeechAPI(api: SpeechAPI): void {
+  if (typeof window === 'undefined') return;
+  localStorage.setItem(SPEECH_API_KEY, api);
+}
+
+export function getTranscribeAPI(): TranscribeAPI {
+  if (typeof window === 'undefined') return 'whisper';
+  return (localStorage.getItem(TRANSCRIBE_API_KEY) as TranscribeAPI) || 'whisper';
+}
+
+export function saveTranscribeAPI(api: TranscribeAPI): void {
+  if (typeof window === 'undefined') return;
+  localStorage.setItem(TRANSCRIBE_API_KEY, api);
+}
+
 // --- Auto-generate analysis ---
 
 const AUTO_ANALYSIS_KEY = 'ed-app-auto-analysis';
