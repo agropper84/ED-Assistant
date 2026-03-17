@@ -1255,57 +1255,56 @@ export default function HomePage() {
                   <SlidersHorizontal className="w-3 h-3" />
                 </button>
                 {billingMenuOpen && (
-                  <div className="absolute right-0 top-full mt-1 z-50 w-52 bg-gray-900 rounded-lg shadow-xl ring-1 ring-white/10 py-1 text-sm">
-                    {/* Fee region selector */}
-                    <div className="px-3 py-1.5 text-[10px] uppercase tracking-wider text-gray-500 font-medium">Fee Region</div>
-                    {BILLING_REGIONS.map(r => (
-                      <button
-                        key={r.id}
-                        onClick={() => {
-                          saveDayRegion(sheetName, r.id);
-                          setIsVchMode(r.id === 'vch');
-                          setBillingMenuOpen(false);
-                        }}
-                        className={`w-full flex items-center justify-between px-3 py-2 text-left transition-colors ${
-                          getDayRegion(sheetName) === r.id
-                            ? 'text-teal-400 bg-white/10'
-                            : 'text-gray-100 hover:bg-white/10'
-                        }`}
-                      >
-                        {r.label}
-                        {getDayRegion(sheetName) === r.id && (
-                          <span className="text-[10px] text-teal-400">Active</span>
-                        )}
-                      </button>
-                    ))}
+                  <div className="absolute right-0 top-full mt-1.5 z-50 bg-gray-900/95 backdrop-blur-sm rounded-xl shadow-2xl ring-1 ring-white/10 text-[13px] overflow-hidden" style={{ minWidth: '180px' }}>
+                    {/* Fee region */}
+                    <div className="px-3 pt-2.5 pb-1 text-[9px] uppercase tracking-widest text-gray-500 font-semibold">Region</div>
+                    {BILLING_REGIONS.map(r => {
+                      const active = getDayRegion(sheetName) === r.id;
+                      return (
+                        <button
+                          key={r.id}
+                          onClick={() => {
+                            saveDayRegion(sheetName, r.id);
+                            setIsVchMode(r.id === 'vch');
+                            setBillingMenuOpen(false);
+                          }}
+                          className={`w-full flex items-center gap-2 px-3 py-2 text-left transition-colors ${
+                            active ? 'text-white bg-white/8' : 'text-gray-300 hover:bg-white/5'
+                          }`}
+                        >
+                          <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${active ? 'bg-teal-400' : 'bg-gray-600'}`} />
+                          <span className="flex-1">{r.label}</span>
+                        </button>
+                      );
+                    })}
                     {/* Export */}
-                    <div className="border-t border-white/10 mt-1 pt-1">
-                      <div className="px-3 py-1.5 text-[10px] uppercase tracking-wider text-gray-500 font-medium">Export Billing</div>
+                    <div className="border-t border-white/8 mt-1">
                       {!exportingBilling ? (
                         <button
                           onClick={() => setExportingBilling(true)}
-                          className="w-full flex items-center gap-2 px-3 py-2 text-left text-gray-100 hover:bg-white/10 transition-colors"
+                          className="w-full flex items-center gap-2 px-3 py-2.5 text-left text-gray-300 hover:bg-white/5 transition-colors"
                         >
-                          <FileSpreadsheet className="w-3.5 h-3.5" />
-                          Export to CSV...
+                          <FileSpreadsheet className="w-3.5 h-3.5 text-gray-500" />
+                          Export billing...
                         </button>
                       ) : (
-                        <div className="px-3 py-2 space-y-2">
-                          <div className="flex gap-1.5">
+                        <div className="px-3 py-2.5 space-y-2">
+                          <div className="text-[10px] text-gray-500 font-medium">Date range</div>
+                          <div className="space-y-1.5">
                             <input
                               type="date"
                               value={exportStart}
                               onChange={(e) => setExportStart(e.target.value)}
-                              className="flex-1 px-2 py-1 bg-gray-800 border border-gray-700 rounded text-xs text-gray-100"
+                              className="w-full px-2 py-1.5 bg-gray-800/80 border border-gray-700/50 rounded-lg text-xs text-gray-200 focus:border-teal-500/50 focus:outline-none"
                             />
                             <input
                               type="date"
                               value={exportEnd}
                               onChange={(e) => setExportEnd(e.target.value)}
-                              className="flex-1 px-2 py-1 bg-gray-800 border border-gray-700 rounded text-xs text-gray-100"
+                              className="w-full px-2 py-1.5 bg-gray-800/80 border border-gray-700/50 rounded-lg text-xs text-gray-200 focus:border-teal-500/50 focus:outline-none"
                             />
                           </div>
-                          <div className="flex gap-1.5">
+                          <div className="flex gap-2 pt-0.5">
                             <button
                               onClick={async () => {
                                 if (!exportStart || !exportEnd) return;
@@ -1326,13 +1325,13 @@ export default function HomePage() {
                                 setBillingMenuOpen(false);
                               }}
                               disabled={!exportStart || !exportEnd}
-                              className="flex-1 px-2 py-1.5 bg-teal-600 text-white rounded text-xs font-medium disabled:opacity-40"
+                              className="flex-1 py-1.5 bg-teal-600 hover:bg-teal-500 text-white rounded-lg text-xs font-medium disabled:opacity-30 transition-colors"
                             >
                               Download
                             </button>
                             <button
                               onClick={() => setExportingBilling(false)}
-                              className="px-2 py-1.5 text-gray-400 hover:text-gray-200 text-xs"
+                              className="py-1.5 px-2 text-gray-500 hover:text-gray-300 text-xs transition-colors"
                             >
                               Cancel
                             </button>
