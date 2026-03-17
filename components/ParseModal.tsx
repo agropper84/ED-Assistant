@@ -242,7 +242,7 @@ export function ParseModal({ isOpen, onClose, onSave }: ParseModalProps) {
               value={pasteText}
               onChange={(e) => setPasteText(e.target.value)}
               placeholder="Paste patient info..."
-              className="w-full h-28 p-3 border border-[var(--input-border)] rounded-xl text-sm font-mono resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)]"
+              className="w-full h-28 p-3 border border-[var(--input-border)] rounded-xl text-sm font-mono resize-y focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)]"
             />
             <button
               onClick={handleParse}
@@ -368,7 +368,7 @@ export function ParseModal({ isOpen, onClose, onSave }: ParseModalProps) {
               value={triageVitals}
               onChange={(e) => setTriageVitals(e.target.value)}
               placeholder="Chief complaint, vitals, triage assessment..."
-              className="w-full h-20 p-3 border border-[var(--input-border)] rounded-xl text-sm resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)]"
+              className="w-full h-20 p-3 border border-[var(--input-border)] rounded-xl text-sm resize-y focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)]"
             />
           </div>
 
@@ -382,7 +382,7 @@ export function ParseModal({ isOpen, onClose, onSave }: ParseModalProps) {
                 value={transcript}
                 onChange={(e) => setTranscript(e.target.value)}
                 placeholder="Audio transcript or dictation..."
-                className="w-full h-28 p-3 pr-16 border border-[var(--input-border)] rounded-xl text-sm resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)]"
+                className="w-full h-28 p-3 pr-16 border border-[var(--input-border)] rounded-xl text-sm resize-y focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)]"
               />
               <div className="absolute top-1.5 right-1.5">
                 <VoiceRecorder
@@ -412,7 +412,7 @@ export function ParseModal({ isOpen, onClose, onSave }: ParseModalProps) {
                 onChange={setEncounterNotes}
                 suggestions={allSuggestions}
                 placeholder="Physician notes, clinical observations, plan..."
-                textareaClassName="w-full h-28 p-3 pr-10 border border-[var(--input-border)] rounded-xl text-sm resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)]"
+                textareaClassName="w-full h-28 p-3 pr-10 border border-[var(--input-border)] rounded-xl text-sm resize-y focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)]"
                 patientContext={patientContext}
               />
               <div className="absolute top-1.5 right-1.5 z-10">
@@ -443,7 +443,7 @@ export function ParseModal({ isOpen, onClose, onSave }: ParseModalProps) {
                 onChange={setAdditional}
                 suggestions={allSuggestions}
                 placeholder="Exam findings, investigations, results, updates..."
-                textareaClassName="w-full h-24 p-3 pr-10 border border-[var(--input-border)] rounded-xl text-sm resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)]"
+                textareaClassName="w-full h-24 p-3 pr-10 border border-[var(--input-border)] rounded-xl text-sm resize-y focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)]"
                 patientContext={patientContext}
               />
               <div className="absolute top-1.5 right-1.5 z-10">
@@ -471,7 +471,7 @@ export function ParseModal({ isOpen, onClose, onSave }: ParseModalProps) {
               value={pastDocs}
               onChange={(e) => setPastDocs(e.target.value)}
               placeholder="Previous visit notes, relevant history..."
-              className="w-full h-20 p-3 border border-[var(--input-border)] rounded-xl text-sm resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)]"
+              className="w-full h-20 p-3 border border-[var(--input-border)] rounded-xl text-sm resize-y focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)]"
             />
           </div>
         </div>

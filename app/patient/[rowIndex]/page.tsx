@@ -533,7 +533,7 @@ export default function PatientPage() {
                       value={modifications}
                       onChange={(e) => setModifications(e.target.value)}
                       placeholder="Describe what changes you want (e.g., 'Add chest pain to HPI', 'Change diagnosis to pneumonia')..."
-                      className="w-full h-24 p-3 border border-amber-300 dark:border-amber-700 rounded-lg text-sm resize-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 bg-[var(--input-bg)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)]"
+                      className="w-full h-24 p-3 border border-amber-300 dark:border-amber-700 rounded-lg text-sm resize-y focus:ring-2 focus:ring-amber-500 focus:border-amber-500 bg-[var(--input-bg)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)]"
                     />
                     <div className="flex gap-2">
                       <button
@@ -880,7 +880,7 @@ export default function PatientPage() {
                     value={quickAddText}
                     onChange={(e) => setQuickAddText(e.target.value)}
                     placeholder="Add exam findings, investigation results, or clinical notes..."
-                    className="w-full h-24 p-3 pr-10 border border-[var(--input-border)] rounded-lg text-sm resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)]"
+                    className="w-full h-24 p-3 pr-10 border border-[var(--input-border)] rounded-lg text-sm resize-y focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)]"
                     autoFocus
                   />
                   <div className="absolute top-1.5 right-1.5">
