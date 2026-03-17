@@ -15,37 +15,44 @@ export async function POST(request: NextRequest) {
     const context: string[] = [];
     if (patient?.age) context.push(`Age: ${patient.age}`);
     if (patient?.gender) context.push(`Gender: ${patient.gender}`);
-    if (patient?.weight) context.push(`Weight: ${patient.weight}`);
     if (patient?.diagnosis) context.push(`Diagnosis: ${patient.diagnosis}`);
-    if (patient?.triageVitals) context.push(`Vitals/Triage: ${patient.triageVitals}`);
-    if (patient?.transcript) context.push(`Encounter data: ${patient.transcript.substring(0, 500)}`);
-    if (patient?.additional) context.push(`Additional: ${patient.additional.substring(0, 300)}`);
+    if (patient?.triageVitals) context.push(`Vitals/Triage:\n${patient.triageVitals}`);
+    if (patient?.objective) context.push(`Physical Exam/Objective:\n${patient.objective}`);
+    if (patient?.investigations) context.push(`Investigations:\n${patient.investigations}`);
+    if (patient?.transcript) context.push(`Encounter transcript:\n${patient.transcript.substring(0, 800)}`);
+    if (patient?.additional) context.push(`Additional findings:\n${patient.additional.substring(0, 500)}`);
+    if (patient?.hpi) context.push(`HPI:\n${patient.hpi.substring(0, 500)}`);
 
     // Mode 1: Get required variables for a calculator
     if (mode === 'variables') {
       const response = await anthropic.messages.create({
         model: 'claude-haiku-4-5-20251001',
-        max_tokens: 512,
+        max_tokens: 1024,
         temperature: 0,
         messages: [{
           role: 'user',
-          content: `For the medical calculation "${query}", return a JSON object with:
-- "name": the full calculator name
-- "variables": an array of objects, each with:
-  - "id": short camelCase identifier
-  - "label": display name
-  - "unit": the unit (e.g. "kg", "mg/dL", "years", "mL/min") — empty string if unitless
-  - "type": "number" or "select"
-  - "options": (only for type "select") array of { "label": string, "value": number } choices
-  - "value": pre-filled value from patient data if available, or null if unknown
-  - "source": "patient" if pre-filled from data, null otherwise
-- "formula": brief description of the formula
-- "mdcalcUrl": MDCalc URL if applicable, or null
+          content: `For the medical calculation "${query}", return a JSON object with the required variables.
 
-PATIENT DATA:
-${context.join('\n')}
+PATIENT DATA (search carefully for values like age, weight, creatinine, vitals, labs, etc.):
+${context.join('\n\n')}
 
-Return ONLY valid JSON, no explanation.`,
+IMPORTANT EXTRACTION RULES:
+- Age: extract from the "Age" field. Convert "45y" to 45. Set source to "patient" if found.
+- Gender/Sex: extract from "Gender" field. "M" = male, "F" = female. Set source to "patient" if found.
+- Weight: look in vitals, triage notes, transcript, exam, and HPI for weight in kg or lbs. Convert lbs to kg if needed (divide by 2.2). Set source to "patient" if found.
+- Serum Creatinine: look in investigations, labs, transcript for creatinine/Cr values (mg/dL or µmol/L). Set source to "patient" if found.
+- Heart Rate, BP, SpO2, RR, Temp: look in vitals/triage. Set source to "patient" if found.
+- Any other lab values or clinical findings: search all patient data fields.
+- If a value is found ANYWHERE in the patient data, set "value" to the number and "source" to "patient".
+- Only set "value" to null and "source" to null if the value truly cannot be found.
+
+Return JSON with:
+- "name": full calculator name
+- "variables": array of { "id": camelCase, "label": display name, "unit": string (e.g. "kg", "mg/dL", "years"), "type": "number" or "select", "options": (for select only) [{ "label": string, "value": number }], "value": number or null, "source": "patient" or null }
+- "formula": brief formula description
+- "mdcalcUrl": MDCalc URL or null
+
+Return ONLY valid JSON.`,
         }],
       });
 

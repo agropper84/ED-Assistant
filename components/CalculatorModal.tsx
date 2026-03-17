@@ -97,9 +97,13 @@ export function CalculatorModal({ isOpen, onClose, patient }: CalculatorModalPro
 
   const patientPayload = {
     name: patient.name, age: patient.age, gender: patient.gender,
-    weight: '', triageVitals: patient.triageVitals,
-    transcript: patient.transcript, additional: patient.additional,
+    triageVitals: patient.triageVitals,
+    transcript: patient.transcript,
+    additional: patient.additional,
     diagnosis: patient.diagnosis,
+    objective: (patient as any).objective || '',
+    hpi: (patient as any).hpi || '',
+    investigations: (patient as any).investigations || '',
   };
 
   const handleSelectCalc = async (query: string) => {
