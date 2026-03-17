@@ -350,8 +350,8 @@ const SPEECH_API_KEY = 'ed-app-speech-api';
 const TRANSCRIBE_API_KEY = 'ed-app-transcribe-api';
 
 export function getSpeechAPI(): SpeechAPI {
-  if (typeof window === 'undefined') return 'webspeech';
-  return (localStorage.getItem(SPEECH_API_KEY) as SpeechAPI) || 'webspeech';
+  if (typeof window === 'undefined') return 'deepgram';
+  return (localStorage.getItem(SPEECH_API_KEY) as SpeechAPI) || 'deepgram';
 }
 
 export function saveSpeechAPI(api: SpeechAPI): void {
@@ -360,8 +360,8 @@ export function saveSpeechAPI(api: SpeechAPI): void {
 }
 
 export function getTranscribeAPI(): TranscribeAPI {
-  if (typeof window === 'undefined') return 'whisper';
-  return (localStorage.getItem(TRANSCRIBE_API_KEY) as TranscribeAPI) || 'whisper';
+  if (typeof window === 'undefined') return 'deepgram';
+  return (localStorage.getItem(TRANSCRIBE_API_KEY) as TranscribeAPI) || 'deepgram';
 }
 
 export function saveTranscribeAPI(api: TranscribeAPI): void {

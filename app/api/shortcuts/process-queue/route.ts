@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getOpenAIClient } from '@/lib/api-keys';
+import { getOpenAIClient, getDeepgramApiKey } from '@/lib/api-keys';
 import { del as deleteBlob } from '@vercel/blob';
 import { getSessionFromCookies } from '@/lib/session';
 import {
@@ -106,15 +106,27 @@ async function processOne(pending: PendingAudio): Promise<{ transcript: string; 
   const audioBuffer = Buffer.from(await audioResponse.arrayBuffer());
   const audioFile = new File([audioBuffer], pending.filename, { type: 'audio/m4a' });
 
-  const openai = await getOpenAIClient();
-  const transcription = await openai.audio.transcriptions.create({
-    file: audioFile,
-    model: 'whisper-1',
-    prompt: DEVICE_WHISPER_PROMPT,
-    language: 'en',
-  });
-
-  const transcript = transcription.text;
+  // Deepgram (preferred) or Whisper (fallback)
+  let transcript = '';
+  const dgKey = await getDeepgramApiKey();
+  if (dgKey) {
+    const dgRes = await fetch('https://api.deepgram.com/v1/listen?model=nova-3-medical&smart_format=true&punctuate=true&language=en', {
+      method: 'POST',
+      headers: { 'Authorization': `Token ${dgKey}`, 'Content-Type': 'audio/m4a' },
+      body: audioBuffer,
+    });
+    if (dgRes.ok) {
+      const data = await dgRes.json();
+      transcript = data?.results?.channels?.[0]?.alternatives?.[0]?.transcript || '';
+    }
+  }
+  if (!transcript) {
+    const openai = await getOpenAIClient();
+    const transcription = await openai.audio.transcriptions.create({
+      file: audioFile, model: 'whisper-1', prompt: DEVICE_WHISPER_PROMPT, language: 'en',
+    });
+    transcript = transcription.text || '';
+  }
   const ctx = await getSheetsContextForUser(pending.userId);
 
   // 2. Handle based on mode

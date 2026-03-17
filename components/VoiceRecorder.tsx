@@ -621,13 +621,35 @@ export function VoiceRecorder({
             formData.append('audio', blob, `recording.${getFileExtension(mimeType)}`);
             formData.append('mode', mode);
             if (!medicalizeRef.current) formData.append('skipMedicalize', 'true');
-            const res = await fetch('/api/transcribe', { method: 'POST', body: formData });
-            if (!res.ok) {
+
+            // Use Deepgram or Whisper based on settings
+            const useDeepgram = getTranscribeAPI() === 'deepgram';
+            let endpoint = useDeepgram ? '/api/transcribe-deepgram' : '/api/transcribe';
+            let res = await fetch(endpoint, { method: 'POST', body: formData });
+
+            // If Deepgram succeeded and medicalize is on, run Claude medicalize
+            if (useDeepgram && res.ok && medicalizeRef.current) {
+              const { text: dgText } = await res.json();
+              if (dgText?.trim()) {
+                const medRes = await fetch('/api/medicalize', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ text: dgText.trim() }),
+                });
+                if (medRes.ok) {
+                  const { text } = await medRes.json();
+                  if (text?.trim()) onTranscript(text.trim());
+                } else {
+                  onTranscript(dgText.trim());
+                }
+              }
+            } else if (res.ok) {
+              const { text } = await res.json();
+              if (text?.trim()) onTranscript(text.trim());
+            } else {
               const err = await res.json().catch(() => ({ error: 'Transcription failed' }));
               throw new Error(err.error || `Failed (${res.status})`);
             }
-            const { text } = await res.json();
-            if (text?.trim()) onTranscript(text.trim());
           } catch (err: any) {
             console.error('Transcription error:', err);
           }
@@ -801,7 +823,9 @@ export function VoiceRecorder({
       formData.append('audio', file, file.name);
       formData.append('mode', mode);
       if (!medicalizeRef.current) formData.append('skipMedicalize', 'true');
-      const res = await fetch('/api/transcribe', { method: 'POST', body: formData });
+      const useDeepgram = getTranscribeAPI() === 'deepgram';
+      const endpoint = useDeepgram ? '/api/transcribe-deepgram' : '/api/transcribe';
+      const res = await fetch(endpoint, { method: 'POST', body: formData });
       if (!res.ok) {
         const err = await res.json().catch(() => ({ error: 'Transcription failed' }));
         throw new Error(err.error || `Failed (${res.status})`);

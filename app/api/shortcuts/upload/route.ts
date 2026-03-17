@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createHash, randomBytes } from 'crypto';
-import { getOpenAIClient } from '@/lib/api-keys';
-import { getShortcutTokenUser, setShortcutTranscript } from '@/lib/kv';
+import { getOpenAIClient, getDeepgramApiKey } from '@/lib/api-keys';
+import { getShortcutTokenUser, setShortcutTranscript, getUserSettings } from '@/lib/kv';
 import { getSheetsContextForUser, updatePatientFields } from '@/lib/google-sheets';
 import { DEVICE_WHISPER_PROMPT } from '@/lib/whisper-prompts';
 
@@ -35,14 +35,28 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No audio file provided' }, { status: 400 });
     }
 
-    // Transcribe with Whisper
-    const openai = await getOpenAIClient();
-    const transcription = await openai.audio.transcriptions.create({
-      file: audioFile,
-      model: 'whisper-1',
-      prompt: DEVICE_WHISPER_PROMPT,
-      language: 'en',
-    });
+    // Transcribe with Deepgram (preferred) or Whisper (fallback)
+    let transcriptionText = '';
+    const dgKey = await getDeepgramApiKey();
+    if (dgKey) {
+      const buffer = Buffer.from(await audioFile.arrayBuffer());
+      const dgRes = await fetch('https://api.deepgram.com/v1/listen?model=nova-3-medical&smart_format=true&punctuate=true&language=en', {
+        method: 'POST',
+        headers: { 'Authorization': `Token ${dgKey}`, 'Content-Type': audioFile.type || 'audio/webm' },
+        body: buffer,
+      });
+      if (dgRes.ok) {
+        const data = await dgRes.json();
+        transcriptionText = data?.results?.channels?.[0]?.alternatives?.[0]?.transcript || '';
+      }
+    }
+    if (!transcriptionText) {
+      const openai = await getOpenAIClient();
+      const transcription = await openai.audio.transcriptions.create({
+        file: audioFile, model: 'whisper-1', prompt: DEVICE_WHISPER_PROMPT, language: 'en',
+      });
+      transcriptionText = transcriptionText || '';
+    }
 
     // If rowIndex provided, assign directly to patient
     const rowIndexStr = formData.get('rowIndex');
@@ -51,20 +65,20 @@ export async function POST(request: NextRequest) {
     if (rowIndexStr) {
       const rowIndex = parseInt(rowIndexStr as string, 10);
       const ctx = await getSheetsContextForUser(userId);
-      await updatePatientFields(ctx, rowIndex, { transcript: transcription.text }, sheetName || undefined);
-      return NextResponse.json({ transcript: transcription.text, assigned: true, rowIndex });
+      await updatePatientFields(ctx, rowIndex, { transcript: transcriptionText }, sheetName || undefined);
+      return NextResponse.json({ transcript: transcriptionText, assigned: true, rowIndex });
     }
 
     // Store transcript in KV with 10 min TTL
     const id = randomBytes(16).toString('hex');
-    await setShortcutTranscript(id, { transcript: transcription.text, userId }, 600);
+    await setShortcutTranscript(id, { transcript: transcriptionText, userId }, 600);
 
     // Build URL
     const host = request.headers.get('host') || 'localhost:3000';
     const protocol = request.headers.get('x-forwarded-proto') || 'https';
     const url = `${protocol}://${host}/?transcript=${id}`;
 
-    return NextResponse.json({ id, url, transcript: transcription.text });
+    return NextResponse.json({ id, url, transcript: transcriptionText });
   } catch (error: any) {
     console.error('Shortcut upload error:', error);
     const message = error?.message || 'Upload failed';
