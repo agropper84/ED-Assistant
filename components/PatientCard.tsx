@@ -2,7 +2,7 @@
 
 import { useState, useRef } from 'react';
 import { Patient } from '@/lib/google-sheets';
-import { Clock, User, FileText, Trash2, DollarSign, Stethoscope, Copy, Check, Brain, ClipboardList, BookOpen, Play, Loader2, X, MessageCircleQuestion, Merge, CalendarDays, GraduationCap, ExternalLink } from 'lucide-react';
+import { Clock, User, FileText, Trash2, DollarSign, Stethoscope, Copy, Check, Brain, ClipboardList, BookOpen, Play, Loader2, X, MessageCircleQuestion, Merge, CalendarDays, GraduationCap, ExternalLink, Calculator } from 'lucide-react';
 
 interface PatientCardProps {
   patient: Patient;
@@ -21,6 +21,7 @@ interface PatientCardProps {
   onDateChange?: (newSheetName: string) => void;
   onGenerateEducation?: () => Promise<void>;
   showEducation?: boolean;
+  onCalculator?: () => void;
 }
 
 /** Convert a full name to initials, e.g. "John Smith" → "J.S." */
@@ -36,7 +37,7 @@ function toInitials(name: string): string {
 // Unified empty-state color for unfilled icons
 const EMPTY = 'text-slate-300 dark:text-slate-600';
 
-export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChange, onBillingToggle, billingCodes, onNavigate, onProcess, onGenerateAnalysis, onUpdateFields, onClinicalChat, onMerge, onDateChange, onGenerateEducation, showEducation }: PatientCardProps) {
+export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChange, onBillingToggle, billingCodes, onNavigate, onProcess, onGenerateAnalysis, onUpdateFields, onClinicalChat, onMerge, onDateChange, onGenerateEducation, showEducation, onCalculator }: PatientCardProps) {
   const [editingTime, setEditingTime] = useState(false);
   const [timeValue, setTimeValue] = useState(patient.timestamp || '');
   const [noteCopied, setNoteCopied] = useState(false);
@@ -478,6 +479,20 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
             title="Assign to existing patient"
           >
             <Merge className="w-4 h-4 text-[var(--text-muted)] hover:text-blue-500 dark:hover:text-blue-400 transition-colors" />
+          </button>
+        )}
+
+        {/* Calculator */}
+        {onCalculator && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onCalculator();
+            }}
+            className="p-1.5 hover:bg-orange-50 dark:hover:bg-orange-900/30 rounded-lg transition-colors"
+            title="Calculator"
+          >
+            <Calculator className="w-4 h-4 text-orange-400 dark:text-orange-500 hover:text-orange-600 dark:hover:text-orange-400 transition-colors" />
           </button>
         )}
 
