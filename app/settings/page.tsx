@@ -1446,6 +1446,9 @@ export default function SettingsPage() {
               );
             })}
 
+            {/* Section Instructions */}
+            <h3 className="font-semibold text-[var(--text-primary)] text-sm">Section Instructions</h3>
+
             {/* Literature Sources */}
             <div className="bg-[var(--card-bg)] rounded-2xl border border-[var(--card-border)] p-5 space-y-3" style={{ boxShadow: 'var(--card-shadow)' }}>
               <div className="flex items-center justify-between">
@@ -1507,9 +1510,6 @@ export default function SettingsPage() {
                 </div>
               )}
             </div>
-
-            {/* Section Instructions */}
-            <h3 className="font-semibold text-[var(--text-primary)] text-sm">Section Instructions</h3>
             {([
               { key: 'ddx' as const, label: 'DDx (Differential Diagnosis)' },
               { key: 'investigations' as const, label: 'Investigations' },
