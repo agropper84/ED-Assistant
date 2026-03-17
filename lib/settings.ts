@@ -198,56 +198,6 @@ Use paragraph/narrative form only. No bullet points.`,
       diagnosis: `Primary diagnosis for this visit — use standard clinical terminology appropriate for a primary care encounter`,
     },
   },
-  {
-    id: 'specialist-consult',
-    label: 'Specialist Consult',
-    prompts: {
-      generalRules: `- Do NOT assume, infer, or make up information not explicitly stated in the provided data
-- Use evidence-based medicine with emphasis on specialty-specific guidelines and literature
-- Write as a specialist consultant — detailed, precise, authoritative language
-- Abbreviations are acceptable without explanation
-- Use narrative/paragraph form, NOT bullet points or numbered lists
-- The note serves as a formal consultation response to the referring physician
-- Provide clear, actionable recommendations that the referring physician can implement
-- If information for a section is not available, write "Information not documented" or "Insufficient data"`,
-      ddx: `Provide a detailed differential diagnosis from the specialist's perspective. Include conditions that may have been missed or under-evaluated by the referring physician. Rank by likelihood with specialist-level reasoning. Discuss atypical presentations or rare diagnoses within your specialty that should be considered. Use narrative form.`,
-      investigations: `Recommend a specialty-specific diagnostic workup. Include:
-- Advanced or specialized laboratory testing
-- Specialty-specific imaging (with specific protocols/sequences if applicable)
-- Diagnostic procedures (biopsy, endoscopy, EMG, cardiac cath, etc.)
-- Functional testing or specialized assessments
-- Indicate urgency and sequencing of investigations
-Use narrative form.`,
-      management: `Provide detailed specialist management recommendations. Include:
-- Specialty-specific treatments and therapies (with evidence basis)
-- Procedural interventions recommended or planned
-- Medication recommendations with specific doses and monitoring parameters
-- Clear delineation of what the specialist will manage vs. what the referring physician should manage
-- Criteria for re-referral, escalation, or urgent reassessment
-- Expected clinical trajectory and milestones
-Use narrative form.`,
-      evidence: `Cite specialty-specific evidence, guidelines, and current literature supporting the assessment and recommendations. Reference society guidelines (e.g., AHA/ACC, ACG, ACR, ASCO), landmark trials, or meta-analyses as applicable. Provide evidence level where possible. Include rationale for recommendations that deviate from standard protocols. For each guideline or study cited, include a clickable markdown hyperlink to the primary source using the format [Guideline/Study Name](URL). Link to PubMed, journal websites, or society guideline pages. Use narrative form.`,
-      hpi: `Comprehensive consultation history. Document:
-- Reason for referral and referring physician
-- Detailed chronological history of the presenting complaint
-- Prior workup already completed (labs, imaging, procedures) with results
-- Previous treatments tried and their outcomes
-- Relevant past medical, surgical, family, and social history from the specialty perspective
-Use detailed, formal consultation language.`,
-      objective: `Physical examination findings ONLY. Perform and document a specialty-focused examination in addition to the general assessment. Use this format for normal general exam:
-"Patient appears well, NAD. AVSS."
-Then document the detailed specialty-specific examination findings. If no exam documented, state "Physical examination not documented."`,
-      assessmentPlan: `Do NOT start with the diagnosis name (it is displayed separately above).
-Begin with the specialist's clinical impression and reasoning.
-Synthesize the referral question with the specialist assessment.
-Provide a clear diagnostic formulation from the specialty perspective.
-Detail the recommended investigation and management plan with rationale.
-Communicate specific recommendations back to the referring physician.
-Outline the follow-up plan: specialist follow-up timeline, criteria for re-referral, discharge back to referring physician criteria.
-Use paragraph/narrative form only. No bullet points.`,
-      diagnosis: `Specialist diagnosis or diagnostic impression — use precise specialty-specific terminology`,
-    },
-  },
 ];
 
 /** Get the active encounter type ID */
@@ -293,7 +243,6 @@ export const DEFAULT_LITERATURE_SOURCES: Record<string, string> = {
   er: 'UpToDate, NEJM, BMJ, The American Journal of Emergency Medicine, CJEM, Annals of Emergency Medicine, Rosen\'s Emergency Medicine, Tintinalli\'s Emergency Medicine, ACEP clinical policies, Ottawa Rules, HEART Pathway',
   'urgent-care': 'UpToDate, NEJM, BMJ, American Family Physician, JUCM (Journal of Urgent Care Medicine), IDSA guidelines, Sanford Guide, CDC treatment guidelines',
   'primary-care': 'UpToDate, NEJM, BMJ, American Family Physician, CMAJ, USPSTF recommendations, CDA guidelines, CTFPHC guidelines, Cochrane Reviews, NICE guidelines',
-  'specialist-consult': 'UpToDate, NEJM, BMJ, Lancet, specialty society guidelines (AHA/ACC, ACG, ACR, ASCO)',
 };
 
 export function getLiteratureSourcesConfig(): LiteratureSourcesConfig {
