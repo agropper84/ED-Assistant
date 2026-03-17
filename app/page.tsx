@@ -16,6 +16,7 @@ import { ClinicalChatModal } from '@/components/ClinicalChatModal';
 import { CalculatorModal } from '@/components/CalculatorModal';
 import { MergeModal } from '@/components/MergeModal';
 import { PendingAudioBanner } from '@/components/PendingAudioBanner';
+import { SavedResourcesModal, addSavedResource, getSavedResources } from '@/components/SavedResourcesModal';
 import { InlineBilling, VchTimeBasedShiftPanel } from '@/components/BillingSection';
 import {
   BillingItem,
@@ -32,7 +33,7 @@ import {
   Plus, Loader2, ChevronLeft, ChevronRight,
   Calendar, Settings, CheckSquare, Square, Play, Clock, EyeOff, Eye,
   Search, ArrowUpDown, X, LogOut, Upload, Monitor, RotateCcw, Sparkles,
-  ChevronDown, SlidersHorizontal, FileSpreadsheet
+  ChevronDown, SlidersHorizontal, FileSpreadsheet, Bookmark
 } from 'lucide-react';
 
 function formatDateForSheet(date: Date): string {
@@ -286,6 +287,8 @@ export default function HomePage() {
   const [anonymize, setAnonymize] = useState(false);
   const [awayScreen, setAwayScreen] = useState(false);
   const [privacyMenuOpen, setPrivacyMenuOpen] = useState(false);
+  const [savedResourcesOpen, setSavedResourcesOpen] = useState(false);
+  const [savedResourceKeys, setSavedResourceKeys] = useState<Set<string>>(new Set());
   const [awayTime, setAwayTime] = useState('');
   const [awayWeather, setAwayWeather] = useState<{ temp: string; desc: string; location: string } | null>(null);
   const [awayPhotoIndex, setAwayPhotoIndex] = useState(0);
@@ -605,14 +608,22 @@ export default function HomePage() {
       if (res.ok) {
         const { rowIndex, sheetName: savedSheet } = await res.json();
         fetchPatients();
-        router.push(`/patient/${rowIndex}?sheet=${encodeURIComponent(savedSheet)}`);
 
-        // Auto-generate synopsis and DDx/management/evidence (if enabled)
-        if (getAutoAnalysis()) {
-          const body = JSON.stringify({ rowIndex, sheetName: savedSheet });
+        // Generate note if requested (from ParseModal checkbox) or auto-analysis enabled
+        const shouldGenerate = data._generateNote || getAutoAnalysis();
+        if (shouldGenerate) {
+          const body = JSON.stringify({
+            rowIndex,
+            sheetName: savedSheet,
+            settings: (() => { try { const s = localStorage.getItem('ed-app-settings'); return s ? JSON.parse(s) : undefined; } catch { return undefined; } })(),
+            promptTemplates: getEffectivePromptTemplates(),
+          });
           const headers = { 'Content-Type': 'application/json' };
-          fetch('/api/synopsis', { method: 'POST', headers, body }).catch(() => {});
-          fetch('/api/analysis', { method: 'POST', headers, body }).catch(() => {});
+          fetch('/api/process', { method: 'POST', headers, body }).catch(() => {});
+          if (getAutoAnalysis()) {
+            fetch('/api/synopsis', { method: 'POST', headers, body: JSON.stringify({ rowIndex, sheetName: savedSheet }) }).catch(() => {});
+            fetch('/api/analysis', { method: 'POST', headers, body: JSON.stringify({ rowIndex, sheetName: savedSheet }) }).catch(() => {});
+          }
         }
       }
     } catch (error) {
@@ -950,6 +961,11 @@ export default function HomePage() {
           onMerge={() => setMergeSource(patient)}
           onDateChange={(newSheet) => handleDateChange(patient, newSheet)}
           showEducation={getEducationConfig().enabled}
+          onSaveResource={(resource) => {
+            addSavedResource(resource);
+            setSavedResourceKeys(prev => new Set(prev).add(`${patient.rowIndex}:${patient.sheetName}:${resource.type}`));
+          }}
+          savedResourceKey={(type) => savedResourceKeys.has(`${patient.rowIndex}:${patient.sheetName}:${type}`)}
           onGenerateEducation={async () => {
             const eduConfig = getEducationConfig();
             await fetch('/api/education', {
@@ -1126,6 +1142,14 @@ export default function HomePage() {
                   </button>
                   {privacyMenuOpen && (
                     <div className="absolute right-0 top-full mt-1 z-50 w-48 bg-gray-900 rounded-lg shadow-xl ring-1 ring-white/10 py-1 text-sm">
+                      <button
+                        onClick={() => { setSavedResourcesOpen(true); setPrivacyMenuOpen(false); }}
+                        className="w-full flex items-center gap-2.5 px-3 py-2 text-left text-gray-100 hover:bg-white/10 transition-colors"
+                      >
+                        <Bookmark className="w-4 h-4" />
+                        Saved Resources
+                      </button>
+                      <div className="border-t border-white/10 my-1" />
                       <button
                         onClick={() => { setAnonymize(!anonymize); setPrivacyMenuOpen(false); }}
                         className="w-full flex items-center gap-2.5 px-3 py-2 text-left text-gray-100 hover:bg-white/10 transition-colors"
@@ -1725,6 +1749,11 @@ export default function HomePage() {
           }}
           onClose={() => setMergeSource(null)}
         />
+      )}
+
+      {/* Saved Resources Modal */}
+      {savedResourcesOpen && (
+        <SavedResourcesModal onClose={() => setSavedResourcesOpen(false)} />
       )}
 
       {/* Delete Confirmation */}

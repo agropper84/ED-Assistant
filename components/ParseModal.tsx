@@ -86,6 +86,7 @@ export function ParseModal({ isOpen, onClose, onSave }: ParseModalProps) {
   const [error, setError] = useState('');
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [userPhrases, setUserPhrases] = useState<string[]>([]);
+  const [generateNote, setGenerateNote] = useState(true);
   const timeScrollRef = useRef<HTMLDivElement>(null);
 
   // Fetch user's saved phrases for autocomplete
@@ -179,6 +180,7 @@ export function ParseModal({ isOpen, onClose, onSave }: ParseModalProps) {
         transcript: combineTranscriptAndNotes(transcript, encounterNotes),
         additional,
         pastDocs,
+        _generateNote: generateNote,
       });
       // Reset form
       setPasteText('');
@@ -477,14 +479,23 @@ export function ParseModal({ isOpen, onClose, onSave }: ParseModalProps) {
         </div>
 
         {/* Footer — with safe area padding for iPhone home indicator */}
-        <div className="px-5 py-4 pb-safe border-t border-[var(--border)] bg-[var(--bg-tertiary)] sm:rounded-b-3xl">
+        <div className="px-5 py-4 pb-safe border-t border-[var(--border)] bg-[var(--bg-tertiary)] sm:rounded-b-3xl space-y-3">
+          <label className="flex items-center gap-2 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={generateNote}
+              onChange={(e) => setGenerateNote(e.target.checked)}
+              className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 accent-emerald-600"
+            />
+            <span className="text-sm text-[var(--text-secondary)]">Generate note on save</span>
+          </label>
           <button
             onClick={handleSave}
             disabled={!parsedData}
             className="w-full py-3.5 min-h-[48px] bg-emerald-600 dark:bg-emerald-500 text-white rounded-xl font-medium disabled:opacity-40 flex items-center justify-center gap-2 hover:bg-emerald-700 dark:hover:bg-emerald-600 active:scale-[0.97] transition-all"
           >
             <Check className="w-4 h-4" />
-            Save Patient
+            {generateNote ? 'Save & Generate Note' : 'Save Patient'}
           </button>
         </div>
       </div>
