@@ -38,7 +38,7 @@ import {
   clearLocalBillingData,
 } from '@/lib/billing';
 
-type Tab = 'style' | 'settings' | 'billing' | 'prompts' | 'privacy';
+type Tab = 'style' | 'settings' | 'billing' | 'prompts' | 'privacy' | 'keys';
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -549,6 +549,7 @@ export default function SettingsPage() {
             { id: 'prompts' as const, label: 'Prompts' },
             { id: 'billing' as const, label: 'Billing' },
             { id: 'privacy' as const, label: 'Privacy' },
+            { id: 'keys' as const, label: 'API Keys' },
           ]).map(({ id, label }) => (
             <button
               key={id}
@@ -1139,93 +1140,6 @@ export default function SettingsPage() {
               )}
             </div>
 
-            {/* API Token (used by Watch app) */}
-            <div className="bg-[var(--card-bg)] rounded-2xl border border-[var(--card-border)] p-5 space-y-4" style={{ boxShadow: 'var(--card-shadow)' }}>
-              <div className="flex items-center gap-2">
-                <Key className="w-5 h-5 text-[var(--text-secondary)]" />
-                <h3 className="font-semibold text-[var(--text-primary)]">API Token</h3>
-              </div>
-              <p className="text-xs text-[var(--text-muted)]">
-                Token for Watch app and external integrations.
-              </p>
-
-              <div className="space-y-3">
-                {shortcutToken ? (
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2">
-                      <AlertCircle className="w-4 h-4 text-amber-500 flex-shrink-0" />
-                      <span className="text-xs text-amber-700 dark:text-amber-400 font-medium">
-                        Copy this token now — it won&apos;t be shown again
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <code className="flex-1 p-2.5 bg-[var(--bg-tertiary)] rounded-lg text-xs font-mono text-[var(--text-primary)] break-all select-all">
-                        {shortcutToken}
-                      </code>
-                      <button
-                        onClick={() => {
-                          navigator.clipboard.writeText(shortcutToken);
-                          setShortcutCopied(true);
-                          setTimeout(() => setShortcutCopied(false), 2000);
-                        }}
-                        className="p-2 bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400 rounded-lg flex-shrink-0"
-                      >
-                        {shortcutCopied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                      </button>
-                    </div>
-                  </div>
-                ) : shortcutHasToken ? (
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Key className="w-4 h-4 text-green-600 dark:text-green-400" />
-                      <span className="text-sm text-green-700 dark:text-green-400 font-medium">Token active</span>
-                    </div>
-                    <button
-                      onClick={async () => {
-                        setShortcutLoading(true);
-                        try {
-                          await fetch('/api/shortcuts/token', { method: 'DELETE' });
-                          setShortcutHasToken(false);
-                          setShortcutToken('');
-                        } catch {} finally {
-                          setShortcutLoading(false);
-                        }
-                      }}
-                      disabled={shortcutLoading}
-                      className="px-3 py-1.5 bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-300 rounded-lg text-sm font-medium disabled:opacity-50"
-                    >
-                      Revoke
-                    </button>
-                  </div>
-                ) : null}
-
-                <button
-                  onClick={async () => {
-                    setShortcutLoading(true);
-                    setShortcutToken('');
-                    try {
-                      const res = await fetch('/api/shortcuts/token', { method: 'POST' });
-                      if (res.ok) {
-                        const { token } = await res.json();
-                        setShortcutToken(token);
-                        setShortcutHasToken(true);
-                      }
-                    } catch {} finally {
-                      setShortcutLoading(false);
-                    }
-                  }}
-                  disabled={shortcutLoading}
-                  className="w-full py-2.5 bg-blue-600 text-white rounded-lg text-sm font-medium disabled:opacity-50 flex items-center justify-center gap-2"
-                >
-                  {shortcutLoading ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <Key className="w-4 h-4" />
-                  )}
-                  {shortcutHasToken ? 'Regenerate Token' : 'Generate Token'}
-                </button>
-              </div>
-            </div>
           </>
         )}
 
@@ -2031,128 +1945,6 @@ export default function SettingsPage() {
               </div>
             ) : (
               <>
-                {/* API Keys */}
-                <div className="bg-[var(--card-bg)] rounded-2xl border border-[var(--card-border)] p-5 space-y-4" style={{ boxShadow: 'var(--card-shadow)' }}>
-                  <div>
-                    <h3 className="font-semibold text-[var(--text-primary)]">API Keys</h3>
-                    <p className="text-xs text-[var(--text-muted)] mt-0.5">
-                      Add your API keys to use AI features (note generation, transcription, clinical questions).
-                    </p>
-                  </div>
-
-                  {/* Claude API Key */}
-                  <div className="space-y-1.5">
-                    <label className="text-sm font-medium text-[var(--text-secondary)]">Claude API Key (Anthropic)</label>
-                    {claudeKeyMasked ? (
-                      <div className="flex items-center gap-2">
-                        <code className="flex-1 p-2 bg-[var(--bg-tertiary)] rounded-lg text-xs font-mono text-[var(--text-muted)]">
-                          {claudeKeyMasked}
-                        </code>
-                        <button
-                          onClick={() => saveApiKey('claudeApiKey', '')}
-                          disabled={savingKey}
-                          className="px-3 py-1.5 text-xs font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg transition-colors"
-                        >
-                          Remove
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="flex gap-2">
-                        <input
-                          type="password"
-                          value={claudeApiKey}
-                          onChange={(e) => setClaudeApiKey(e.target.value)}
-                          placeholder="sk-ant-..."
-                          className="flex-1 p-2 border border-[var(--input-border)] rounded-lg text-sm bg-[var(--input-bg)] text-[var(--text-primary)] focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono"
-                        />
-                        <button
-                          onClick={() => saveApiKey('claudeApiKey', claudeApiKey)}
-                          disabled={savingKey || !claudeApiKey.trim()}
-                          className="px-3 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium disabled:opacity-40"
-                        >
-                          Save
-                        </button>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* OpenAI API Key */}
-                  <div className="space-y-1.5">
-                    <label className="text-sm font-medium text-[var(--text-secondary)]">OpenAI API Key (Whisper transcription)</label>
-                    {openaiKeyMasked ? (
-                      <div className="flex items-center gap-2">
-                        <code className="flex-1 p-2 bg-[var(--bg-tertiary)] rounded-lg text-xs font-mono text-[var(--text-muted)]">
-                          {openaiKeyMasked}
-                        </code>
-                        <button
-                          onClick={() => saveApiKey('openaiApiKey', '')}
-                          disabled={savingKey}
-                          className="px-3 py-1.5 text-xs font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg transition-colors"
-                        >
-                          Remove
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="flex gap-2">
-                        <input
-                          type="password"
-                          value={openaiApiKey}
-                          onChange={(e) => setOpenaiApiKey(e.target.value)}
-                          placeholder="sk-..."
-                          className="flex-1 p-2 border border-[var(--input-border)] rounded-lg text-sm bg-[var(--input-bg)] text-[var(--text-primary)] focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono"
-                        />
-                        <button
-                          onClick={() => saveApiKey('openaiApiKey', openaiApiKey)}
-                          disabled={savingKey || !openaiApiKey.trim()}
-                          className="px-3 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium disabled:opacity-40"
-                        >
-                          Save
-                        </button>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Deepgram API Key */}
-                  <div className="space-y-1.5">
-                    <label className="text-sm font-medium text-[var(--text-secondary)]">Deepgram API Key (optional — Nova-3 Medical)</label>
-                    {deepgramKeyMasked ? (
-                      <div className="flex items-center gap-2">
-                        <code className="flex-1 p-2 bg-[var(--bg-tertiary)] rounded-lg text-xs font-mono text-[var(--text-muted)]">
-                          {deepgramKeyMasked}
-                        </code>
-                        <button
-                          onClick={() => saveApiKey('deepgramApiKey', '')}
-                          disabled={savingKey}
-                          className="px-3 py-1.5 text-xs font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg transition-colors"
-                        >
-                          Remove
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="flex gap-2">
-                        <input
-                          type="password"
-                          value={deepgramApiKey}
-                          onChange={(e) => setDeepgramApiKey(e.target.value)}
-                          placeholder="Deepgram API key..."
-                          className="flex-1 p-2 border border-[var(--input-border)] rounded-lg text-sm bg-[var(--input-bg)] text-[var(--text-primary)] focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono"
-                        />
-                        <button
-                          onClick={() => saveApiKey('deepgramApiKey', deepgramApiKey)}
-                          disabled={savingKey || !deepgramApiKey.trim()}
-                          className="px-3 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium disabled:opacity-40"
-                        >
-                          Save
-                        </button>
-                      </div>
-                    )}
-                  </div>
-
-                  <p className="text-[10px] text-[var(--text-muted)]">
-                    Keys are stored securely server-side. Claude + OpenAI required for full functionality. Deepgram optional for enhanced transcription.
-                  </p>
-                </div>
-
                 {/* PHI Protection */}
                 <div className="bg-[var(--card-bg)] rounded-2xl border border-[var(--card-border)] p-5 space-y-3" style={{ boxShadow: 'var(--card-shadow)' }}>
                   <div
@@ -2227,6 +2019,135 @@ export default function SettingsPage() {
                 </div>
               </>
             )}
+          </>
+        )}
+        {/* API Keys Tab */}
+        {activeTab === 'keys' && (
+          <>
+            <div className="bg-[var(--card-bg)] rounded-2xl border border-[var(--card-border)] p-5 space-y-5" style={{ boxShadow: 'var(--card-shadow)' }}>
+              <div>
+                <h3 className="font-semibold text-[var(--text-primary)]">API Keys</h3>
+                <p className="text-xs text-[var(--text-muted)] mt-0.5">
+                  Add your API keys to use AI features. Keys are stored securely server-side.
+                </p>
+              </div>
+
+              {/* Anthropic API Key */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <label className="text-sm font-medium text-[var(--text-secondary)]">Anthropic API Key (Claude AI)</label>
+                  <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener noreferrer"
+                    className="text-[10px] text-blue-500 hover:text-blue-600 dark:text-blue-400">Get key</a>
+                </div>
+                {claudeKeyMasked ? (
+                  <div className="flex items-center gap-2">
+                    <code className="flex-1 p-2 bg-[var(--bg-tertiary)] rounded-lg text-xs font-mono text-[var(--text-muted)]">{claudeKeyMasked}</code>
+                    <button onClick={() => saveApiKey('claudeApiKey', '')} disabled={savingKey}
+                      className="px-3 py-1.5 text-xs font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg transition-colors">Remove</button>
+                  </div>
+                ) : (
+                  <div className="flex gap-2">
+                    <input type="password" value={claudeApiKey} onChange={(e) => setClaudeApiKey(e.target.value)} placeholder="sk-ant-..."
+                      className="flex-1 p-2 border border-[var(--input-border)] rounded-lg text-sm bg-[var(--input-bg)] text-[var(--text-primary)] focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono" />
+                    <button onClick={() => saveApiKey('claudeApiKey', claudeApiKey)} disabled={savingKey || !claudeApiKey.trim()}
+                      className="px-3 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium disabled:opacity-40">Save</button>
+                  </div>
+                )}
+                <p className="text-[10px] text-[var(--text-muted)]">Required. Powers note generation, clinical questions, and medical terminology.</p>
+              </div>
+
+              {/* OpenAI API Key */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <label className="text-sm font-medium text-[var(--text-secondary)]">OpenAI API Key (Whisper)</label>
+                  <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener noreferrer"
+                    className="text-[10px] text-blue-500 hover:text-blue-600 dark:text-blue-400">Get key</a>
+                </div>
+                {openaiKeyMasked ? (
+                  <div className="flex items-center gap-2">
+                    <code className="flex-1 p-2 bg-[var(--bg-tertiary)] rounded-lg text-xs font-mono text-[var(--text-muted)]">{openaiKeyMasked}</code>
+                    <button onClick={() => saveApiKey('openaiApiKey', '')} disabled={savingKey}
+                      className="px-3 py-1.5 text-xs font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg transition-colors">Remove</button>
+                  </div>
+                ) : (
+                  <div className="flex gap-2">
+                    <input type="password" value={openaiApiKey} onChange={(e) => setOpenaiApiKey(e.target.value)} placeholder="sk-..."
+                      className="flex-1 p-2 border border-[var(--input-border)] rounded-lg text-sm bg-[var(--input-bg)] text-[var(--text-primary)] focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono" />
+                    <button onClick={() => saveApiKey('openaiApiKey', openaiApiKey)} disabled={savingKey || !openaiApiKey.trim()}
+                      className="px-3 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium disabled:opacity-40">Save</button>
+                  </div>
+                )}
+                <p className="text-[10px] text-[var(--text-muted)]">Required for Whisper transcription engine. Not needed if using Deepgram only.</p>
+              </div>
+
+              {/* Deepgram API Key */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <label className="text-sm font-medium text-[var(--text-secondary)]">Deepgram API Key (Nova-3 Medical)</label>
+                  <a href="https://console.deepgram.com/api-keys" target="_blank" rel="noopener noreferrer"
+                    className="text-[10px] text-blue-500 hover:text-blue-600 dark:text-blue-400">Get key ($200 free credit)</a>
+                </div>
+                {deepgramKeyMasked ? (
+                  <div className="flex items-center gap-2">
+                    <code className="flex-1 p-2 bg-[var(--bg-tertiary)] rounded-lg text-xs font-mono text-[var(--text-muted)]">{deepgramKeyMasked}</code>
+                    <button onClick={() => saveApiKey('deepgramApiKey', '')} disabled={savingKey}
+                      className="px-3 py-1.5 text-xs font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg transition-colors">Remove</button>
+                  </div>
+                ) : (
+                  <div className="flex gap-2">
+                    <input type="password" value={deepgramApiKey} onChange={(e) => setDeepgramApiKey(e.target.value)} placeholder="Deepgram API key..."
+                      className="flex-1 p-2 border border-[var(--input-border)] rounded-lg text-sm bg-[var(--input-bg)] text-[var(--text-primary)] focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono" />
+                    <button onClick={() => saveApiKey('deepgramApiKey', deepgramApiKey)} disabled={savingKey || !deepgramApiKey.trim()}
+                      className="px-3 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium disabled:opacity-40">Save</button>
+                  </div>
+                )}
+                <p className="text-[10px] text-[var(--text-muted)]">Optional. Enables Deepgram Nova-3 Medical as an alternate transcription engine.</p>
+              </div>
+            </div>
+
+            {/* App Token */}
+            <div className="bg-[var(--card-bg)] rounded-2xl border border-[var(--card-border)] p-5 space-y-4" style={{ boxShadow: 'var(--card-shadow)' }}>
+              <div className="flex items-center gap-2">
+                <Key className="w-5 h-5 text-[var(--text-secondary)]" />
+                <h3 className="font-semibold text-[var(--text-primary)]">App Token</h3>
+              </div>
+              <p className="text-xs text-[var(--text-muted)]">
+                Token for Watch app and external integrations.
+              </p>
+              <div className="space-y-3">
+                {shortcutToken ? (
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <AlertCircle className="w-4 h-4 text-amber-500 flex-shrink-0" />
+                      <span className="text-xs text-amber-700 dark:text-amber-400 font-medium">Copy this token now — it won&apos;t be shown again</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <code className="flex-1 p-2.5 bg-[var(--bg-tertiary)] rounded-lg text-xs font-mono text-[var(--text-primary)] break-all select-all">{shortcutToken}</code>
+                      <button onClick={() => { navigator.clipboard.writeText(shortcutToken); setShortcutCopied(true); setTimeout(() => setShortcutCopied(false), 2000); }}
+                        className="p-2 bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400 rounded-lg flex-shrink-0">
+                        {shortcutCopied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                      </button>
+                    </div>
+                  </div>
+                ) : shortcutHasToken ? (
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Key className="w-4 h-4 text-green-600 dark:text-green-400" />
+                      <span className="text-sm text-green-700 dark:text-green-400 font-medium">Token active</span>
+                    </div>
+                    <button onClick={async () => { setShortcutLoading(true); try { await fetch('/api/shortcuts/token', { method: 'DELETE' }); setShortcutHasToken(false); setShortcutToken(''); } catch {} finally { setShortcutLoading(false); } }}
+                      disabled={shortcutLoading}
+                      className="px-3 py-1.5 bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-300 rounded-lg text-sm font-medium disabled:opacity-50">Revoke</button>
+                  </div>
+                ) : null}
+                <button onClick={async () => { setShortcutLoading(true); setShortcutToken(''); try { const res = await fetch('/api/shortcuts/token', { method: 'POST' }); if (res.ok) { const { token } = await res.json(); setShortcutToken(token); setShortcutHasToken(true); } } catch {} finally { setShortcutLoading(false); } }}
+                  disabled={shortcutLoading}
+                  className="w-full py-2.5 bg-blue-600 text-white rounded-lg text-sm font-medium disabled:opacity-50 flex items-center justify-center gap-2">
+                  {shortcutLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Key className="w-4 h-4" />}
+                  {shortcutHasToken ? 'Regenerate Token' : 'Generate Token'}
+                </button>
+              </div>
+            </div>
           </>
         )}
       </main>
