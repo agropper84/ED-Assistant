@@ -753,6 +753,19 @@ export default function PatientPage() {
               copied={copied === 'evidence'}
               onSave={(value) => handleSaveField('evidence', value)}
             />
+
+            {patient.education && (
+              <OutputSection
+                title="Learning Resources"
+                content={patient.education}
+                field="education"
+                expanded={expandedSections.has('education')}
+                onToggle={() => toggleSection('education')}
+                onCopy={() => copyToClipboard(patient.education, 'education')}
+                copied={copied === 'education'}
+                onSave={(value) => handleSaveField('education', value)}
+              />
+            )}
           </>
         )}
 

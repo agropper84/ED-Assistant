@@ -20,6 +20,7 @@ import {
   EncounterType, DEFAULT_ENCOUNTER_TYPES, getEncounterTypes, saveEncounterTypes,
   getEncounterType, saveEncounterType,
   LiteratureSourcesConfig, DEFAULT_LITERATURE_SOURCES, getLiteratureSourcesConfig, saveLiteratureSourcesConfig,
+  EducationConfig, getEducationConfig, saveEducationConfig,
 } from '@/lib/settings';
 import { getExamPresets, saveExamPresets, resetExamPresets, ExamPreset } from '@/lib/exam-presets';
 import {
@@ -118,6 +119,9 @@ export default function SettingsPage() {
 
   // Literature sources state
   const [litSources, setLitSources] = useState<LiteratureSourcesConfig>(() => getLiteratureSourcesConfig());
+
+  // Education mode state
+  const [eduConfig, setEduConfig] = useState<EducationConfig>(() => getEducationConfig());
 
   // Debounce timer for guidance textarea
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -1510,6 +1514,49 @@ export default function SettingsPage() {
                 </div>
               )}
             </div>
+            {/* Education Mode */}
+            <div className="bg-[var(--card-bg)] rounded-2xl border border-[var(--card-border)] p-5 space-y-3" style={{ boxShadow: 'var(--card-shadow)' }}>
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="font-semibold text-[var(--text-primary)]">Education Mode</h3>
+                  <p className="text-xs text-[var(--text-muted)] mt-0.5">
+                    Generate recommended reading (textbook chapters, guidelines, key studies) for each case.
+                  </p>
+                </div>
+                <label className="flex items-center gap-2 cursor-pointer flex-shrink-0">
+                  <span className="text-xs text-[var(--text-muted)]">{eduConfig.enabled ? 'On' : 'Off'}</span>
+                  <input
+                    type="checkbox"
+                    checked={eduConfig.enabled}
+                    onChange={(e) => {
+                      const updated = { ...eduConfig, enabled: e.target.checked };
+                      setEduConfig(updated);
+                      saveEducationConfig(updated);
+                    }}
+                    className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 accent-emerald-600"
+                  />
+                </label>
+              </div>
+              {eduConfig.enabled && (
+                <div className="space-y-2">
+                  <label className="block text-xs font-medium text-[var(--text-secondary)]">Narrow sources (optional)</label>
+                  <textarea
+                    value={eduConfig.sources}
+                    onChange={(e) => {
+                      const updated = { ...eduConfig, sources: e.target.value };
+                      setEduConfig(updated);
+                      saveEducationConfig(updated);
+                    }}
+                    placeholder="Leave empty for all sources, or specify: e.g. Rosen's, Tintinalli's, UpToDate, NEJM..."
+                    className="w-full h-16 p-2 border border-[var(--input-border)] rounded-lg text-xs resize-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 bg-[var(--input-bg)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)]"
+                  />
+                  <p className="text-[10px] text-[var(--text-muted)]">
+                    When enabled, a graduation cap icon appears on each patient card. Click it to generate learning resources for that case.
+                  </p>
+                </div>
+              )}
+            </div>
+
             {([
               { key: 'ddx' as const, label: 'DDx (Differential Diagnosis)' },
               { key: 'investigations' as const, label: 'Investigations' },

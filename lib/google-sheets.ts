@@ -143,6 +143,7 @@ export const COLUMNS = {
   EVIDENCE: 29,      // AD
   AP_NOTES: 30,      // AE
   CLINICAL_QA: 31,   // AF
+  EDUCATION: 32,     // AG
 };
 
 export const DATA_START_ROW = 8; // Row 8 in spreadsheet (0-indexed: 7)
@@ -182,6 +183,7 @@ export interface Patient {
   evidence: string;
   apNotes: string;
   clinicalQA: string;
+  education: string;
   // Computed
   hasOutput: boolean;
   status: 'new' | 'pending' | 'processed';
@@ -842,6 +844,7 @@ export async function updatePatientFields(
     evidence: 'AD',
     apNotes: 'AE',
     clinicalQA: 'AF',
+    education: 'AG',
   };
 
   const data = Object.entries(fields)
@@ -957,6 +960,7 @@ function rowToPatient(row: string[], rowIndex: number, sheetName: string): Patie
     evidence: getValue(COLUMNS.EVIDENCE),
     apNotes: getValue(COLUMNS.AP_NOTES),
     clinicalQA: getValue(COLUMNS.CLINICAL_QA),
+    education: getValue(COLUMNS.EDUCATION),
     hasOutput: !!(hpi || assessmentPlan),
     status,
   };

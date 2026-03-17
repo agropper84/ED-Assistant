@@ -2,7 +2,7 @@
 
 import { useState, useRef } from 'react';
 import { Patient } from '@/lib/google-sheets';
-import { Clock, User, FileText, ChevronRight, Trash2, DollarSign, Stethoscope, Copy, Check, Brain, ClipboardList, BookOpen, Play, Loader2, X, MessageCircleQuestion, Merge, CalendarDays } from 'lucide-react';
+import { Clock, User, FileText, ChevronRight, Trash2, DollarSign, Stethoscope, Copy, Check, Brain, ClipboardList, BookOpen, Play, Loader2, X, MessageCircleQuestion, Merge, CalendarDays, GraduationCap } from 'lucide-react';
 
 interface PatientCardProps {
   patient: Patient;
@@ -19,6 +19,8 @@ interface PatientCardProps {
   onClinicalChat?: () => void;
   onMerge?: () => void;
   onDateChange?: (newSheetName: string) => void;
+  onGenerateEducation?: () => Promise<void>;
+  showEducation?: boolean;
 }
 
 /** Convert a full name to initials, e.g. "John Smith" → "J.S." */
@@ -34,7 +36,7 @@ function toInitials(name: string): string {
 // Unified empty-state color for unfilled icons
 const EMPTY = 'text-slate-300 dark:text-slate-600';
 
-export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChange, onBillingToggle, billingCodes, onNavigate, onProcess, onGenerateAnalysis, onUpdateFields, onClinicalChat, onMerge, onDateChange }: PatientCardProps) {
+export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChange, onBillingToggle, billingCodes, onNavigate, onProcess, onGenerateAnalysis, onUpdateFields, onClinicalChat, onMerge, onDateChange, onGenerateEducation, showEducation }: PatientCardProps) {
   const [editingTime, setEditingTime] = useState(false);
   const [timeValue, setTimeValue] = useState(patient.timestamp || '');
   const [noteCopied, setNoteCopied] = useState(false);
@@ -267,6 +269,43 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
                   </>
                 )}
               </div>
+
+              {/* Education — emerald-green (learning) */}
+              {showEducation && (
+                <div className="relative group/edu flex-shrink-0">
+                  <span
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (!patient.education && onGenerateEducation && !isGenerating) {
+                        setIsGenerating(true);
+                        onGenerateEducation().finally(() => setIsGenerating(false));
+                      } else if (patient.education && onNavigate) {
+                        onNavigate();
+                      }
+                    }}
+                    className={`p-0.5 rounded transition-colors inline-flex ${patient.education || onGenerateEducation ? 'hover:bg-emerald-50 dark:hover:bg-emerald-900/30 cursor-pointer' : ''}`}
+                    title={patient.education ? '' : 'Generate learning resources'}
+                  >
+                    {isGenerating ? (
+                      <Loader2 className="w-4 h-4 text-emerald-400 animate-spin" />
+                    ) : (
+                      <GraduationCap className={`w-4 h-4 ${patient.education ? 'text-emerald-600 dark:text-emerald-400' : EMPTY}`} />
+                    )}
+                  </span>
+                  {patient.education && (
+                    <>
+                      <div className="absolute left-0 top-full h-2 w-72 hidden group-hover/edu:block" />
+                      <div
+                        className="absolute left-0 top-full mt-2 z-50 hidden group-hover/edu:block w-72 max-h-48 overflow-y-auto p-3 bg-gray-900 text-gray-100 text-xs rounded-lg shadow-xl ring-1 ring-white/10"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <span className="text-emerald-400 font-medium block mb-1">Learning Resources</span>
+                        <p className="whitespace-pre-wrap leading-relaxed">{patient.education}</p>
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
             </>
           )}
 

@@ -26,6 +26,7 @@ import {
   getDayRegion,
   saveDayRegion,
 } from '@/lib/billing';
+import { getEducationConfig } from '@/lib/settings';
 import {
   Plus, Loader2, ChevronLeft, ChevronRight,
   Calendar, Settings, CheckSquare, Square, Play, Clock, EyeOff, Eye,
@@ -943,6 +944,20 @@ export default function HomePage() {
           onClinicalChat={() => setChatPatient(patient)}
           onMerge={() => setMergeSource(patient)}
           onDateChange={(newSheet) => handleDateChange(patient, newSheet)}
+          showEducation={getEducationConfig().enabled}
+          onGenerateEducation={async () => {
+            const eduConfig = getEducationConfig();
+            await fetch('/api/education', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                rowIndex: patient.rowIndex,
+                sheetName: patient.sheetName,
+                sources: eduConfig.sources || '',
+              }),
+            });
+            fetchPatients();
+          }}
         />
         {isBillingOpen && (
           <div className="mt-1 ml-0" key={`billing-${patient.rowIndex}-${patient.procCode || ''}`}>

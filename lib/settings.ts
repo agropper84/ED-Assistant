@@ -341,6 +341,36 @@ export function getEffectivePromptTemplates(encounterTypeId?: string): PromptTem
   return merged;
 }
 
+// --- Education Mode ---
+
+export interface EducationConfig {
+  enabled: boolean;
+  sources: string; // comma-separated sources to narrow scope (empty = not narrowed)
+}
+
+const EDUCATION_KEY = 'ed-app-education';
+
+export const DEFAULT_EDUCATION_CONFIG: EducationConfig = {
+  enabled: false,
+  sources: '',
+};
+
+export function getEducationConfig(): EducationConfig {
+  if (typeof window === 'undefined') return DEFAULT_EDUCATION_CONFIG;
+  try {
+    const stored = localStorage.getItem(EDUCATION_KEY);
+    if (!stored) return DEFAULT_EDUCATION_CONFIG;
+    return { ...DEFAULT_EDUCATION_CONFIG, ...JSON.parse(stored) };
+  } catch {
+    return DEFAULT_EDUCATION_CONFIG;
+  }
+}
+
+export function saveEducationConfig(config: EducationConfig): void {
+  if (typeof window === 'undefined') return;
+  localStorage.setItem(EDUCATION_KEY, JSON.stringify(config));
+}
+
 // --- Parse Rules ---
 
 export interface ParseRules {
