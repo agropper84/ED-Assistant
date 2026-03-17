@@ -1612,14 +1612,6 @@ export default function HomePage() {
           </div>
         )}
 
-        {/* Batch upload button below patient list */}
-        <button
-          onClick={() => setShowBatchTranscribe(true)}
-          className="w-full mt-6 py-3 flex items-center justify-center gap-2 text-sm font-medium text-[var(--text-muted)] hover:text-[var(--text-secondary)] bg-[var(--card-bg)] border border-dashed border-[var(--border)] rounded-2xl hover:border-[var(--text-muted)] transition-colors"
-        >
-          <Upload className="w-4 h-4" />
-          Upload Batch Transcript for {sheetName}
-        </button>
       </main>
 
       {/* FAB - Add Patient (draggable) */}
