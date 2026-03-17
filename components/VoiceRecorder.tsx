@@ -480,18 +480,11 @@ export function VoiceRecorder({
         setState('recording');
 
         if (!medicalizeRef.current) {
-          // --- Fast mode: Web Speech API or Deepgram segments ---
+          // --- Fast mode: Web Speech API instant display ---
+          // When Deepgram is selected, also record audio for cleanup on stop
           const useDgFast = getSpeechAPI() === 'deepgram';
 
-          if (useDgFast) {
-            // Deepgram segment mode (same as medicalize pipeline but skipMedicalize)
-            startSegment();
-            startSilenceDetection(stream);
-            setTimeout(() => {
-              if (analyserRef.current) startAudioLevelViz(analyserRef.current);
-            }, 50);
-          } else {
-          // Web Speech API for instant text
+          // Web Speech API for instant text (always, regardless of engine choice)
           const SpeechAPI = typeof window !== 'undefined'
             ? (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
             : null;
@@ -527,6 +520,15 @@ export function VoiceRecorder({
             } catch {}
           }
 
+          // If Deepgram selected, also record full audio in background for cleanup on stop
+          if (useDgFast) {
+            const bgRecorder = new MediaRecorder(stream, { mimeType });
+            mediaRecorderRef.current = bgRecorder;
+            chunksRef.current = [];
+            bgRecorder.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data); };
+            bgRecorder.start();
+          }
+
           // Audio level visualization
           try {
             const vizCtx = new AudioContext();
@@ -538,7 +540,6 @@ export function VoiceRecorder({
             analyserRef.current = vizAnalyser;
             startAudioLevelViz(vizAnalyser);
           } catch {}
-          } // close Web Speech else
         } else {
           // --- Medicalize mode: Web Speech for instant display + transcription pipeline for quality ---
 
@@ -730,17 +731,58 @@ export function VoiceRecorder({
       if (audioContextRef.current) { try { audioContextRef.current.close(); } catch {} audioContextRef.current = null; }
       analyserRef.current = null;
 
-      const useDgFast = !medicalizeRef.current && getSpeechAPI() === 'deepgram';
+      if (!medicalizeRef.current) {
+        // --- Fast mode stop ---
+        const useDgCleanup = getSpeechAPI() === 'deepgram';
 
-      if (!medicalizeRef.current && !useDgFast) {
-        // --- Web Speech only stop ---
-        streamRef.current?.getTracks().forEach(t => t.stop());
-        streamRef.current = null;
+        if (useDgCleanup) {
+          // Hybrid: Web Speech showed instant text, now run Deepgram for better medical vocab
+          setState('transcribing');
 
-        accumulatedTextRef.current = '';
-        segmentTextsRef.current = [];
-        setCanUndo(false);
-        setState('idle');
+          // Stop background recorder
+          const bgRecorder = mediaRecorderRef.current;
+          let audioBlob: Blob | null = null;
+          if (bgRecorder && bgRecorder.state !== 'inactive') {
+            audioBlob = await new Promise<Blob>((resolve) => {
+              bgRecorder.onstop = () => resolve(new Blob(chunksRef.current, { type: mimeTypeRef.current }));
+              bgRecorder.stop();
+            });
+          }
+
+          streamRef.current?.getTracks().forEach(t => t.stop());
+          streamRef.current = null;
+
+          // Run Deepgram cleanup — only replace if result is meaningful
+          if (audioBlob && audioBlob.size > 2000) {
+            try {
+              const formData = new FormData();
+              formData.append('audio', audioBlob, `recording.${getFileExtension(mimeTypeRef.current)}`);
+              formData.append('mode', 'dictation');
+              const res = await fetch('/api/transcribe-deepgram', { method: 'POST', body: formData });
+              if (res.ok) {
+                const { text } = await res.json();
+                if (text?.trim() && text.trim().length > 5) {
+                  // Only replace if Deepgram produced a substantive result
+                  onInterimRef.current?.(text.trim());
+                }
+              }
+            } catch {}
+          }
+
+          accumulatedTextRef.current = '';
+          segmentTextsRef.current = [];
+          setCanUndo(false);
+          setState('idle');
+        } else {
+          // Web Speech only — text is final
+          streamRef.current?.getTracks().forEach(t => t.stop());
+          streamRef.current = null;
+
+          accumulatedTextRef.current = '';
+          segmentTextsRef.current = [];
+          setCanUndo(false);
+          setState('idle');
+        }
       } else {
         // --- Segment pipeline stop (Medicalize OR Deepgram fast) ---
         setState('transcribing');
