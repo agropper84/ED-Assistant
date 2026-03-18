@@ -1,6 +1,7 @@
 import { PromptTemplates, DEFAULT_PROMPT_TEMPLATES } from './settings';
 import { buildPHIMapping, deidentifyText, reidentifyText } from './phi-filter';
 import { getAnthropicClient } from './api-keys';
+import { verifyLinks } from './verify-links';
 
 export interface ProcessedNote {
   ddx: string;
@@ -71,6 +72,9 @@ export async function processEncounter(
   if (phiMapping) {
     text = reidentifyText(text, phiMapping);
   }
+
+  // Verify links in evidence section (remove broken URLs)
+  text = await verifyLinks(text);
 
   return parseClaudeResponse(text);
 }

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSheetsContext, getPatient, updatePatientFields } from '@/lib/google-sheets';
 import { getAnthropicClient } from '@/lib/api-keys';
+import { verifyLinks } from '@/lib/verify-links';
 
 export const maxDuration = 60;
 
@@ -60,7 +61,10 @@ Respond in this format for each topic:
       }],
     });
 
-    const education = response.content[0].type === 'text' ? response.content[0].text : '';
+    let education = response.content[0].type === 'text' ? response.content[0].text : '';
+
+    // Verify links — remove broken URLs
+    education = await verifyLinks(education);
 
     // Save to sheet
     await updatePatientFields(ctx, rowIndex, { education }, sheetName);
