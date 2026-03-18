@@ -1420,6 +1420,7 @@ export function getVchRatePeriod(timestamp: string, dayOfWeek: number): string {
 export async function writeVchBillingSheet(
   ctx: SheetsContext,
   rows: VchBillingRow[],
+  targetDate?: string,
 ): Promise<void> {
   const { sheets, spreadsheetId } = ctx;
 
@@ -1453,13 +1454,16 @@ export async function writeVchBillingSheet(
   });
   const existingRows = existingRes.data.values || [];
 
-  // Determine the date being written (from the new rows, or empty)
-  const targetDate = rows.length > 0 ? rows[0].serviceDate : '';
+  // Determine the date being written
+  const dateToReplace = targetDate || (rows.length > 0 ? rows[0].serviceDate : '');
+
+  // If no date to target, don't touch existing rows
+  if (!dateToReplace) return;
 
   // Keep rows from other dates
-  const otherDateRows = targetDate
-    ? existingRows.filter((row: any[]) => (row[4]?.toString().trim() || '') !== targetDate)
-    : [];
+  const otherDateRows = existingRows.filter(
+    (row: any[]) => (row[4]?.toString().trim() || '') !== dateToReplace
+  );
 
   // Build new values for this date
   const newDateRows = rows.map(r => [

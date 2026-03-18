@@ -82,7 +82,7 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    await writeVchBillingSheet(ctx, rows);
+    await writeVchBillingSheet(ctx, rows, dateStr);
 
     return NextResponse.json({ success: true, count: rows.length });
   } catch (err: any) {
