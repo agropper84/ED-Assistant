@@ -207,7 +207,31 @@ button, .btn {
   z-index: 0;
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
-  @apply rounded-xl transition-all duration-200 overflow-visible;
+  position: relative;
+  overflow: visible;
+  @apply rounded-xl;
+  transition: box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+              border-color 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+              transform 0.15s ease;
+}
+/* Highlight overlay — smooth fade on hover */
+.patient-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+:root .patient-card::after {
+  background: linear-gradient(135deg, rgba(59,130,246,0.04) 0%, rgba(99,102,241,0.03) 50%, rgba(16,185,129,0.02) 100%);
+}
+.dark .patient-card::after {
+  background: linear-gradient(135deg, rgba(96,165,250,0.06) 0%, rgba(129,140,248,0.04) 50%, rgba(52,211,153,0.03) 100%);
+}
+.patient-card:hover::after {
+  opacity: 1;
 }
 .patient-card[data-status="new"]       { background: var(--status-new); }
 .patient-card[data-status="pending"]   { background: var(--status-pending); }
