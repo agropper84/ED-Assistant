@@ -966,7 +966,6 @@ export default function SettingsPage() {
                 >
                   <option value="webspeech">Web Speech API (instant, browser-based)</option>
                   <option value="deepgram">Deepgram Nova-3 Medical</option>
-                  <option value="wispr">Wispr Flow</option>                </select>
               </div>
 
               {/* Medicalize dictation */}
@@ -979,7 +978,6 @@ export default function SettingsPage() {
                 >
                   <option value="whisper">OpenAI Whisper + Claude</option>
                   <option value="deepgram">Deepgram Nova-3 Medical + Claude</option>
-                  <option value="wispr">Wispr Flow + Claude</option>                </select>
               </div>
 
               <h4 className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider pt-2">Transcription Engines</h4>
@@ -994,7 +992,6 @@ export default function SettingsPage() {
                 >
                   <option value="whisper">OpenAI Whisper</option>
                   <option value="deepgram">Deepgram Nova-3 Medical</option>
-                  <option value="wispr">Wispr Flow</option>                </select>
                 <p className="text-[10px] text-[var(--text-muted)] mt-0.5">Used for full encounter recordings in the Add Patient modal</p>
               </div>
 
@@ -1018,7 +1015,6 @@ export default function SettingsPage() {
                 >
                   <option value="whisper">OpenAI Whisper</option>
                   <option value="deepgram">Deepgram Nova-3 Medical</option>
-                  <option value="wispr">Wispr Flow</option>                </select>
                 <p className="text-[10px] text-[var(--text-muted)] mt-0.5">Used for audio uploaded from the Watch app</p>
               </div>
             </div>
@@ -2155,29 +2151,6 @@ export default function SettingsPage() {
                 <p className="text-[10px] text-[var(--text-muted)]">Optional. Enables Deepgram Nova-3 Medical as an alternate transcription engine.</p>
               </div>
 
-              {/* Wispr Flow API Key */}
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <label className="text-sm font-medium text-[var(--text-secondary)]">Wispr Flow API Key</label>
-                  <a href="https://wisprflow.ai/developers" target="_blank" rel="noopener noreferrer"
-                    className="text-[10px] text-blue-500 hover:text-blue-600 dark:text-blue-400">Get key</a>
-                </div>
-                {wisprKeyMasked ? (
-                  <div className="flex items-center gap-2">
-                    <code className="flex-1 p-2 bg-[var(--bg-tertiary)] rounded-lg text-xs font-mono text-[var(--text-muted)]">{wisprKeyMasked}</code>
-                    <button onClick={() => saveApiKey('wisprApiKey', '')} disabled={savingKey}
-                      className="px-3 py-1.5 text-xs font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg transition-colors">Remove</button>
-                  </div>
-                ) : (
-                  <div className="flex gap-2">
-                    <input type="password" value={wisprApiKey} onChange={(e) => setWisprApiKey(e.target.value)} placeholder="Wispr API key..."
-                      className="flex-1 p-2 border border-[var(--input-border)] rounded-lg text-sm bg-[var(--input-bg)] text-[var(--text-primary)] focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono" />
-                    <button onClick={() => saveApiKey('wisprApiKey', wisprApiKey)} disabled={savingKey || !wisprApiKey.trim()}
-                      className="px-3 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium disabled:opacity-40">Save</button>
-                  </div>
-                )}
-                <p className="text-[10px] text-[var(--text-muted)]">Optional. Enables Wispr Flow as an alternate transcription engine.</p>
-              </div>
             </div>
 
             {/* App Token */}
