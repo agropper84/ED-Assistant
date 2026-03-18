@@ -1390,7 +1390,8 @@ export default function HomePage() {
                                   const url = URL.createObjectURL(blob);
                                   const a = document.createElement('a');
                                   a.href = url;
-                                  a.download = `billing-${billingFormat}-${exportStart}-to-${exportEnd}.csv`;
+                                  const ext = billingFormat === 'vch' ? 'xlsx' : 'csv';
+                                  a.download = `billing-${billingFormat}-${exportStart}-to-${exportEnd}.${ext}`;
                                   a.click();
                                   URL.revokeObjectURL(url);
                                 } catch (err) {
