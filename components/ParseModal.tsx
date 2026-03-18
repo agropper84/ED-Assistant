@@ -152,7 +152,7 @@ export function ParseModal({ isOpen, onClose, onSave }: ParseModalProps) {
       if (!res.ok) throw new Error('Failed to parse');
 
       const data = await res.json();
-      const timestamp = encounterTime || data.timestamp;
+      const timestamp = encounterTime || getNearestSlot();
       setParsedData({
         ...data,
         timestamp,
