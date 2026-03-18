@@ -12,9 +12,9 @@
   --border: #e2e8f0;
   --border-light: #f1f5f9;
   --card-bg: #ffffff;
-  --card-border: #e5e7eb;
-  --card-shadow: 0 1px 2px rgba(0,0,0,0.04), 0 2px 8px rgba(0,0,0,0.06);
-  --card-shadow-hover: 0 4px 16px rgba(37,99,235,0.09), 0 8px 24px rgba(0,0,0,0.05);
+  --card-border: #e8eaed;
+  --card-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.02);
+  --card-shadow-hover: 0 4px 12px rgba(0,0,0,0.08), 0 1px 3px rgba(0,0,0,0.04);
   --card-shadow-elevated: 0 4px 12px rgba(0,0,0,0.06), 0 16px 40px rgba(0,0,0,0.1);
   --input-bg: #ffffff;
   --input-border: #cbd5e1;
@@ -30,13 +30,16 @@
   --accent-purple: #6366f1;
   --fab-shadow: 0 4px 14px rgba(37,99,235,0.35);
   --page-px: 1rem;
-  --row-hover: rgba(37,99,235,0.04);
-  --card-hover-border: rgba(37,99,235,0.18);
+  --row-hover: rgba(37,99,235,0.03);
+  --card-hover-border: #d0d5dd;
 
-  /* Status card tint — concentrated left accent for light */
-  --status-new: linear-gradient(to right, rgba(59,130,246,0.11) 0%, rgba(59,130,246,0.03) 8%, transparent 24%), var(--card-bg);
-  --status-pending: linear-gradient(to right, rgba(245,158,11,0.11) 0%, rgba(245,158,11,0.03) 8%, transparent 24%), var(--card-bg);
-  --status-processed: linear-gradient(to right, rgba(16,185,129,0.11) 0%, rgba(16,185,129,0.03) 8%, transparent 24%), var(--card-bg);
+  /* Status card — clean left border accent */
+  --status-new-border: #3b82f6;
+  --status-pending-border: #f59e0b;
+  --status-processed-border: #10b981;
+  --status-new: var(--card-bg);
+  --status-pending: var(--card-bg);
+  --status-processed: var(--card-bg);
 
   /* Dashboard header gradient — light blue palette */
   --dash-header-from: #1d4ed8;
@@ -64,10 +67,10 @@
   --text-muted: #71717a;
   --border: #27272a;
   --border-light: #1e1e22;
-  --card-bg: #141416;
-  --card-border: #232327;
-  --card-shadow: 0 1px 2px rgba(0,0,0,0.2), 0 2px 8px rgba(0,0,0,0.25);
-  --card-shadow-hover: 0 4px 16px rgba(59,130,246,0.10), 0 8px 24px rgba(0,0,0,0.25);
+  --card-bg: #18181b;
+  --card-border: #2a2a2e;
+  --card-shadow: 0 1px 3px rgba(0,0,0,0.3), 0 1px 2px rgba(0,0,0,0.2);
+  --card-shadow-hover: 0 4px 12px rgba(0,0,0,0.4), 0 1px 3px rgba(0,0,0,0.3);
   --card-shadow-elevated: 0 4px 12px rgba(0,0,0,0.3), 0 16px 40px rgba(0,0,0,0.4);
   --input-bg: #1a1a1e;
   --input-border: #3f3f46;
@@ -82,13 +85,16 @@
   --accent-red: #f87171;
   --accent-purple: #818cf8;
   --fab-shadow: 0 4px 14px rgba(59,130,246,0.3);
-  --row-hover: rgba(59,130,246,0.06);
-  --card-hover-border: rgba(59,130,246,0.22);
+  --row-hover: rgba(59,130,246,0.04);
+  --card-hover-border: #3a3a3e;
 
-  /* Status card tint — symmetric subtle glow for dark */
-  --status-new: linear-gradient(to right, rgba(96,165,250,0.10) 0%, rgba(96,165,250,0.04) 30%, rgba(96,165,250,0.04) 70%, rgba(96,165,250,0.10) 100%), var(--card-bg);
-  --status-pending: linear-gradient(to right, rgba(251,191,36,0.10) 0%, rgba(251,191,36,0.04) 30%, rgba(251,191,36,0.04) 70%, rgba(251,191,36,0.10) 100%), var(--card-bg);
-  --status-processed: linear-gradient(to right, rgba(52,211,153,0.10) 0%, rgba(52,211,153,0.04) 30%, rgba(52,211,153,0.04) 70%, rgba(52,211,153,0.10) 100%), var(--card-bg);
+  /* Status card — clean left border accent (dark) */
+  --status-new-border: #60a5fa;
+  --status-pending-border: #fbbf24;
+  --status-processed-border: #34d399;
+  --status-new: var(--card-bg);
+  --status-pending: var(--card-bg);
+  --status-processed: var(--card-bg);
 
   /* Dashboard header gradient — deep navy palette */
   --dash-header-from: #060e24;
@@ -196,43 +202,56 @@ button, .btn {
 .patient-card {
   background: var(--card-bg);
   border: 1px solid var(--card-border);
+  border-left: 3px solid transparent;
   box-shadow: var(--card-shadow);
   z-index: 0;
-  @apply rounded-2xl transition-all duration-200 overflow-visible;
+  @apply rounded-xl transition-all duration-200 overflow-visible;
 }
-.patient-card[data-status="new"]       { background: var(--status-new); }
-.patient-card[data-status="pending"]   { background: var(--status-pending); }
-.patient-card[data-status="processed"] { background: var(--status-processed); }
+.patient-card[data-status="new"] {
+  background: var(--status-new);
+  border-left-color: var(--status-new-border);
+}
+.patient-card[data-status="pending"] {
+  background: var(--status-pending);
+  border-left-color: var(--status-pending-border);
+}
+.patient-card[data-status="processed"] {
+  background: var(--status-processed);
+  border-left-color: var(--status-processed-border);
+}
 .patient-card:hover {
   box-shadow: var(--card-shadow-hover);
   border-color: var(--card-hover-border);
   z-index: 30;
 }
+.patient-card[data-status="new"]:hover       { border-left-color: var(--status-new-border); }
+.patient-card[data-status="pending"]:hover   { border-left-color: var(--status-pending-border); }
+.patient-card[data-status="processed"]:hover { border-left-color: var(--status-processed-border); }
 .patient-card:active {
-  background: var(--bg-tertiary);
+  transform: scale(0.995);
 }
 
 /* Status badges */
 .badge {
-  @apply px-2 py-1 rounded-full text-xs font-medium;
+  @apply px-2 py-0.5 rounded-md text-[10px] font-semibold uppercase tracking-wider;
 }
 .badge-pending {
-  @apply bg-amber-100 text-amber-800;
+  @apply bg-amber-50 text-amber-600 border border-amber-200/60;
 }
 .badge-processed {
-  @apply bg-green-100 text-green-800;
+  @apply bg-emerald-50 text-emerald-600 border border-emerald-200/60;
 }
 .badge-new {
-  @apply bg-blue-100 text-blue-800;
+  @apply bg-blue-50 text-blue-600 border border-blue-200/60;
 }
 .dark .badge-pending {
-  @apply bg-amber-950/50 text-amber-300 border border-amber-800;
+  @apply bg-amber-950/40 text-amber-400 border border-amber-800/50;
 }
 .dark .badge-processed {
-  @apply bg-green-950/50 text-green-300 border border-green-800;
+  @apply bg-emerald-950/40 text-emerald-400 border border-emerald-800/50;
 }
 .dark .badge-new {
-  @apply bg-blue-950/50 text-blue-300 border border-blue-800;
+  @apply bg-blue-950/40 text-blue-400 border border-blue-800/50;
 }
 
 /* Hide scrollbar for exam toggles */

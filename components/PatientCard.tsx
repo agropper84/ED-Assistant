@@ -127,12 +127,12 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
       {/* Main content area */}
       <button
         onClick={onClick}
-        className="flex-1 min-w-0 text-left px-5 py-4"
+        className="flex-1 min-w-0 text-left px-5 py-3.5"
       >
         {/* Top row: Name + badges + inline info icons */}
-        <div className="flex items-center gap-2 mb-1.5">
+        <div className="flex items-center gap-2 mb-1">
           <span
-            className={`font-semibold text-[var(--text-primary)] truncate ${onUpdateFields ? 'hover:text-blue-600 dark:hover:text-blue-400 cursor-pointer' : ''}`}
+            className={`font-semibold text-[15px] text-[var(--text-primary)] truncate ${onUpdateFields ? 'hover:text-blue-600 dark:hover:text-blue-400 cursor-pointer' : ''}`}
             onClick={onUpdateFields ? (e) => {
               e.stopPropagation();
               e.preventDefault();
@@ -404,7 +404,7 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
         </div>
 
         {/* Bottom row: metadata */}
-        <div className="flex items-center gap-4 text-sm text-[var(--text-muted)]">
+        <div className="flex items-center gap-3 text-[13px] text-[var(--text-muted)]">
           {patient.timestamp && !editingTime && (
             <span className="flex items-center gap-1">
               <span
