@@ -428,26 +428,32 @@ export default function HomePage() {
     })();
   }, [segmentsKey, isVchMode]);
 
-  const handleSaveShiftSegments = async (segs: TimeSegment[]) => {
+  // Debounced save to prevent race conditions on rapid edits
+  const saveTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const handleSaveShiftSegments = (segs: TimeSegment[]) => {
     setShiftSegments(segs);
     localStorage.setItem(segmentsKey, JSON.stringify(segs));
 
-    // Auto-sync to VCH billing sheet
-    try {
-      const appSettings = getSettings();
-      await fetch('/api/vch-billing-sheet', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          sheetName,
-          cprpId: appSettings.vchCprpId,
-          siteFacility: appSettings.vchSiteFacility,
-          pracNumber: appSettings.vchPracNumber,
-          practitionerName: appSettings.vchPractitionerName,
-          shiftSegments: segs,
-        }),
-      });
-    } catch {}
+    // Debounce the sheet sync — wait 1s after last edit before writing
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(async () => {
+      try {
+        const appSettings = getSettings();
+        await fetch('/api/vch-billing-sheet', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            sheetName,
+            cprpId: appSettings.vchCprpId,
+            siteFacility: appSettings.vchSiteFacility,
+            pracNumber: appSettings.vchPracNumber,
+            practitionerName: appSettings.vchPractitionerName,
+            shiftSegments: segs,
+          }),
+        });
+      } catch {}
+    }, 1000);
   };
 
   const lastFetchRef = useRef(Date.now());

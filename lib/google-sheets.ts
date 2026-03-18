@@ -1447,7 +1447,7 @@ export async function writeVchBillingSheet(
     });
   }
 
-  // Read all existing rows, filter out rows for this date, then append new rows
+  // Read all existing rows
   const existingRes = await sheets.spreadsheets.values.get({
     spreadsheetId,
     range: `'${VCH_BILLING_SHEET}'!A2:P500`,
@@ -1460,9 +1460,11 @@ export async function writeVchBillingSheet(
   // If no date to target, don't touch existing rows
   if (!dateToReplace) return;
 
-  // Keep rows from other dates
+  // Keep rows from other dates (compare normalized dates)
+  const normDate = (d: string) => d.replace(/\s+/g, '').trim();
+  const targetNorm = normDate(dateToReplace);
   const otherDateRows = existingRows.filter(
-    (row: any[]) => (row[4]?.toString().trim() || '') !== dateToReplace
+    (row: any[]) => normDate(row[4]?.toString() || '') !== targetNorm
   );
 
   // Build new values for this date
@@ -1473,21 +1475,41 @@ export async function writeVchBillingSheet(
     r.directIndirectHrs, r.directHrs, r.indirectHrs, r.other, r.total,
   ]);
 
-  const allRows = [...otherDateRows, ...newDateRows];
-
-  // Clear and rewrite all
-  await sheets.spreadsheets.values.clear({
-    spreadsheetId,
-    range: `'${VCH_BILLING_SHEET}'!A2:P500`,
+  // Merge and sort chronologically by date
+  const allRows = [...otherDateRows, ...newDateRows].sort((a, b) => {
+    const dateA = new Date(a[4]?.toString() || '');
+    const dateB = new Date(b[4]?.toString() || '');
+    if (isNaN(dateA.getTime()) || isNaN(dateB.getTime())) return 0;
+    const dateDiff = dateA.getTime() - dateB.getTime();
+    if (dateDiff !== 0) return dateDiff;
+    // Same date — sort by start time
+    return (a[7]?.toString() || '').localeCompare(b[7]?.toString() || '');
   });
 
-  if (allRows.length === 0) return;
+  // Atomic write: clear then immediately rewrite in one sequence
+  // (minimizes window where sheet is empty)
+  if (allRows.length === 0) {
+    await sheets.spreadsheets.values.clear({
+      spreadsheetId,
+      range: `'${VCH_BILLING_SHEET}'!A2:P500`,
+    });
+    return;
+  }
+
+  // Pad with empty rows to overwrite any stale data beyond the new row count
+  const paddedRows = [...allRows];
+  const existingCount = existingRows.length;
+  if (existingCount > allRows.length) {
+    for (let i = 0; i < existingCount - allRows.length; i++) {
+      paddedRows.push(Array(16).fill(''));
+    }
+  }
 
   await sheets.spreadsheets.values.update({
     spreadsheetId,
-    range: `'${VCH_BILLING_SHEET}'!A2:P${allRows.length + 1}`,
+    range: `'${VCH_BILLING_SHEET}'!A2:P${paddedRows.length + 1}`,
     valueInputOption: 'RAW',
-    requestBody: { values: allRows },
+    requestBody: { values: paddedRows },
   });
 }
 
