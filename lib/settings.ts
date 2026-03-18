@@ -292,8 +292,8 @@ export function getEffectivePromptTemplates(encounterTypeId?: string): PromptTem
 
 // --- Speech API selection ---
 
-export type SpeechAPI = 'webspeech' | 'deepgram';
-export type TranscribeAPI = 'whisper' | 'deepgram';
+export type SpeechAPI = 'webspeech' | 'deepgram' | 'wispr';
+export type TranscribeAPI = 'whisper' | 'deepgram' | 'wispr';
 
 const SPEECH_API_KEY = 'ed-app-speech-api';
 const TRANSCRIBE_API_KEY = 'ed-app-transcribe-api';

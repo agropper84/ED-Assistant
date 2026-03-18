@@ -2,7 +2,14 @@
 
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { Mic, Upload, RotateCcw, Stethoscope } from 'lucide-react';
-import { getSettings, saveSettings, getSpeechAPI, getTranscribeAPI, getTranscribeWebAPI } from '@/lib/settings';
+import { getSettings, saveSettings, getSpeechAPI, getTranscribeAPI, getTranscribeWebAPI, type TranscribeAPI } from '@/lib/settings';
+
+/** Get the API endpoint URL for a given transcription engine */
+function getTranscribeEndpoint(api: TranscribeAPI | string): string {
+  if (api === 'deepgram') return '/api/transcribe-deepgram';
+  if (api === 'wispr') return '/api/transcribe-wispr';
+  return '/api/transcribe';
+}
 
 /** Convert spoken punctuation commands to actual punctuation (client-side mirror of server function) */
 function convertSpokenPunctuation(text: string): string {
@@ -294,11 +301,12 @@ export function VoiceRecorder({
             formData.append('skipMedicalize', 'true');
           }
           // Choose transcription API
-          const useDeepgram = getTranscribeAPI() === 'deepgram';
+          const transcribeEngine = getTranscribeAPI();
+          const useExternalSTT = transcribeEngine === 'deepgram' || transcribeEngine === 'wispr';
           let res: Response;
-          if (useDeepgram) {
-            // Deepgram for transcription
-            const dgRes = await fetch('/api/transcribe-deepgram', { method: 'POST', body: formData });
+          if (useExternalSTT) {
+            // External STT (Deepgram/Wispr) for transcription
+            const dgRes = await fetch(getTranscribeEndpoint(transcribeEngine), { method: 'POST', body: formData });
             if (dgRes.ok && medicalizeRef.current) {
               const { text: dgText } = await dgRes.json();
               if (dgText?.trim()) {
@@ -482,7 +490,8 @@ export function VoiceRecorder({
         if (!medicalizeRef.current) {
           // --- Fast mode: Web Speech API instant display ---
           // When Deepgram is selected, also record audio for cleanup on stop
-          const useDgFast = getSpeechAPI() === 'deepgram';
+          const speechEng = getSpeechAPI();
+          const useSttFast = speechEng === 'deepgram' || speechEng === 'wispr';
 
           // Web Speech API for instant text (always, regardless of engine choice)
           const SpeechAPI = typeof window !== 'undefined'
@@ -521,7 +530,7 @@ export function VoiceRecorder({
           }
 
           // If Deepgram selected, also record full audio in background for cleanup on stop
-          if (useDgFast) {
+          if (useSttFast) {
             const bgRecorder = new MediaRecorder(stream, { mimeType });
             mediaRecorderRef.current = bgRecorder;
             chunksRef.current = [];
@@ -624,12 +633,13 @@ export function VoiceRecorder({
             if (!medicalizeRef.current) formData.append('skipMedicalize', 'true');
 
             // Encounter recording uses the web/phone transcribe engine
-            const useDeepgram = getTranscribeWebAPI() === 'deepgram';
-            let endpoint = useDeepgram ? '/api/transcribe-deepgram' : '/api/transcribe';
+            const webEngine = getTranscribeWebAPI();
+            const useExternalSTT = webEngine === 'deepgram' || webEngine === 'wispr';
+            let endpoint = getTranscribeEndpoint(webEngine);
             let res = await fetch(endpoint, { method: 'POST', body: formData });
 
             // If Deepgram succeeded and medicalize is on, run Claude medicalize
-            if (useDeepgram && res.ok && medicalizeRef.current) {
+            if (useExternalSTT && res.ok && medicalizeRef.current) {
               const { text: dgText } = await res.json();
               if (dgText?.trim()) {
                 const medRes = await fetch('/api/medicalize', {
@@ -733,9 +743,10 @@ export function VoiceRecorder({
 
       if (!medicalizeRef.current) {
         // --- Fast mode stop ---
-        const useDgCleanup = getSpeechAPI() === 'deepgram';
+        const speechEngine = getSpeechAPI();
+        const useSttCleanup = speechEngine === 'deepgram' || speechEngine === 'wispr';
 
-        if (useDgCleanup) {
+        if (useSttCleanup) {
           // Snapshot what Web Speech produced before stopping
           const webSpeechText = accumulatedTextRef.current || '';
 
@@ -761,7 +772,7 @@ export function VoiceRecorder({
               const formData = new FormData();
               formData.append('audio', audioBlob, `recording.${getFileExtension(mimeTypeRef.current)}`);
               formData.append('mode', 'dictation');
-              const res = await fetch('/api/transcribe-deepgram', { method: 'POST', body: formData });
+              const res = await fetch(getTranscribeEndpoint(speechEngine), { method: 'POST', body: formData });
               if (res.ok) {
                 const { text } = await res.json();
                 if (text?.trim() && text.trim().length > 5) {
@@ -867,8 +878,7 @@ export function VoiceRecorder({
       formData.append('audio', file, file.name);
       formData.append('mode', mode);
       if (!medicalizeRef.current) formData.append('skipMedicalize', 'true');
-      const useDeepgramUpload = getTranscribeWebAPI() === 'deepgram';
-      const endpoint = useDeepgramUpload ? '/api/transcribe-deepgram' : '/api/transcribe';
+      const endpoint = getTranscribeEndpoint(getTranscribeWebAPI());
       const res = await fetch(endpoint, { method: 'POST', body: formData });
       if (!res.ok) {
         const err = await res.json().catch(() => ({ error: 'Transcription failed' }));

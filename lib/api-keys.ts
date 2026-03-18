@@ -30,6 +30,18 @@ export async function getOpenAIApiKey(): Promise<string> {
   return '';
 }
 
+export async function getWisprApiKey(): Promise<string> {
+  try {
+    const session = await getSessionFromCookies();
+    if (session.userId) {
+      const settings = await getUserSettings(session.userId);
+      const userKey = settings?.wisprApiKey as string;
+      if (userKey) return userKey;
+    }
+  } catch {}
+  return '';
+}
+
 export async function getDeepgramApiKey(): Promise<string> {
   try {
     const session = await getSessionFromCookies();
