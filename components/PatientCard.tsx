@@ -127,12 +127,12 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
       {/* Main content area */}
       <button
         onClick={onClick}
-        className="flex-1 min-w-0 text-left px-5 py-3.5"
+        className="flex-1 min-w-0 text-left px-5 py-3"
       >
         {/* Top row: Name + badges + inline info icons */}
-        <div className="flex items-center gap-2 mb-1">
+        <div className="flex items-center gap-2.5 mb-0.5">
           <span
-            className={`font-semibold text-[15px] text-[var(--text-primary)] truncate ${onUpdateFields ? 'hover:text-blue-600 dark:hover:text-blue-400 cursor-pointer' : ''}`}
+            className={`font-medium text-[15px] tracking-tight text-[var(--text-primary)] truncate ${onUpdateFields ? 'hover:text-blue-600 dark:hover:text-blue-400 cursor-pointer' : ''}`}
             onClick={onUpdateFields ? (e) => {
               e.stopPropagation();
               e.preventDefault();
@@ -161,7 +161,7 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
                     }}
                     className="p-0.5 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 rounded transition-colors cursor-pointer inline-flex"
                   >
-                    <FileText className="w-4 h-4 text-emerald-700 dark:text-emerald-400" />
+                    <FileText className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
                   </span>
                   <div className="absolute left-0 top-full h-2 w-80 hidden group-hover/note:block" />
                   <div
@@ -217,7 +217,7 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
                   {generatingIcon === 'synopsis' ? (
                     <Loader2 className="w-4 h-4 text-blue-400 animate-spin" />
                   ) : (
-                    <Brain className={`w-4 h-4 ${patient.synopsis ? 'text-blue-600 dark:text-blue-400' : EMPTY}`} />
+                    <Brain className={`w-3.5 h-3.5 ${patient.synopsis ? 'text-blue-600 dark:text-blue-400' : EMPTY}`} />
                   )}
                 </span>
                 {patient.synopsis && (
@@ -252,7 +252,7 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
                   {generatingIcon === 'management' ? (
                     <Loader2 className="w-4 h-4 text-violet-400 animate-spin" />
                   ) : (
-                    <ClipboardList className={`w-4 h-4 ${patient.management ? 'text-violet-600 dark:text-violet-400' : EMPTY}`} />
+                    <ClipboardList className={`w-3.5 h-3.5 ${patient.management ? 'text-violet-600 dark:text-violet-400' : EMPTY}`} />
                   )}
                 </span>
                 {patient.management && (
@@ -287,7 +287,7 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
                   {generatingIcon === 'evidence' ? (
                     <Loader2 className="w-4 h-4 text-amber-400 animate-spin" />
                   ) : (
-                    <BookOpen className={`w-4 h-4 ${patient.evidence ? 'text-amber-600 dark:text-amber-400' : EMPTY}`} />
+                    <BookOpen className={`w-3.5 h-3.5 ${patient.evidence ? 'text-amber-600 dark:text-amber-400' : EMPTY}`} />
                   )}
                 </span>
                 {patient.evidence && (
@@ -334,7 +334,7 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
                     {generatingIcon === 'education' ? (
                       <Loader2 className="w-4 h-4 text-emerald-400 animate-spin" />
                     ) : (
-                      <GraduationCap className={`w-4 h-4 ${patient.education ? 'text-emerald-600 dark:text-emerald-400' : EMPTY}`} />
+                      <GraduationCap className={`w-3.5 h-3.5 ${patient.education ? 'text-emerald-600 dark:text-emerald-400' : EMPTY}`} />
                     )}
                   </span>
                   {patient.education && (
@@ -376,7 +376,7 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
                 className="p-0.5 hover:bg-cyan-50 dark:hover:bg-cyan-900/30 rounded transition-colors cursor-pointer inline-flex"
                 title="Clinical questions"
               >
-                <MessageCircleQuestion className={`w-4 h-4 ${patient.clinicalQA ? 'text-cyan-600 dark:text-cyan-400' : EMPTY}`} />
+                <MessageCircleQuestion className={`w-3.5 h-3.5 ${patient.clinicalQA ? 'text-cyan-600 dark:text-cyan-400' : EMPTY}`} />
               </span>
               {patient.clinicalQA && (() => {
                 try {
@@ -404,7 +404,7 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
         </div>
 
         {/* Bottom row: metadata */}
-        <div className="flex items-center gap-3 text-[13px] text-[var(--text-muted)]">
+        <div className="flex items-center gap-3 text-[12px] text-[var(--text-muted)]">
           {patient.timestamp && !editingTime && (
             <span className="flex items-center gap-1">
               <span
@@ -415,7 +415,7 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
                   setEditingTime(true);
                 }}
               >
-                <Clock className="w-3.5 h-3.5" />
+                <Clock className="w-3 h-3 opacity-60" />
                 {patient.timestamp}
               </span>
               {onDateChange && (
@@ -448,13 +448,13 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
           )}
           {(patient.age || patient.gender) && (
             <span className="flex items-center gap-1">
-              <User className="w-3.5 h-3.5" />
+              <User className="w-3 h-3 opacity-60" />
               {patient.age}{patient.gender && ` ${patient.gender}`}
             </span>
           )}
           {patient.diagnosis && (
             <span className="flex items-center gap-1 truncate">
-              <Stethoscope className="w-3.5 h-3.5" />
+              <Stethoscope className="w-3 h-3 opacity-60" />
               {patient.diagnosis}
             </span>
           )}
@@ -462,7 +462,7 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
       </button>
 
       {/* Right action icons — appear on hover */}
-      <div className="flex items-center gap-0.5 pr-2 flex-shrink-0 self-center opacity-0 group-hover/card:opacity-100 transition-all duration-200 translate-x-2 group-hover/card:translate-x-0">
+      <div className="flex items-center gap-0.5 pr-3 flex-shrink-0 self-center opacity-0 group-hover/card:opacity-100 transition-all duration-250 translate-x-1 group-hover/card:translate-x-0">
 
         {/* Inline time editor */}
         {editingTime && (
