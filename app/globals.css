@@ -207,7 +207,7 @@ button, .btn {
   z-index: 0;
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
-  @apply rounded-xl transition-all duration-250 overflow-visible;
+  @apply rounded-xl transition-all duration-200 overflow-visible;
 }
 .patient-card[data-status="new"]       { background: var(--status-new); }
 .patient-card[data-status="pending"]   { background: var(--status-pending); }
