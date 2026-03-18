@@ -48,7 +48,7 @@ export async function verifyLinks(text: string): Promise<string> {
   if (links.length === 0) return text;
 
   // Deduplicate URLs
-  const uniqueUrls = [...new Set(links.map(l => l.url))];
+  const uniqueUrls = Array.from(new Set(links.map(l => l.url)));
 
   // Check URLs in batches
   const results = new Map<string, boolean>();
