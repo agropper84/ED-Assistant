@@ -104,39 +104,35 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
 
   return (
     <div className="group/card relative">
-      {/* Left hover zone — triggers delete reveal */}
+      {/* Delete zone — left hover area + button in one container */}
       {onDelete && (
         <div
-          className="absolute left-0 top-0 bottom-0 z-[36]"
-          style={{ width: '48px' }}
+          className="absolute left-0 top-0 bottom-0 z-[36] flex items-center"
+          style={{ width: showDelete ? '36px' : '48px' }}
           onMouseEnter={() => setShowDelete(true)}
           onMouseLeave={() => setShowDelete(false)}
-        />
-      )}
-
-      {/* Delete button — positioned with gap from card */}
-      {onDelete && (
-        <div
-          className="absolute top-1/2 z-[35] transition-all duration-200"
-          style={{
-            left: '2px',
-            transform: `translateY(-50%) scale(${showDelete ? 1 : 0.8})`,
-            opacity: showDelete ? 1 : 0,
-            pointerEvents: showDelete ? 'auto' : 'none',
-          }}
         >
           <button
             onClick={(e) => {
               e.stopPropagation();
               onDelete();
             }}
-            onMouseEnter={() => setShowDelete(true)}
-            onMouseLeave={() => setShowDelete(false)}
-            className="flex items-center justify-center bg-[var(--card-bg)] border border-[var(--border)] rounded-full shadow-sm hover:bg-red-50 dark:hover:bg-red-950/40 hover:border-red-300 dark:hover:border-red-700 transition-all active:scale-90"
-            style={{ width: '24px', height: '24px', minWidth: '24px', minHeight: '24px' }}
+            className="ml-[2px] flex items-center justify-center rounded-full transition-all active:scale-90"
+            style={{
+              width: '24px', height: '24px', minWidth: '24px', minHeight: '24px',
+              opacity: showDelete ? 1 : 0,
+              transform: showDelete ? 'scale(1)' : 'scale(0.7)',
+              background: showDelete ? undefined : 'transparent',
+              pointerEvents: showDelete ? 'auto' : 'none',
+            }}
             title="Delete patient"
           >
-            <Trash2 style={{ width: '11px', height: '11px' }} className="text-[var(--text-muted)] hover:text-red-500 dark:hover:text-red-400 transition-colors" />
+            <span
+              className="group/del flex items-center justify-center rounded-full border transition-all hover:bg-red-100 dark:hover:bg-red-950/60 hover:border-red-400 dark:hover:border-red-600 hover:shadow-md bg-[var(--card-bg)] border-[var(--border)] shadow-sm"
+              style={{ width: '24px', height: '24px' }}
+            >
+              <Trash2 style={{ width: '11px', height: '11px' }} className="text-[var(--text-muted)] group-hover/del:text-red-500 dark:group-hover/del:text-red-400 transition-colors" />
+            </span>
           </button>
         </div>
       )}
