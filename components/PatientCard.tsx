@@ -100,28 +100,53 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
     setEditingTime(false);
   };
 
+  const [showDelete, setShowDelete] = useState(false);
+
   return (
     <div className="group/card relative">
-      {/* Delete button — left side, revealed as card slides right */}
+      {/* Left hover zone — triggers delete reveal */}
       {onDelete && (
-        <div className="absolute left-0 top-1/2 -translate-y-1/2 z-[35] opacity-0 group-hover/card:opacity-100 transition-all duration-200 scale-90 group-hover/card:scale-100">
+        <div
+          className="absolute left-0 top-0 bottom-0 z-[36]"
+          style={{ width: '48px' }}
+          onMouseEnter={() => setShowDelete(true)}
+          onMouseLeave={() => setShowDelete(false)}
+        />
+      )}
+
+      {/* Delete button — positioned with gap from card */}
+      {onDelete && (
+        <div
+          className="absolute top-1/2 z-[35] transition-all duration-200"
+          style={{
+            left: '2px',
+            transform: `translateY(-50%) scale(${showDelete ? 1 : 0.8})`,
+            opacity: showDelete ? 1 : 0,
+            pointerEvents: showDelete ? 'auto' : 'none',
+          }}
+        >
           <button
             onClick={(e) => {
               e.stopPropagation();
               onDelete();
             }}
-            className="w-7 h-7 flex items-center justify-center bg-[var(--card-bg)] border border-[var(--border)] rounded-full shadow-sm hover:bg-red-50 dark:hover:bg-red-950/40 hover:border-red-300 dark:hover:border-red-700 transition-all active:scale-90"
+            onMouseEnter={() => setShowDelete(true)}
+            onMouseLeave={() => setShowDelete(false)}
+            className="flex items-center justify-center bg-[var(--card-bg)] border border-[var(--border)] rounded-full shadow-sm hover:bg-red-50 dark:hover:bg-red-950/40 hover:border-red-300 dark:hover:border-red-700 transition-all active:scale-90"
+            style={{ width: '24px', height: '24px', minWidth: '24px', minHeight: '24px' }}
             title="Delete patient"
           >
-            <Trash2 className="w-3 h-3 text-[var(--text-muted)] hover:text-red-500 dark:hover:text-red-400 transition-colors" />
+            <Trash2 style={{ width: '11px', height: '11px' }} className="text-[var(--text-muted)] hover:text-red-500 dark:hover:text-red-400 transition-colors" />
           </button>
         </div>
       )}
 
-      {/* Card body — slides right on hover to reveal delete */}
+      {/* Card body — slides right on left-edge hover to reveal delete */}
       <div
-        className={`patient-card relative flex items-center transition-all duration-200 ${onDelete ? 'group-hover/card:translate-x-6' : ''}`}
+        className="patient-card relative flex items-center transition-all duration-200"
+        style={{ transform: onDelete && showDelete ? 'translateX(32px)' : 'translateX(0)' }}
         data-status={patient.status}
+        onMouseEnter={() => {}}
       >
 
       {/* Main content area */}
