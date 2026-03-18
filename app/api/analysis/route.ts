@@ -1,15 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAnthropicClient } from '@/lib/api-keys';
 import { getSheetsContext, getPatient, updatePatientFields } from '@/lib/google-sheets';
+import { verifyLinks } from '@/lib/verify-links';
 
 export const maxDuration = 30;
 
-// POST /api/analysis - Generate DDx, management, and evidence from patient data
+// POST /api/analysis - Generate DDx, management, and/or evidence from patient data
+// Optional: { section: 'management' | 'evidence' } to generate only one section
 export async function POST(request: NextRequest) {
   try {
     const anthropic = await getAnthropicClient();
     const ctx = await getSheetsContext();
-    const { rowIndex, sheetName } = await request.json();
+    const { rowIndex, sheetName, section } = await request.json();
 
     const patient = await getPatient(ctx, rowIndex, sheetName);
     if (!patient) {
@@ -30,13 +32,25 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No clinical data available' }, { status: 400 });
     }
 
-    const response = await anthropic.messages.create({
-      model: 'claude-haiku-4-5-20251001',
-      max_tokens: 2048,
-      temperature: 0.3,
-      messages: [{
-        role: 'user',
-        content: `You are an experienced emergency medicine physician. Based on the following patient data, generate a differential diagnosis, recommended management plan, and pertinent evidence-based references.
+    // Single section mode or full analysis
+    const sectionPrompts: Record<string, string> = {
+      management: `Provide a recommended management plan including medications, procedures, disposition planning, and follow-up. Use narrative form.`,
+      evidence: `Cite pertinent evidence, guidelines, or clinical decision rules relevant to this presentation. ONLY use URLs you are confident are real — use PubMed links with actual PMIDs. If unsure of a URL, cite by name without a link. Use narrative form with [Name](URL) markdown links.`,
+    };
+
+    let prompt: string;
+    if (section && sectionPrompts[section]) {
+      prompt = `You are an experienced physician. Based on the following patient data, generate ONLY the ${section} section.
+
+Patient: ${patient.name || 'Unknown'}, ${patient.age || '?'} ${patient.gender || ''}
+
+${parts.join('\n\n')}
+
+${sectionPrompts[section]}
+
+Output ONLY the ${section} content, nothing else.`;
+    } else {
+      prompt = `You are an experienced emergency medicine physician. Based on the following patient data, generate a differential diagnosis, recommended management plan, and pertinent evidence-based references.
 
 Patient: ${patient.name || 'Unknown'}, ${patient.age || '?'} ${patient.gender || ''}
 
@@ -54,29 +68,44 @@ List recommended investigations/workup.
 Provide recommended management steps including disposition planning.
 
 ===EVIDENCE===
-Cite pertinent evidence, guidelines, or clinical decision rules relevant to this presentation.`,
-      }],
+Cite pertinent evidence, guidelines, or clinical decision rules relevant to this presentation. ONLY use URLs you are confident are real. If unsure of a URL, cite by name without a link.`;
+    }
+
+    const response = await anthropic.messages.create({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 2048,
+      temperature: 0.3,
+      messages: [{ role: 'user', content: prompt }],
     });
 
-    const text = response.content[0].type === 'text' ? response.content[0].text : '';
+    let text = response.content[0].type === 'text' ? response.content[0].text : '';
 
-    // Parse sections from response
-    const getSection = (key: string): string => {
-      const regex = new RegExp(`===${key}===\\s*([\\s\\S]*?)(?====\\w|$)`);
-      const match = text.match(regex);
-      return match ? match[1].trim() : '';
-    };
+    // Verify links
+    text = await verifyLinks(text);
 
     const fields: Record<string, string> = {};
-    const ddx = getSection('DDX');
-    const investigations = getSection('INVESTIGATIONS');
-    const management = getSection('MANAGEMENT');
-    const evidence = getSection('EVIDENCE');
 
-    if (ddx) fields.ddx = ddx;
-    if (investigations) fields.investigations = investigations;
-    if (management) fields.management = management;
-    if (evidence) fields.evidence = evidence;
+    if (section) {
+      // Single section mode — the entire response IS the section
+      if (text.trim()) fields[section] = text.trim();
+    } else {
+      // Full analysis — parse sections
+      const getSection = (key: string): string => {
+        const regex = new RegExp(`===${key}===\\s*([\\s\\S]*?)(?====\\w|$)`);
+        const match = text.match(regex);
+        return match ? match[1].trim() : '';
+      };
+
+      const ddx = getSection('DDX');
+      const investigations = getSection('INVESTIGATIONS');
+      const management = getSection('MANAGEMENT');
+      const evidence = getSection('EVIDENCE');
+
+      if (ddx) fields.ddx = ddx;
+      if (investigations) fields.investigations = investigations;
+      if (management) fields.management = management;
+      if (evidence) fields.evidence = evidence;
+    }
 
     if (Object.keys(fields).length > 0) {
       await updatePatientFields(ctx, rowIndex, fields, sheetName);

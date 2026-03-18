@@ -348,9 +348,9 @@ export function saveTranscribeWatchAPI(api: TranscribeAPI): void {
 const AUTO_ANALYSIS_KEY = 'ed-app-auto-analysis';
 
 export function getAutoAnalysis(): boolean {
-  if (typeof window === 'undefined') return true;
+  if (typeof window === 'undefined') return false;
   const stored = localStorage.getItem(AUTO_ANALYSIS_KEY);
-  return stored === null ? true : stored === 'true';
+  return stored === null ? false : stored === 'true';
 }
 
 export function saveAutoAnalysis(enabled: boolean): void {

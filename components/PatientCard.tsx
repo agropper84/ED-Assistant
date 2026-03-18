@@ -15,6 +15,9 @@ interface PatientCardProps {
   onNavigate?: () => void;
   onProcess?: () => Promise<void>;
   onGenerateAnalysis?: () => Promise<void>;
+  onGenerateSynopsis?: () => Promise<void>;
+  onGenerateManagement?: () => Promise<void>;
+  onGenerateEvidence?: () => Promise<void>;
   onUpdateFields?: (fields: Record<string, string>) => Promise<void>;
   onClinicalChat?: () => void;
   onMerge?: () => void;
@@ -67,7 +70,7 @@ function Linkified({ text }: { text: string }) {
   );
 }
 
-export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChange, onBillingToggle, billingCodes, onNavigate, onProcess, onGenerateAnalysis, onUpdateFields, onClinicalChat, onMerge, onDateChange, onGenerateEducation, showEducation, onCalculator, onSaveResource, savedResourceKey }: PatientCardProps) {
+export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChange, onBillingToggle, billingCodes, onNavigate, onProcess, onGenerateAnalysis, onGenerateSynopsis, onGenerateManagement, onGenerateEvidence, onUpdateFields, onClinicalChat, onMerge, onDateChange, onGenerateEducation, showEducation, onCalculator, onSaveResource, savedResourceKey }: PatientCardProps) {
   const [editingTime, setEditingTime] = useState(false);
   const [timeValue, setTimeValue] = useState(patient.timestamp || '');
   const [noteCopied, setNoteCopied] = useState(false);
@@ -201,14 +204,14 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
                 <span
                   onClick={(e) => {
                     e.stopPropagation();
-                    if (!patient.synopsis && onGenerateAnalysis && !generatingIcon) {
+                    if (!patient.synopsis && (onGenerateSynopsis || onGenerateAnalysis) && !generatingIcon) {
                       setGeneratingIcon('synopsis');
-                      onGenerateAnalysis().finally(() => setGeneratingIcon(null));
+                      (onGenerateSynopsis || onGenerateAnalysis)!().finally(() => setGeneratingIcon(null));
                     } else if (patient.synopsis && onNavigate) {
                       onNavigate();
                     }
                   }}
-                  className={`p-0.5 rounded transition-colors inline-flex ${patient.synopsis || onGenerateAnalysis ? 'hover:bg-blue-50 dark:hover:bg-blue-900/30 cursor-pointer' : ''}`}
+                  className={`p-0.5 rounded transition-colors inline-flex ${patient.synopsis || onGenerateSynopsis || onGenerateAnalysis ? 'hover:bg-blue-50 dark:hover:bg-blue-900/30 cursor-pointer' : ''}`}
                   title={patient.synopsis ? '' : 'Generate synopsis & analysis'}
                 >
                   {generatingIcon === 'synopsis' ? (
@@ -236,14 +239,14 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
                 <span
                   onClick={(e) => {
                     e.stopPropagation();
-                    if (!patient.management && onGenerateAnalysis && !generatingIcon) {
+                    if (!patient.management && (onGenerateManagement || onGenerateAnalysis) && !generatingIcon) {
                       setGeneratingIcon('management');
-                      onGenerateAnalysis().finally(() => setGeneratingIcon(null));
+                      (onGenerateManagement || onGenerateAnalysis)!().finally(() => setGeneratingIcon(null));
                     } else if (patient.management && onNavigate) {
                       onNavigate();
                     }
                   }}
-                  className={`p-0.5 rounded transition-colors inline-flex ${patient.management || onGenerateAnalysis ? 'hover:bg-violet-50 dark:hover:bg-violet-900/30 cursor-pointer' : ''}`}
+                  className={`p-0.5 rounded transition-colors inline-flex ${patient.management || onGenerateManagement || onGenerateAnalysis ? 'hover:bg-violet-50 dark:hover:bg-violet-900/30 cursor-pointer' : ''}`}
                   title={patient.management ? '' : 'Generate synopsis & analysis'}
                 >
                   {generatingIcon === 'management' ? (
@@ -271,14 +274,14 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
                 <span
                   onClick={(e) => {
                     e.stopPropagation();
-                    if (!patient.evidence && onGenerateAnalysis && !generatingIcon) {
+                    if (!patient.evidence && (onGenerateEvidence || onGenerateAnalysis) && !generatingIcon) {
                       setGeneratingIcon('evidence');
-                      onGenerateAnalysis().finally(() => setGeneratingIcon(null));
+                      (onGenerateEvidence || onGenerateAnalysis)!().finally(() => setGeneratingIcon(null));
                     } else if (patient.evidence && onNavigate) {
                       onNavigate();
                     }
                   }}
-                  className={`p-0.5 rounded transition-colors inline-flex ${patient.evidence || onGenerateAnalysis ? 'hover:bg-amber-50 dark:hover:bg-amber-900/30 cursor-pointer' : ''}`}
+                  className={`p-0.5 rounded transition-colors inline-flex ${patient.evidence || onGenerateEvidence || onGenerateAnalysis ? 'hover:bg-amber-50 dark:hover:bg-amber-900/30 cursor-pointer' : ''}`}
                   title={patient.evidence ? '' : 'Generate synopsis & analysis'}
                 >
                   {generatingIcon === 'evidence' ? (

@@ -948,6 +948,30 @@ export default function HomePage() {
             ]);
             fetchPatients();
           }}
+          onGenerateSynopsis={async () => {
+            await fetch('/api/synopsis', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ rowIndex: patient.rowIndex, sheetName: patient.sheetName }),
+            });
+            fetchPatients();
+          }}
+          onGenerateManagement={async () => {
+            await fetch('/api/analysis', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ rowIndex: patient.rowIndex, sheetName: patient.sheetName, section: 'management' }),
+            });
+            fetchPatients();
+          }}
+          onGenerateEvidence={async () => {
+            await fetch('/api/analysis', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ rowIndex: patient.rowIndex, sheetName: patient.sheetName, section: 'evidence' }),
+            });
+            fetchPatients();
+          }}
           onUpdateFields={async (fields) => {
             await fetch(`/api/patients/${patient.rowIndex}`, {
               method: 'PATCH',

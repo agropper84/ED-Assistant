@@ -909,7 +909,7 @@ export default function SettingsPage() {
                   <span className="text-xs text-[var(--text-muted)]">
                     {autoAnalysis
                       ? 'Synopsis, management, and evidence generate automatically when a patient is processed'
-                      : 'Click the icons on the patient card to generate on demand'}
+                      : 'Click each icon on the patient card to generate individually'}
                   </span>
                 </div>
                 <input
