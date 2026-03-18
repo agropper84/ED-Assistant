@@ -966,6 +966,7 @@ export default function SettingsPage() {
                 >
                   <option value="webspeech">Web Speech API (instant, browser-based)</option>
                   <option value="deepgram">Deepgram Nova-3 Medical</option>
+                </select>
               </div>
 
               {/* Medicalize dictation */}
@@ -978,6 +979,7 @@ export default function SettingsPage() {
                 >
                   <option value="whisper">OpenAI Whisper + Claude</option>
                   <option value="deepgram">Deepgram Nova-3 Medical + Claude</option>
+                </select>
               </div>
 
               <h4 className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider pt-2">Transcription Engines</h4>
@@ -992,6 +994,7 @@ export default function SettingsPage() {
                 >
                   <option value="whisper">OpenAI Whisper</option>
                   <option value="deepgram">Deepgram Nova-3 Medical</option>
+                </select>
                 <p className="text-[10px] text-[var(--text-muted)] mt-0.5">Used for full encounter recordings in the Add Patient modal</p>
               </div>
 
@@ -1015,6 +1018,7 @@ export default function SettingsPage() {
                 >
                   <option value="whisper">OpenAI Whisper</option>
                   <option value="deepgram">Deepgram Nova-3 Medical</option>
+                </select>
                 <p className="text-[10px] text-[var(--text-muted)] mt-0.5">Used for audio uploaded from the Watch app</p>
               </div>
             </div>
