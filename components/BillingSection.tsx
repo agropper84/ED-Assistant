@@ -315,7 +315,7 @@ export function VchTimeBasedShiftPanel({
                 type="range"
                 min="0"
                 max="100"
-                step="5"
+                step="10"
                 value={seg.directPct}
                 onChange={(e) => updateSegment(idx, { directPct: parseInt(e.target.value, 10) })}
                 className="w-full h-1.5 bg-[var(--border)] rounded-lg appearance-none cursor-pointer accent-blue-600"
