@@ -268,6 +268,7 @@ export default function HomePage() {
   const [shiftHours, setShiftHours] = useState('');
   const [shiftFeeType, setShiftFeeType] = useState('');
   const [shiftCode, setShiftCode] = useState('');
+  const [shiftFee, setShiftFee] = useState('');
   const [shiftTotal, setShiftTotal] = useState('');
 
   // Patient data modal
@@ -473,6 +474,7 @@ export default function HomePage() {
         setShiftHours(data.shiftTimes.hours || '');
         setShiftFeeType(data.shiftTimes.feeType || '');
         setShiftCode(data.shiftTimes.code || '');
+        setShiftFee(data.shiftTimes.fee || '');
         setShiftTotal(data.shiftTimes.total || '');
       }
     } catch (error) {
@@ -655,6 +657,7 @@ export default function HomePage() {
         setShiftHours(data.shiftTimes.hours || '');
         setShiftFeeType(data.shiftTimes.feeType || '');
         setShiftCode(data.shiftTimes.code || '');
+        setShiftFee(data.shiftTimes.fee || '');
         setShiftTotal(data.shiftTimes.total || '');
       }
     } catch (error) {

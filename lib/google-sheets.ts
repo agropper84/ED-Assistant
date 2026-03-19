@@ -305,7 +305,7 @@ export async function getOrCreateDateSheet(ctx: SheetsContext, dateOrName?: Date
       data: [
         { range: `'${sheetName}'!A1`, values: [[dateStr]] },
         { range: `'${sheetName}'!A3`, values: [['TIME BASED FEE']] },
-        { range: `'${sheetName}'!A4:F4`, values: [['START', 'END', 'HOURS', 'FEE TYPE', 'CODE', 'TOTAL']] },
+        { range: `'${sheetName}'!A4:G4`, values: [['START', 'END', 'HOURS', 'FEE TYPE', 'CODE', 'FEE', 'TOTAL']] },
       ],
     },
   });
@@ -352,6 +352,7 @@ export interface ShiftTimes {
   hours: string;
   feeType: string;
   code: string;
+  fee: string;
   total: string;
 }
 
@@ -413,7 +414,7 @@ export async function getShiftTimes(ctx: SheetsContext, sheetName?: string): Pro
   try {
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId,
-      range: `'${sheet}'!A5:F5`,
+      range: `'${sheet}'!A5:G5`,
       valueRenderOption: 'UNFORMATTED_VALUE',
     });
     const row = response.data.values?.[0] || [];
@@ -423,7 +424,8 @@ export async function getShiftTimes(ctx: SheetsContext, sheetName?: string): Pro
       hours: row[2]?.toString() || '',
       feeType: row[3]?.toString() || '',
       code: row[4]?.toString() || '',
-      total: row[5]?.toString() || '',
+      fee: row[5]?.toString() || '',
+      total: row[6]?.toString() || '',
     };
   } catch {
     return { start: '', end: '', hours: '', feeType: '', code: '', total: '' };
@@ -442,18 +444,19 @@ export async function setShiftTimes(
   const feeInfo = getShiftFeeType(start);
   const hours = computeShiftHours(start, end);
   const hoursStr = hours > 0 ? hours.toString() : '';
+  const feeStr = start ? feeInfo.rate.toFixed(2) : '';
   const totalStr = hours > 0 ? (hours * feeInfo.rate).toFixed(2) : '';
   const feeType = start ? feeInfo.name : '';
   const code = start ? feeInfo.code : '';
 
   await sheets.spreadsheets.values.update({
     spreadsheetId,
-    range: `'${sheetName}'!A5:F5`,
+    range: `'${sheetName}'!A5:G5`,
     valueInputOption: 'RAW',
-    requestBody: { values: [[start, end, hoursStr, feeType, code, totalStr]] },
+    requestBody: { values: [[start, end, hoursStr, feeType, code, feeStr, totalStr]] },
   });
 
-  return { start, end, hours: hoursStr, feeType, code, total: totalStr };
+  return { start, end, hours: hoursStr, feeType, code, fee: feeStr, total: totalStr };
 }
 
 // --- Multi-row billing helpers ---
