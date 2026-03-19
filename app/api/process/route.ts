@@ -39,22 +39,27 @@ export async function POST(request: NextRequest) {
 
     // Build style guidance server-side if not provided by client
     let effectiveStyleGuidance = styleGuidance;
+    let styleExamples: Record<string, string[]> = {};
+    let customGuidance = '';
     if (!effectiveStyleGuidance) {
       try {
         const guide = await getStyleGuideFromSheet(ctx);
         const hasExamples = Object.values(guide.examples).some(arr => arr.length > 0);
         if (hasExamples || guide.customGuidance || guide.extractedFeatures.length > 0) {
+          styleExamples = guide.examples as Record<string, string[]>;
+          customGuidance = guide.customGuidance || '';
           const parts: string[] = [];
+          if (guide.customGuidance) {
+            parts.push(`Charting guidance from the physician:\n${guide.customGuidance}`);
+          }
+          if (guide.extractedFeatures.length > 0) {
+            parts.push(`Key style features: ${guide.extractedFeatures.join(', ')}`);
+          }
+          // Include examples in the top-level guidance too (for backward compat)
           for (const [section, examples] of Object.entries(guide.examples)) {
             if (examples.length > 0) {
               parts.push(`${section.toUpperCase()} style examples:\n${examples.map((e: string, i: number) => `Example ${i + 1}:\n${e}`).join('\n\n')}`);
             }
-          }
-          if (guide.extractedFeatures.length > 0) {
-            parts.push(`Key style features (secondary to examples above): ${guide.extractedFeatures.join(', ')}`);
-          }
-          if (guide.customGuidance) {
-            parts.push(`Charting guidance from the physician:\n${guide.customGuidance}`);
           }
           effectiveStyleGuidance = parts.join('\n\n');
         }
@@ -79,6 +84,8 @@ export async function POST(request: NextRequest) {
         modifications,
         existingOutput,
         styleGuidance: effectiveStyleGuidance,
+        styleExamples,
+        customGuidance,
         settings,
         promptTemplates,
         phiProtection: await (async () => {

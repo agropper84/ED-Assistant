@@ -31,6 +31,8 @@ export interface ProcessOptions {
   modifications?: string;
   existingOutput?: ProcessedNote;
   styleGuidance?: string;
+  styleExamples?: Record<string, string[]>;
+  customGuidance?: string;
   settings?: {
     model?: string;
     maxTokens?: number;
@@ -142,24 +144,22 @@ Please regenerate the documentation incorporating these modifications. Preserve 
 
   // Style guidance section
   let styleSection = '';
-  if (options?.styleGuidance) {
+  const hasStyleExamples = options?.styleExamples && Object.values(options.styleExamples).some(arr => arr.length > 0);
+  if (options?.styleGuidance || hasStyleExamples) {
     styleSection = `
-CRITICAL — STYLE MATCHING (highest priority for HPI, Objective, and Assessment & Plan):
-You MUST closely replicate the physician's writing style from the examples below. Study each example carefully and match:
-- Sentence structure and length (short vs. long sentences, fragments vs. complete sentences)
-- Level of detail and specificity
-- Use of abbreviations vs. full terms
-- Paragraph structure (single block vs. multiple paragraphs)
-- Opening patterns (how sections begin)
-- Closing patterns (how sections end, e.g., return precautions, follow-up wording)
-- Voice and tone (formal vs. conversational, active vs. passive)
-- How negatives are documented (e.g., "Denies X, Y, Z" vs. "No X. No Y.")
-- How findings are formatted in the Objective (e.g., "NAD. AVSS." vs. full sentences)
+CRITICAL — STYLE MATCHING (this overrides default formatting instructions):
+You MUST write HPI, Objective, and Assessment & Plan in the EXACT style shown in the examples below. These examples are real notes written by this physician. Your output must read as if the same physician wrote it. Match:
+- Exact sentence structure (fragments vs. complete, short vs. long)
+- Abbreviation patterns (if they write "NAD" not "no acute distress", you write "NAD")
+- Paragraph structure (single block vs. broken into paragraphs)
+- Opening/closing patterns verbatim
+- Level of detail (if examples are brief, be brief; if detailed, be detailed)
+- Tone and voice
+- How negatives are listed
+- Punctuation style
 
-The examples ARE the style guide. If the examples use truncated sentences, use truncated sentences. If they use paragraph form, use paragraph form. Mirror the physician's natural charting voice as closely as possible.
-
-${options.styleGuidance}
-
+Do NOT add extra detail, formality, or structure beyond what the examples show. Less is more — match the examples exactly.
+${options.customGuidance ? `\nPhysician's charting preferences:\n${options.customGuidance}\n` : ''}
 `;
   }
 
@@ -200,13 +200,31 @@ Respond in EXACTLY this format with these exact headers:
 [${pt.evidence}]
 
 ===HPI===
-[${pt.hpi}${options?.styleGuidance ? ' IMPORTANT: Match the writing style, sentence structure, and formatting from the HPI style examples above as closely as possible.' : ''}]
+[${pt.hpi}${(() => {
+    const ex = options?.styleExamples?.hpi;
+    if (ex && ex.length > 0) {
+      return `\n\nYou MUST write the HPI in the same style as these examples from this physician:\n${ex.map((e, i) => `--- Example ${i + 1} ---\n${e}`).join('\n\n')}\n\nWrite the HPI as if you ARE this physician. Match their exact style, length, structure, and tone.`;
+    }
+    return options?.styleGuidance ? ' Match the physician\'s charting style.' : '';
+  })()}]
 
 ===OBJECTIVE===
-[${pt.objective}${options?.styleGuidance ? ' IMPORTANT: Match the writing style and formatting from the Objective style examples above as closely as possible.' : ''}]
+[${pt.objective}${(() => {
+    const ex = options?.styleExamples?.objective;
+    if (ex && ex.length > 0) {
+      return `\n\nYou MUST write the Objective in the same style as these examples:\n${ex.map((e, i) => `--- Example ${i + 1} ---\n${e}`).join('\n\n')}\n\nMatch this physician's exact formatting, abbreviation use, and level of detail.`;
+    }
+    return options?.styleGuidance ? ' Match the physician\'s charting style.' : '';
+  })()}]
 
 ===ASSESSMENT_PLAN===
-[${pt.assessmentPlan}${options?.styleGuidance ? ' IMPORTANT: Match the writing style, structure, and formatting from the Assessment & Plan style examples above as closely as possible.' : ''}]
+[${pt.assessmentPlan}${(() => {
+    const ex = options?.styleExamples?.assessmentPlan;
+    if (ex && ex.length > 0) {
+      return `\n\nYou MUST write the Assessment & Plan in the same style as these examples:\n${ex.map((e, i) => `--- Example ${i + 1} ---\n${e}`).join('\n\n')}\n\nMatch this physician's exact structure, phrasing patterns, and level of detail. Write as if you ARE this physician.`;
+    }
+    return options?.styleGuidance ? ' Match the physician\'s charting style.' : '';
+  })()}]
 
 ===DIAGNOSIS===
 [${pt.diagnosis}]
