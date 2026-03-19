@@ -26,6 +26,7 @@ import {
   TranscribeAPI, getTranscribeAPI, saveTranscribeAPI,
   getTranscribeWebAPI, saveTranscribeWebAPI,
   getTranscribeWatchAPI, saveTranscribeWatchAPI,
+  MedicalizeDictationMode, getMedicalizeDictationMode, saveMedicalizeDictationMode,
 } from '@/lib/settings';
 import { getExamPresets, saveExamPresets, resetExamPresets, ExamPreset } from '@/lib/exam-presets';
 import {
@@ -136,6 +137,7 @@ export default function SettingsPage() {
   const [transcribeApi, setTranscribeApi] = useState<TranscribeAPI>(() => getTranscribeAPI());
   const [transcribeWebApi, setTranscribeWebApi] = useState<TranscribeAPI>(() => getTranscribeWebAPI());
   const [transcribeWatchApi, setTranscribeWatchApi] = useState<TranscribeAPI>(() => getTranscribeWatchAPI());
+  const [medDictMode, setMedDictMode] = useState<MedicalizeDictationMode>(() => getMedicalizeDictationMode());
   const [deepgramApiKey, setDeepgramApiKey] = useState('');
   const [deepgramKeyMasked, setDeepgramKeyMasked] = useState<string | null>(null);
   const [wisprApiKey, setWisprApiKey] = useState('');
@@ -952,6 +954,24 @@ export default function SettingsPage() {
                     }`}
                   />
                 </button>
+              </div>
+
+              {/* Medicalize dictation mode */}
+              <div>
+                <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Medicalize Dictation Mode</label>
+                <select
+                  value={medDictMode}
+                  onChange={(e) => { const v = e.target.value as MedicalizeDictationMode; setMedDictMode(v); saveMedicalizeDictationMode(v); }}
+                  className="w-full p-2.5 border border-[var(--input-border)] rounded-lg text-sm bg-[var(--input-bg)] text-[var(--text-primary)] focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="hold">Hold to dictate (release to transcribe)</option>
+                  <option value="toggle">Click to start / click to stop</option>
+                </select>
+                <p className="text-[10px] text-[var(--text-muted)] mt-0.5">
+                  {medDictMode === 'hold'
+                    ? 'Press and hold the mic — icon changes to stethoscope. Release to get medicalized text.'
+                    : 'Click once to start recording, click again to stop. Same as non-medicalize mode.'}
+                </p>
               </div>
 
               <h4 className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider pt-1">Dictation Engines</h4>

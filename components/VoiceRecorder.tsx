@@ -2,7 +2,7 @@
 
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { Mic, Upload, RotateCcw, Stethoscope } from 'lucide-react';
-import { getSettings, saveSettings, getSpeechAPI, getTranscribeAPI, getTranscribeWebAPI, type TranscribeAPI } from '@/lib/settings';
+import { getSettings, saveSettings, getSpeechAPI, getTranscribeAPI, getTranscribeWebAPI, getMedicalizeDictationMode, type TranscribeAPI } from '@/lib/settings';
 
 /** Get the API endpoint URL for a given transcription engine */
 function getTranscribeEndpoint(api: TranscribeAPI | string): string {
@@ -846,23 +846,45 @@ export function VoiceRecorder({
     e.preventDefault();
     if (state === 'transcribing') return;
 
-    if (state === 'recording' && toggleModeRef.current) {
-      stopRecording();
-      return;
-    }
-    if (state === 'idle' || state === 'error') {
-      pressStartRef.current = Date.now();
-      toggleModeRef.current = false;
-      startRecording();
+    const holdMode = medicalizeRef.current && getMedicalizeDictationMode() === 'hold';
+
+    if (holdMode) {
+      // Hold-to-dictate for medicalize: start on press, stop on release
+      if (state === 'idle' || state === 'error') {
+        pressStartRef.current = Date.now();
+        toggleModeRef.current = false;
+        startRecording();
+      }
+    } else {
+      // Toggle mode (non-medicalize or legacy setting)
+      if (state === 'recording' && toggleModeRef.current) {
+        stopRecording();
+        return;
+      }
+      if (state === 'idle' || state === 'error') {
+        pressStartRef.current = Date.now();
+        toggleModeRef.current = false;
+        startRecording();
+      }
     }
   }, [state, startRecording, stopRecording]);
 
   const handlePointerUp = useCallback(() => {
-    if (state === 'recording' && !toggleModeRef.current) {
-      if (Date.now() - pressStartRef.current > 400) {
-        stopRecording();
-      } else {
-        toggleModeRef.current = true;
+    if (state !== 'recording') return;
+
+    const holdMode = medicalizeRef.current && getMedicalizeDictationMode() === 'hold';
+
+    if (holdMode) {
+      // Hold mode: always stop on release
+      stopRecording();
+    } else {
+      // Toggle mode: short press = toggle on, long press = stop
+      if (!toggleModeRef.current) {
+        if (Date.now() - pressStartRef.current > 400) {
+          stopRecording();
+        } else {
+          toggleModeRef.current = true;
+        }
       }
     }
   }, [state, stopRecording]);
@@ -934,12 +956,18 @@ export function VoiceRecorder({
           } disabled:opacity-50`}
           style={recordingStyle}
           title={
-            state === 'recording' ? 'Click to stop'
+            state === 'recording'
+              ? (medicalizeRef.current && getMedicalizeDictationMode() === 'hold' ? 'Release to finish' : 'Click to stop')
             : state === 'transcribing' ? 'Processing...'
-            : 'Click to dictate, or hold to talk'
+            : medicalize && getMedicalizeDictationMode() === 'hold'
+              ? 'Hold to dictate (medicalize)'
+              : 'Click to dictate, or hold to talk'
           }
         >
-          <Mic className="w-5 h-5" />
+          {state === 'recording' && medicalize && getMedicalizeDictationMode() === 'hold'
+            ? <Stethoscope className="w-5 h-5" />
+            : <Mic className="w-5 h-5" />
+          }
         </button>
         {mode === 'dictation' && state !== 'transcribing' && (
           <button

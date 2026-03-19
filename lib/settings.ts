@@ -343,6 +343,21 @@ export function saveTranscribeWatchAPI(api: TranscribeAPI): void {
   localStorage.setItem(TRANSCRIBE_WATCH_KEY, api);
 }
 
+// --- Medicalize dictation mode ---
+
+export type MedicalizeDictationMode = 'hold' | 'toggle';
+const MED_DICTATION_MODE_KEY = 'ed-app-med-dictation-mode';
+
+export function getMedicalizeDictationMode(): MedicalizeDictationMode {
+  if (typeof window === 'undefined') return 'hold';
+  return (localStorage.getItem(MED_DICTATION_MODE_KEY) as MedicalizeDictationMode) || 'hold';
+}
+
+export function saveMedicalizeDictationMode(mode: MedicalizeDictationMode): void {
+  if (typeof window === 'undefined') return;
+  localStorage.setItem(MED_DICTATION_MODE_KEY, mode);
+}
+
 // --- Auto-generate analysis ---
 
 const AUTO_ANALYSIS_KEY = 'ed-app-auto-analysis';
