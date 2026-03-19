@@ -987,10 +987,10 @@ export function VoiceRecorder({
           style={recordingStyle}
           title={
             state === 'recording'
-              ? (isHoldMode && medicalizeRef.current ? 'Release to finish' : 'Click to stop')
+              ? (isHolding ? 'Release to finish' : 'Click to stop')
             : state === 'transcribing' ? 'Processing...'
             : isHoldMode
-              ? 'Tap to dictate. Hold for medicalize.'
+              ? 'Click for simple dictation. Hold for AI medicalize dictation.'
               : medicalize
                 ? 'Click to dictate (medicalize on)'
                 : 'Click to dictate'
