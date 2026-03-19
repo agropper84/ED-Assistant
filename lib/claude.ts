@@ -144,8 +144,20 @@ Please regenerate the documentation incorporating these modifications. Preserve 
   let styleSection = '';
   if (options?.styleGuidance) {
     styleSection = `
-STYLE GUIDANCE:
-Closely match the tone, structure, and phrasing from the style examples first. Use the key features only to fill in gaps.
+CRITICAL — STYLE MATCHING (highest priority for HPI, Objective, and Assessment & Plan):
+You MUST closely replicate the physician's writing style from the examples below. Study each example carefully and match:
+- Sentence structure and length (short vs. long sentences, fragments vs. complete sentences)
+- Level of detail and specificity
+- Use of abbreviations vs. full terms
+- Paragraph structure (single block vs. multiple paragraphs)
+- Opening patterns (how sections begin)
+- Closing patterns (how sections end, e.g., return precautions, follow-up wording)
+- Voice and tone (formal vs. conversational, active vs. passive)
+- How negatives are documented (e.g., "Denies X, Y, Z" vs. "No X. No Y.")
+- How findings are formatted in the Objective (e.g., "NAD. AVSS." vs. full sentences)
+
+The examples ARE the style guide. If the examples use truncated sentences, use truncated sentences. If they use paragraph form, use paragraph form. Mirror the physician's natural charting voice as closely as possible.
+
 ${options.styleGuidance}
 
 `;
@@ -188,13 +200,13 @@ Respond in EXACTLY this format with these exact headers:
 [${pt.evidence}]
 
 ===HPI===
-[${pt.hpi}]
+[${pt.hpi}${options?.styleGuidance ? ' IMPORTANT: Match the writing style, sentence structure, and formatting from the HPI style examples above as closely as possible.' : ''}]
 
 ===OBJECTIVE===
-[${pt.objective}]
+[${pt.objective}${options?.styleGuidance ? ' IMPORTANT: Match the writing style and formatting from the Objective style examples above as closely as possible.' : ''}]
 
 ===ASSESSMENT_PLAN===
-[${pt.assessmentPlan}]
+[${pt.assessmentPlan}${options?.styleGuidance ? ' IMPORTANT: Match the writing style, structure, and formatting from the Assessment & Plan style examples above as closely as possible.' : ''}]
 
 ===DIAGNOSIS===
 [${pt.diagnosis}]
