@@ -3,11 +3,11 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Patient } from '@/lib/google-sheets';
 import { MEDICAL_SUGGESTIONS } from '@/lib/medical-suggestions';
-import { X, Loader2, Save, ExternalLink, RefreshCw, Play } from 'lucide-react';
+import { X, Loader2, Save, ExternalLink, RefreshCw, Check } from 'lucide-react';
 import { ExamToggles } from '@/components/ExamToggles';
 import { VoiceRecorder } from '@/components/VoiceRecorder';
 import { AutocompleteTextarea } from '@/components/AutocompleteTextarea';
-import { getPromptTemplates } from '@/lib/settings';
+import { getEffectivePromptTemplates } from '@/lib/settings';
 import { savePhrasesInBackground } from '@/lib/user-phrases';
 
 /** Combine transcript + encounter notes into one string for storage */
@@ -91,6 +91,16 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
     triageVitals !== (patient.triageVitals || '') ||
     additional !== (patient.additional || '') ||
     pastDocs !== (patient.pastDocs || '');
+
+  // Can generate note if any content exists beyond just triage/vitals
+  const canGenerateNote = !!(
+    transcript.trim() ||
+    encounterNotes.trim() ||
+    additional.trim() ||
+    pastDocs.trim() ||
+    patient.hpi ||
+    patient.transcript?.replace(/--- ENCOUNTER NOTES ---[\s\S]*/, '').trim()
+  );
 
   const handleSave = async () => {
     // Save user phrases for future autocomplete (fire-and-forget)
@@ -269,83 +279,66 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
           </div>
         </div>
 
-        {/* Footer */}
-        <div className="px-5 py-4 border-t border-[var(--border)] bg-[var(--bg-tertiary)] sm:rounded-b-3xl flex gap-2">
-          <button
-            onClick={handleSave}
-            disabled={saving || generating || !hasChanges}
-            className="flex-1 py-3 bg-emerald-600 dark:bg-emerald-500 text-white rounded-xl font-medium disabled:opacity-40 flex items-center justify-center gap-2 hover:bg-emerald-700 dark:hover:bg-emerald-600 active:scale-[0.97] transition-all"
-          >
-            {saving ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <Save className="w-4 h-4" />
-            )}
-            Save
-          </button>
-          {/* Generate (no output yet) or Regenerate (has output) */}
-          {(patient.status === 'pending' || patient.hasOutput) && (
+        {/* Footer — matching ParseModal style */}
+        <div className="px-5 py-4 pb-safe border-t border-[var(--border)] bg-[var(--bg-tertiary)] sm:rounded-b-3xl">
+          <div className="flex gap-2">
             <button
               onClick={async () => {
-                setGenerating(true);
-                try {
-                  // Save first if there are changes
-                  if (hasChanges) {
-                    await fetch(`/api/patients/${patient.rowIndex}`, {
-                      method: 'PATCH',
+                if (hasChanges) await handleSave();
+                onClose();
+              }}
+              disabled={saving || generating}
+              className="flex-1 py-3 min-h-[48px] bg-[var(--bg-primary)] border border-[var(--border)] text-[var(--text-primary)] rounded-xl font-medium disabled:opacity-40 flex items-center justify-center gap-2 hover:bg-[var(--bg-tertiary)] active:scale-[0.97] transition-all"
+            >
+              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+              Save
+            </button>
+            {canGenerateNote && (
+              <button
+                onClick={async () => {
+                  setGenerating(true);
+                  try {
+                    // Save first if there are changes
+                    if (hasChanges) {
+                      await fetch(`/api/patients/${patient.rowIndex}`, {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                          _sheetName: patient.sheetName,
+                          transcript: combineTranscriptAndNotes(transcript, encounterNotes),
+                          triageVitals,
+                          additional,
+                          pastDocs,
+                        }),
+                      });
+                    }
+                    const res = await fetch('/api/process', {
+                      method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
                       body: JSON.stringify({
-                        _sheetName: patient.sheetName,
-                        transcript: combineTranscriptAndNotes(transcript, encounterNotes),
-                        triageVitals,
-                        additional,
-                        pastDocs,
+                        rowIndex: patient.rowIndex,
+                        sheetName: patient.sheetName,
+                        promptTemplates: getEffectivePromptTemplates(),
                       }),
                     });
+                    if (res.ok) {
+                      onSaved();
+                      onClose();
+                    }
+                  } catch (error) {
+                    console.error('Failed to generate:', error);
+                  } finally {
+                    setGenerating(false);
                   }
-                  // Generate / Regenerate
-                  const res = await fetch('/api/process', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                      rowIndex: patient.rowIndex,
-                      sheetName: patient.sheetName,
-                      promptTemplates: getPromptTemplates(),
-                    }),
-                  });
-                  if (res.ok) {
-                    onSaved();
-                    onNavigate();
-                  }
-                } catch (error) {
-                  console.error('Failed to generate:', error);
-                } finally {
-                  setGenerating(false);
-                }
-              }}
-              disabled={generating || saving}
-              className={`py-3 px-4 text-white rounded-xl font-medium disabled:opacity-40 flex items-center justify-center gap-2 active:scale-[0.97] transition-all ${
-                patient.hasOutput
-                  ? 'bg-amber-600 dark:bg-amber-500 hover:bg-amber-700 dark:hover:bg-amber-600'
-                  : 'bg-blue-600 dark:bg-blue-500 hover:bg-blue-700 dark:hover:bg-blue-600'
-              }`}
-            >
-              {generating ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : patient.hasOutput ? (
-                <RefreshCw className="w-4 h-4" />
-              ) : (
-                <Play className="w-4 h-4" />
-              )}
-              {patient.hasOutput ? 'Regenerate' : 'Generate'}
-            </button>
-          )}
-          <button
-            onClick={onNavigate}
-            className="py-3 px-4 bg-blue-600 dark:bg-blue-500 text-white rounded-xl font-medium flex items-center justify-center gap-2 hover:bg-blue-700 dark:hover:bg-blue-600 active:scale-[0.97] transition-all"
-          >
-            <ExternalLink className="w-4 h-4" />
-          </button>
+                }}
+                disabled={generating || saving}
+                className="flex-1 py-3 min-h-[48px] bg-emerald-600 dark:bg-emerald-500 text-white rounded-xl font-medium disabled:opacity-40 flex items-center justify-center gap-2 hover:bg-emerald-700 dark:hover:bg-emerald-600 active:scale-[0.97] transition-all"
+              >
+                {generating ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+                {patient.hasOutput ? 'Regenerate Note' : 'Generate Note'}
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </div>
