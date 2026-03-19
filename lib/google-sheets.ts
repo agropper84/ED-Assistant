@@ -428,7 +428,7 @@ export async function getShiftTimes(ctx: SheetsContext, sheetName?: string): Pro
       total: row[6]?.toString() || '',
     };
   } catch {
-    return { start: '', end: '', hours: '', feeType: '', code: '', total: '' };
+    return { start: '', end: '', hours: '', feeType: '', code: '', fee: '', total: '' };
   }
 }
 
