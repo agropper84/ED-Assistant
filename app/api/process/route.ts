@@ -76,7 +76,7 @@ export async function POST(request: NextRequest) {
         gender: patient.gender,
         birthday: patient.birthday,
         triageVitals: patient.triageVitals,
-        transcript: patient.transcript,
+        transcript: [patient.transcript, patient.encounterNotes].filter(Boolean).join('\n\n--- ENCOUNTER NOTES ---\n'),
         additional: patient.additional,
         pastDocs: patient.pastDocs,
       },

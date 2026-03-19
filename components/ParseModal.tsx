@@ -25,6 +25,7 @@ export interface ParsedData {
   timestamp: string;
   triageVitals: string;
   transcript: string;
+  encounterNotes: string;
   additional: string;
   pastDocs: string;
   _generateNote?: boolean;
@@ -189,7 +190,8 @@ export function ParseModal({ isOpen, onClose, onSave }: ParseModalProps) {
         ...parsedData,
         timestamp,
         triageVitals,
-        transcript: combineTranscriptAndNotes(transcript, encounterNotes),
+        transcript,
+        encounterNotes,
         additional,
         pastDocs,
         _generateNote: shouldGenerate ?? generateNote,
@@ -617,6 +619,7 @@ export function ParseModal({ isOpen, onClose, onSave }: ParseModalProps) {
                     timestamp: p.time || '',
                     triageVitals: [p.note, p.type, p.status].filter(Boolean).join(' | '),
                     transcript: '',
+                    encounterNotes: '',
                     additional: '',
                     pastDocs: '',
                     _generateNote: false,

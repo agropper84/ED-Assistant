@@ -74,9 +74,15 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
   // Sync state when patient changes
   useEffect(() => {
     if (patient) {
-      const { transcript: t, encounterNotes: en } = splitTranscriptAndNotes(patient.transcript || '');
-      setTranscript(t);
-      setEncounterNotes(en);
+      // Use dedicated encounterNotes column if available, fall back to splitting combined transcript
+      if (patient.encounterNotes) {
+        setTranscript(patient.transcript || '');
+        setEncounterNotes(patient.encounterNotes);
+      } else {
+        const { transcript: t, encounterNotes: en } = splitTranscriptAndNotes(patient.transcript || '');
+        setTranscript(t);
+        setEncounterNotes(en);
+      }
       setTriageVitals(patient.triageVitals || '');
       setAdditional(patient.additional || '');
       setPastDocs(patient.pastDocs || '');
@@ -87,7 +93,8 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
 
   const combinedTranscript = combineTranscriptAndNotes(transcript, encounterNotes);
   const hasChanges =
-    combinedTranscript !== (patient.transcript || '') ||
+    transcript !== (patient.transcript || '') ||
+    encounterNotes !== (patient.encounterNotes || '') ||
     triageVitals !== (patient.triageVitals || '') ||
     additional !== (patient.additional || '') ||
     pastDocs !== (patient.pastDocs || '');
@@ -113,7 +120,8 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           _sheetName: patient.sheetName,
-          transcript: combinedTranscript,
+          transcript,
+          encounterNotes,
           triageVitals,
           additional,
           pastDocs,
@@ -305,7 +313,8 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
                           _sheetName: patient.sheetName,
-                          transcript: combineTranscriptAndNotes(transcript, encounterNotes),
+                          transcript,
+                          encounterNotes,
                           triageVitals,
                           additional,
                           pastDocs,
