@@ -6,6 +6,9 @@ export const metadata: Metadata = {
   title: 'My Patient Dashboard',
   description: 'AI-powered clinical documentation, transcription, and workflow for physicians',
   manifest: '/manifest.json',
+  other: {
+    'mobile-web-app-capable': 'yes',
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
@@ -32,7 +35,8 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
-        <link rel="apple-touch-icon" href="/icon-192.png" />
+        <link rel="apple-touch-icon" href="/icon.svg" />
+        <link rel="icon" href="/icon.svg" type="image/svg+xml" />
         {/* Anti-FOUC: set dark class before first paint */}
         <script
           dangerouslySetInnerHTML={{
