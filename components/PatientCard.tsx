@@ -84,6 +84,10 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
   const [editHcn, setEditHcn] = useState('');
   const [editMrn, setEditMrn] = useState('');
   const [savingDemo, setSavingDemo] = useState(false);
+  const [editingDiagnosis, setEditingDiagnosis] = useState(false);
+  const [editDiagnosis, setEditDiagnosis] = useState('');
+  const [savingDiagnosis, setSavingDiagnosis] = useState(false);
+  const diagInputRef = useRef<HTMLInputElement>(null);
   const dateInputRef = useRef<HTMLInputElement>(null);
 
   const hasEncounterNote = !!(patient.hpi || patient.objective || patient.assessmentPlan);
@@ -98,6 +102,33 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
       onTimeChange(timeValue);
     }
     setEditingTime(false);
+  };
+
+  const handleDiagnosisSave = async () => {
+    const newDiag = editDiagnosis.trim();
+    if (!newDiag || !onUpdateFields || newDiag === patient.diagnosis) {
+      setEditingDiagnosis(false);
+      return;
+    }
+    setSavingDiagnosis(true);
+    try {
+      // Update diagnosis and get new ICD codes via AI
+      const res = await fetch('/api/icd-lookup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ diagnosis: newDiag }),
+      });
+      let icd9 = '';
+      let icd10 = '';
+      if (res.ok) {
+        const data = await res.json();
+        icd9 = data.icd9 || '';
+        icd10 = data.icd10 || '';
+      }
+      await onUpdateFields({ diagnosis: newDiag, icd9, icd10 });
+    } catch {}
+    setSavingDiagnosis(false);
+    setEditingDiagnosis(false);
   };
 
   const [showDelete, setShowDelete] = useState(false);
@@ -473,12 +504,55 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
               {patient.age}{patient.gender && ` ${patient.gender}`}
             </span>
           )}
-          {patient.diagnosis && (
-            <span className="flex items-center gap-1 truncate">
+          {editingDiagnosis ? (
+            <span
+              className="flex items-center gap-1 flex-shrink-0"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <Stethoscope className="w-3 h-3 opacity-60" />
+              <input
+                ref={diagInputRef}
+                type="text"
+                value={editDiagnosis}
+                onChange={(e) => setEditDiagnosis(e.target.value)}
+                onBlur={handleDiagnosisSave}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') handleDiagnosisSave();
+                  if (e.key === 'Escape') setEditingDiagnosis(false);
+                }}
+                autoFocus
+                disabled={savingDiagnosis}
+                className="w-32 px-1.5 py-0.5 border border-blue-400 rounded text-[12px] bg-[var(--input-bg)] text-[var(--text-primary)] focus:ring-1 focus:ring-blue-500 focus:outline-none"
+                placeholder="Diagnosis..."
+              />
+              {savingDiagnosis && <Loader2 className="w-3 h-3 animate-spin text-blue-400" />}
+            </span>
+          ) : patient.diagnosis ? (
+            <span
+              className="flex items-center gap-1 truncate cursor-pointer hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+              onClick={(e) => {
+                if (!onUpdateFields) return;
+                e.stopPropagation();
+                setEditDiagnosis(patient.diagnosis);
+                setEditingDiagnosis(true);
+              }}
+            >
               <Stethoscope className="w-3 h-3 opacity-60" />
               {patient.diagnosis}
             </span>
-          )}
+          ) : onUpdateFields ? (
+            <span
+              className="flex items-center gap-1 truncate cursor-pointer text-[var(--text-muted)] hover:text-blue-600 dark:hover:text-blue-400 transition-colors italic"
+              onClick={(e) => {
+                e.stopPropagation();
+                setEditDiagnosis('');
+                setEditingDiagnosis(true);
+              }}
+            >
+              <Stethoscope className="w-3 h-3 opacity-60" />
+              Add diagnosis
+            </span>
+          ) : null}
         </div>
       </button>
 
