@@ -846,17 +846,25 @@ export function VoiceRecorder({
     e.preventDefault();
     if (state === 'transcribing') return;
 
-    const holdMode = medicalizeRef.current && getMedicalizeDictationMode() === 'hold';
+    const isHold = getMedicalizeDictationMode() === 'hold';
 
-    if (holdMode) {
-      // Hold-to-dictate for medicalize: start on press, stop on release
+    if (isHold) {
+      // Hold mode: tap = non-medicalize toggle, hold = medicalize
+      if (state === 'recording' && toggleModeRef.current) {
+        // Currently in tap-toggle mode, stop it
+        stopRecording();
+        return;
+      }
       if (state === 'idle' || state === 'error') {
         pressStartRef.current = Date.now();
         toggleModeRef.current = false;
+        // Start as medicalize — will switch to non-medicalize on short tap
+        medicalizeRef.current = true;
+        setMedicalize(true);
         startRecording();
       }
     } else {
-      // Toggle mode (non-medicalize or legacy setting)
+      // Toggle mode (legacy)
       if (state === 'recording' && toggleModeRef.current) {
         stopRecording();
         return;
@@ -872,11 +880,21 @@ export function VoiceRecorder({
   const handlePointerUp = useCallback(() => {
     if (state !== 'recording') return;
 
-    const holdMode = medicalizeRef.current && getMedicalizeDictationMode() === 'hold';
+    const isHold = getMedicalizeDictationMode() === 'hold';
 
-    if (holdMode) {
-      // Hold mode: always stop on release
-      stopRecording();
+    if (isHold) {
+      if (!toggleModeRef.current) {
+        if (Date.now() - pressStartRef.current > 400) {
+          // Long hold → stop medicalize recording
+          stopRecording();
+        } else {
+          // Short tap → switch to non-medicalize toggle mode
+          medicalizeRef.current = false;
+          setMedicalize(false);
+          toggleModeRef.current = true;
+          // Recording continues as non-medicalize (click again to stop)
+        }
+      }
     } else {
       // Toggle mode: short press = toggle on, long press = stop
       if (!toggleModeRef.current) {
@@ -936,9 +954,11 @@ export function VoiceRecorder({
     };
   })() : undefined;
 
+  const isHoldMode = getMedicalizeDictationMode() === 'hold';
+
   return (
     <span className="inline-flex items-center gap-1">
-      {/* Mic + medicalize as a single visual unit */}
+      {/* Mic / Stethoscope button */}
       <span className="inline-flex items-center">
         <button
           type="button"
@@ -957,19 +977,22 @@ export function VoiceRecorder({
           style={recordingStyle}
           title={
             state === 'recording'
-              ? (medicalizeRef.current && getMedicalizeDictationMode() === 'hold' ? 'Release to finish' : 'Click to stop')
+              ? (isHoldMode && medicalizeRef.current ? 'Release to finish' : 'Click to stop')
             : state === 'transcribing' ? 'Processing...'
-            : medicalize && getMedicalizeDictationMode() === 'hold'
-              ? 'Hold to dictate (medicalize)'
-              : 'Click to dictate, or hold to talk'
+            : isHoldMode
+              ? 'Tap to dictate. Hold for medicalize.'
+              : medicalize
+                ? 'Click to dictate (medicalize on)'
+                : 'Click to dictate'
           }
         >
-          {state === 'recording' && medicalize && getMedicalizeDictationMode() === 'hold'
+          {state === 'recording' && medicalizeRef.current && isHoldMode
             ? <Stethoscope className="w-5 h-5" />
             : <Mic className="w-5 h-5" />
           }
         </button>
-        {mode === 'dictation' && state !== 'transcribing' && (
+        {/* Medicalize toggle — only show in click-to-toggle mode */}
+        {mode === 'dictation' && !isHoldMode && state !== 'transcribing' && (
           <button
             type="button"
             onClick={toggleMedicalize}
