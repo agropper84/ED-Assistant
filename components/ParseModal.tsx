@@ -6,7 +6,7 @@ import { ExamToggles } from '@/components/ExamToggles';
 import { AutocompleteTextarea } from '@/components/AutocompleteTextarea';
 import { MEDICAL_SUGGESTIONS } from '@/lib/medical-suggestions';
 import { VoiceRecorder } from '@/components/VoiceRecorder';
-import { getParseRules } from '@/lib/settings';
+import { getParseRules, saveParseRules, ParseRules, DEFAULT_PARSE_RULES } from '@/lib/settings';
 import { savePhrasesInBackground } from '@/lib/user-phrases';
 
 interface ParseModalProps {
@@ -88,15 +88,22 @@ export function ParseModal({ isOpen, onClose, onSave }: ParseModalProps) {
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [userPhrases, setUserPhrases] = useState<string[]>([]);
   const [generateNote, setGenerateNote] = useState(true);
+  const [savedFormats, setSavedFormats] = useState<any[]>([]);
+  const [activeFormat, setActiveFormat] = useState(() => getParseRules().formatName || 'Meditech');
   const timeScrollRef = useRef<HTMLDivElement>(null);
 
-  // Fetch user's saved phrases for autocomplete
+  // Fetch user's saved phrases and parse formats
   useEffect(() => {
     if (isOpen) {
       fetch('/api/user-phrases')
         .then(r => r.ok ? r.json() : { phrases: [] })
         .then(data => setUserPhrases(data.phrases || []))
         .catch(() => {});
+      fetch('/api/parse-formats')
+        .then(r => r.ok ? r.json() : [])
+        .then(data => { if (Array.isArray(data)) setSavedFormats(data); })
+        .catch(() => {});
+      setActiveFormat(getParseRules().formatName || 'Meditech');
     }
   }, [isOpen]);
 
@@ -237,9 +244,40 @@ export function ParseModal({ isOpen, onClose, onSave }: ParseModalProps) {
         <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
           {/* Paste Area */}
           <div>
-            <label className="block text-xs font-semibold text-[var(--text-muted)] uppercase tracking-widest mb-1.5">
-              Patient Information
-            </label>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-widest">
+                Patient Information
+              </label>
+              {(savedFormats.length > 0 || activeFormat) && (
+                <select
+                  value={activeFormat}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setActiveFormat(val);
+                    if (val === 'Meditech') {
+                      saveParseRules(DEFAULT_PARSE_RULES);
+                    } else {
+                      const fmt = savedFormats.find((f: any) => f.name === val);
+                      if (fmt) {
+                        saveParseRules({
+                          formatName: fmt.name,
+                          ageDobPattern: fmt.ageDobPattern || '',
+                          hcnPattern: fmt.hcnPattern || '',
+                          mrnPattern: fmt.mrnPattern || '',
+                          nameCleanup: fmt.nameCleanup || '',
+                        });
+                      }
+                    }
+                  }}
+                  className="px-2 py-0.5 border border-[var(--input-border)] rounded-lg text-[11px] bg-[var(--input-bg)] text-[var(--text-secondary)] focus:ring-1 focus:ring-blue-500"
+                >
+                  <option value="Meditech">Meditech</option>
+                  {savedFormats.filter((f: any) => f.name !== 'Meditech').map((f: any) => (
+                    <option key={f.name} value={f.name}>{f.name}</option>
+                  ))}
+                </select>
+              )}
+            </div>
             <textarea
               value={pasteText}
               onChange={(e) => setPasteText(e.target.value)}
