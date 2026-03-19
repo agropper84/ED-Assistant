@@ -75,6 +75,8 @@ export function VoiceRecorder({
   const audioContextRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
   const stoppingRef = useRef(false);
+  const [isHolding, setIsHolding] = useState(false);
+  const holdTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   // Audio level visualization
   const [audioLevel, setAudioLevel] = useState(0);
@@ -138,6 +140,7 @@ export function VoiceRecorder({
       if (recognitionRef.current) {
         try { recognitionRef.current.abort(); } catch {}
       }
+      if (holdTimerRef.current) clearTimeout(holdTimerRef.current);
       if (keepaliveAudioRef.current) {
         keepaliveAudioRef.current.pause();
         keepaliveAudioRef.current = null;
@@ -851,17 +854,24 @@ export function VoiceRecorder({
     if (isHold) {
       // Hold mode: tap = non-medicalize toggle, hold = medicalize
       if (state === 'recording' && toggleModeRef.current) {
-        // Currently in tap-toggle mode, stop it
         stopRecording();
         return;
       }
       if (state === 'idle' || state === 'error') {
         pressStartRef.current = Date.now();
         toggleModeRef.current = false;
-        // Start as medicalize — will switch to non-medicalize on short tap
-        medicalizeRef.current = true;
-        setMedicalize(true);
+        setIsHolding(false);
+        // Start as non-medicalize initially — switch to medicalize after 500ms hold
+        medicalizeRef.current = false;
+        setMedicalize(false);
         startRecording();
+        // After 500ms of holding, switch to medicalize mode
+        if (holdTimerRef.current) clearTimeout(holdTimerRef.current);
+        holdTimerRef.current = setTimeout(() => {
+          medicalizeRef.current = true;
+          setMedicalize(true);
+          setIsHolding(true);
+        }, 500);
       }
     } else {
       // Toggle mode (legacy)
@@ -883,16 +893,16 @@ export function VoiceRecorder({
     const isHold = getMedicalizeDictationMode() === 'hold';
 
     if (isHold) {
+      if (holdTimerRef.current) { clearTimeout(holdTimerRef.current); holdTimerRef.current = null; }
       if (!toggleModeRef.current) {
-        if (Date.now() - pressStartRef.current > 400) {
-          // Long hold → stop medicalize recording
+        if (isHolding || Date.now() - pressStartRef.current > 500) {
+          // Was holding (medicalize) → stop and transcribe
+          setIsHolding(false);
           stopRecording();
         } else {
-          // Short tap → switch to non-medicalize toggle mode
-          medicalizeRef.current = false;
-          setMedicalize(false);
+          // Short tap → continue as non-medicalize toggle mode
           toggleModeRef.current = true;
-          // Recording continues as non-medicalize (click again to stop)
+          // Recording continues (click again to stop)
         }
       }
     } else {
@@ -986,7 +996,7 @@ export function VoiceRecorder({
                 : 'Click to dictate'
           }
         >
-          {state === 'recording' && medicalizeRef.current && isHoldMode
+          {isHolding
             ? <Stethoscope className="w-5 h-5" />
             : <Mic className="w-5 h-5" />
           }
