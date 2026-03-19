@@ -184,7 +184,7 @@ export default function PatientPage() {
   };
 
   const handleSaveStyleExample = async (section: string, content: string) => {
-    const sectionKey = section as 'hpi' | 'objective' | 'assessmentPlan';
+    const sectionKey = section as 'hpi' | 'objective' | 'assessmentPlan' | 'referral';
     setStyleSaved(section);
     setTimeout(() => setStyleSaved(null), 2000);
 
@@ -783,6 +783,8 @@ export default function PatientPage() {
                 onCopy={() => copyToClipboard(patient.referral, 'referral')}
                 copied={copied === 'referral'}
                 onSave={(value) => handleSaveField('referral', value)}
+                onSaveStyle={() => handleSaveStyleExample('referral', patient.referral)}
+                styleSaved={styleSaved === 'referral'}
               />
             ) : (
               <div className="bg-[var(--card-bg)] rounded-2xl border border-[var(--card-border)] p-6 text-center" style={{ boxShadow: 'var(--card-shadow)' }}>

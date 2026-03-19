@@ -1285,7 +1285,7 @@ export async function upsertDiagnosisCode(
 const STYLE_GUIDE_SHEET = 'Style Guide';
 
 const DEFAULT_STYLE_GUIDE: StyleGuide = {
-  examples: { hpi: [], objective: [], assessmentPlan: [] },
+  examples: { hpi: [], objective: [], assessmentPlan: [], referral: [] },
   extractedFeatures: [],
   customGuidance: '',
 };
@@ -1310,7 +1310,7 @@ export async function getStyleGuideFromSheet(ctx: SheetsContext): Promise<StyleG
 
     const parsed = JSON.parse(raw);
     return {
-      examples: parsed.examples || { hpi: [], objective: [], assessmentPlan: [] },
+      examples: { hpi: [], objective: [], assessmentPlan: [], referral: [], ...(parsed.examples || {}) },
       extractedFeatures: parsed.extractedFeatures || [],
       customGuidance: parsed.customGuidance || '',
     };

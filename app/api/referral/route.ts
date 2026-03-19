@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { generateReferral } from '@/lib/claude';
-import { getSheetsContext, getPatient, updatePatientFields } from '@/lib/google-sheets';
+import { getSheetsContext, getPatient, updatePatientFields, getStyleGuideFromSheet } from '@/lib/google-sheets';
 
 export const maxDuration = 60;
 
@@ -45,7 +45,13 @@ export async function POST(request: NextRequest) {
         icd9: patient.icd9,
         icd10: patient.icd10,
       },
-      { specialty, urgency, reason }
+      { specialty, urgency, reason },
+      await (async () => {
+        try {
+          const guide = await getStyleGuideFromSheet(ctx);
+          return (guide.examples as any).referral || [];
+        } catch { return []; }
+      })(),
     );
 
     // Save referral to sheet

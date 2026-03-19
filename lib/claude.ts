@@ -278,16 +278,30 @@ function parseClaudeResponse(response: string): ProcessedNote {
 export async function generateReferral(
   patientData: PatientData,
   encounterNote: ProcessedNote,
-  referralInfo: { specialty: string; urgency: string; reason: string }
+  referralInfo: { specialty: string; urgency: string; reason: string },
+  referralExamples?: string[],
 ): Promise<string> {
   const anthropic = await getAnthropicClient();
+
+  let styleBlock = '';
+  if (referralExamples && referralExamples.length > 0) {
+    styleBlock = `
+CRITICAL — STYLE MATCHING:
+You MUST write this referral letter in the EXACT style of these examples from this physician. Match their format, tone, length, salutation, sign-off, and level of detail precisely.
+
+${referralExamples.map((e, i) => `--- Example ${i + 1} ---\n${e}`).join('\n\n')}
+
+Write as if you ARE this physician. Do not add formality or structure beyond what the examples show.
+`;
+  }
+
   const response = await anthropic.messages.create({
     model: 'claude-sonnet-4-20250514',
     max_tokens: 2048,
     temperature: 0.3,
     messages: [{
       role: 'user',
-      content: `You are an AI assistant helping an emergency department physician write a referral letter.
+      content: `You are an AI assistant helping a physician write a referral letter.
 
 PATIENT INFORMATION:
 - Name: ${patientData.name || 'Not provided'}
@@ -305,15 +319,15 @@ REFERRAL DETAILS:
 - Specialty: ${referralInfo.specialty}
 - Urgency: ${referralInfo.urgency}
 - Reason: ${referralInfo.reason}
-
+${styleBlock}
 Write a professional, concise referral letter to the specified specialty. Include:
 1. Patient demographics and reason for referral
-2. Brief clinical summary from the ED encounter
+2. Brief clinical summary from the encounter
 3. Relevant findings and investigations
 4. Specific question or request for the consultant
 5. Urgency context
 
-Use professional medical language. Be concise but thorough. Write in paragraph form.`
+Use professional medical language. Be concise but thorough.`
     }],
   });
 

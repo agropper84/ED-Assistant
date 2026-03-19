@@ -183,7 +183,7 @@ export default function SettingsPage() {
       } catch (err) {
         console.error('Failed to load style guide:', err);
         setStyleGuide({
-          examples: { hpi: [], objective: [], assessmentPlan: [] },
+          examples: { hpi: [], objective: [], assessmentPlan: [], referral: [] },
           extractedFeatures: [],
           customGuidance: '',
         });
@@ -514,6 +514,7 @@ export default function SettingsPage() {
     hpi: 'HPI',
     objective: 'Objective',
     assessmentPlan: 'Assessment & Plan',
+    referral: 'Referral Letter',
   };
 
   return (
