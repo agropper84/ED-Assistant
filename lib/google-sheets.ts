@@ -284,7 +284,7 @@ export async function getOrCreateDateSheet(ctx: SheetsContext, dateOrName?: Date
           updateSheetProperties: {
             properties: {
               sheetId: newSheetId,
-              gridProperties: { columnCount: 32 },
+              gridProperties: { columnCount: 34 },
             },
             fields: 'gridProperties.columnCount',
           },
@@ -666,7 +666,7 @@ export async function movePatientToSheet(
   const newRowIndex = await getNextEmptyRow(ctx, newSheetName);
 
   // 4. Ensure target sheet has enough columns
-  await ensureColumnCount(ctx, newSheetName, 32);
+  await ensureColumnCount(ctx, newSheetName, 34);
 
   // 5. Write all rows to target
   const batchData = rowsToMove.map((row, i) => ({
@@ -865,7 +865,7 @@ export async function updatePatientFields(
   // If writing to columns beyond Z, ensure the sheet has enough columns
   const needsExpand = data.some(d => /![A-Z]{2,}/.test(d.range));
   if (needsExpand) {
-    await ensureColumnCount(ctx, sheet, 33);
+    await ensureColumnCount(ctx, sheet, 34);
   }
 
   await sheets.spreadsheets.values.batchUpdate({
