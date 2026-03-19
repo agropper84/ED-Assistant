@@ -5,7 +5,7 @@ import { X, ChevronDown, ChevronUp, DollarSign, Search, Info, Plus, Trash2 } fro
 import {
   BillingItem, BillingCategory, BillingCode,
   addBillingCode, calculateTotal, getAdditionalCodes, filterAdditionalCodes,
-  getCategoryForCode, BILLING_CATEGORIES, isTimeBased,
+  getCategoryForCode, BILLING_CATEGORIES,
 } from '@/lib/billing';
 
 /** Documentation requirements and billing tips per code, from the Yukon Fee Guide */
@@ -99,9 +99,6 @@ function BillingHints({ code }: { code: string | undefined }) {
 export function BillingSection({
   billingItems, comments, onSave, onSaveComments, showBilling, setShowBilling,
 }: BillingSectionProps) {
-  // Hide billing section entirely when VCH time-based is active
-  if (isTimeBased()) return null;
-
   const total = calculateTotal(billingItems);
 
   return (
@@ -151,9 +148,6 @@ export function InlineBilling({
   onSave: (items: BillingItem[], comments?: string) => void;
   onSaveComments: (comments: string) => void;
 }) {
-  // Hide when VCH time-based is active
-  if (isTimeBased()) return null;
-
   return (
     <div className="bg-[var(--bg-tertiary)] border border-[var(--border)] rounded-xl p-4 space-y-3" onClick={(e) => e.stopPropagation()}>
       <PatientBasedBilling
