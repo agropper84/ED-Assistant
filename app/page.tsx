@@ -763,6 +763,21 @@ export default function HomePage() {
   const isSearching = searchQuery.trim().length >= 2;
   const activePatients = isSearching && searchResults !== null ? searchResults : patients;
 
+  /** Parse a time string (HH:MM, H:MM, HH:MM AM/PM) to minutes since midnight for sorting */
+  const parseTimeToMin = (t: string): number => {
+    if (!t) return 9999;
+    const match = t.match(/(\d{1,2}):(\d{2})\s*(AM|PM)?/i);
+    if (!match) return 9999;
+    let h = parseInt(match[1], 10);
+    const m = parseInt(match[2], 10);
+    if (match[3]) {
+      const isPM = match[3].toUpperCase() === 'PM';
+      if (isPM && h < 12) h += 12;
+      if (!isPM && h === 12) h = 0;
+    }
+    return h * 60 + m;
+  };
+
   const STATUS_ORDER: Record<string, number> = { new: 0, pending: 1, processed: 2 };
   const sortedPatients = [...activePatients].sort((a, b) => {
     if (sortBy === 'name') {
@@ -772,14 +787,14 @@ export default function HomePage() {
       const sa = STATUS_ORDER[a.status || 'new'] ?? 0;
       const sb = STATUS_ORDER[b.status || 'new'] ?? 0;
       if (sa !== sb) return sa - sb;
-      return (a.timestamp || '').localeCompare(b.timestamp || '');
+      return parseTimeToMin(a.timestamp) - parseTimeToMin(b.timestamp);
     }
     // When searching across dates, sort by date (sheetName) then time
     if (isSearching) {
       const dateCompare = (b.sheetName || '').localeCompare(a.sheetName || '');
       if (dateCompare !== 0) return dateCompare;
     }
-    return (a.timestamp || '').localeCompare(b.timestamp || '');
+    return parseTimeToMin(a.timestamp) - parseTimeToMin(b.timestamp);
   });
 
   // Batch processing
