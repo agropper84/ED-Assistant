@@ -343,7 +343,11 @@ export function VoiceRecorder({
                 : trimmed;
               segmentTextsRef.current.push(trimmed);
               setCanUndo(true);
-              onInterimRef.current?.(accumulatedTextRef.current);
+              // Don't show interim text in hold-to-medicalize mode (wait for release)
+              const holdMedMode = medicalizeRef.current && getMedicalizeDictationMode() === 'hold';
+              if (!holdMedMode) {
+                onInterimRef.current?.(accumulatedTextRef.current);
+              }
             }
           }
           return; // success — exit retry loop
@@ -799,8 +803,78 @@ export function VoiceRecorder({
           setCanUndo(false);
           setState('idle');
         }
+      } else if (medicalizeRef.current && getMedicalizeDictationMode() === 'hold') {
+        // --- Hold-to-medicalize stop: single-shot full audio → transcribe + medicalize ---
+        setState('transcribing');
+
+        // Stop ALL recorders and collect full audio
+        const recorder = mediaRecorderRef.current;
+        let fullBlob: Blob | null = null;
+        if (recorder && recorder.state !== 'inactive') {
+          fullBlob = await new Promise<Blob>((resolve) => {
+            recorder.onstop = () => resolve(new Blob(chunksRef.current, { type: mimeTypeRef.current }));
+            recorder.stop();
+          });
+        }
+
+        streamRef.current?.getTracks().forEach(t => t.stop());
+        streamRef.current = null;
+
+        // Discard any streaming text — we want fresh single-shot result
+        accumulatedTextRef.current = '';
+        segmentTextsRef.current = [];
+
+        // Single-shot transcribe + medicalize
+        if (fullBlob && fullBlob.size > 2000) {
+          try {
+            const formData = new FormData();
+            formData.append('audio', fullBlob, `recording.${getFileExtension(mimeTypeRef.current)}`);
+            formData.append('mode', 'dictation');
+
+            const transcribeEngine = getTranscribeAPI();
+            const useExternalSTT = transcribeEngine === 'deepgram' || transcribeEngine === 'wispr';
+
+            if (useExternalSTT) {
+              // External STT → then medicalize
+              const sttRes = await fetch(getTranscribeEndpoint(transcribeEngine), { method: 'POST', body: formData });
+              if (sttRes.ok) {
+                const { text: sttText } = await sttRes.json();
+                if (sttText?.trim()) {
+                  // Medicalize via Claude
+                  const medRes = await fetch('/api/medicalize', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text: sttText.trim() }),
+                  });
+                  if (medRes.ok) {
+                    const { text: medText } = await medRes.json();
+                    if (medText?.trim()) {
+                      onInterimRef.current?.(medText.trim());
+                    } else {
+                      onInterimRef.current?.(sttText.trim());
+                    }
+                  } else {
+                    onInterimRef.current?.(sttText.trim());
+                  }
+                }
+              }
+            } else {
+              // Whisper + built-in medicalize
+              const res = await fetch('/api/transcribe', { method: 'POST', body: formData });
+              if (res.ok) {
+                const { text } = await res.json();
+                if (text?.trim()) {
+                  onInterimRef.current?.(text.trim());
+                }
+              }
+            }
+          } catch {}
+        }
+
+        setCanUndo(false);
+        setState('idle');
       } else {
-        // --- Segment pipeline stop (Medicalize OR Deepgram fast) ---
+        // --- Segment pipeline stop (Medicalize toggle mode) ---
         setState('transcribing');
 
         const recorder = mediaRecorderRef.current;
@@ -817,17 +891,13 @@ export function VoiceRecorder({
           }
         }
 
-        // Release microphone
         streamRef.current?.getTracks().forEach(t => t.stop());
         streamRef.current = null;
 
-        // Wait for any in-flight segment transcriptions
         while (pendingCountRef.current > 0) {
           await new Promise(r => setTimeout(r, 100));
         }
 
-        // Final delivery: onInterimTranscript already has the full text in the field,
-        // so only call onTranscript if there was NO interim handler (non-streaming callers).
         if (accumulatedTextRef.current.trim() && !onInterimRef.current) {
           onTranscriptRef.current(accumulatedTextRef.current.trim());
         }
@@ -852,8 +922,9 @@ export function VoiceRecorder({
     const isHold = getMedicalizeDictationMode() === 'hold';
 
     if (isHold) {
-      // Hold mode: tap = non-medicalize toggle, hold = medicalize
+      // Hold mode: tap = non-medicalize toggle, hold = medicalize (single-shot)
       if (state === 'recording' && toggleModeRef.current) {
+        // Currently in tap-toggle non-medicalize mode, stop it
         stopRecording();
         return;
       }
@@ -861,11 +932,11 @@ export function VoiceRecorder({
         pressStartRef.current = Date.now();
         toggleModeRef.current = false;
         setIsHolding(false);
-        // Start as non-medicalize initially — switch to medicalize after 500ms hold
+        // Start as non-medicalize initially
         medicalizeRef.current = false;
         setMedicalize(false);
         startRecording();
-        // After 500ms of holding, switch to medicalize mode
+        // After 500ms of holding, switch to medicalize hold mode
         if (holdTimerRef.current) clearTimeout(holdTimerRef.current);
         holdTimerRef.current = setTimeout(() => {
           medicalizeRef.current = true;
