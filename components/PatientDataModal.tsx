@@ -50,6 +50,7 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
   const [saving, setSaving] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [userPhrases, setUserPhrases] = useState<string[]>([]);
+  const [showLiveTranscript, setShowLiveTranscript] = useState(true);
 
   // Fetch user's saved phrases for autocomplete
   useEffect(() => {
@@ -187,9 +188,20 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
 
           {/* Transcript */}
           <div>
-            <label className="block text-xs font-semibold text-[var(--text-muted)] uppercase tracking-widest mb-1.5">
-              Transcript
-            </label>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-widest">
+                Transcript
+              </label>
+              <label className="flex items-center gap-1.5 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={showLiveTranscript}
+                  onChange={(e) => setShowLiveTranscript(e.target.checked)}
+                  className="w-3 h-3 rounded text-blue-600 focus:ring-blue-500 accent-blue-600"
+                />
+                <span className="text-[10px] text-[var(--text-muted)]">Live text</span>
+              </label>
+            </div>
             <div className="relative">
               <textarea
                 value={transcript}
@@ -206,9 +218,9 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
                     setTranscript(base ? `${base}\n\n${text}` : text);
                   }}
                   onRecordingStart={() => setPreRecordTranscript(transcript)}
-                  onInterimTranscript={(text) => {
+                  onInterimTranscript={showLiveTranscript ? (text) => {
                     setTranscript(preRecordTranscript ? `${preRecordTranscript}\n\n${text}` : text);
-                  }}
+                  } : undefined}
                 />
               </div>
             </div>

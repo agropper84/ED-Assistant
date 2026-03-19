@@ -95,6 +95,7 @@ export function ParseModal({ isOpen, onClose, onSave }: ParseModalProps) {
   const [daySheetPatients, setDaySheetPatients] = useState<any[]>([]);
   const [daySheetLoading, setDaySheetLoading] = useState(false);
   const [daySheetError, setDaySheetError] = useState('');
+  const [showLiveTranscript, setShowLiveTranscript] = useState(true);
   const daySheetInputRef = useRef<HTMLInputElement>(null);
   const timeScrollRef = useRef<HTMLDivElement>(null);
 
@@ -500,9 +501,20 @@ export function ParseModal({ isOpen, onClose, onSave }: ParseModalProps) {
 
           {/* Transcript */}
           <div>
-            <label className="block text-xs font-semibold text-[var(--text-muted)] uppercase tracking-widest mb-1.5">
-              Transcript
-            </label>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-widest">
+                Transcript
+              </label>
+              <label className="flex items-center gap-1.5 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={showLiveTranscript}
+                  onChange={(e) => setShowLiveTranscript(e.target.checked)}
+                  className="w-3 h-3 rounded text-blue-600 focus:ring-blue-500 accent-blue-600"
+                />
+                <span className="text-[10px] text-[var(--text-muted)]">Live text</span>
+              </label>
+            </div>
             <div className="relative">
               <textarea
                 value={transcript}
@@ -519,9 +531,9 @@ export function ParseModal({ isOpen, onClose, onSave }: ParseModalProps) {
                     setTranscript(base ? `${base}\n\n${text}` : text);
                   }}
                   onRecordingStart={() => setPreRecordTranscript(transcript)}
-                  onInterimTranscript={(text) => {
+                  onInterimTranscript={showLiveTranscript ? (text) => {
                     setTranscript(preRecordTranscript ? `${preRecordTranscript}\n\n${text}` : text);
-                  }}
+                  } : undefined}
                 />
               </div>
             </div>

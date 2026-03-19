@@ -919,12 +919,11 @@ export function VoiceRecorder({
     e.preventDefault();
     if (state === 'transcribing') return;
 
-    const isHold = getMedicalizeDictationMode() === 'hold';
+    const isHold = mode === 'dictation' && getMedicalizeDictationMode() === 'hold';
 
     if (isHold) {
-      // Hold mode: tap = non-medicalize toggle, hold = medicalize (single-shot)
+      // Hold mode (dictation only): tap = non-medicalize toggle, hold = medicalize
       if (state === 'recording' && toggleModeRef.current) {
-        // Currently in tap-toggle non-medicalize mode, stop it
         stopRecording();
         return;
       }
@@ -932,11 +931,9 @@ export function VoiceRecorder({
         pressStartRef.current = Date.now();
         toggleModeRef.current = false;
         setIsHolding(false);
-        // Start as non-medicalize initially
         medicalizeRef.current = false;
         setMedicalize(false);
         startRecording();
-        // After 500ms of holding, switch to medicalize hold mode
         if (holdTimerRef.current) clearTimeout(holdTimerRef.current);
         holdTimerRef.current = setTimeout(() => {
           medicalizeRef.current = true;
@@ -961,7 +958,7 @@ export function VoiceRecorder({
   const handlePointerUp = useCallback(() => {
     if (state !== 'recording') return;
 
-    const isHold = getMedicalizeDictationMode() === 'hold';
+    const isHold = mode === 'dictation' && getMedicalizeDictationMode() === 'hold';
 
     if (isHold) {
       if (holdTimerRef.current) { clearTimeout(holdTimerRef.current); holdTimerRef.current = null; }
@@ -1035,7 +1032,7 @@ export function VoiceRecorder({
     };
   })() : undefined;
 
-  const isHoldMode = getMedicalizeDictationMode() === 'hold';
+  const isHoldMode = mode === 'dictation' && getMedicalizeDictationMode() === 'hold';
 
   return (
     <span className="inline-flex items-center gap-1">
@@ -1060,11 +1057,13 @@ export function VoiceRecorder({
             state === 'recording'
               ? (isHolding ? 'Release to finish' : 'Click to stop')
             : state === 'transcribing' ? 'Processing...'
-            : isHoldMode
-              ? 'Click for simple dictation. Hold for AI medicalize dictation.'
-              : medicalize
-                ? 'Click to dictate (medicalize on)'
-                : 'Click to dictate'
+            : mode === 'encounter'
+              ? 'Click to record encounter'
+              : isHoldMode
+                ? 'Click for simple dictation. Hold for AI medicalize dictation.'
+                : medicalize
+                  ? 'Click to dictate (medicalize on)'
+                  : 'Click to dictate'
           }
         >
           {isHolding
