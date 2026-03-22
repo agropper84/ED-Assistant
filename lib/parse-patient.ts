@@ -1,6 +1,7 @@
 // Parse patient data - supports configurable patterns for different EMR formats
 
 import type { ParseRules } from '@/lib/settings';
+import { INPUT_HEALTH_PARSE_RULES } from '@/lib/settings';
 
 export interface ParsedPatient {
   name: string;
@@ -144,6 +145,71 @@ function parseMeditech(patientInfoText: string): ParsedPatient {
   return result;
 }
 
+/**
+ * Input Health EMR parsing.
+ * Format:
+ *   Name
+ *   Dec/23/1995 (30 yr)
+ *   M
+ *   BC:
+ *   9892145798
+ *   (Primary)
+ */
+function parseInputHealth(text: string): ParsedPatient {
+  const result: ParsedPatient = { name: '', age: '', gender: '', birthday: '', hcn: '', mrn: '' };
+  const lines = text.split('\n').map(l => l.trim()).filter(l => l);
+
+  // Line 1: Name
+  if (lines.length >= 1) {
+    result.name = lines[0].replace(',', ', ').replace(/,\s+/g, ', ');
+  }
+
+  // Find DOB/age line: "Dec/23/1995 (30 yr)"
+  for (const line of lines) {
+    const dobMatch = line.match(/([A-Za-z]{3}\/\d{1,2}\/\d{4})\s*\((\d+)\s*yr\)/);
+    if (dobMatch) {
+      result.birthday = dobMatch[1];
+      result.age = dobMatch[2];
+      break;
+    }
+  }
+
+  // Find gender line: standalone M or F
+  for (const line of lines) {
+    if (/^[MF]$/i.test(line)) {
+      result.gender = line.toUpperCase();
+      break;
+    }
+  }
+
+  // Find HCN: number after "BC:" (may be on same line or next line)
+  for (let i = 0; i < lines.length; i++) {
+    const bcMatch = lines[i].match(/BC:\s*(\d{10})/);
+    if (bcMatch) {
+      result.hcn = bcMatch[1];
+      break;
+    }
+    if (/^BC:\s*$/i.test(lines[i]) && i + 1 < lines.length) {
+      const nextLine = lines[i + 1].trim();
+      if (/^\d{10}$/.test(nextLine)) {
+        result.hcn = nextLine;
+        break;
+      }
+    }
+  }
+
+  // Find MRN if present
+  for (const line of lines) {
+    const mrnMatch = line.match(/MRN#?\s*([A-Z0-9]+)/i);
+    if (mrnMatch) {
+      result.mrn = mrnMatch[1];
+      break;
+    }
+  }
+
+  return result;
+}
+
 export function parsePatientInfo(patientInfoText: string, rules?: ParseRules): ParsedPatient {
   const result: ParsedPatient = { name: '', age: '', gender: '', birthday: '', hcn: '', mrn: '' };
 
@@ -153,6 +219,10 @@ export function parsePatientInfo(patientInfoText: string, rules?: ParseRules): P
 
   // If custom rules provided, use regex-based extraction
   if (rules) {
+    // Use dedicated Input Health parser for that format
+    if (rules.formatName === 'Input Health EMR') {
+      return parseInputHealth(patientInfoText.trim());
+    }
     return parseWithRules(patientInfoText.trim(), rules);
   }
 

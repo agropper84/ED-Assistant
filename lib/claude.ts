@@ -334,6 +334,71 @@ Use professional medical language. Be concise but thorough.`
   return response.content[0].type === 'text' ? response.content[0].text : '';
 }
 
+export async function generateAdmission(
+  patientData: PatientData,
+  encounterNote: ProcessedNote,
+  admissionInfo: { service: string; reason: string; acuity: string },
+  admissionExamples?: string[],
+): Promise<string> {
+  const anthropic = await getAnthropicClient();
+
+  let styleBlock = '';
+  if (admissionExamples && admissionExamples.length > 0) {
+    styleBlock = `
+CRITICAL — STYLE MATCHING:
+You MUST write this admission note in the EXACT style of these examples from this physician. Match their format, structure, tone, length, and level of detail precisely.
+
+${admissionExamples.map((e, i) => `--- Example ${i + 1} ---\n${e}`).join('\n\n')}
+
+Write as if you ARE this physician. Do not add formality or structure beyond what the examples show.
+`;
+  }
+
+  const response = await anthropic.messages.create({
+    model: 'claude-sonnet-4-20250514',
+    max_tokens: 4096,
+    temperature: 0.3,
+    messages: [{
+      role: 'user',
+      content: `You are an AI assistant helping a physician write a hospital admission note.
+
+PATIENT INFORMATION:
+- Name: ${patientData.name || 'Not provided'}
+- Age: ${patientData.age || 'Not provided'}
+- Gender: ${patientData.gender || 'Not provided'}
+- Date of Birth: ${patientData.birthday || 'Not provided'}
+
+ENCOUNTER SUMMARY:
+HPI: ${encounterNote.hpi}
+Objective / Physical Exam: ${encounterNote.objective}
+Assessment & Plan: ${encounterNote.assessmentPlan}
+Diagnosis: ${encounterNote.diagnosis}
+Differential Diagnosis: ${encounterNote.ddx || 'Not provided'}
+Investigations: ${encounterNote.investigations || 'Not provided'}
+
+${patientData.triageVitals ? `TRIAGE / VITALS:\n${patientData.triageVitals}\n` : ''}${patientData.additional ? `ADDITIONAL FINDINGS:\n${patientData.additional}\n` : ''}${patientData.pastDocs ? `PAST DOCUMENTATION:\n${patientData.pastDocs}\n` : ''}
+ADMISSION DETAILS:
+- Admitting Service: ${admissionInfo.service}
+- Reason for Admission: ${admissionInfo.reason}
+- Acuity: ${admissionInfo.acuity}
+${styleBlock}
+Write a comprehensive admission note. Include:
+1. Identifying information and reason for admission
+2. History of presenting illness (from encounter HPI)
+3. Past medical/surgical history (if available)
+4. Medications and allergies (if available)
+5. Physical examination findings
+6. Investigations and results
+7. Assessment with differential diagnosis
+8. Admission plan — orders, monitoring, consultations, disposition
+
+Use professional medical language. Be thorough and structured.`
+    }],
+  });
+
+  return response.content[0].type === 'text' ? response.content[0].text : '';
+}
+
 export async function lookupICDCodes(diagnosisText: string): Promise<{
   diagnosis: string;
   icd9: string;

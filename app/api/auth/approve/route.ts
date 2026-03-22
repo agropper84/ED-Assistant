@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
 
   await setUserStatus(userId, 'approved');
 
-  return new NextResponse(page('User Approved', 'The user has been approved and can now log in to Mini ER Dashboard.'), {
+  return new NextResponse(page('User Approved', 'The user has been approved and can now log in to My Patient Dashboard.'), {
     status: 200,
     headers: { 'Content-Type': 'text/html' },
   });

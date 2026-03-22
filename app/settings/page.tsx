@@ -50,7 +50,7 @@ export default function SettingsPage() {
   const [styleGuide, setStyleGuide] = useState<StyleGuide | null>(null);
   const [styleLoading, setStyleLoading] = useState(true);
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
-  const [addingTo, setAddingTo] = useState<'hpi' | 'objective' | 'assessmentPlan' | null>(null);
+  const [addingTo, setAddingTo] = useState<'hpi' | 'objective' | 'assessmentPlan' | 'referral' | 'admission' | null>(null);
   const [newExample, setNewExample] = useState('');
   const [examPresets, setExamPresets] = useState<ExamPreset[]>([]);
   const [editingPreset, setEditingPreset] = useState<number | null>(null);
@@ -143,9 +143,13 @@ export default function SettingsPage() {
   const [wisprApiKey, setWisprApiKey] = useState('');
   const [wisprKeyMasked, setWisprKeyMasked] = useState<string | null>(null);
 
+  // VCH config loading state
+  const [vchConfigLoaded, setVchConfigLoaded] = useState(false);
+
   // Debounce timer for guidance textarea
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const promptDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const billingConfigDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Load style guide from API on mount, migrate localStorage if needed
   useEffect(() => {
@@ -183,7 +187,7 @@ export default function SettingsPage() {
       } catch (err) {
         console.error('Failed to load style guide:', err);
         setStyleGuide({
-          examples: { hpi: [], objective: [], assessmentPlan: [], referral: [] },
+          examples: { hpi: [], objective: [], assessmentPlan: [], referral: [], admission: [] },
           extractedFeatures: [],
           customGuidance: '',
         });
@@ -200,11 +204,55 @@ export default function SettingsPage() {
       .then(res => res.ok ? res.json() : null)
       .then(data => { if (data) setShortcutHasToken(data.hasToken); })
       .catch(() => {});
-    // Billing — clear localStorage (sheet is source of truth) and load from API
+    // Billing — load config from Google Sheet, then load codes
     clearLocalBillingData();
-    const r = getRegion();
-    setBillingRegion(r);
-    loadBillingCodes(r);
+    fetch('/api/billing-config')
+      .then(res => res.ok ? res.json() : null)
+      .then(config => {
+        if (config) {
+          const r = config.billingRegion || 'yukon';
+          setBillingRegion(r);
+          saveRegion(r); // sync to localStorage for dashboard
+          setSettings(prev => ({
+            ...prev,
+            vchCprpId: config.vchCprpId || '',
+            vchSiteFacility: config.vchSiteFacility || '',
+            vchPracNumber: config.vchPracNumber || '',
+            vchPractitionerName: config.vchPractitionerName || '',
+          }));
+          setVchConfigLoaded(true);
+          loadBillingCodes(r);
+        } else {
+          const r = getRegion();
+          setBillingRegion(r);
+          loadBillingCodes(r);
+          setVchConfigLoaded(true);
+        }
+      })
+      .catch(() => {
+        const r = getRegion();
+        setBillingRegion(r);
+        loadBillingCodes(r);
+        setVchConfigLoaded(true);
+      });
+  }, []);
+
+  // Save billing config to Google Sheet (debounced)
+  const saveBillingConfigToSheet = useCallback((updatedSettings: AppSettings, region: string) => {
+    if (billingConfigDebounceRef.current) clearTimeout(billingConfigDebounceRef.current);
+    billingConfigDebounceRef.current = setTimeout(() => {
+      fetch('/api/billing-config', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          billingRegion: region,
+          vchCprpId: updatedSettings.vchCprpId || '',
+          vchSiteFacility: updatedSettings.vchSiteFacility || '',
+          vchPracNumber: updatedSettings.vchPracNumber || '',
+          vchPractitionerName: updatedSettings.vchPractitionerName || '',
+        }),
+      }).catch(err => console.error('Failed to save billing config:', err));
+    }, 800);
   }, []);
 
   const loadBillingCodes = async (region: string) => {
@@ -219,7 +267,7 @@ export default function SettingsPage() {
     }
   };
 
-  const handleAddExample = async (section: 'hpi' | 'objective' | 'assessmentPlan') => {
+  const handleAddExample = async (section: 'hpi' | 'objective' | 'assessmentPlan' | 'referral' | 'admission') => {
     if (!newExample.trim() || !styleGuide) return;
     setSaving(true);
     try {
@@ -237,7 +285,7 @@ export default function SettingsPage() {
     }
   };
 
-  const handleRemoveExample = async (section: 'hpi' | 'objective' | 'assessmentPlan', index: number) => {
+  const handleRemoveExample = async (section: 'hpi' | 'objective' | 'assessmentPlan' | 'referral' | 'admission', index: number) => {
     if (!styleGuide) return;
     try {
       const updated = await removeExampleAsync(section, index, styleGuide);
@@ -515,6 +563,7 @@ export default function SettingsPage() {
     objective: 'Objective',
     assessmentPlan: 'Assessment & Plan',
     referral: 'Referral Letter',
+    admission: 'Admission Note',
   };
 
   return (
@@ -787,7 +836,7 @@ export default function SettingsPage() {
                 )}
 
                 {/* Sections */}
-                {(['hpi', 'objective', 'assessmentPlan'] as const).map((section) => (
+                {(['hpi', 'objective', 'assessmentPlan', 'referral', 'admission'] as const).map((section) => (
                   <div key={section} className="bg-[var(--card-bg)] rounded-2xl border border-[var(--card-border)] p-5 space-y-3" style={{ boxShadow: 'var(--card-shadow)' }}>
                     <div className="flex items-center justify-between">
                       <h3 className="font-semibold text-[var(--text-primary)]">{sectionLabels[section]} Examples</h3>
@@ -1695,6 +1744,7 @@ export default function SettingsPage() {
                   const r = e.target.value;
                   setBillingRegion(r);
                   saveRegion(r);
+                  saveBillingConfigToSheet(settings, r);
                   if (!isTimeBased(r)) {
                     await loadBillingCodes(r);
                   }
@@ -1723,7 +1773,11 @@ export default function SettingsPage() {
                       <input
                         type="text"
                         value={settings[key] || ''}
-                        onChange={(e) => handleSettingChange(key, e.target.value)}
+                        onChange={(e) => {
+                          handleSettingChange(key, e.target.value);
+                          const updated = { ...settings, [key]: e.target.value };
+                          saveBillingConfigToSheet(updated, billingRegion);
+                        }}
                         placeholder={placeholder}
                         className="w-full p-3 border border-[var(--input-border)] rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)]"
                       />

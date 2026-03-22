@@ -6,7 +6,7 @@ import { ExamToggles } from '@/components/ExamToggles';
 import { AutocompleteTextarea } from '@/components/AutocompleteTextarea';
 import { MEDICAL_SUGGESTIONS } from '@/lib/medical-suggestions';
 import { VoiceRecorder } from '@/components/VoiceRecorder';
-import { getParseRules, saveParseRules, ParseRules, DEFAULT_PARSE_RULES } from '@/lib/settings';
+import { getParseRules, saveParseRules, ParseRules, DEFAULT_PARSE_RULES, INPUT_HEALTH_PARSE_RULES, BUILT_IN_FORMATS } from '@/lib/settings';
 import { savePhrasesInBackground } from '@/lib/user-phrases';
 
 interface ParseModalProps {
@@ -267,8 +267,8 @@ export function ParseModal({ isOpen, onClose, onSave }: ParseModalProps) {
                   setDaySheetMode(false);
                   setDaySheetPatients([]);
                   setActiveFormat(val);
-                  if (val === 'Meditech') {
-                    saveParseRules(DEFAULT_PARSE_RULES);
+                  if (BUILT_IN_FORMATS[val]) {
+                    saveParseRules(BUILT_IN_FORMATS[val]);
                   } else {
                     const fmt = savedFormats.find((f: any) => f.name === val);
                     if (fmt) {
@@ -284,8 +284,10 @@ export function ParseModal({ isOpen, onClose, onSave }: ParseModalProps) {
                 }}
                 className="px-2 py-0.5 border border-[var(--input-border)] rounded-lg text-[11px] bg-[var(--input-bg)] text-[var(--text-secondary)] focus:ring-1 focus:ring-blue-500"
               >
-                <option value="Meditech">Meditech</option>
-                {savedFormats.filter((f: any) => f.name !== 'Meditech').map((f: any) => (
+                {Object.keys(BUILT_IN_FORMATS).map(name => (
+                  <option key={name} value={name}>{name}</option>
+                ))}
+                {savedFormats.filter((f: any) => !BUILT_IN_FORMATS[f.name]).map((f: any) => (
                   <option key={f.name} value={f.name}>{f.name}</option>
                 ))}
                 <option value="daysheet">Input Health Day Sheet</option>
@@ -655,13 +657,15 @@ export function ParseModal({ isOpen, onClose, onSave }: ParseModalProps) {
               >
                 Save
               </button>
-              <button
-                onClick={() => handleSave(true)}
-                disabled={!parsedData}
-                className="flex-1 py-3 min-h-[48px] bg-emerald-600 dark:bg-emerald-500 text-white rounded-xl font-medium disabled:opacity-40 flex items-center justify-center gap-2 hover:bg-emerald-700 dark:hover:bg-emerald-600 active:scale-[0.97] transition-all"
-              >
-                Generate Note
-              </button>
+              {(triageVitals.trim() || transcript.trim() || encounterNotes.trim() || additional.trim()) && (
+                <button
+                  onClick={() => handleSave(true)}
+                  disabled={!parsedData}
+                  className="flex-1 py-3 min-h-[48px] bg-emerald-600 dark:bg-emerald-500 text-white rounded-xl font-medium disabled:opacity-40 flex items-center justify-center gap-2 hover:bg-emerald-700 dark:hover:bg-emerald-600 active:scale-[0.97] transition-all"
+                >
+                  Generate Note
+                </button>
+              )}
             </div>
           )}
         </div>

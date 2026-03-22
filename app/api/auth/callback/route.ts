@@ -3,7 +3,7 @@ import { cookies } from 'next/headers';
 import { google } from 'googleapis';
 import { exchangeCode, getOAuth2Client } from '@/lib/oauth';
 import { getSessionFromCookies } from '@/lib/session';
-import { getUserSpreadsheetId, setUserSpreadsheetId, getUserStatus, setUserStatus, setUserInfo } from '@/lib/kv';
+import { getUserSpreadsheetId, setUserSpreadsheetId, getUserStatus, setUserStatus, setUserInfo, getUserSettings } from '@/lib/kv';
 import { createUserSpreadsheet } from '@/lib/setup-sheet';
 import { generateApproveUrl, sendApprovalEmail } from '@/lib/email';
 
@@ -69,6 +69,15 @@ export async function GET(request: NextRequest) {
       }
       session.approved = true;
       await session.save();
+
+      // Check if terms accepted (skip for admin)
+      if (email.toLowerCase() !== adminEmail.toLowerCase()) {
+        const settings = await getUserSettings(userId) || {};
+        if (!settings.termsAccepted) {
+          return NextResponse.redirect(new URL('/terms', url.origin));
+        }
+      }
+
       return NextResponse.redirect(new URL('/', url.origin));
     }
 

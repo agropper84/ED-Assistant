@@ -3,7 +3,7 @@ import './globals.css'
 import { ThemeProvider } from '@/lib/theme'
 
 export const metadata: Metadata = {
-  title: 'My Patient Dashboard',
+  title: 'Patient Dashboard',
   description: 'AI-powered clinical documentation, transcription, and workflow for physicians',
   manifest: '/manifest.json',
   other: {
@@ -12,7 +12,7 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
-    title: 'My Patient Dashboard',
+    title: 'Patient Dashboard',
   },
 }
 

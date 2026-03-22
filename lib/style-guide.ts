@@ -4,6 +4,7 @@ export interface StyleGuide {
     objective: string[];
     assessmentPlan: string[];
     referral: string[];
+    admission: string[];
   };
   extractedFeatures: string[];
   customGuidance: string;
@@ -13,7 +14,7 @@ const STORAGE_KEY = 'ed-app-style-guide';
 
 function getDefault(): StyleGuide {
   return {
-    examples: { hpi: [], objective: [], assessmentPlan: [], referral: [] },
+    examples: { hpi: [], objective: [], assessmentPlan: [], referral: [], admission: [] },
     extractedFeatures: [],
     customGuidance: '',
   };
@@ -29,7 +30,7 @@ export function getStyleGuide(): StyleGuide {
     const parsed = JSON.parse(stored);
     // Normalize legacy computedFeatures → extractedFeatures
     return {
-      examples: parsed.examples || { hpi: [], objective: [], assessmentPlan: [], referral: [] },
+      examples: parsed.examples || { hpi: [], objective: [], assessmentPlan: [], referral: [], admission: [] },
       extractedFeatures: parsed.extractedFeatures || [],
       customGuidance: parsed.customGuidance || '',
     };
@@ -61,7 +62,7 @@ export async function persistStyleGuide(guide: StyleGuide): Promise<void> {
 }
 
 export async function addExampleAsync(
-  section: 'hpi' | 'objective' | 'assessmentPlan' | 'referral',
+  section: 'hpi' | 'objective' | 'assessmentPlan' | 'referral' | 'admission',
   example: string,
   current: StyleGuide
 ): Promise<StyleGuide> {
@@ -78,7 +79,7 @@ export async function addExampleAsync(
 }
 
 export async function removeExampleAsync(
-  section: 'hpi' | 'objective' | 'assessmentPlan' | 'referral',
+  section: 'hpi' | 'objective' | 'assessmentPlan' | 'referral' | 'admission',
   index: number,
   current: StyleGuide
 ): Promise<StyleGuide> {

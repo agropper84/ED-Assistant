@@ -7,10 +7,11 @@ import {
   ArrowLeft, Loader2, Play, Copy, Check,
   User, Calendar, CreditCard, FileText,
   ChevronDown, ChevronUp, Pencil, X, Save,
-  RefreshCw, Send, Bookmark, Plus, Scissors
+  RefreshCw, Send, Bookmark, Plus, Scissors, FilePlus
 } from 'lucide-react';
 import { ExamToggles } from '@/components/ExamToggles';
 import { ReferralModal } from '@/components/ReferralModal';
+import { AdmissionModal } from '@/components/AdmissionModal';
 import { VoiceRecorder } from '@/components/VoiceRecorder';
 import { fetchStyleGuide, addExampleAsync, persistStyleGuide, StyleGuide } from '@/lib/style-guide';
 import {
@@ -19,6 +20,8 @@ import {
   getDayRegion,
 } from '@/lib/billing';
 import { BillingSection } from '@/components/BillingSection';
+import { PatientProfile } from '@/components/PatientProfile';
+import type { PatientProfile as ProfileData } from '@/app/api/profile/route';
 import { getPromptTemplates, getEffectivePromptTemplates } from '@/lib/settings';
 
 export default function PatientPage() {
@@ -40,11 +43,12 @@ export default function PatientPage() {
   const [showModify, setShowModify] = useState(false);
   const [modifications, setModifications] = useState('');
 
-  // Referral modal
+  // Referral / Admission modals
   const [showReferralModal, setShowReferralModal] = useState(false);
+  const [showAdmissionModal, setShowAdmissionModal] = useState(false);
 
   // Active tab for output view
-  const [activeTab, setActiveTab] = useState<'encounter' | 'ddx' | 'referral'>('encounter');
+  const [activeTab, setActiveTab] = useState<'encounter' | 'ddx' | 'referral' | 'admission'>('encounter');
 
   // Billing state
   const [showBilling, setShowBilling] = useState(false);
@@ -53,6 +57,10 @@ export default function PatientPage() {
 
   // Synopsis state
   const [generatingSynopsis, setGeneratingSynopsis] = useState(false);
+
+  // Profile state
+  const [generatingProfile, setGeneratingProfile] = useState(false);
+  const [profileData, setProfileData] = useState<ProfileData | null>(null);
 
   // Update analysis state
   const [updatingAnalysis, setUpdatingAnalysis] = useState(false);
@@ -97,6 +105,19 @@ export default function PatientPage() {
       setBillingComments(patient.comments || '');
     }
   }, [patient]);
+
+  // Parse profile JSON when patient loads
+  useEffect(() => {
+    if (patient?.profile) {
+      try {
+        setProfileData(JSON.parse(patient.profile));
+      } catch {
+        setProfileData(null);
+      }
+    } else {
+      setProfileData(null);
+    }
+  }, [patient?.profile]);
 
   const fetchPatient = async () => {
     try {
@@ -184,7 +205,7 @@ export default function PatientPage() {
   };
 
   const handleSaveStyleExample = async (section: string, content: string) => {
-    const sectionKey = section as 'hpi' | 'objective' | 'assessmentPlan' | 'referral';
+    const sectionKey = section as 'hpi' | 'objective' | 'assessmentPlan' | 'referral' | 'admission';
     setStyleSaved(section);
     setTimeout(() => setStyleSaved(null), 2000);
 
@@ -254,12 +275,38 @@ export default function PatientPage() {
     }
   };
 
+  const handleGenerateProfile = async () => {
+    setGeneratingProfile(true);
+    try {
+      const res = await fetch('/api/profile', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rowIndex: parseInt(rowIndex), sheetName }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setProfileData(data.profile);
+        // Also refresh patient to get updated profile column
+        await fetchPatient();
+      }
+    } catch (error) {
+      console.error('Failed to generate profile:', error);
+    } finally {
+      setGeneratingProfile(false);
+    }
+  };
+
   const handleUpdateAnalysis = async () => {
     setUpdatingAnalysis(true);
     try {
-      // Regenerate synopsis and DDx/management/evidence in parallel
+      // Regenerate synopsis, profile, and DDx/management/evidence in parallel
       await Promise.all([
         fetch('/api/synopsis', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ rowIndex: parseInt(rowIndex), sheetName }),
+        }),
+        fetch('/api/profile', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ rowIndex: parseInt(rowIndex), sheetName }),
@@ -297,6 +344,12 @@ export default function PatientPage() {
     await fetchPatient();
     setShowReferralModal(false);
     setActiveTab('referral');
+  };
+
+  const handleAdmissionGenerated = async () => {
+    await fetchPatient();
+    setShowAdmissionModal(false);
+    setActiveTab('admission');
   };
 
   const copyToClipboard = async (text: string, section: string) => {
@@ -390,58 +443,14 @@ export default function PatientPage() {
           </div>
         </div>
 
-        {/* Synopsis Card — always visible */}
-        <div className="bg-[var(--card-bg)] rounded-2xl border border-[var(--card-border)] p-5" style={{ boxShadow: 'var(--card-shadow)' }}>
-          <div className="flex items-center justify-between mb-2">
-            <h3 className="text-xs font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-widest">AI Synopsis</h3>
-            {patient.synopsis && (
-              <div className="flex items-center gap-1">
-                <button
-                  onClick={() => copyToClipboard(patient.synopsis, 'synopsis')}
-                  className="p-1.5 hover:bg-[var(--bg-tertiary)] rounded-lg transition-colors"
-                >
-                  {copied === 'synopsis' ? (
-                    <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-                  ) : (
-                    <Copy className="w-3.5 h-3.5 text-[var(--text-muted)]" />
-                  )}
-                </button>
-                <button
-                  onClick={handleGenerateSynopsis}
-                  disabled={generatingSynopsis}
-                  className="p-1.5 hover:bg-[var(--bg-tertiary)] rounded-lg transition-colors"
-                >
-                  {generatingSynopsis ? (
-                    <Loader2 className="w-3.5 h-3.5 animate-spin text-[var(--text-muted)]" />
-                  ) : (
-                    <RefreshCw className="w-3.5 h-3.5 text-[var(--text-muted)]" />
-                  )}
-                </button>
-              </div>
-            )}
-          </div>
-          {patient.synopsis ? (
-            <p className="text-sm text-[var(--text-secondary)] leading-relaxed">{patient.synopsis}</p>
-          ) : (
-            <button
-              onClick={handleGenerateSynopsis}
-              disabled={generatingSynopsis}
-              className="w-full py-2.5 border border-dashed border-[var(--border)] text-[var(--text-muted)] rounded-xl text-sm font-medium flex items-center justify-center gap-2 hover:bg-[var(--bg-tertiary)] active:scale-[0.99] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {generatingSynopsis ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  Generating...
-                </>
-              ) : (
-                <>
-                  <FileText className="w-4 h-4" />
-                  Generate Synopsis
-                </>
-              )}
-            </button>
-          )}
-        </div>
+        {/* Patient Profile Card — replaces synopsis */}
+        <PatientProfile
+          profile={profileData}
+          age={patient.age}
+          gender={patient.gender}
+          onGenerate={handleGenerateProfile}
+          generating={generatingProfile}
+        />
 
         {/* Update AI Analysis Button */}
         <button
@@ -472,17 +481,17 @@ export default function PatientPage() {
 
         {/* Tab Bar — always visible */}
         <div className="flex gap-1 bg-[var(--bg-tertiary)] rounded-2xl p-1" style={{ boxShadow: 'var(--card-shadow)' }}>
-          {(['encounter', 'ddx', 'referral'] as const).map((tab) => (
+          {(['encounter', 'ddx', 'referral', 'admission'] as const).map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              className={`flex-1 py-2.5 text-sm font-medium rounded-xl transition-all ${
+              className={`flex-1 py-2.5 text-xs sm:text-sm font-medium rounded-xl transition-all ${
                 activeTab === tab
                   ? 'bg-[var(--accent)] text-white shadow-sm'
                   : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
               }`}
             >
-              {tab === 'encounter' ? 'Encounter Note' : tab === 'ddx' ? 'DDx & Management' : 'Referral'}
+              {tab === 'encounter' ? 'Note' : tab === 'ddx' ? 'DDx' : tab === 'referral' ? 'Referral' : 'Admission'}
             </button>
           ))}
         </div>
@@ -519,10 +528,17 @@ export default function PatientPage() {
                   </button>
                   <button
                     onClick={() => setShowReferralModal(true)}
-                    className="py-3 px-4 border border-[var(--border)] text-[var(--text-secondary)] rounded-2xl font-medium flex items-center justify-center gap-2 hover:bg-[var(--bg-tertiary)] active:scale-[0.97] transition-all"
+                    className="py-3 px-3 border border-[var(--border)] text-[var(--text-secondary)] rounded-2xl font-medium flex items-center justify-center gap-1.5 hover:bg-[var(--bg-tertiary)] active:scale-[0.97] transition-all text-sm"
                   >
                     <Send className="w-4 h-4" />
                     Refer
+                  </button>
+                  <button
+                    onClick={() => setShowAdmissionModal(true)}
+                    className="py-3 px-3 border border-[var(--border)] text-[var(--text-secondary)] rounded-2xl font-medium flex items-center justify-center gap-1.5 hover:bg-[var(--bg-tertiary)] active:scale-[0.97] transition-all text-sm"
+                  >
+                    <FilePlus className="w-4 h-4" />
+                    Admit
                   </button>
                 </div>
 
@@ -801,6 +817,37 @@ export default function PatientPage() {
           </>
         )}
 
+        {/* Admission Tab */}
+        {activeTab === 'admission' && (
+          <>
+            {patient.admission ? (
+              <OutputSection
+                title="Admission Note"
+                content={patient.admission}
+                field="admission"
+                expanded={expandedSections.has('admission')}
+                onToggle={() => toggleSection('admission')}
+                onCopy={() => copyToClipboard(patient.admission, 'admission')}
+                copied={copied === 'admission'}
+                onSave={(value) => handleSaveField('admission', value)}
+                onSaveStyle={() => handleSaveStyleExample('admission', patient.admission)}
+                styleSaved={styleSaved === 'admission'}
+              />
+            ) : (
+              <div className="bg-[var(--card-bg)] rounded-2xl border border-[var(--card-border)] p-6 text-center" style={{ boxShadow: 'var(--card-shadow)' }}>
+                <p className="text-[var(--text-muted)] mb-3">No admission note generated yet</p>
+                <button
+                  onClick={() => setShowAdmissionModal(true)}
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 dark:bg-blue-500 text-white rounded-lg font-medium hover:bg-blue-700 dark:hover:bg-blue-600 active:scale-[0.97] transition-all"
+                >
+                  <FilePlus className="w-4 h-4" />
+                  Generate Admission Note
+                </button>
+              </div>
+            )}
+          </>
+        )}
+
         {/* Billing Section — hidden when VCH time-based is active for this day */}
         {getDayRegion(sheetName || '') !== 'vch' && (
           <BillingSection
@@ -930,13 +977,22 @@ export default function PatientPage() {
 
       {/* Referral Modal */}
       {patient && (
-        <ReferralModal
-          isOpen={showReferralModal}
-          onClose={() => setShowReferralModal(false)}
-          rowIndex={parseInt(rowIndex)}
-          sheetName={sheetName}
-          onGenerated={handleReferralGenerated}
-        />
+        <>
+          <ReferralModal
+            isOpen={showReferralModal}
+            onClose={() => setShowReferralModal(false)}
+            rowIndex={parseInt(rowIndex)}
+            sheetName={sheetName}
+            onGenerated={handleReferralGenerated}
+          />
+          <AdmissionModal
+            isOpen={showAdmissionModal}
+            onClose={() => setShowAdmissionModal(false)}
+            rowIndex={parseInt(rowIndex)}
+            sheetName={sheetName}
+            onGenerated={handleAdmissionGenerated}
+          />
+        </>
       )}
     </div>
   );

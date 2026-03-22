@@ -421,6 +421,19 @@ export const DEFAULT_PARSE_RULES: ParseRules = {
   nameCleanup: 'ED',
 };
 
+export const INPUT_HEALTH_PARSE_RULES: ParseRules = {
+  formatName: 'Input Health EMR',
+  ageDobPattern: '([A-Za-z]{3}/\\d{1,2}/\\d{4})\\s*\\((\\d+)\\s*yr\\)',
+  hcnPattern: 'BC:\\s*\\n?\\s*(\\d{10})',
+  mrnPattern: 'MRN#\\s*([A-Z0-9]+)',
+  nameCleanup: '(Primary)',
+};
+
+export const BUILT_IN_FORMATS: Record<string, ParseRules> = {
+  'Meditech': DEFAULT_PARSE_RULES,
+  'Input Health EMR': INPUT_HEALTH_PARSE_RULES,
+};
+
 const PARSE_RULES_STORAGE_KEY = 'ed-app-parse-rules';
 
 export function getParseRules(): ParseRules {

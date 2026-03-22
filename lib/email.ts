@@ -1,7 +1,7 @@
 import { createHmac } from 'crypto';
 import { Resend } from 'resend';
 
-const BASE_URL = process.env.NEXT_PUBLIC_URL || 'https://www.minierdashboard.com';
+const BASE_URL = process.env.NEXT_PUBLIC_URL || 'https://www.mypatientboard.com';
 
 function getSecret(): string {
   const secret = process.env.SESSION_SECRET;
@@ -48,16 +48,16 @@ export async function sendApprovalEmail(
   const resend = new Resend(apiKey);
 
   await resend.emails.send({
-    from: 'Mini ER Dashboard <noreply@minierdashboard.com>',
+    from: process.env.RESEND_FROM_EMAIL || 'My Patient Dashboard <onboarding@resend.dev>',
     to: adminEmail,
     subject: `Access Request: ${userName}`,
     html: `
       <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 480px; margin: 0 auto; padding: 32px 16px;">
         <h2 style="margin: 0 0 16px;">New Access Request</h2>
         <p style="color: #374151; line-height: 1.6;">
-          <strong>${userName}</strong> (${userEmail}) is requesting access to Mini ER Dashboard.
+          <strong>${userName}</strong> (${userEmail}) is requesting access to My Patient Dashboard.
         </p>
-        <a href="${approveUrl}" style="display: inline-block; margin: 24px 0; padding: 12px 24px; background: #2563eb; color: #fff; text-decoration: none; border-radius: 8px; font-weight: 500;">
+        <a href="${approveUrl}" style="display: inline-block; margin: 24px 0; padding: 12px 24px; background: #0d9488; color: #fff; text-decoration: none; border-radius: 8px; font-weight: 500;">
           Approve Access
         </a>
         <p style="color: #6b7280; font-size: 14px;">

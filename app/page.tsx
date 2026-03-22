@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Patient } from '@/lib/google-sheets';
 import {
-  getPromptTemplates, getSettings, getEffectivePromptTemplates,
+  getPromptTemplates, getSettings, saveSettings, getEffectivePromptTemplates,
   getEncounterType, saveEncounterType, getEncounterTypes,
   EncounterType,
 } from '@/lib/settings';
@@ -27,13 +27,14 @@ import {
   BILLING_REGIONS,
   getDayRegion,
   saveDayRegion,
+  saveRegion,
 } from '@/lib/billing';
 import { getEducationConfig, getAutoAnalysis } from '@/lib/settings';
 import {
   Plus, Loader2, ChevronLeft, ChevronRight,
   Calendar, Settings, CheckSquare, Square, Play, Clock, EyeOff, Eye,
   Search, ArrowUpDown, X, LogOut, Upload, Monitor, RotateCcw, Sparkles,
-  ChevronDown, SlidersHorizontal, FileSpreadsheet, Bookmark
+  ChevronDown, SlidersHorizontal, FileSpreadsheet, Bookmark, Wind
 } from 'lucide-react';
 
 function formatDateForSheet(date: Date): string {
@@ -127,6 +128,44 @@ const AWAY_PHOTOS = [
   'https://images.unsplash.com/photo-1533738363-b7f9aef128ce?w=1920&q=80', // cat with sunglasses
   'https://images.unsplash.com/photo-1587300003388-59208cc962cb?w=1920&q=80', // golden retriever puppy
   'https://images.unsplash.com/photo-1548247416-ec66f4900b2e?w=1920&q=80', // squirrel eating
+  // Serene & calming
+  'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=1920&q=80', // still lake reflection
+  'https://images.unsplash.com/photo-1476610182048-b716b8518aae?w=1920&q=80', // calm ocean horizon
+  'https://images.unsplash.com/photo-1500534314209-a25ddb2bd429?w=1920&q=80', // foggy mountain lake
+  'https://images.unsplash.com/photo-1504701954957-2010ec3bcec1?w=1920&q=80', // zen garden
+  'https://images.unsplash.com/photo-1510784722466-f2aa9c52fff6?w=1920&q=80', // calm river through forest
+  'https://images.unsplash.com/photo-1418065460487-3e41a6c84dc5?w=1920&q=80', // misty forest morning
+  'https://images.unsplash.com/photo-1502082553048-f009c37129b9?w=1920&q=80', // sunlight through trees
+  'https://images.unsplash.com/photo-1465056836900-8f1e940f1904?w=1920&q=80', // calm beach sunset
+  'https://images.unsplash.com/photo-1528184039930-bd03571a41f4?w=1920&q=80', // peaceful mountain meadow
+  'https://images.unsplash.com/photo-1439853949127-fa647821eba0?w=1920&q=80', // turquoise waters aerial
+  'https://images.unsplash.com/photo-1485470733090-0aae1788d668?w=1920&q=80', // bamboo forest
+  'https://images.unsplash.com/photo-1476673160081-cf065607f449?w=1920&q=80', // rain on window
+  'https://images.unsplash.com/photo-1508739773434-c26b3d09e071?w=1920&q=80', // sunset sky gradient
+  'https://images.unsplash.com/photo-1484591974057-265bb767ef71?w=1920&q=80', // still pond with lily pads
+  'https://images.unsplash.com/photo-1503803548695-c2a7b4a5b875?w=1920&q=80', // gentle ocean wave
+];
+
+// Calming nature photos for breathing exercise
+const CALM_PHOTOS = [
+  'https://images.unsplash.com/photo-1500534314209-a25ddb2bd429?w=1920&q=80', // foggy mountain lake
+  'https://images.unsplash.com/photo-1418065460487-3e41a6c84dc5?w=1920&q=80', // misty forest morning
+  'https://images.unsplash.com/photo-1476610182048-b716b8518aae?w=1920&q=80', // calm ocean horizon
+  'https://images.unsplash.com/photo-1502082553048-f009c37129b9?w=1920&q=80', // sunlight through trees
+  'https://images.unsplash.com/photo-1510784722466-f2aa9c52fff6?w=1920&q=80', // calm river through forest
+  'https://images.unsplash.com/photo-1439853949127-fa647821eba0?w=1920&q=80', // turquoise waters aerial
+  'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=1920&q=80', // tropical beach
+  'https://images.unsplash.com/photo-1475924156734-496f6cac6ec1?w=1920&q=80', // mountain lake
+  'https://images.unsplash.com/photo-1465056836900-8f1e940f1904?w=1920&q=80', // calm beach sunset
+  'https://images.unsplash.com/photo-1485470733090-0aae1788d668?w=1920&q=80', // bamboo forest
+  'https://images.unsplash.com/photo-1508739773434-c26b3d09e071?w=1920&q=80', // sunset sky gradient
+  'https://images.unsplash.com/photo-1503803548695-c2a7b4a5b875?w=1920&q=80', // gentle ocean wave
+  'https://images.unsplash.com/photo-1531366936337-7c912a4589a7?w=1920&q=80', // northern lights
+  'https://images.unsplash.com/photo-1494500764479-0c8f2919a3d8?w=1920&q=80', // misty forest path
+  'https://images.unsplash.com/photo-1484591974057-265bb767ef71?w=1920&q=80', // still pond with lily pads
+  'https://images.unsplash.com/photo-1528184039930-bd03571a41f4?w=1920&q=80', // peaceful mountain meadow
+  'https://images.unsplash.com/photo-1476673160081-cf065607f449?w=1920&q=80', // rain on window
+  'https://images.unsplash.com/photo-1504701954957-2010ec3bcec1?w=1920&q=80', // zen garden
 ];
 
 // Fun facts, jokes, observations, and tidbits for the away screen
@@ -294,6 +333,10 @@ export default function HomePage() {
   const [awayWeather, setAwayWeather] = useState<{ temp: string; desc: string; location: string } | null>(null);
   const [awayPhotoIndex, setAwayPhotoIndex] = useState(0);
   const [awayFunFact, setAwayFunFact] = useState('');
+  const [awayBreathing, setAwayBreathing] = useState(false);
+  const [breathPhase, setBreathPhase] = useState<'inhale' | 'hold' | 'exhale'>('inhale');
+  const [breathCount, setBreathCount] = useState(0);
+  const [calmPhotoUrl, setCalmPhotoUrl] = useState('');
 
   // Dashboard billing
   const [billingPatientIdx, setBillingPatientIdx] = useState<number | null>(null);
@@ -544,8 +587,32 @@ export default function HomePage() {
       .then(res => res.ok ? res.json() : null)
       .then(data => {
         if (data) {
+          if (data.termsAccepted === false) {
+            router.push('/terms');
+            return;
+          }
           setUserEmail(data.email || '');
           setUserName(data.name || '');
+        }
+      })
+      .catch(() => {});
+
+    // Load billing config from Google Sheet → sync to localStorage
+    fetch('/api/billing-config')
+      .then(res => res.ok ? res.json() : null)
+      .then(config => {
+        if (config) {
+          const s = getSettings();
+          saveSettings({
+            ...s,
+            vchCprpId: config.vchCprpId || s.vchCprpId,
+            vchSiteFacility: config.vchSiteFacility || s.vchSiteFacility,
+            vchPracNumber: config.vchPracNumber || s.vchPracNumber,
+            vchPractitionerName: config.vchPractitionerName || s.vchPractitionerName,
+          });
+          if (config.billingRegion) {
+            saveRegion(config.billingRegion);
+          }
         }
       })
       .catch(() => {});
@@ -742,6 +809,31 @@ export default function HomePage() {
 
     return () => clearInterval(interval);
   }, [awayScreen, awayWeather]);
+
+  // Away screen: guided breathing cycle (4s inhale, 4s hold, 6s exhale)
+  useEffect(() => {
+    if (!awayBreathing) return;
+    setBreathPhase('inhale');
+    setBreathCount(0);
+
+    const phases: Array<{ phase: 'inhale' | 'hold' | 'exhale'; duration: number }> = [
+      { phase: 'inhale', duration: 4000 },
+      { phase: 'hold', duration: 4000 },
+      { phase: 'exhale', duration: 6000 },
+    ];
+    let idx = 0;
+    let count = 0;
+
+    const advance = () => {
+      idx = (idx + 1) % phases.length;
+      if (idx === 0) { count++; setBreathCount(count); }
+      setBreathPhase(phases[idx].phase);
+      timer = setTimeout(advance, phases[idx].duration);
+    };
+    let timer = setTimeout(advance, phases[0].duration);
+
+    return () => clearTimeout(timer);
+  }, [awayBreathing]);
 
   // Close dropdown menus on outside click
   const privacyRef = useRef<HTMLDivElement>(null);
@@ -1094,7 +1186,7 @@ export default function HomePage() {
         {/* Close button */}
         <div
           className="absolute top-6 right-6 z-30 cursor-pointer"
-          onClick={(e) => { e.stopPropagation(); setAwayScreen(false); setAwayFunFact(''); }}
+          onClick={(e) => { e.stopPropagation(); setAwayScreen(false); setAwayFunFact(''); setAwayBreathing(false); }}
         >
           <div className="p-2.5 rounded-full bg-white/15 hover:bg-white/25 active:scale-90 transition-all duration-200" style={{ backdropFilter: 'blur(8px)' }}>
             <X className="w-5 h-5 text-white/70" />
@@ -1112,16 +1204,97 @@ export default function HomePage() {
           </div>
         )}
 
-        {/* Sparkle icon — random fact */}
-        <div
-          className="absolute bottom-6 right-6 z-30 cursor-pointer"
-          onClick={(e) => {
-            e.stopPropagation();
-            setAwayFunFact(AWAY_FUN[Math.floor(Math.random() * AWAY_FUN.length)]);
-          }}
-        >
-          <div className="p-3.5 rounded-full bg-white/15 hover:bg-white/25 active:scale-90 transition-all duration-200" style={{ backdropFilter: 'blur(8px)' }}>
-            <Sparkles className="w-6 h-6 text-white/80" />
+        {/* Breathing exercise overlay */}
+        {awayBreathing && (
+          <div
+            className="absolute inset-0 z-40 flex flex-col items-center justify-center"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Calming background photo with crossfade */}
+            <div
+              className="absolute inset-0 transition-opacity duration-[2000ms]"
+              style={{
+                backgroundImage: `url(${calmPhotoUrl})`,
+                backgroundSize: 'cover',
+                backgroundPosition: 'center',
+                opacity: 1,
+              }}
+            />
+            <div className="absolute inset-0 bg-black/45" />
+            <div className="relative z-10 flex flex-col items-center gap-8">
+              {/* Breathing circle */}
+              <div
+                className="rounded-full flex items-center justify-center transition-all ease-in-out"
+                style={{
+                  width: breathPhase === 'exhale' ? 140 : 260,
+                  height: breathPhase === 'exhale' ? 140 : 260,
+                  transitionDuration: breathPhase === 'inhale' ? '4s' : breathPhase === 'hold' ? '0.3s' : '6s',
+                  background: breathPhase === 'inhale'
+                    ? 'radial-gradient(circle, rgba(94,234,212,0.35) 0%, rgba(94,234,212,0.08) 60%, transparent 100%)'
+                    : breathPhase === 'hold'
+                    ? 'radial-gradient(circle, rgba(147,197,253,0.35) 0%, rgba(147,197,253,0.08) 60%, transparent 100%)'
+                    : 'radial-gradient(circle, rgba(196,181,253,0.25) 0%, rgba(196,181,253,0.05) 60%, transparent 100%)',
+                  boxShadow: [
+                    `0 0 ${breathPhase === 'exhale' ? 20 : 50}px rgba(255,255,255,0.08)`,
+                    `inset 0 0 ${breathPhase === 'exhale' ? 15 : 40}px rgba(255,255,255,0.05)`,
+                  ].join(', '),
+                  border: '1px solid rgba(255,255,255,0.15)',
+                }}
+              >
+                <span
+                  className="text-white/90 font-extralight uppercase whitespace-nowrap transition-all ease-in-out"
+                  style={{
+                    fontSize: breathPhase === 'exhale' ? 12 : 18,
+                    letterSpacing: breathPhase === 'exhale' ? '0.15em' : '0.25em',
+                    transitionDuration: breathPhase === 'inhale' ? '4s' : breathPhase === 'hold' ? '0.3s' : '6s',
+                    textShadow: '0 2px 12px rgba(0,0,0,0.4)',
+                  }}
+                >
+                  {breathPhase === 'inhale' ? 'Breathe in' : breathPhase === 'hold' ? 'Hold' : 'Breathe out'}
+                </span>
+              </div>
+              <div className="text-white/40 text-sm font-light tracking-wide" style={{ textShadow: '0 1px 6px rgba(0,0,0,0.3)' }}>
+                {breathCount > 0 ? `${breathCount} breath${breathCount !== 1 ? 's' : ''} completed` : '4 \u00b7 4 \u00b7 6 breathing'}
+              </div>
+              <button
+                onClick={() => setAwayBreathing(false)}
+                className="mt-4 px-6 py-2.5 rounded-full text-white/60 text-sm font-light tracking-wide hover:text-white/90 transition-all duration-300"
+                style={{ background: 'rgba(255,255,255,0.08)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.1)' }}
+              >
+                Done
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Bottom buttons */}
+        <div className="absolute bottom-6 right-6 z-30 flex gap-3">
+          {/* Breathing exercise */}
+          <div
+            className="cursor-pointer"
+            onClick={(e) => {
+              e.stopPropagation();
+              setCalmPhotoUrl(CALM_PHOTOS[Math.floor(Math.random() * CALM_PHOTOS.length)]);
+              setAwayBreathing(true);
+              setAwayFunFact('');
+            }}
+          >
+            <div className="p-3.5 rounded-full bg-white/15 hover:bg-white/25 active:scale-90 transition-all duration-200" style={{ backdropFilter: 'blur(8px)' }}>
+              <Wind className="w-6 h-6 text-white/80" />
+            </div>
+          </div>
+          {/* Random fact */}
+          <div
+            className="cursor-pointer"
+            onClick={(e) => {
+              e.stopPropagation();
+              setAwayFunFact(AWAY_FUN[Math.floor(Math.random() * AWAY_FUN.length)]);
+              setAwayBreathing(false);
+            }}
+          >
+            <div className="p-3.5 rounded-full bg-white/15 hover:bg-white/25 active:scale-90 transition-all duration-200" style={{ backdropFilter: 'blur(8px)' }}>
+              <Sparkles className="w-6 h-6 text-white/80" />
+            </div>
           </div>
         </div>
       </div>
@@ -1575,10 +1748,10 @@ export default function HomePage() {
             {hasPending && !batchMode && (
               <button
                 onClick={() => setBatchMode(true)}
-                className="w-full py-3 bg-amber-100 dark:bg-amber-950/50 text-amber-800 dark:text-amber-300 rounded-xl font-medium flex items-center justify-center gap-2 border border-amber-200 dark:border-amber-800 hover:bg-amber-200 dark:hover:bg-amber-900/50 active:scale-[0.99] transition-all"
+                className="w-full py-2 text-xs text-[var(--text-muted)] hover:text-[var(--text-secondary)] flex items-center justify-center gap-1.5 transition-colors"
               >
-                <Play className="w-4 h-4" />
-                Batch Process ({pendingPatients.length} pending)
+                <Play className="w-3 h-3" />
+                Process {pendingPatients.length} pending
               </button>
             )}
 

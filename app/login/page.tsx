@@ -111,10 +111,14 @@ function LoginContent() {
           </div>
         </div>
 
-        {/* Domain */}
-        <p className="text-center text-[10px] text-[var(--text-muted)] mt-4 tracking-wide">
-          mypatientboard.com
-        </p>
+        {/* Footer links */}
+        <div className="flex items-center justify-center gap-3 mt-4">
+          <a href="/tos" className="text-[10px] text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-colors">Terms of Service</a>
+          <span className="text-[10px] text-[var(--text-muted)]">·</span>
+          <a href="/privacy" className="text-[10px] text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-colors">Privacy Policy</a>
+          <span className="text-[10px] text-[var(--text-muted)]">·</span>
+          <span className="text-[10px] text-[var(--text-muted)] tracking-wide">mypatientboard.com</span>
+        </div>
       </div>
     </div>
   );

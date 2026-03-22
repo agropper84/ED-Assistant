@@ -145,6 +145,8 @@ export const COLUMNS = {
   CLINICAL_QA: 31,   // AF
   EDUCATION: 32,     // AG
   ENCOUNTER_NOTES: 33, // AH
+  ADMISSION: 34,       // AI
+  PROFILE: 35,         // AJ
 };
 
 export const DATA_START_ROW = 8; // Row 8 in spreadsheet (0-indexed: 7)
@@ -186,6 +188,8 @@ export interface Patient {
   clinicalQA: string;
   education: string;
   encounterNotes: string;
+  admission: string;
+  profile: string;
   // Computed
   hasOutput: boolean;
   status: 'new' | 'pending' | 'processed';
@@ -284,7 +288,7 @@ export async function getOrCreateDateSheet(ctx: SheetsContext, dateOrName?: Date
           updateSheetProperties: {
             properties: {
               sheetId: newSheetId,
-              gridProperties: { columnCount: 34 },
+              gridProperties: { columnCount: 36 },
             },
             fields: 'gridProperties.columnCount',
           },
@@ -624,7 +628,7 @@ export async function clearPatientRow(
 
   await sheets.spreadsheets.values.clear({
     spreadsheetId,
-    range: `'${sheet}'!A${rowIndex}:AH${rowIndex}`,
+    range: `'${sheet}'!A${rowIndex}:AJ${rowIndex}`,
   });
 }
 
@@ -640,7 +644,7 @@ export async function movePatientToSheet(
   // 1. Read the patient row + up to 20 continuation rows
   const response = await sheets.spreadsheets.values.get({
     spreadsheetId,
-    range: `'${sourceSheet}'!A${rowIndex}:AH${rowIndex + 20}`,
+    range: `'${sourceSheet}'!A${rowIndex}:AJ${rowIndex + 20}`,
   });
   const allRows = response.data.values || [];
   if (allRows.length === 0) throw new Error('Patient row not found');
@@ -670,7 +674,7 @@ export async function movePatientToSheet(
 
   // 5. Write all rows to target
   const batchData = rowsToMove.map((row, i) => ({
-    range: `'${newSheetName}'!A${newRowIndex + i}:AH${newRowIndex + i}`,
+    range: `'${newSheetName}'!A${newRowIndex + i}:AJ${newRowIndex + i}`,
     values: [row],
   }));
 
@@ -704,7 +708,7 @@ export async function getPatients(ctx: SheetsContext, sheetName?: string): Promi
 
   const response = await sheets.spreadsheets.values.get({
     spreadsheetId,
-    range: `'${sheet}'!A${DATA_START_ROW}:AH200`,
+    range: `'${sheet}'!A${DATA_START_ROW}:AJ200`,
   });
 
   const rows = response.data.values || [];
@@ -748,7 +752,7 @@ export async function searchPatientsAcrossSheets(
   const { sheets, spreadsheetId } = ctx;
 
   // Fetch all sheets in a single batchGet call (instead of N sequential calls)
-  const ranges = sheetNames.map(s => `'${s}'!A${DATA_START_ROW}:AH200`);
+  const ranges = sheetNames.map(s => `'${s}'!A${DATA_START_ROW}:AJ200`);
   const response = await sheets.spreadsheets.values.batchGet({
     spreadsheetId,
     ranges,
@@ -794,7 +798,7 @@ export async function getPatient(ctx: SheetsContext, rowIndex: number, sheetName
   // Read patient row + up to 20 continuation rows below
   const response = await sheets.spreadsheets.values.get({
     spreadsheetId,
-    range: `'${sheet}'!A${rowIndex}:AH${rowIndex + 20}`,
+    range: `'${sheet}'!A${rowIndex}:AJ${rowIndex + 20}`,
   });
 
   const rows = response.data.values || [];
@@ -851,6 +855,8 @@ export async function updatePatientFields(
     clinicalQA: 'AF',
     education: 'AG',
     encounterNotes: 'AH',
+    admission: 'AI',
+    profile: 'AJ',
   };
 
   const data = Object.entries(fields)
@@ -865,7 +871,7 @@ export async function updatePatientFields(
   // If writing to columns beyond Z, ensure the sheet has enough columns
   const needsExpand = data.some(d => /![A-Z]{2,}/.test(d.range));
   if (needsExpand) {
-    await ensureColumnCount(ctx, sheet, 34);
+    await ensureColumnCount(ctx, sheet, 36);
   }
 
   await sheets.spreadsheets.values.batchUpdate({
@@ -968,6 +974,8 @@ function rowToPatient(row: string[], rowIndex: number, sheetName: string): Patie
     clinicalQA: getValue(COLUMNS.CLINICAL_QA),
     education: getValue(COLUMNS.EDUCATION),
     encounterNotes: getValue(COLUMNS.ENCOUNTER_NOTES),
+    admission: getValue(COLUMNS.ADMISSION),
+    profile: getValue(COLUMNS.PROFILE),
     hasOutput: !!(hpi || assessmentPlan),
     status,
   };
@@ -1289,7 +1297,7 @@ export async function upsertDiagnosisCode(
 const STYLE_GUIDE_SHEET = 'Style Guide';
 
 const DEFAULT_STYLE_GUIDE: StyleGuide = {
-  examples: { hpi: [], objective: [], assessmentPlan: [], referral: [] },
+  examples: { hpi: [], objective: [], assessmentPlan: [], referral: [], admission: [] },
   extractedFeatures: [],
   customGuidance: '',
 };
@@ -1314,7 +1322,7 @@ export async function getStyleGuideFromSheet(ctx: SheetsContext): Promise<StyleG
 
     const parsed = JSON.parse(raw);
     return {
-      examples: { hpi: [], objective: [], assessmentPlan: [], referral: [], ...(parsed.examples || {}) },
+      examples: { hpi: [], objective: [], assessmentPlan: [], referral: [], admission: [], ...(parsed.examples || {}) },
       extractedFeatures: parsed.extractedFeatures || [],
       customGuidance: parsed.customGuidance || '',
     };
@@ -1801,5 +1809,91 @@ export async function deleteParseFormat(ctx: SheetsContext, name: string): Promi
     range: `'${PARSE_FORMATS_SHEET}'!A1`,
     valueInputOption: 'RAW',
     requestBody: { values: [...header, ...rows] },
+  });
+}
+
+// ============================================================
+// Billing Config — key/value pairs in a "Config" sheet
+// ============================================================
+
+const CONFIG_SHEET = 'Config';
+
+export interface BillingConfig {
+  billingRegion: string;       // 'yukon' | 'vch'
+  vchCprpId: string;
+  vchSiteFacility: string;
+  vchPracNumber: string;
+  vchPractitionerName: string;
+}
+
+const DEFAULT_BILLING_CONFIG: BillingConfig = {
+  billingRegion: 'yukon',
+  vchCprpId: '',
+  vchSiteFacility: '',
+  vchPracNumber: '',
+  vchPractitionerName: '',
+};
+
+/** Read billing config from the "Config" sheet. Returns defaults if missing. */
+export async function getBillingConfig(ctx: SheetsContext): Promise<BillingConfig> {
+  const { sheets, spreadsheetId } = ctx;
+
+  try {
+    const spreadsheet = await sheets.spreadsheets.get({ spreadsheetId });
+    const exists = spreadsheet.data.sheets?.some(
+      (s: any) => s.properties.title === CONFIG_SHEET
+    );
+    if (!exists) return { ...DEFAULT_BILLING_CONFIG };
+
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId,
+      range: `'${CONFIG_SHEET}'!A1:B20`,
+    });
+
+    const rows = response.data.values || [];
+    const config: Record<string, string> = {};
+    for (const row of rows) {
+      if (row[0]) config[row[0]] = row[1] || '';
+    }
+
+    return {
+      billingRegion: config.billingRegion || DEFAULT_BILLING_CONFIG.billingRegion,
+      vchCprpId: config.vchCprpId || '',
+      vchSiteFacility: config.vchSiteFacility || '',
+      vchPracNumber: config.vchPracNumber || '',
+      vchPractitionerName: config.vchPractitionerName || '',
+    };
+  } catch {
+    return { ...DEFAULT_BILLING_CONFIG };
+  }
+}
+
+/** Save billing config to the "Config" sheet. Auto-creates the tab if needed. */
+export async function saveBillingConfig(ctx: SheetsContext, config: BillingConfig): Promise<void> {
+  const { sheets, spreadsheetId } = ctx;
+
+  const spreadsheet = await sheets.spreadsheets.get({ spreadsheetId });
+  const exists = spreadsheet.data.sheets?.some(
+    (s: any) => s.properties.title === CONFIG_SHEET
+  );
+
+  if (!exists) {
+    await sheets.spreadsheets.batchUpdate({
+      spreadsheetId,
+      requestBody: {
+        requests: [{
+          addSheet: { properties: { title: CONFIG_SHEET } },
+        }],
+      },
+    });
+  }
+
+  const rows = Object.entries(config).map(([key, value]) => [key, value]);
+
+  await sheets.spreadsheets.values.update({
+    spreadsheetId,
+    range: `'${CONFIG_SHEET}'!A1`,
+    valueInputOption: 'RAW',
+    requestBody: { values: rows },
   });
 }

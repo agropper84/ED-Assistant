@@ -3,6 +3,8 @@
 import { useState, useRef } from 'react';
 import { Patient } from '@/lib/google-sheets';
 import { Clock, User, FileText, Trash2, DollarSign, Stethoscope, Copy, Check, Brain, ClipboardList, BookOpen, Play, Loader2, X, MessageCircleQuestion, Merge, CalendarDays, GraduationCap, ExternalLink, Calculator, Bookmark } from 'lucide-react';
+import { ProfileSummary } from '@/components/PatientProfile';
+import type { PatientProfile } from '@/app/api/profile/route';
 
 interface PatientCardProps {
   patient: Patient;
@@ -91,7 +93,13 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
   const dateInputRef = useRef<HTMLInputElement>(null);
 
   const hasEncounterNote = !!(patient.hpi || patient.objective || patient.assessmentPlan);
-  const hasAnalysis = !!(patient.synopsis || patient.management || patient.evidence);
+  const hasAnalysis = !!(patient.synopsis || patient.profile || patient.management || patient.evidence);
+
+  // Parse profile JSON for display
+  let parsedProfile: PatientProfile | null = null;
+  if (patient.profile) {
+    try { parsedProfile = JSON.parse(patient.profile); } catch {}
+  }
   const hasInputData = !!(patient.transcript || patient.triageVitals || patient.additional || patient.diagnosis);
   const showInfoIcons = hasEncounterNote || hasAnalysis || (hasInputData && !!onGenerateAnalysis);
 
@@ -251,36 +259,40 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
                 </div>
               )}
 
-              {/* Synopsis — blue (echoes header) */}
+              {/* Profile / Synopsis — blue (echoes header) */}
               <div className="relative group/synopsis flex-shrink-0">
                 <span
                   onClick={(e) => {
                     e.stopPropagation();
-                    if (!patient.synopsis && (onGenerateSynopsis || onGenerateAnalysis) && !generatingIcon) {
+                    if (!patient.profile && !patient.synopsis && (onGenerateSynopsis || onGenerateAnalysis) && !generatingIcon) {
                       setGeneratingIcon('synopsis');
                       (onGenerateSynopsis || onGenerateAnalysis)!().finally(() => setGeneratingIcon(null));
-                    } else if (patient.synopsis && onNavigate) {
+                    } else if ((patient.profile || patient.synopsis) && onNavigate) {
                       onNavigate();
                     }
                   }}
-                  className={`p-0.5 rounded transition-colors inline-flex ${patient.synopsis || onGenerateSynopsis || onGenerateAnalysis ? 'hover:bg-blue-50 dark:hover:bg-blue-900/30 cursor-pointer' : ''}`}
-                  title={patient.synopsis ? '' : 'Generate synopsis & analysis'}
+                  className={`p-0.5 rounded transition-colors inline-flex ${patient.profile || patient.synopsis || onGenerateSynopsis || onGenerateAnalysis ? 'hover:bg-blue-50 dark:hover:bg-blue-900/30 cursor-pointer' : ''}`}
+                  title={patient.profile || patient.synopsis ? '' : 'Generate synopsis & analysis'}
                 >
                   {generatingIcon === 'synopsis' ? (
                     <Loader2 className="w-4 h-4 text-blue-400 animate-spin" />
                   ) : (
-                    <Brain className={`w-3.5 h-3.5 ${patient.synopsis ? 'text-blue-600 dark:text-blue-400' : EMPTY}`} />
+                    <Brain className={`w-3.5 h-3.5 ${patient.profile || patient.synopsis ? 'text-blue-600 dark:text-blue-400' : EMPTY}`} />
                   )}
                 </span>
-                {patient.synopsis && (
+                {(parsedProfile || patient.synopsis) && (
                   <>
                     <div className="absolute left-0 top-full h-2 w-72 hidden group-hover/synopsis:block" />
                     <div
-                      className="absolute left-0 top-full mt-2 z-50 hidden group-hover/synopsis:block w-72 max-h-48 overflow-y-auto p-3 bg-gray-900 text-gray-100 text-xs rounded-lg shadow-xl ring-1 ring-white/10"
+                      className="absolute left-0 top-full mt-2 z-50 hidden group-hover/synopsis:block w-72 max-h-64 overflow-y-auto p-3 bg-gray-900 text-gray-100 text-xs rounded-lg shadow-xl ring-1 ring-white/10"
                       onClick={(e) => e.stopPropagation()}
                     >
-                      <span className="text-blue-400 font-medium block mb-1">Synopsis</span>
-                      <p className="whitespace-pre-wrap leading-relaxed">{patient.synopsis}</p>
+                      <span className="text-blue-400 font-medium block mb-1.5">Patient Profile</span>
+                      {parsedProfile ? (
+                        <ProfileSummary profile={parsedProfile} />
+                      ) : (
+                        <p className="whitespace-pre-wrap leading-relaxed">{patient.synopsis}</p>
+                      )}
                     </div>
                   </>
                 )}
