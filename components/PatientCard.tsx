@@ -514,47 +514,6 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
             </span>
           )}
 
-          {/* Medical Profile pill — only shows when profile has clinical content */}
-          {parsedProfile && (parsedProfile.pmhx.length > 0 || parsedProfile.medications.length > 0 || parsedProfile.allergies.length > 0 || parsedProfile.socialHistory.length > 0 || parsedProfile.familyHistory.length > 0) && (
-            <div className="relative flex-shrink-0">
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setShowProfilePopover(!showProfilePopover);
-                }}
-                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium transition-all active:scale-95 bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-800/60 hover:bg-rose-100 dark:hover:bg-rose-900/50 hover:border-rose-300 dark:hover:border-rose-700 shadow-sm"
-                title="View medical profile"
-              >
-                <Heart className="w-3 h-3" />
-                Profile
-              </button>
-              {showProfilePopover && (
-                <>
-                  {/* Backdrop to close */}
-                  <div
-                    className="fixed inset-0 z-40"
-                    onClick={(e) => { e.stopPropagation(); setShowProfilePopover(false); }}
-                  />
-                  <div
-                    className="absolute left-0 top-full mt-2 z-50 w-72 max-h-72 overflow-y-auto p-3 bg-gray-900 text-gray-100 text-xs rounded-xl shadow-2xl ring-1 ring-white/10 animate-scaleIn"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-rose-400 font-semibold text-[13px]">Medical Profile</span>
-                      <button
-                        onClick={(e) => { e.stopPropagation(); setShowProfilePopover(false); }}
-                        className="p-0.5 rounded hover:bg-white/10 transition-colors"
-                      >
-                        <X className="w-3.5 h-3.5 text-gray-400" />
-                      </button>
-                    </div>
-                    <ProfileSummary profile={parsedProfile} />
-                  </div>
-                </>
-              )}
-            </div>
-          )}
-
           {editingDiagnosis ? (
             <span
               className="flex items-center gap-1 flex-shrink-0"
@@ -604,6 +563,45 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
               Add diagnosis
             </span>
           ) : null}
+
+          {/* Medical profile icon — filled heart at end of metadata row */}
+          {parsedProfile && (parsedProfile.pmhx.length > 0 || parsedProfile.medications.length > 0 || parsedProfile.allergies.length > 0 || parsedProfile.socialHistory.length > 0 || parsedProfile.familyHistory.length > 0) && (
+            <div className="relative flex-shrink-0 ml-auto">
+              <span
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowProfilePopover(!showProfilePopover);
+                }}
+                className="flex items-center cursor-pointer transition-colors hover:text-rose-500 dark:hover:text-rose-400 active:scale-90"
+                title="Medical profile"
+              >
+                <Heart className="w-3.5 h-3.5 text-rose-500 dark:text-rose-400" fill="currentColor" />
+              </span>
+              {showProfilePopover && (
+                <>
+                  <div
+                    className="fixed inset-0 z-40"
+                    onClick={(e) => { e.stopPropagation(); setShowProfilePopover(false); }}
+                  />
+                  <div
+                    className="absolute right-0 top-full mt-2 z-50 w-72 max-h-72 overflow-y-auto p-3 bg-gray-900 text-gray-100 text-xs rounded-xl shadow-2xl ring-1 ring-white/10 animate-scaleIn"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-rose-400 font-semibold text-[13px]">Medical Profile</span>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setShowProfilePopover(false); }}
+                        className="p-0.5 rounded hover:bg-white/10 transition-colors"
+                      >
+                        <X className="w-3.5 h-3.5 text-gray-400" />
+                      </button>
+                    </div>
+                    <ProfileSummary profile={parsedProfile} />
+                  </div>
+                </>
+              )}
+            </div>
+          )}
         </div>
       </button>
 
