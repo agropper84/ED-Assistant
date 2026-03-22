@@ -5,6 +5,7 @@ import { getSheetsContext, getPatient, updatePatientFields } from '@/lib/google-
 export const maxDuration = 30;
 
 export interface PatientProfile {
+  presentingIssue: string;
   age: string;
   gender: string;
   pmhx: string[];
@@ -50,6 +51,7 @@ export async function POST(request: NextRequest) {
         content: `Extract a structured patient profile from the following clinical documentation. Return ONLY valid JSON matching this exact format — no markdown, no explanation:
 
 {
+  "presentingIssue": "one-sentence summary of why the patient is presenting to the ED, e.g. 'Chest pain radiating to left arm, onset 2 hours ago'",
   "age": "age with units if available, e.g. '45 yo' or ''",
   "gender": "M/F/Other or ''",
   "pmhx": ["list of past medical history items"],

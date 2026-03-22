@@ -53,6 +53,7 @@ export function PatientProfile({ profile, age, gender, onGenerate, generating }:
   const copyProfile = () => {
     if (!profile) return;
     const lines: string[] = [];
+    if (profile.presentingIssue) lines.push(`Presenting: ${profile.presentingIssue}`);
     if (profile.age || age) lines.push(`Age: ${profile.age || age}`);
     if (profile.gender || gender) lines.push(`Gender: ${profile.gender || gender}`);
     if (profile.pmhx.length) lines.push(`PMHx: ${profile.pmhx.join(', ')}`);
@@ -102,6 +103,13 @@ export function PatientProfile({ profile, age, gender, onGenerate, generating }:
 
       {hasProfile ? (
         <div className="space-y-3">
+          {/* Presenting issue */}
+          {profile.presentingIssue && (
+            <p className="text-sm text-[var(--text-primary)] font-medium leading-snug italic">
+              {profile.presentingIssue}
+            </p>
+          )}
+
           {/* Demographics row */}
           {(profile.age || age || profile.gender || gender) && (
             <div className="flex gap-4 text-sm">
@@ -187,6 +195,9 @@ export function ProfileSummary({ profile }: { profile: ProfileData }) {
 
   return (
     <div className="space-y-1.5">
+      {profile.presentingIssue && (
+        <p className="text-gray-100 font-medium italic mb-1">{profile.presentingIssue}</p>
+      )}
       {activeSections.map(({ label, items, color }) => (
         <div key={label}>
           <span className={`${color} font-medium`}>{label}:</span>{' '}
