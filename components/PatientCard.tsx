@@ -2,7 +2,7 @@
 
 import { useState, useRef } from 'react';
 import { Patient } from '@/lib/google-sheets';
-import { Clock, User, FileText, Trash2, DollarSign, Stethoscope, Copy, Check, Brain, ClipboardList, BookOpen, Play, Loader2, X, MessageCircleQuestion, Merge, CalendarDays, GraduationCap, ExternalLink, Calculator, Bookmark } from 'lucide-react';
+import { Clock, User, FileText, Trash2, DollarSign, Stethoscope, Copy, Check, Brain, ClipboardList, BookOpen, Play, Loader2, X, MessageCircleQuestion, Merge, CalendarDays, GraduationCap, ExternalLink, Calculator, Bookmark, Heart } from 'lucide-react';
 import { ProfileSummary } from '@/components/PatientProfile';
 import type { PatientProfile } from '@/app/api/profile/route';
 
@@ -78,6 +78,7 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
   const [noteCopied, setNoteCopied] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [generatingIcon, setGeneratingIcon] = useState<'synopsis' | 'management' | 'evidence' | 'education' | null>(null);
+  const [showProfilePopover, setShowProfilePopover] = useState(false);
   const [editingDemo, setEditingDemo] = useState(false);
   const [editName, setEditName] = useState('');
   const [editAge, setEditAge] = useState('');
@@ -93,7 +94,7 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
   const dateInputRef = useRef<HTMLInputElement>(null);
 
   const hasEncounterNote = !!(patient.hpi || patient.objective || patient.assessmentPlan);
-  const hasAnalysis = !!(patient.synopsis || patient.profile || patient.management || patient.evidence);
+  const hasAnalysis = !!(patient.synopsis || patient.management || patient.evidence);
 
   // Parse profile JSON for display
   let parsedProfile: PatientProfile | null = null;
@@ -259,40 +260,36 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
                 </div>
               )}
 
-              {/* Profile / Synopsis — blue (echoes header) */}
+              {/* Synopsis — blue (echoes header) */}
               <div className="relative group/synopsis flex-shrink-0">
                 <span
                   onClick={(e) => {
                     e.stopPropagation();
-                    if (!patient.profile && !patient.synopsis && (onGenerateSynopsis || onGenerateAnalysis) && !generatingIcon) {
+                    if (!patient.synopsis && (onGenerateSynopsis || onGenerateAnalysis) && !generatingIcon) {
                       setGeneratingIcon('synopsis');
                       (onGenerateSynopsis || onGenerateAnalysis)!().finally(() => setGeneratingIcon(null));
-                    } else if ((patient.profile || patient.synopsis) && onNavigate) {
+                    } else if (patient.synopsis && onNavigate) {
                       onNavigate();
                     }
                   }}
-                  className={`p-0.5 rounded transition-colors inline-flex ${patient.profile || patient.synopsis || onGenerateSynopsis || onGenerateAnalysis ? 'hover:bg-blue-50 dark:hover:bg-blue-900/30 cursor-pointer' : ''}`}
-                  title={patient.profile || patient.synopsis ? '' : 'Generate synopsis & analysis'}
+                  className={`p-0.5 rounded transition-colors inline-flex ${patient.synopsis || onGenerateSynopsis || onGenerateAnalysis ? 'hover:bg-blue-50 dark:hover:bg-blue-900/30 cursor-pointer' : ''}`}
+                  title={patient.synopsis ? '' : 'Generate synopsis & analysis'}
                 >
                   {generatingIcon === 'synopsis' ? (
                     <Loader2 className="w-4 h-4 text-blue-400 animate-spin" />
                   ) : (
-                    <Brain className={`w-3.5 h-3.5 ${patient.profile || patient.synopsis ? 'text-blue-600 dark:text-blue-400' : EMPTY}`} />
+                    <Brain className={`w-3.5 h-3.5 ${patient.synopsis ? 'text-blue-600 dark:text-blue-400' : EMPTY}`} />
                   )}
                 </span>
-                {(parsedProfile || patient.synopsis) && (
+                {patient.synopsis && (
                   <>
                     <div className="absolute left-0 top-full h-2 w-72 hidden group-hover/synopsis:block" />
                     <div
-                      className="absolute left-0 top-full mt-2 z-50 hidden group-hover/synopsis:block w-72 max-h-64 overflow-y-auto p-3 bg-gray-900 text-gray-100 text-xs rounded-lg shadow-xl ring-1 ring-white/10"
+                      className="absolute left-0 top-full mt-2 z-50 hidden group-hover/synopsis:block w-72 max-h-48 overflow-y-auto p-3 bg-gray-900 text-gray-100 text-xs rounded-lg shadow-xl ring-1 ring-white/10"
                       onClick={(e) => e.stopPropagation()}
                     >
-                      <span className="text-blue-400 font-medium block mb-1.5">Patient Profile</span>
-                      {parsedProfile ? (
-                        <ProfileSummary profile={parsedProfile} />
-                      ) : (
-                        <p className="whitespace-pre-wrap leading-relaxed">{patient.synopsis}</p>
-                      )}
+                      <span className="text-blue-400 font-medium block mb-1">Synopsis</span>
+                      <p className="whitespace-pre-wrap leading-relaxed">{patient.synopsis}</p>
                     </div>
                   </>
                 )}
@@ -516,6 +513,48 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
               {patient.age}{patient.gender && ` ${patient.gender}`}
             </span>
           )}
+
+          {/* Medical Profile pill — only shows when profile has clinical content */}
+          {parsedProfile && (parsedProfile.pmhx.length > 0 || parsedProfile.medications.length > 0 || parsedProfile.allergies.length > 0 || parsedProfile.socialHistory.length > 0 || parsedProfile.familyHistory.length > 0) && (
+            <div className="relative flex-shrink-0">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowProfilePopover(!showProfilePopover);
+                }}
+                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium transition-all active:scale-95 bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-800/60 hover:bg-rose-100 dark:hover:bg-rose-900/50 hover:border-rose-300 dark:hover:border-rose-700 shadow-sm"
+                title="View medical profile"
+              >
+                <Heart className="w-3 h-3" />
+                Profile
+              </button>
+              {showProfilePopover && (
+                <>
+                  {/* Backdrop to close */}
+                  <div
+                    className="fixed inset-0 z-40"
+                    onClick={(e) => { e.stopPropagation(); setShowProfilePopover(false); }}
+                  />
+                  <div
+                    className="absolute left-0 top-full mt-2 z-50 w-72 max-h-72 overflow-y-auto p-3 bg-gray-900 text-gray-100 text-xs rounded-xl shadow-2xl ring-1 ring-white/10 animate-scaleIn"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-rose-400 font-semibold text-[13px]">Medical Profile</span>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setShowProfilePopover(false); }}
+                        className="p-0.5 rounded hover:bg-white/10 transition-colors"
+                      >
+                        <X className="w-3.5 h-3.5 text-gray-400" />
+                      </button>
+                    </div>
+                    <ProfileSummary profile={parsedProfile} />
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+
           {editingDiagnosis ? (
             <span
               className="flex items-center gap-1 flex-shrink-0"
