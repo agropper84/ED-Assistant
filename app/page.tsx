@@ -1056,10 +1056,11 @@ export default function HomePage() {
             if (res.ok) fetchPatients();
           }}
           onGenerateAnalysis={async () => {
-            const body = JSON.stringify({ rowIndex: patient.rowIndex, sheetName: patient.sheetName });
+            const educationMode = getEducationConfig().enabled;
+            const body = JSON.stringify({ rowIndex: patient.rowIndex, sheetName: patient.sheetName, educationMode });
             const headers = { 'Content-Type': 'application/json' };
             await Promise.all([
-              fetch('/api/synopsis', { method: 'POST', headers, body }),
+              fetch('/api/synopsis', { method: 'POST', headers, body: JSON.stringify({ rowIndex: patient.rowIndex, sheetName: patient.sheetName }) }),
               fetch('/api/analysis', { method: 'POST', headers, body }),
             ]);
             fetchPatients();

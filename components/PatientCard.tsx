@@ -2,7 +2,7 @@
 
 import { useState, useRef } from 'react';
 import { Patient } from '@/lib/google-sheets';
-import { Clock, User, FileText, Trash2, DollarSign, Stethoscope, Copy, Check, Brain, ClipboardList, BookOpen, Play, Loader2, X, MessageCircleQuestion, Merge, CalendarDays, GraduationCap, ExternalLink, Calculator, Bookmark, Heart } from 'lucide-react';
+import { Clock, User, FileText, Trash2, DollarSign, Stethoscope, Copy, Check, Brain, ListTree, BookOpen, Play, Loader2, X, MessageCircleQuestion, Merge, CalendarDays, GraduationCap, ExternalLink, Calculator, Bookmark, Heart } from 'lucide-react';
 import { ProfileSummary } from '@/components/PatientProfile';
 import type { PatientProfile } from '@/app/api/profile/route';
 
@@ -94,7 +94,7 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
   const dateInputRef = useRef<HTMLInputElement>(null);
 
   const hasEncounterNote = !!(patient.hpi || patient.objective || patient.assessmentPlan);
-  const hasAnalysis = !!(patient.synopsis || patient.management || patient.evidence);
+  const hasAnalysis = !!(patient.synopsis || patient.ddx || patient.evidence);
 
   // Parse profile JSON for display
   let parsedProfile: PatientProfile | null = null;
@@ -335,36 +335,36 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
                 )}
               </div>
 
-              {/* Management — violet (purple complement) */}
-              <div className="relative group/mgmt flex-shrink-0">
+              {/* Differential Diagnosis — violet */}
+              <div className="relative group/ddx flex-shrink-0">
                 <span
                   onClick={(e) => {
                     e.stopPropagation();
-                    if (!patient.management && (onGenerateManagement || onGenerateAnalysis) && !generatingIcon) {
+                    if (!patient.ddx && onGenerateAnalysis && !generatingIcon) {
                       setGeneratingIcon('management');
-                      (onGenerateManagement || onGenerateAnalysis)!().finally(() => setGeneratingIcon(null));
-                    } else if (patient.management && onNavigate) {
+                      onGenerateAnalysis().finally(() => setGeneratingIcon(null));
+                    } else if (patient.ddx && onNavigate) {
                       onNavigate();
                     }
                   }}
-                  className={`p-0.5 rounded transition-colors inline-flex ${patient.management || onGenerateManagement || onGenerateAnalysis ? 'hover:bg-violet-50 dark:hover:bg-violet-900/30 cursor-pointer' : ''}`}
-                  title={patient.management ? '' : 'Generate synopsis & analysis'}
+                  className={`p-0.5 rounded transition-colors inline-flex ${patient.ddx || onGenerateAnalysis ? 'hover:bg-violet-50 dark:hover:bg-violet-900/30 cursor-pointer' : ''}`}
+                  title={patient.ddx ? '' : 'Generate differential diagnosis'}
                 >
                   {generatingIcon === 'management' ? (
                     <Loader2 className="w-4 h-4 text-violet-400 animate-spin" />
                   ) : (
-                    <ClipboardList className={`w-3.5 h-3.5 ${patient.management ? 'text-violet-600 dark:text-violet-400' : EMPTY}`} />
+                    <ListTree className={`w-3.5 h-3.5 ${patient.ddx ? 'text-violet-600 dark:text-violet-400' : EMPTY}`} />
                   )}
                 </span>
-                {patient.management && (
+                {patient.ddx && (
                   <>
-                    <div className="absolute left-0 top-full h-2 w-72 hidden group-hover/mgmt:block" />
+                    <div className="absolute left-0 top-full h-2 w-72 hidden group-hover/ddx:block" />
                     <div
-                      className="absolute left-0 top-full mt-2 z-50 hidden group-hover/mgmt:block w-72 max-h-48 overflow-y-auto p-3 bg-gray-900 text-gray-100 text-xs rounded-lg shadow-xl ring-1 ring-white/10"
+                      className="absolute left-0 top-full mt-2 z-50 hidden group-hover/ddx:block w-72 max-h-48 overflow-y-auto p-3 bg-gray-900 text-gray-100 text-xs rounded-lg shadow-xl ring-1 ring-white/10"
                       onClick={(e) => e.stopPropagation()}
                     >
-                      <span className="text-violet-400 font-medium block mb-1">Management</span>
-                      <p className="whitespace-pre-wrap leading-relaxed">{patient.management}</p>
+                      <span className="text-violet-400 font-medium block mb-1">Differential Diagnosis</span>
+                      <p className="whitespace-pre-wrap leading-relaxed">{patient.ddx}</p>
                     </div>
                   </>
                 )}
