@@ -1107,6 +1107,14 @@ export default function HomePage() {
             setSavedResourceKeys(prev => new Set(prev).add(`${patient.rowIndex}:${patient.sheetName}:${resource.type}`));
           }}
           savedResourceKey={(type) => savedResourceKeys.has(`${patient.rowIndex}:${patient.sheetName}:${type}`)}
+          onGenerateProfile={async () => {
+            await fetch('/api/profile', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ rowIndex: patient.rowIndex, sheetName: patient.sheetName }),
+            });
+            fetchPatients();
+          }}
           onGenerateEducation={async () => {
             const eduConfig = getEducationConfig();
             await fetch('/api/education', {

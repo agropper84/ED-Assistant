@@ -452,7 +452,7 @@ export default function PatientPage() {
           generating={generatingProfile}
         />
 
-        {/* Update AI Analysis Button */}
+        {/* Update Medical Profile Button */}
         <button
           onClick={handleUpdateAnalysis}
           disabled={updatingAnalysis}
@@ -461,12 +461,12 @@ export default function PatientPage() {
           {updatingAnalysis ? (
             <>
               <Loader2 className="w-4 h-4 animate-spin" />
-              Updating Analysis...
+              Updating Medical Profile...
             </>
           ) : (
             <>
               <RefreshCw className="w-4 h-4" />
-              Update AI Analysis
+              Update Medical Profile
             </>
           )}
         </button>
