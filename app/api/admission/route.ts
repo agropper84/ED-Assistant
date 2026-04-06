@@ -1,15 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { generateAdmission } from '@/lib/claude';
 import { getSheetsContext, getPatient, updatePatientFields, getStyleGuideFromSheet } from '@/lib/google-sheets';
-import { withApiHandler } from '@/lib/api-handler';
+import { withApiHandler, parseBody } from '@/lib/api-handler';
+import { admissionSchema } from '@/lib/schemas';
 
 export const maxDuration = 60;
 
 export const POST = withApiHandler(
   { rateLimit: { limit: 10, window: 60 }, auditEvent: 'generate.admission' },
   async (request: NextRequest) => {
+    const { rowIndex, sheetName, service, reason, acuity } = await parseBody(request, admissionSchema);
     const ctx = await getSheetsContext();
-    const { rowIndex, sheetName, service, reason, acuity } = await request.json();
 
     const patient = await getPatient(ctx, rowIndex, sheetName);
     if (!patient) {

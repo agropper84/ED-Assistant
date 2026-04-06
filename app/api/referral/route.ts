@@ -1,15 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { generateReferral } from '@/lib/claude';
 import { getSheetsContext, getPatient, updatePatientFields, getStyleGuideFromSheet } from '@/lib/google-sheets';
-import { withApiHandler } from '@/lib/api-handler';
+import { withApiHandler, parseBody } from '@/lib/api-handler';
+import { referralSchema } from '@/lib/schemas';
 
 export const maxDuration = 60;
 
 export const POST = withApiHandler(
   { rateLimit: { limit: 10, window: 60 }, auditEvent: 'generate.referral' },
   async (request: NextRequest) => {
+    const { rowIndex, sheetName, specialty, urgency, reason } = await parseBody(request, referralSchema);
     const ctx = await getSheetsContext();
-    const { rowIndex, sheetName, specialty, urgency, reason } = await request.json();
 
     const patient = await getPatient(ctx, rowIndex, sheetName);
     if (!patient) {

@@ -1,19 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { lookupICDCodes } from '@/lib/claude';
 import { getSheetsContext, findDiagnosisCode, upsertDiagnosisCode } from '@/lib/google-sheets';
-import { withApiHandler } from '@/lib/api-handler';
+import { withApiHandler, parseBody } from '@/lib/api-handler';
+import { icdLookupSchema } from '@/lib/schemas';
 
 export const maxDuration = 15;
 
 export const POST = withApiHandler(
   { rateLimit: { limit: 30, window: 60 } },
   async (request: NextRequest) => {
-    const { diagnosis } = await request.json();
-
-    if (!diagnosis?.trim()) {
-      return NextResponse.json({ error: 'Missing diagnosis' }, { status: 400 });
-    }
-
+    const { diagnosis } = await parseBody(request, icdLookupSchema);
     const trimmed = diagnosis.trim();
 
     // Check the Diagnosis Codes registry first

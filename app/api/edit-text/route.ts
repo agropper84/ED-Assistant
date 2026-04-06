@@ -1,17 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { callWithPHIProtection } from '@/lib/claude';
-import { withApiHandler } from '@/lib/api-handler';
+import { withApiHandler, parseBody } from '@/lib/api-handler';
+import { editTextSchema } from '@/lib/schemas';
 
 export const maxDuration = 30;
 
 export const POST = withApiHandler(
   { rateLimit: { limit: 30, window: 60 }, auditEvent: 'generate.edit' },
   async (request: NextRequest) => {
-    const { text, operation, hint, context, expandInstructions, shortenInstructions } = await request.json();
-
-    if (!text || !operation) {
-      return NextResponse.json({ error: 'Missing text or operation' }, { status: 400 });
-    }
+    const { text, operation, hint, context, expandInstructions, shortenInstructions } = await parseBody(request, editTextSchema);
 
     let prompt: string;
 

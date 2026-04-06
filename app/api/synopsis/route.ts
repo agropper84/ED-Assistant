@@ -1,15 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { callWithPHIProtection } from '@/lib/claude';
 import { getSheetsContext, getPatient, updatePatientFields } from '@/lib/google-sheets';
-import { withApiHandler } from '@/lib/api-handler';
+import { withApiHandler, parseBody } from '@/lib/api-handler';
+import { synopsisSchema } from '@/lib/schemas';
 
 export const maxDuration = 30;
 
 export const POST = withApiHandler(
   { rateLimit: { limit: 20, window: 60 } },
   async (request: NextRequest) => {
+    const { rowIndex, sheetName } = await parseBody(request, synopsisSchema);
     const ctx = await getSheetsContext();
-    const { rowIndex, sheetName } = await request.json();
 
     const patient = await getPatient(ctx, rowIndex, sheetName);
     if (!patient) {

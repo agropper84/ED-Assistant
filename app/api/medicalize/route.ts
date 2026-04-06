@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { callWithPHIProtection } from '@/lib/claude';
-import { withApiHandler } from '@/lib/api-handler';
+import { withApiHandler, parseBody } from '@/lib/api-handler';
+import { medicalizeSchema } from '@/lib/schemas';
 
 export const maxDuration = 30;
 
 export const POST = withApiHandler(
   { rateLimit: { limit: 30, window: 60 } },
   async (request: NextRequest) => {
-    const { text, context } = await request.json();
+    const { text, context } = await parseBody(request, medicalizeSchema);
     if (!text?.trim()) return NextResponse.json({ text: '' });
 
     const contextBlock = context

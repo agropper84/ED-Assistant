@@ -2,15 +2,17 @@ import { NextRequest, NextResponse } from 'next/server';
 import { processEncounter, streamProcessEncounter, parseClaudeResponse, ProcessedNote } from '@/lib/claude';
 import { getSheetsContext, getPatient, updatePatientFields, saveBillingRows, getStyleGuideFromSheet, upsertDiagnosisCode } from '@/lib/google-sheets';
 import { getAutoBilling, BillingItem } from '@/lib/billing';
-import { withApiHandler } from '@/lib/api-handler';
+import { withApiHandler, parseBody } from '@/lib/api-handler';
+import { processSchema } from '@/lib/schemas';
+import type { PromptTemplates } from '@/lib/settings';
 
 export const maxDuration = 60;
 
 export const POST = withApiHandler(
   { rateLimit: { limit: 10, window: 60 }, auditEvent: 'generate.process' },
   async (request: NextRequest) => {
+    const { rowIndex, sheetName, modifications, styleGuidance, settings, promptTemplates, stream: useStream } = await parseBody(request, processSchema);
     const ctx = await getSheetsContext();
-    const { rowIndex, sheetName, modifications, styleGuidance, settings, promptTemplates, stream: useStream } = await request.json();
 
     const patient = await getPatient(ctx, rowIndex, sheetName);
     if (!patient) {
@@ -81,7 +83,7 @@ export const POST = withApiHandler(
       styleExamples,
       customGuidance,
       settings,
-      promptTemplates,
+      promptTemplates: promptTemplates as unknown as PromptTemplates | undefined,
     };
 
     // --- Streaming path ---

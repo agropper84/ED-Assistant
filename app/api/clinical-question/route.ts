@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { callWithPHIProtection } from '@/lib/claude';
 import { getSheetsContext, getPatient, updatePatientFields } from '@/lib/google-sheets';
-import { withApiHandler } from '@/lib/api-handler';
+import { withApiHandler, parseBody } from '@/lib/api-handler';
+import { clinicalQuestionSchema } from '@/lib/schemas';
 
 export const maxDuration = 60;
 
@@ -14,12 +15,8 @@ interface QAMessage {
 export const POST = withApiHandler(
   { rateLimit: { limit: 20, window: 60 }, auditEvent: 'clinical.question' },
   async (request: NextRequest) => {
+    const { rowIndex, sheetName, question, history, useOpenEvidence } = await parseBody(request, clinicalQuestionSchema);
     const ctx = await getSheetsContext();
-    const { rowIndex, sheetName, question, history, useOpenEvidence } = await request.json();
-
-    if (!question?.trim()) {
-      return NextResponse.json({ error: 'Question is required' }, { status: 400 });
-    }
 
     const patient = await getPatient(ctx, rowIndex, sheetName);
     if (!patient) {

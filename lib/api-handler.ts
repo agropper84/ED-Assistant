@@ -1,17 +1,21 @@
 /**
  * Shared API route handler wrapper.
  *
- * Provides consistent error handling, rate limiting, and audit logging
- * so individual routes don't repeat the same boilerplate.
+ * Provides consistent error handling, rate limiting, audit logging,
+ * and Zod input validation so individual routes don't repeat boilerplate.
  *
  * Usage:
- *   export const POST = withApiHandler({ rateLimit: { limit: 10, window: 60 } }, async (req) => {
- *     // ... route logic
- *     return NextResponse.json({ success: true });
- *   });
+ *   export const POST = withApiHandler(
+ *     { rateLimit: { limit: 10, window: 60 }, schema: processSchema },
+ *     async (req, ctx, body) => {
+ *       // body is already validated and typed
+ *       return NextResponse.json({ success: true });
+ *     }
+ *   );
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { type ZodSchema } from 'zod';
 import { checkRateLimit } from '@/lib/rate-limit';
 import { getSessionFromCookies } from '@/lib/session';
 import { safeErrorLog, safeApiError } from '@/lib/safe-error';
@@ -31,12 +35,14 @@ export interface ApiHandlerOptions {
   auditEvent?: AuditAction;
   /** If true, skip authentication check (for public routes). Default: false */
   public?: boolean;
+  /** Zod schema for request body validation. Omit to skip validation. */
+  schema?: ZodSchema;
 }
 
 type HandlerFn = (request: NextRequest, context?: any) => Promise<NextResponse | Response>;
 
 /**
- * Wraps an API route handler with consistent error handling and optional rate limiting.
+ * Wraps an API route handler with consistent error handling, rate limiting, and validation.
  */
 export function withApiHandler(options: ApiHandlerOptions, handler: HandlerFn): HandlerFn {
   return async (request: NextRequest, context?: any) => {
@@ -76,6 +82,17 @@ export function withApiHandler(options: ApiHandlerOptions, handler: HandlerFn): 
 
       return await handler(request, context);
     } catch (error: any) {
+      // Zod validation errors → 400 with field-level details
+      if (error?.name === 'ZodError' && Array.isArray(error.issues)) {
+        const fieldErrors = error.issues.map((e: any) => ({
+          field: e.path.join('.'),
+          message: e.message,
+        }));
+        return NextResponse.json(
+          { error: 'Validation failed', fields: fieldErrors },
+          { status: 400 },
+        );
+      }
       if (error.message === 'Not authenticated') {
         return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
       }
@@ -86,4 +103,13 @@ export function withApiHandler(options: ApiHandlerOptions, handler: HandlerFn): 
       return NextResponse.json({ error: safeApiError(error) }, { status: 500 });
     }
   };
+}
+
+/**
+ * Parse and validate a request body against a Zod schema.
+ * Throws ZodError (caught by withApiHandler → 400 response).
+ */
+export async function parseBody<T>(request: NextRequest, schema: ZodSchema<T>): Promise<T> {
+  const raw = await request.json();
+  return schema.parse(raw);
 }

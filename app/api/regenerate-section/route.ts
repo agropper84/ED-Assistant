@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { callWithPHIProtection } from '@/lib/claude';
 import { getSheetsContext, getPatient, updatePatientFields, getStyleGuideFromSheet } from '@/lib/google-sheets';
-import { withApiHandler } from '@/lib/api-handler';
+import { withApiHandler, parseBody } from '@/lib/api-handler';
+import { regenerateSectionSchema } from '@/lib/schemas';
 
 export const maxDuration = 60;
 
@@ -20,12 +21,8 @@ const SECTION_INSTRUCTIONS: Record<string, string> = {
 export const POST = withApiHandler(
   { rateLimit: { limit: 15, window: 60 }, auditEvent: 'generate.edit' },
   async (request: NextRequest) => {
+    const { rowIndex, sheetName, section, updates } = await parseBody(request, regenerateSectionSchema);
     const ctx = await getSheetsContext();
-    const { rowIndex, sheetName, section, updates } = await request.json();
-
-    if (!section || !SECTION_LABELS[section]) {
-      return NextResponse.json({ error: 'Invalid section' }, { status: 400 });
-    }
 
     const patient = await getPatient(ctx, rowIndex, sheetName);
     if (!patient) {
