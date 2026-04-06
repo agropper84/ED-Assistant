@@ -1,15 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAnthropicClient } from '@/lib/api-keys';
+import { callWithPHIProtection } from '@/lib/claude';
 import { getSheetsContext, getPatient, updatePatientFields } from '@/lib/google-sheets';
 import { verifyLinks } from '@/lib/verify-links';
+import { withApiHandler } from '@/lib/api-handler';
 
 export const maxDuration = 30;
 
-// POST /api/analysis - Generate DDx, management, and/or evidence from patient data
-// Optional: { section: 'management' | 'evidence' } to generate only one section
-export async function POST(request: NextRequest) {
-  try {
-    const anthropic = await getAnthropicClient();
+export const POST = withApiHandler(
+  { rateLimit: { limit: 20, window: 60 }, auditEvent: 'generate.analysis' },
+  async (request: NextRequest) => {
     const ctx = await getSheetsContext();
     const { rowIndex, sheetName, section, educationMode } = await request.json();
 
@@ -18,7 +17,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Patient not found' }, { status: 404 });
     }
 
-    // Build context from all available data (processed or raw)
     const parts: string[] = [];
     if (patient.hpi) parts.push(`HPI: ${patient.hpi}`);
     if (patient.objective) parts.push(`Objective: ${patient.objective}`);
@@ -32,7 +30,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No clinical data available' }, { status: 400 });
     }
 
-    // Single section mode or full analysis
     const sectionPrompts: Record<string, string> = {
       management: `Provide a recommended management plan including medications, procedures, disposition planning, and follow-up. Use narrative form.`,
       evidence: `Cite pertinent evidence, guidelines, or clinical decision rules relevant to this presentation. ONLY use URLs you are confident are real — use PubMed links with actual PMIDs. If unsure of a URL, cite by name without a link. Use narrative form with [Name](URL) markdown links.`,
@@ -75,25 +72,20 @@ Provide recommended management steps including disposition planning.
 Cite pertinent evidence, guidelines, or clinical decision rules relevant to this presentation. ONLY use URLs you are confident are real. If unsure of a URL, cite by name without a link.`;
     }
 
-    const response = await anthropic.messages.create({
-      model: 'claude-haiku-4-5-20251001',
-      max_tokens: 2048,
-      temperature: 0.3,
-      messages: [{ role: 'user', content: prompt }],
-    });
+    // PHI protection is handled by callWithPHIProtection
+    let text = await callWithPHIProtection(
+      prompt,
+      { name: patient.name, age: patient.age, gender: patient.gender, birthday: patient.birthday, triageVitals: patient.triageVitals, transcript: patient.transcript, additional: patient.additional, pastDocs: patient.pastDocs },
+      { model: 'claude-haiku-4-5-20251001', maxTokens: 2048, temperature: 0.3 },
+    );
 
-    let text = response.content[0].type === 'text' ? response.content[0].text : '';
-
-    // Verify links
     text = await verifyLinks(text);
 
     const fields: Record<string, string> = {};
 
     if (section) {
-      // Single section mode — the entire response IS the section
       if (text.trim()) fields[section] = text.trim();
     } else {
-      // Full analysis — parse sections
       const getSection = (key: string): string => {
         const regex = new RegExp(`===${key}===\\s*([\\s\\S]*?)(?====\\w|$)`);
         const match = text.match(regex);
@@ -116,17 +108,5 @@ Cite pertinent evidence, guidelines, or clinical decision rules relevant to this
     }
 
     return NextResponse.json({ success: true, ...fields });
-  } catch (error: any) {
-    console.error('Error generating analysis:', error);
-    if (error?.message?.includes('Not approved')) {
-      return NextResponse.json({ error: 'Not approved' }, { status: 403 });
-    }
-    if (error?.message?.includes('Not authenticated') || error?.message?.includes('re-login')) {
-      return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
-    }
-    return NextResponse.json(
-      { error: 'Failed to generate analysis', detail: error?.message || String(error) },
-      { status: 500 }
-    );
   }
-}
+);

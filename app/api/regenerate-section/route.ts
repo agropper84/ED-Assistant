@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAnthropicClient } from '@/lib/api-keys';
+import { callWithPHIProtection } from '@/lib/claude';
 import { getSheetsContext, getPatient, updatePatientFields, getStyleGuideFromSheet } from '@/lib/google-sheets';
+import { withApiHandler } from '@/lib/api-handler';
 
 export const maxDuration = 60;
 
@@ -16,9 +17,9 @@ const SECTION_INSTRUCTIONS: Record<string, string> = {
   assessmentPlan: `Diagnosis or working diagnosis. Summarize assessment leading to diagnosis. Include differential if applicable. Document management plan: investigations ordered, treatments given. Document that appropriate red flags were ruled out. Include return to ED instructions. Use paragraph/narrative form only. No bullet points.`,
 };
 
-export async function POST(request: NextRequest) {
-  try {
-    const anthropic = await getAnthropicClient();
+export const POST = withApiHandler(
+  { rateLimit: { limit: 15, window: 60 }, auditEvent: 'generate.edit' },
+  async (request: NextRequest) => {
     const ctx = await getSheetsContext();
     const { rowIndex, sheetName, section, updates } = await request.json();
 
@@ -31,7 +32,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Patient not found' }, { status: 404 });
     }
 
-    // Build style guidance from sheet
+    // Build style guidance
     let styleSection = '';
     try {
       const guide = await getStyleGuideFromSheet(ctx);
@@ -50,10 +51,6 @@ export async function POST(request: NextRequest) {
         styleSection = `\nSTYLE GUIDANCE:\nClosely match the tone, structure, and phrasing from the style examples first. Use the key features only to fill in gaps.\n${parts.join('\n')}\n`;
       }
     } catch {}
-
-    // Get settings
-    let model = 'claude-sonnet-4-20250514';
-    let temperature = 0.3;
 
     const prompt = `You are an AI assistant helping an emergency department physician update one section of their encounter documentation.
 
@@ -74,31 +71,14 @@ ${SECTION_INSTRUCTIONS[section]}
 
 Respond with ONLY the regenerated section content. No headers, labels, or extra text.`;
 
-    const response = await anthropic.messages.create({
-      model,
-      max_tokens: 2048,
-      temperature,
-      messages: [{ role: 'user', content: prompt }],
-    });
-
-    const text = response.content[0].type === 'text' ? response.content[0].text : '';
-    const regenerated = text.trim();
-
-    // Save to sheet
-    await updatePatientFields(ctx, rowIndex, { [section]: regenerated }, sheetName);
-
-    return NextResponse.json({ success: true, content: regenerated });
-  } catch (error: any) {
-    console.error('Error regenerating section:', error);
-    if (error?.message?.includes('Not approved')) {
-      return NextResponse.json({ error: 'Not approved' }, { status: 403 });
-    }
-    if (error?.message?.includes('Not authenticated') || error?.message?.includes('re-login')) {
-      return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
-    }
-    return NextResponse.json(
-      { error: 'Failed to regenerate section', detail: error?.message || String(error) },
-      { status: 500 }
+    const regenerated = await callWithPHIProtection(
+      prompt,
+      { name: patient.name, age: patient.age, gender: patient.gender, birthday: patient.birthday, triageVitals: patient.triageVitals, transcript: patient.transcript, additional: patient.additional, pastDocs: patient.pastDocs },
+      { model: 'claude-sonnet-4-20250514', maxTokens: 2048, temperature: 0.3 },
     );
+
+    await updatePatientFields(ctx, rowIndex, { [section]: regenerated.trim() }, sheetName);
+
+    return NextResponse.json({ success: true, content: regenerated.trim() });
   }
-}
+);

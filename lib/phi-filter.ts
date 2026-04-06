@@ -1,10 +1,10 @@
 /**
  * PHI De-identification / Re-identification Layer
  *
- * Strips identifying information from prompts before sending to AI,
- * then restores it in the response. Clinical data is preserved fully.
+ * MANDATORY: All text sent to any AI service MUST pass through deidentifyText().
+ * This is not optional — it runs regardless of user settings.
  *
- * Stripped: patient name, MRN, HCN, DOB, and occurrences within text.
+ * Stripped: patient name (full + parts), MRN, HCN, DOB, and occurrences within text.
  * Kept:    age, gender, all clinical content (labs, vitals, meds, diagnoses, etc.)
  */
 
@@ -16,6 +16,13 @@ export interface PHIMapping {
   additionalNames: string[];
 }
 
+/**
+ * Returns true always — PHI protection is mandatory and cannot be disabled.
+ */
+export function isPHIProtectionEnabled(): boolean {
+  return true;
+}
+
 export function buildPHIMapping(patient: {
   name?: string; mrn?: string; hcn?: string; birthday?: string;
 }): PHIMapping {
@@ -23,9 +30,15 @@ export function buildPHIMapping(patient: {
 
   if (patient.name) {
     additionalNames.push(patient.name);
-    // Add individual name parts (for matching within text)
-    const parts = patient.name.split(/[\s,]+/).filter(p => p.length > 2);
-    additionalNames.push(...parts);
+    // Handle "LASTNAME, FIRSTNAME" format
+    const commaParts = patient.name.split(',').map(s => s.trim());
+    for (const part of commaParts) {
+      const words = part.split(/\s+/).filter(p => p.length > 2);
+      additionalNames.push(...words);
+    }
+    // Handle "FIRSTNAME LASTNAME" format
+    const spaceParts = patient.name.split(/\s+/).filter(p => p.length > 2);
+    additionalNames.push(...spaceParts);
   }
 
   return {
@@ -47,7 +60,7 @@ export function deidentifyText(text: string, mapping: PHIMapping): string {
   if (mapping.hcn) replacements.push([mapping.hcn, '[HCN]']);
   if (mapping.dob) replacements.push([mapping.dob, '[DOB]']);
 
-  // Sort by length descending (replace longer strings first)
+  // Sort by length descending (replace longer strings first to avoid partial matches)
   replacements.sort((a, b) => b[0].length - a[0].length);
 
   for (const [original, placeholder] of replacements) {
@@ -56,10 +69,14 @@ export function deidentifyText(text: string, mapping: PHIMapping): string {
     result = result.replace(new RegExp(escaped, 'gi'), placeholder);
   }
 
-  // Also replace name parts found in document text
-  for (const name of mapping.additionalNames) {
+  // Also replace individual name parts found in document text
+  // Sort by length descending to avoid "Li" matching before "Lisinopril"
+  const sortedNames = [...mapping.additionalNames].sort((a, b) => b.length - a.length);
+  for (const name of sortedNames) {
     if (name.length < 3) continue;
     const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    // Use word boundary to avoid matching within medical terms
+    // e.g., "Li" should not match in "Lithium" or "Lisinopril"
     result = result.replace(new RegExp(`\\b${escaped}\\b`, 'gi'), '[PATIENT]');
   }
 

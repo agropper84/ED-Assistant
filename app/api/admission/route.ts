@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { generateAdmission } from '@/lib/claude';
 import { getSheetsContext, getPatient, updatePatientFields, getStyleGuideFromSheet } from '@/lib/google-sheets';
+import { withApiHandler } from '@/lib/api-handler';
 
 export const maxDuration = 60;
 
-// POST /api/admission - Generate admission note
-export async function POST(request: NextRequest) {
-  try {
+export const POST = withApiHandler(
+  { rateLimit: { limit: 10, window: 60 }, auditEvent: 'generate.admission' },
+  async (request: NextRequest) => {
     const ctx = await getSheetsContext();
     const { rowIndex, sheetName, service, reason, acuity } = await request.json();
 
@@ -22,6 +23,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // PHI protection is now mandatory inside generateAdmission via callWithPHIProtection
     const admissionText = await generateAdmission(
       {
         name: patient.name,
@@ -57,17 +59,5 @@ export async function POST(request: NextRequest) {
     await updatePatientFields(ctx, rowIndex, { admission: admissionText }, sheetName);
 
     return NextResponse.json({ success: true, admission: admissionText });
-  } catch (error: any) {
-    console.error('Error generating admission note:', error);
-    if (error?.message?.includes('Not approved')) {
-      return NextResponse.json({ error: 'Not approved' }, { status: 403 });
-    }
-    if (error?.message?.includes('Not authenticated') || error?.message?.includes('re-login')) {
-      return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
-    }
-    return NextResponse.json(
-      { error: 'Failed to generate admission note', detail: error?.message || String(error) },
-      { status: 500 }
-    );
   }
-}
+);

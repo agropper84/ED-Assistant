@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { generateReferral } from '@/lib/claude';
 import { getSheetsContext, getPatient, updatePatientFields, getStyleGuideFromSheet } from '@/lib/google-sheets';
+import { withApiHandler } from '@/lib/api-handler';
 
 export const maxDuration = 60;
 
-// POST /api/referral - Generate referral letter
-export async function POST(request: NextRequest) {
-  try {
+export const POST = withApiHandler(
+  { rateLimit: { limit: 10, window: 60 }, auditEvent: 'generate.referral' },
+  async (request: NextRequest) => {
     const ctx = await getSheetsContext();
     const { rowIndex, sheetName, specialty, urgency, reason } = await request.json();
 
@@ -22,6 +23,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // PHI protection is now mandatory inside generateReferral via callWithPHIProtection
     const referralText = await generateReferral(
       {
         name: patient.name,
@@ -54,21 +56,8 @@ export async function POST(request: NextRequest) {
       })(),
     );
 
-    // Save referral to sheet
     await updatePatientFields(ctx, rowIndex, { referral: referralText }, sheetName);
 
     return NextResponse.json({ success: true, referral: referralText });
-  } catch (error: any) {
-    console.error('Error generating referral:', error);
-    if (error?.message?.includes('Not approved')) {
-      return NextResponse.json({ error: 'Not approved' }, { status: 403 });
-    }
-    if (error?.message?.includes('Not authenticated') || error?.message?.includes('re-login')) {
-      return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
-    }
-    return NextResponse.json(
-      { error: 'Failed to generate referral', detail: error?.message || String(error) },
-      { status: 500 }
-    );
   }
-}
+);

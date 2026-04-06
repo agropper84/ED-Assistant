@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { lookupICDCodes } from '@/lib/claude';
 import { getSheetsContext, findDiagnosisCode, upsertDiagnosisCode } from '@/lib/google-sheets';
+import { withApiHandler } from '@/lib/api-handler';
 
 export const maxDuration = 15;
 
-export async function POST(request: NextRequest) {
-  try {
+export const POST = withApiHandler(
+  { rateLimit: { limit: 30, window: 60 } },
+  async (request: NextRequest) => {
     const { diagnosis } = await request.json();
 
     if (!diagnosis?.trim()) {
@@ -19,22 +21,18 @@ export async function POST(request: NextRequest) {
       const ctx = await getSheetsContext();
       const cached = await findDiagnosisCode(ctx, trimmed);
       if (cached) {
-        // Increment usage count
         await upsertDiagnosisCode(ctx, cached);
         return NextResponse.json(cached);
       }
 
-      // Not in registry — fall back to Claude
+      // Not in registry — fall back to Claude (PHI protection in lookupICDCodes)
       const result = await lookupICDCodes(trimmed);
 
       // Save to registry (fire-and-forget)
-      upsertDiagnosisCode(ctx, result).catch(err =>
-        console.error('Failed to save diagnosis code to registry:', err)
-      );
+      upsertDiagnosisCode(ctx, result).catch(() => {});
 
       return NextResponse.json(result);
     } catch (authError: any) {
-      // If auth fails, still allow Claude lookup without registry
       if (authError?.message?.includes('Not authenticated') || authError?.message?.includes('re-login')) {
         return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
       }
@@ -46,11 +44,5 @@ export async function POST(request: NextRequest) {
       const result = await lookupICDCodes(trimmed);
       return NextResponse.json(result);
     }
-  } catch (error: any) {
-    console.error('ICD lookup error:', error);
-    return NextResponse.json(
-      { error: 'Failed to lookup ICD codes', detail: error?.message || String(error) },
-      { status: 500 }
-    );
   }
-}
+);

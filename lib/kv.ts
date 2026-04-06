@@ -1,4 +1,5 @@
 import Redis from 'ioredis';
+import { encryptValue, decryptValue } from './encryption';
 
 let redis: Redis | null = null;
 
@@ -8,9 +9,38 @@ function getRedis(): Redis {
     if (!url) {
       throw new Error('REDIS_URL environment variable is not set');
     }
-    redis = new Redis(url);
+    redis = new Redis(url, {
+      maxRetriesPerRequest: 3,
+      connectTimeout: 5000,
+      commandTimeout: 3000,
+    });
+    redis.on('error', () => {}); // Swallow connection errors
   }
   return redis;
+}
+
+// --- KV-level secret encryption (encrypts values at rest in Redis) ---
+
+function encryptSecret(value: string): string {
+  const key = process.env.KV_ENCRYPTION_KEY;
+  if (!key) return value;
+  try {
+    const buf = Buffer.from(key, 'base64');
+    if (buf.length !== 32) return value;
+    return encryptValue(value, key);
+  } catch {
+    return value;
+  }
+}
+
+function decryptSecret(value: string): string {
+  const key = process.env.KV_ENCRYPTION_KEY;
+  if (!key) return value;
+  try {
+    return decryptValue(value, key);
+  } catch {
+    return value; // Fallback for pre-migration plaintext
+  }
 }
 
 function userKey(userId: string): string {
@@ -101,14 +131,16 @@ export async function deleteShortcutTranscript(id: string): Promise<void> {
   await getRedis().del(`shortcut-transcript:${id}`);
 }
 
-// --- User refresh token for external device access ---
+// --- User refresh token for external device access (encrypted at rest) ---
 
 export async function setUserRefreshToken(userId: string, refreshToken: string): Promise<void> {
-  await getRedis().set(`user:${userId}:refresh-token`, refreshToken);
+  await getRedis().set(`user:${userId}:refresh-token`, encryptSecret(refreshToken));
 }
 
 export async function getUserRefreshToken(userId: string): Promise<string | null> {
-  return getRedis().get(`user:${userId}:refresh-token`);
+  const val = await getRedis().get(`user:${userId}:refresh-token`);
+  if (!val) return null;
+  return decryptSecret(val);
 }
 
 // --- User settings (per-user JSON blob for privacy/encryption) ---
@@ -123,14 +155,94 @@ export async function setUserSettings(userId: string, settings: Record<string, u
   await getRedis().set(`user:${userId}:settings`, JSON.stringify(settings));
 }
 
-// --- Encryption key (per-user) ---
+// --- Encryption key (per-user, encrypted at rest) ---
 
 export async function getUserEncryptionKey(userId: string): Promise<string | null> {
-  return getRedis().get(`user:${userId}:encryption-key`);
+  const val = await getRedis().get(`user:${userId}:encryption-key`);
+  if (!val) return null;
+  return decryptSecret(val);
 }
 
 export async function setUserEncryptionKey(userId: string, key: string): Promise<void> {
-  await getRedis().set(`user:${userId}:encryption-key`, key);
+  await getRedis().set(`user:${userId}:encryption-key`, encryptSecret(key));
+}
+
+export async function deleteUserEncryptionKey(userId: string): Promise<void> {
+  await getRedis().del(`user:${userId}:encryption-key`);
+}
+
+// --- API keys (per-user, encrypted at rest) ---
+
+export async function setUserClaudeApiKey(userId: string, apiKey: string): Promise<void> {
+  await getRedis().set(`user:${userId}:claude-api-key`, encryptSecret(apiKey));
+}
+
+export async function getUserClaudeApiKey(userId: string): Promise<string | null> {
+  const val = await getRedis().get(`user:${userId}:claude-api-key`);
+  if (!val) return null;
+  return decryptSecret(val);
+}
+
+export async function setUserOpenAIApiKey(userId: string, apiKey: string): Promise<void> {
+  await getRedis().set(`user:${userId}:openai-api-key`, encryptSecret(apiKey));
+}
+
+export async function getUserOpenAIApiKey(userId: string): Promise<string | null> {
+  const val = await getRedis().get(`user:${userId}:openai-api-key`);
+  if (!val) return null;
+  return decryptSecret(val);
+}
+
+export async function setUserDeepgramApiKey(userId: string, apiKey: string): Promise<void> {
+  await getRedis().set(`user:${userId}:deepgram-api-key`, encryptSecret(apiKey));
+}
+
+export async function getUserDeepgramApiKey(userId: string): Promise<string | null> {
+  const val = await getRedis().get(`user:${userId}:deepgram-api-key`);
+  if (!val) return null;
+  return decryptSecret(val);
+}
+
+export async function setUserWisprApiKey(userId: string, apiKey: string): Promise<void> {
+  await getRedis().set(`user:${userId}:wispr-api-key`, encryptSecret(apiKey));
+}
+
+export async function getUserWisprApiKey(userId: string): Promise<string | null> {
+  const val = await getRedis().get(`user:${userId}:wispr-api-key`);
+  if (!val) return null;
+  return decryptSecret(val);
+}
+
+// --- Storage mode (per-user) ---
+
+export type StorageMode = 'sheets' | 'dual' | 'drive';
+
+export async function getUserStorageMode(userId: string): Promise<StorageMode | null> {
+  const val = await getRedis().get(`user:${userId}:storage-mode`);
+  if (val === 'sheets' || val === 'dual' || val === 'drive') return val;
+  return null;
+}
+
+export async function setUserStorageMode(userId: string, mode: StorageMode): Promise<void> {
+  await getRedis().set(`user:${userId}:storage-mode`, mode);
+}
+
+// --- Drive folder ID cache ---
+
+export async function getUserDriveFolderId(userId: string): Promise<string | null> {
+  return getRedis().get(`user:${userId}:drive-folder-id`);
+}
+
+export async function setUserDriveFolderId(userId: string, folderId: string): Promise<void> {
+  await getRedis().set(`user:${userId}:drive-folder-id`, folderId);
+}
+
+export async function getUserPatientsFolderId(userId: string): Promise<string | null> {
+  return getRedis().get(`user:${userId}:patients-folder-id`);
+}
+
+export async function setUserPatientsFolderId(userId: string, folderId: string): Promise<void> {
+  await getRedis().set(`user:${userId}:patients-folder-id`, folderId);
 }
 
 // --- Pending audio queue for async watch uploads ---

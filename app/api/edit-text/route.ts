@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAnthropicClient } from '@/lib/api-keys';
+import { callWithPHIProtection } from '@/lib/claude';
+import { withApiHandler } from '@/lib/api-handler';
 
 export const maxDuration = 30;
 
-export async function POST(request: NextRequest) {
-  try {
-    const anthropic = await getAnthropicClient();
+export const POST = withApiHandler(
+  { rateLimit: { limit: 30, window: 60 }, auditEvent: 'generate.edit' },
+  async (request: NextRequest) => {
     const { text, operation, hint, context, expandInstructions, shortenInstructions } = await request.json();
 
     if (!text || !operation) {
@@ -36,21 +37,13 @@ ${context ? `Surrounding context from the same section:\n${context}\n` : ''}${in
       return NextResponse.json({ error: 'Invalid operation' }, { status: 400 });
     }
 
-    const response = await anthropic.messages.create({
-      model: 'claude-sonnet-4-20250514',
-      max_tokens: 1024,
-      temperature: 0.2,
-      messages: [{ role: 'user', content: prompt }],
-    });
-
-    const result = response.content[0].type === 'text' ? response.content[0].text.trim() : '';
-
-    return NextResponse.json({ success: true, result });
-  } catch (error: any) {
-    console.error('Error editing text:', error);
-    return NextResponse.json(
-      { error: 'Failed to edit text', detail: error?.message || String(error) },
-      { status: 500 }
+    // Text editing may contain PHI — pass null for patientData since we don't have structured patient info
+    const result = await callWithPHIProtection(
+      prompt,
+      null,
+      { model: 'claude-sonnet-4-20250514', maxTokens: 1024, temperature: 0.2 },
     );
+
+    return NextResponse.json({ success: true, result: result.trim() });
   }
-}
+);

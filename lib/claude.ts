@@ -39,7 +39,17 @@ export interface ProcessOptions {
     temperature?: number;
   };
   promptTemplates?: PromptTemplates;
-  phiProtection?: boolean;
+}
+
+// --- Retry logic for overloaded/rate-limited errors ---
+
+const RETRY_DELAYS = [3000, 8000, 15000];
+
+function isRetryableError(e: any): boolean {
+  const status = e?.status || e?.error?.type || '';
+  return status === 529 || status === 429
+    || String(status).includes('overloaded')
+    || String(e?.message).includes('overloaded');
 }
 
 export async function processEncounter(
@@ -48,37 +58,203 @@ export async function processEncounter(
 ): Promise<ProcessedNote> {
   let prompt = buildPrompt(patientData, options);
 
-  // PHI protection: strip identifying info before sending to AI
-  const phiMapping = options?.phiProtection
-    ? buildPHIMapping(patientData)
-    : null;
-  if (phiMapping) {
-    prompt = deidentifyText(prompt, phiMapping);
-  }
+  // PHI protection is MANDATORY — always strip identifiers before AI calls
+  const phiMapping = buildPHIMapping(patientData);
+  prompt = deidentifyText(prompt, phiMapping);
 
   const model = options?.settings?.model || 'claude-sonnet-4-20250514';
   const maxTokens = options?.settings?.maxTokens || 4096;
   const temperature = options?.settings?.temperature ?? 0.3;
 
   const anthropic = await getAnthropicClient();
-  const response = await anthropic.messages.create({
+
+  let lastError: any = null;
+  for (let attempt = 0; attempt <= RETRY_DELAYS.length; attempt++) {
+    try {
+      const response = await anthropic.messages.create({
+        model,
+        max_tokens: maxTokens,
+        temperature,
+        messages: [{ role: 'user', content: prompt }],
+      });
+
+      let text = response.content[0].type === 'text' ? response.content[0].text : '';
+
+      // Re-identify: restore PHI in the response
+      text = reidentifyText(text, phiMapping);
+
+      // Verify links in evidence section (remove broken URLs)
+      text = await verifyLinks(text);
+
+      return parseClaudeResponse(text);
+    } catch (e: any) {
+      lastError = e;
+      if (!isRetryableError(e) || attempt >= RETRY_DELAYS.length) throw e;
+      console.warn(`[Claude API] ${e?.status || 'error'} — retrying in ${RETRY_DELAYS[attempt]}ms (attempt ${attempt + 1}/${RETRY_DELAYS.length})`);
+      await new Promise(r => setTimeout(r, RETRY_DELAYS[attempt]));
+    }
+  }
+  throw lastError;
+}
+
+/**
+ * Stream a full encounter processing response.
+ * PHI de-identification is mandatory.
+ * Returns a ReadableStream for SSE-style streaming.
+ */
+export async function streamProcessEncounter(
+  patientData: PatientData,
+  options?: ProcessOptions,
+  onComplete?: (fullText: string) => void,
+): Promise<ReadableStream<Uint8Array>> {
+  let prompt = buildPrompt(patientData, options);
+
+  // PHI protection is MANDATORY
+  const phiMapping = buildPHIMapping(patientData);
+  prompt = deidentifyText(prompt, phiMapping);
+
+  const model = options?.settings?.model || 'claude-sonnet-4-20250514';
+  const maxTokens = options?.settings?.maxTokens || 4096;
+  const temperature = options?.settings?.temperature ?? 0.3;
+
+  const anthropic = await getAnthropicClient();
+  const encoder = new TextEncoder();
+  let fullText = '';
+
+  const stream = anthropic.messages.stream({
     model,
     max_tokens: maxTokens,
     temperature,
     messages: [{ role: 'user', content: prompt }],
   });
 
-  let text = response.content[0].type === 'text' ? response.content[0].text : '';
+  return new ReadableStream<Uint8Array>({
+    async start(controller) {
+      try {
+        for await (const event of stream) {
+          if (
+            event.type === 'content_block_delta' &&
+            'delta' in event &&
+            (event.delta as any).type === 'text_delta'
+          ) {
+            const text = (event.delta as any).text || '';
+            fullText += text;
+            controller.enqueue(encoder.encode(text));
+          }
+        }
+        // Re-identify PHI in the final text
+        fullText = reidentifyText(fullText, phiMapping);
+        controller.enqueue(encoder.encode('\n\n__STREAM_DONE__'));
+        controller.close();
+        if (onComplete) onComplete(fullText);
+      } catch (err: any) {
+        controller.error(err);
+      }
+    },
+  });
+}
 
-  // Re-identify: restore PHI in the response
+/**
+ * Stream a generic Claude prompt (for referrals, admissions, clinical questions, etc.)
+ * PHI de-identification is mandatory when patientData is provided.
+ */
+export async function streamGenericPrompt(
+  prompt: string,
+  patientData: PatientData | null,
+  settings?: { model?: string; maxTokens?: number; temperature?: number },
+  onComplete?: (fullText: string) => void,
+): Promise<ReadableStream<Uint8Array>> {
+  let finalPrompt = prompt;
+  const phiMapping = patientData ? buildPHIMapping(patientData) : null;
   if (phiMapping) {
-    text = reidentifyText(text, phiMapping);
+    finalPrompt = deidentifyText(prompt, phiMapping);
   }
 
-  // Verify links in evidence section (remove broken URLs)
-  text = await verifyLinks(text);
+  const model = settings?.model || 'claude-sonnet-4-20250514';
+  const maxTokens = settings?.maxTokens || 4096;
+  const temperature = settings?.temperature ?? 0.3;
 
-  return parseClaudeResponse(text);
+  const anthropic = await getAnthropicClient();
+  const encoder = new TextEncoder();
+  let fullText = '';
+
+  const stream = anthropic.messages.stream({
+    model,
+    max_tokens: maxTokens,
+    temperature,
+    messages: [{ role: 'user', content: finalPrompt }],
+  });
+
+  return new ReadableStream<Uint8Array>({
+    async start(controller) {
+      try {
+        for await (const event of stream) {
+          if (
+            event.type === 'content_block_delta' &&
+            'delta' in event &&
+            (event.delta as any).type === 'text_delta'
+          ) {
+            const text = (event.delta as any).text || '';
+            fullText += text;
+            controller.enqueue(encoder.encode(text));
+          }
+        }
+        if (phiMapping) {
+          fullText = reidentifyText(fullText, phiMapping);
+        }
+        controller.enqueue(encoder.encode('\n\n__STREAM_DONE__'));
+        controller.close();
+        if (onComplete) onComplete(fullText);
+      } catch (err: any) {
+        controller.error(err);
+      }
+    },
+  });
+}
+
+/**
+ * Non-streaming generic prompt with mandatory PHI protection.
+ */
+export async function callWithPHIProtection(
+  prompt: string,
+  patientData: PatientData | null,
+  settings?: { model?: string; maxTokens?: number; temperature?: number },
+): Promise<string> {
+  let finalPrompt = prompt;
+  const phiMapping = patientData ? buildPHIMapping(patientData) : null;
+  if (phiMapping) {
+    finalPrompt = deidentifyText(prompt, phiMapping);
+  }
+
+  const model = settings?.model || 'claude-sonnet-4-20250514';
+  const maxTokens = settings?.maxTokens || 4096;
+  const temperature = settings?.temperature ?? 0.3;
+
+  const anthropic = await getAnthropicClient();
+
+  let lastError: any = null;
+  for (let attempt = 0; attempt <= RETRY_DELAYS.length; attempt++) {
+    try {
+      const response = await anthropic.messages.create({
+        model,
+        max_tokens: maxTokens,
+        temperature,
+        messages: [{ role: 'user', content: finalPrompt }],
+      });
+
+      let result = response.content[0].type === 'text' ? response.content[0].text : '';
+      if (phiMapping) {
+        result = reidentifyText(result, phiMapping);
+      }
+      return result;
+    } catch (e: any) {
+      lastError = e;
+      if (!isRetryableError(e) || attempt >= RETRY_DELAYS.length) throw e;
+      console.warn(`[Claude API] ${e?.status || 'error'} — retrying in ${RETRY_DELAYS[attempt]}ms`);
+      await new Promise(r => setTimeout(r, RETRY_DELAYS[attempt]));
+    }
+  }
+  throw lastError;
 }
 
 function buildPrompt(patientData: PatientData, options?: ProcessOptions): string {
@@ -159,7 +335,7 @@ You MUST write HPI, Objective, and Assessment & Plan in the EXACT style shown in
 - Punctuation style
 
 Do NOT add extra detail, formality, or structure beyond what the examples show. Less is more — match the examples exactly.
-${options.customGuidance ? `\nPhysician's charting preferences:\n${options.customGuidance}\n` : ''}
+${options?.customGuidance ? `\nPhysician's charting preferences:\n${options.customGuidance}\n` : ''}
 `;
   }
 
@@ -236,7 +412,7 @@ Respond in EXACTLY this format with these exact headers:
 [ICD-10 code for the primary diagnosis. Prefer general/unspecified codes unless the clinical description clearly specifies a more precise diagnosis (e.g., prefer J02.9 over J02.0 unless the organism is explicitly named). Code only, no description]`;
 }
 
-function parseClaudeResponse(response: string): ProcessedNote {
+export function parseClaudeResponse(response: string): ProcessedNote {
   const sections: ProcessedNote = {
     ddx: '',
     investigations: '',
@@ -281,8 +457,6 @@ export async function generateReferral(
   referralInfo: { specialty: string; urgency: string; reason: string },
   referralExamples?: string[],
 ): Promise<string> {
-  const anthropic = await getAnthropicClient();
-
   let styleBlock = '';
   if (referralExamples && referralExamples.length > 0) {
     styleBlock = `
@@ -295,13 +469,7 @@ Write as if you ARE this physician. Do not add formality or structure beyond wha
 `;
   }
 
-  const response = await anthropic.messages.create({
-    model: 'claude-sonnet-4-20250514',
-    max_tokens: 2048,
-    temperature: 0.3,
-    messages: [{
-      role: 'user',
-      content: `You are an AI assistant helping a physician write a referral letter.
+  const prompt = `You are an AI assistant helping a physician write a referral letter.
 
 PATIENT INFORMATION:
 - Name: ${patientData.name || 'Not provided'}
@@ -327,11 +495,9 @@ Write a professional, concise referral letter to the specified specialty. Includ
 4. Specific question or request for the consultant
 5. Urgency context
 
-Use professional medical language. Be concise but thorough.`
-    }],
-  });
+Use professional medical language. Be concise but thorough.`;
 
-  return response.content[0].type === 'text' ? response.content[0].text : '';
+  return callWithPHIProtection(prompt, patientData);
 }
 
 export async function generateAdmission(
@@ -340,8 +506,6 @@ export async function generateAdmission(
   admissionInfo: { service: string; reason: string; acuity: string },
   admissionExamples?: string[],
 ): Promise<string> {
-  const anthropic = await getAnthropicClient();
-
   let styleBlock = '';
   if (admissionExamples && admissionExamples.length > 0) {
     styleBlock = `
@@ -354,13 +518,7 @@ Write as if you ARE this physician. Do not add formality or structure beyond wha
 `;
   }
 
-  const response = await anthropic.messages.create({
-    model: 'claude-sonnet-4-20250514',
-    max_tokens: 4096,
-    temperature: 0.3,
-    messages: [{
-      role: 'user',
-      content: `You are an AI assistant helping a physician write a hospital admission note.
+  const prompt = `You are an AI assistant helping a physician write a hospital admission note.
 
 PATIENT INFORMATION:
 - Name: ${patientData.name || 'Not provided'}
@@ -392,11 +550,9 @@ Write a comprehensive admission note. Include:
 7. Assessment with differential diagnosis
 8. Admission plan — orders, monitoring, consultations, disposition
 
-Use professional medical language. Be thorough and structured.`
-    }],
-  });
+Use professional medical language. Be thorough and structured.`;
 
-  return response.content[0].type === 'text' ? response.content[0].text : '';
+  return callWithPHIProtection(prompt, patientData);
 }
 
 export async function lookupICDCodes(diagnosisText: string): Promise<{
@@ -404,14 +560,9 @@ export async function lookupICDCodes(diagnosisText: string): Promise<{
   icd9: string;
   icd10: string;
 }> {
-  const anthropic = await getAnthropicClient();
-  const response = await anthropic.messages.create({
-    model: 'claude-sonnet-4-20250514',
-    max_tokens: 200,
-    temperature: 0.1,
-    messages: [{
-      role: 'user',
-      content: `You are a medical coding assistant. Given the following diagnosis or clinical description, provide:
+  // ICD lookup has no PHI — just diagnosis text
+  const result = await callWithPHIProtection(
+    `You are a medical coding assistant. Given the following diagnosis or clinical description, provide:
 1. A clean, standard diagnosis name (use common/general terms)
 2. The most appropriate ICD-9 code
 3. The most appropriate ICD-10 code
@@ -423,15 +574,14 @@ Diagnosis/Description: ${diagnosisText}
 Respond in EXACTLY this format (no extra text):
 DIAGNOSIS: [clean diagnosis name]
 ICD9: [code only, no description]
-ICD10: [code only, no description]`
-    }],
-  });
+ICD10: [code only, no description]`,
+    null,
+    { model: 'claude-sonnet-4-20250514', maxTokens: 200, temperature: 0.1 },
+  );
 
-  const text = response.content[0].type === 'text' ? response.content[0].text : '';
-
-  const diagMatch = text.match(/DIAGNOSIS:\s*(.+)/i);
-  const icd9Match = text.match(/ICD9:\s*([A-Z0-9.]+)/i);
-  const icd10Match = text.match(/ICD10:\s*([A-Z0-9.]+)/i);
+  const diagMatch = result.match(/DIAGNOSIS:\s*(.+)/i);
+  const icd9Match = result.match(/ICD9:\s*([A-Z0-9.]+)/i);
+  const icd10Match = result.match(/ICD10:\s*([A-Z0-9.]+)/i);
 
   return {
     diagnosis: diagMatch ? diagMatch[1].trim() : diagnosisText,

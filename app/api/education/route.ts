@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSheetsContext, getPatient, updatePatientFields } from '@/lib/google-sheets';
-import { getAnthropicClient } from '@/lib/api-keys';
+import { callWithPHIProtection } from '@/lib/claude';
 import { verifyLinks } from '@/lib/verify-links';
+import { withApiHandler } from '@/lib/api-handler';
 
 export const maxDuration = 60;
 
-export async function POST(request: NextRequest) {
-  try {
-    const anthropic = await getAnthropicClient();
+export const POST = withApiHandler(
+  { rateLimit: { limit: 10, window: 60 } },
+  async (request: NextRequest) => {
     const ctx = await getSheetsContext();
     const { rowIndex, sheetName, sources } = await request.json();
 
@@ -16,7 +17,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Patient not found' }, { status: 404 });
     }
 
-    // Build clinical context
     const context: string[] = [];
     if (patient.diagnosis) context.push(`Diagnosis: ${patient.diagnosis}`);
     if (patient.ddx) context.push(`DDx: ${patient.ddx}`);
@@ -30,13 +30,7 @@ export async function POST(request: NextRequest) {
       ? `\n\nPrioritize recommendations from: ${sources}. You may include other high-quality sources as needed.`
       : '';
 
-    const response = await anthropic.messages.create({
-      model: 'claude-sonnet-4-20250514',
-      max_tokens: 2048,
-      temperature: 0.3,
-      messages: [{
-        role: 'user',
-        content: `You are a medical education consultant. Based on this clinical case, recommend key learning resources for a medical learner (resident, medical student, or new physician) to deepen their understanding of the relevant topics.
+    const prompt = `You are a medical education consultant. Based on this clinical case, recommend key learning resources for a medical learner (resident, medical student, or new physician) to deepen their understanding of the relevant topics.
 
 CLINICAL CASE:
 ${context.join('\n\n')}
@@ -57,27 +51,17 @@ Respond in this format for each topic:
 **Topic Name**
 - Textbook: [specific chapter/section]
 - Guideline: [specific guideline with link]
-- Key literature: [specific study/review with link]`,
-      }],
-    });
+- Key literature: [specific study/review with link]`;
 
-    let education = response.content[0].type === 'text' ? response.content[0].text : '';
+    let education = await callWithPHIProtection(
+      prompt,
+      { name: patient.name, age: patient.age, gender: patient.gender, birthday: patient.birthday, triageVitals: patient.triageVitals, transcript: patient.transcript, additional: patient.additional, pastDocs: patient.pastDocs },
+      { model: 'claude-sonnet-4-20250514', maxTokens: 2048, temperature: 0.3 },
+    );
 
-    // Verify links — remove broken URLs
     education = await verifyLinks(education);
-
-    // Save to sheet
     await updatePatientFields(ctx, rowIndex, { education }, sheetName);
 
     return NextResponse.json({ education });
-  } catch (err: any) {
-    if (err.message?.includes('Not authenticated')) {
-      return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
-    }
-    if (err.message?.includes('API key')) {
-      return NextResponse.json({ error: err.message }, { status: 400 });
-    }
-    console.error('Education generation error:', err);
-    return NextResponse.json({ error: 'Failed to generate education resources' }, { status: 500 });
   }
-}
+);

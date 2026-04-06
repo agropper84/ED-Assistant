@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import Anthropic from '@anthropic-ai/sdk';
-import { getAnthropicClient } from '@/lib/api-keys';
+import { callWithPHIProtection } from '@/lib/claude';
 import { getSheetsContext, getPatient, updatePatientFields } from '@/lib/google-sheets';
+import { withApiHandler } from '@/lib/api-handler';
 
 export const maxDuration = 60;
 
@@ -11,9 +11,9 @@ interface QAMessage {
   ts: string;
 }
 
-export async function POST(request: NextRequest) {
-  try {
-    const anthropic = await getAnthropicClient();
+export const POST = withApiHandler(
+  { rateLimit: { limit: 20, window: 60 }, auditEvent: 'clinical.question' },
+  async (request: NextRequest) => {
     const ctx = await getSheetsContext();
     const { rowIndex, sheetName, question, history, useOpenEvidence } = await request.json();
 
@@ -26,9 +26,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Patient not found' }, { status: 404 });
     }
 
-    // Build patient context for the system prompt
+    // Build patient context
     const contextParts: string[] = [];
-
     if (patient.name || patient.age || patient.gender) {
       contextParts.push(`**Demographics:** ${patient.name || 'Unknown'}, ${patient.age || '?'}${patient.gender ? ` ${patient.gender}` : ''}`);
     }
@@ -58,18 +57,22 @@ ${contextParts.join('\n\n')}`
 ## Patient Data
 ${contextParts.join('\n\n')}`;
 
-    // If Open Evidence is requested, reframe the question with clinical context
-    // in parallel with the main AI answer
-    let oeQueryPromise: Promise<string> | null = null;
+    const patientDataForPHI = {
+      name: patient.name,
+      age: patient.age,
+      gender: patient.gender,
+      birthday: patient.birthday,
+      triageVitals: patient.triageVitals,
+      transcript: patient.transcript,
+      additional: patient.additional,
+      pastDocs: patient.pastDocs,
+    };
+
+    // Reframe for OE if requested
+    let oeQuery: string | undefined;
     if (useOpenEvidence) {
-      oeQueryPromise = (async () => {
-        const reframeRes = await anthropic.messages.create({
-          model: 'claude-haiku-4-5-20251001',
-          max_tokens: 200,
-          temperature: 0,
-          messages: [{
-            role: 'user',
-            content: `Rewrite this clinical question to be a standalone, specific medical query suitable for a medical evidence search engine. Include the relevant patient context (age, sex, diagnosis, key findings) directly in the question so it can be understood without any other context. Keep it under 2 sentences. Do NOT include patient name or identifiers.
+      oeQuery = await callWithPHIProtection(
+        `Rewrite this clinical question to be a standalone, specific medical query suitable for a medical evidence search engine. Include the relevant patient context (age, sex, diagnosis, key findings) directly in the question so it can be understood without any other context. Keep it under 2 sentences. Do NOT include patient name or identifiers.
 
 Patient context:
 ${contextParts.slice(0, 5).join('\n')}
@@ -77,37 +80,32 @@ ${contextParts.slice(0, 5).join('\n')}
 Original question: "${question.trim()}"
 
 Output ONLY the reframed question, nothing else.`,
-          }],
-        });
-        const text = reframeRes.content[0].type === 'text' ? reframeRes.content[0].text : '';
-        return text.trim();
-      })();
+        patientDataForPHI,
+        { model: 'claude-haiku-4-5-20251001', maxTokens: 200, temperature: 0 },
+      );
+      oeQuery = oeQuery.trim();
     }
 
-    // Build Claude messages from history + new question
-    const messages: Array<{ role: 'user' | 'assistant'; content: string }> = [];
+    // Build conversation prompt with history
+    const conversationParts: string[] = [];
     if (history && Array.isArray(history)) {
       for (const msg of history) {
-        messages.push({ role: msg.role, content: msg.content });
+        conversationParts.push(`${msg.role === 'user' ? 'Question' : 'Answer'}: ${msg.content}`);
       }
     }
-    messages.push({ role: 'user', content: question.trim() });
+    conversationParts.push(`Question: ${question.trim()}`);
 
-    const response = await anthropic.messages.create({
-      model: useOpenEvidence ? 'claude-sonnet-4-20250514' : 'claude-haiku-4-5-20251001',
-      max_tokens: useOpenEvidence ? 2048 : 1024,
-      temperature: 0.2,
-      system: systemPrompt,
-      messages,
-    });
+    const fullPrompt = `${systemPrompt}\n\n${conversationParts.join('\n\n')}\n\nAnswer:`;
 
-    const answer = response.content
-      .filter((block): block is Anthropic.TextBlock => block.type === 'text')
-      .map(block => block.text)
-      .join('\n');
-
-    // Await the reframed OE query if requested
-    const oeQuery = oeQueryPromise ? await oeQueryPromise : undefined;
+    const answer = await callWithPHIProtection(
+      fullPrompt,
+      patientDataForPHI,
+      {
+        model: useOpenEvidence ? 'claude-sonnet-4-20250514' : 'claude-haiku-4-5-20251001',
+        maxTokens: useOpenEvidence ? 2048 : 1024,
+        temperature: 0.2,
+      },
+    );
 
     // Build updated QA history
     const now = new Date().toISOString();
@@ -129,17 +127,5 @@ Output ONLY the reframed question, nothing else.`,
     }, sheetName);
 
     return NextResponse.json({ answer, ...(oeQuery ? { oeQuery } : {}) });
-  } catch (error: any) {
-    console.error('Error in clinical question:', error);
-    if (error?.message?.includes('Not approved')) {
-      return NextResponse.json({ error: 'Not approved' }, { status: 403 });
-    }
-    if (error?.message?.includes('Not authenticated') || error?.message?.includes('re-login')) {
-      return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
-    }
-    return NextResponse.json(
-      { error: 'Failed to process question', detail: error?.message || String(error) },
-      { status: 500 },
-    );
   }
-}
+);
