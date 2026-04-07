@@ -392,9 +392,9 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
         {/* Right edge — profile toggle (desktop), always far-right */}
         <div
           className="hidden sm:flex flex-shrink-0 items-stretch cursor-pointer relative group/edge"
-          style={{ width: '4px', transition: 'width 600ms cubic-bezier(0.23, 1, 0.32, 1)' }}
+          style={{ width: '5px', transition: 'width 600ms cubic-bezier(0.23, 1, 0.32, 1)' }}
           onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.width = '14px'; }}
-          onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.width = '4px'; }}
+          onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.width = '5px'; }}
           onClick={() => {
             const opening = !showProfile;
             setShowProfile(opening);
@@ -402,21 +402,22 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
           }}
           title={showProfile ? 'Hide profile' : 'Show profile'}
         >
-          {/* Idle line — barely visible */}
+          {/* Idle line — subtle, theme-matched */}
           <div
             className="absolute left-1/2 -translate-x-1/2 rounded-full pointer-events-none group-hover/edge:opacity-0"
             style={{
-              top: '15%', bottom: '15%', width: '1px', opacity: 0.2,
-              background: 'linear-gradient(to bottom, transparent, var(--border) 20%, var(--border) 80%, transparent)',
-              transition: 'opacity 600ms ease',
+              top: '15%', bottom: '15%', width: '1px',
+              background: 'linear-gradient(to bottom, transparent, var(--edge-idle) 20%, var(--edge-idle) 80%, transparent)',
+              opacity: 1,
+              transition: 'opacity 500ms ease',
             }}
           />
           {/* Hover glow fill */}
           <div
             className="absolute inset-0 rounded-full opacity-0 group-hover/edge:opacity-100 pointer-events-none"
             style={{
-              top: '10%', bottom: '10%',
-              background: 'linear-gradient(to bottom, transparent, rgba(147, 197, 253, 0.12) 25%, rgba(147, 197, 253, 0.16) 50%, rgba(147, 197, 253, 0.12) 75%, transparent)',
+              top: '8%', bottom: '8%',
+              background: 'linear-gradient(to bottom, transparent, var(--edge-glow) 20%, var(--edge-glow) 50%, var(--edge-glow) 80%, transparent)',
               transition: 'opacity 600ms cubic-bezier(0.23, 1, 0.32, 1)',
             }}
           />
@@ -424,8 +425,8 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
           <div
             className="absolute left-1/2 -translate-x-1/2 rounded-full opacity-0 group-hover/edge:opacity-100 pointer-events-none"
             style={{
-              top: '12%', bottom: '12%', width: '1.5px',
-              background: 'linear-gradient(to bottom, transparent, rgba(147, 197, 253, 0.45) 25%, rgba(147, 197, 253, 0.55) 50%, rgba(147, 197, 253, 0.45) 75%, transparent)',
+              top: '10%', bottom: '10%', width: '1.5px',
+              background: 'linear-gradient(to bottom, transparent, var(--edge-line) 20%, var(--edge-line) 50%, var(--edge-line) 80%, transparent)',
               transition: 'opacity 600ms cubic-bezier(0.23, 1, 0.32, 1)',
             }}
           />
