@@ -70,6 +70,9 @@ export default function HomePage() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [showParseModal, setShowParseModal] = useState(false);
+  const [showQuickAdd, setShowQuickAdd] = useState(false);
+  const [quickAddName, setQuickAddName] = useState('');
+  const [quickAddSaving, setQuickAddSaving] = useState(false);
   const [currentDate, setCurrentDate] = useState(() => {
     if (typeof window !== 'undefined') {
       const saved = sessionStorage.getItem('ed-app-current-date');
@@ -415,6 +418,25 @@ export default function HomePage() {
       }
     } catch (error) {
       console.error('Failed to save patient:', error);
+    }
+  };
+
+  const handleQuickAdd = async () => {
+    const name = quickAddName.trim();
+    if (!name) return;
+    setQuickAddSaving(true);
+    try {
+      const now = new Date();
+      const hours = now.getHours();
+      const minutes = Math.round(now.getMinutes() / 10) * 10;
+      const timestamp = `${hours.toString().padStart(2, '0')}:${(minutes % 60).toString().padStart(2, '0')}`;
+      await handleSavePatient({ name, timestamp });
+      setQuickAddName('');
+      setShowQuickAdd(false);
+    } catch (error) {
+      console.error('Quick add failed:', error);
+    } finally {
+      setQuickAddSaving(false);
     }
   };
 
@@ -1199,16 +1221,36 @@ export default function HomePage() {
             <Loader2 className="w-8 h-8 animate-spin text-blue-600 dark:text-blue-400" />
           </div>
         ) : patients.length === 0 ? (
-          <div className="text-center py-12 animate-fadeIn">
-            <p className="text-[var(--text-muted)] mb-4">
+          <div className="text-center py-12 animate-fadeIn space-y-4">
+            <p className="text-[var(--text-muted)] mb-2">
               {isToday ? 'No patients yet today' : `No patients on ${sheetName}`}
             </p>
+            {/* Quick add inline */}
+            <form
+              onSubmit={(e) => { e.preventDefault(); handleQuickAdd(); }}
+              className="flex items-center gap-2 max-w-sm mx-auto"
+            >
+              <input
+                type="text"
+                value={quickAddName}
+                onChange={(e) => setQuickAddName(e.target.value)}
+                placeholder="Patient name..."
+                autoFocus
+                className="flex-1 px-3 py-2.5 border border-[var(--input-border)] rounded-xl text-sm bg-[var(--input-bg)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
+              <button
+                type="submit"
+                disabled={!quickAddName.trim() || quickAddSaving}
+                className="px-4 py-2.5 bg-[var(--accent)] text-white rounded-xl text-sm font-medium hover:brightness-110 active:scale-[0.97] transition-all disabled:opacity-40"
+              >
+                {quickAddSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Add'}
+              </button>
+            </form>
             <button
               onClick={() => setShowParseModal(true)}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-[var(--accent)] text-white rounded-lg hover:brightness-110 active:scale-[0.97] transition-all"
+              className="text-xs text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-colors"
             >
-              <Plus className="w-4 h-4" />
-              Add Patient
+              or import from EMR
             </button>
           </div>
         ) : (
@@ -1251,6 +1293,47 @@ export default function HomePage() {
               <div className="text-xs text-[var(--text-muted)] px-1">
                 {searchResults.length === 0 ? 'No patients found across all dates' : `${searchResults.length} result${searchResults.length !== 1 ? 's' : ''} across all dates`}
               </div>
+            )}
+
+            {/* Quick Add Patient */}
+            {showQuickAdd ? (
+              <form
+                onSubmit={(e) => { e.preventDefault(); handleQuickAdd(); }}
+                className="flex items-center gap-2 animate-fadeIn"
+              >
+                <input
+                  type="text"
+                  value={quickAddName}
+                  onChange={(e) => setQuickAddName(e.target.value)}
+                  placeholder="Patient name..."
+                  autoFocus
+                  className="flex-1 px-3 py-2 border border-[var(--input-border)] rounded-xl text-sm bg-[var(--input-bg)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  onKeyDown={(e) => { if (e.key === 'Escape') { setShowQuickAdd(false); setQuickAddName(''); } }}
+                />
+                <button
+                  type="submit"
+                  disabled={!quickAddName.trim() || quickAddSaving}
+                  className="px-3 py-2 bg-[var(--accent)] text-white rounded-xl text-sm font-medium hover:brightness-110 active:scale-[0.97] transition-all disabled:opacity-40 flex items-center gap-1.5"
+                >
+                  {quickAddSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
+                  Add
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setShowQuickAdd(false); setQuickAddName(''); }}
+                  className="p-2 text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </form>
+            ) : (
+              <button
+                onClick={() => setShowQuickAdd(true)}
+                className="w-full py-2 border border-dashed border-[var(--border)] text-[var(--text-muted)] rounded-xl text-xs font-medium flex items-center justify-center gap-1.5 hover:bg-[var(--bg-tertiary)] active:scale-[0.99] transition-all"
+              >
+                <Plus className="w-3 h-3" />
+                Quick add patient
+              </button>
             )}
 
             {/* Batch Process Button */}
