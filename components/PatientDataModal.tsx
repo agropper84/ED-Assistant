@@ -372,7 +372,10 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
 
         {/* Right edge — profile toggle (desktop only) */}
         <div
-          className="hidden sm:block flex-shrink-0 w-3 cursor-pointer relative group/edge"
+          className="hidden sm:flex flex-shrink-0 items-stretch cursor-pointer relative group/edge"
+          style={{ width: '6px', transition: 'width 400ms cubic-bezier(0.4, 0, 0.2, 1)' }}
+          onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.width = '18px'; }}
+          onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.width = '6px'; }}
           onClick={() => {
             const opening = !showProfile;
             setShowProfile(opening);
@@ -382,13 +385,19 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
         >
           {/* Glow background on hover */}
           <div
-            className="absolute inset-y-0 -left-4 -right-4 opacity-0 group-hover/edge:opacity-100 transition-opacity duration-700 ease-out pointer-events-none"
-            style={{ background: 'radial-gradient(50% 40% at 50% 50%, rgba(99, 149, 255, 0.08) 0%, transparent 100%)' }}
+            className="absolute inset-y-0 -left-3 -right-3 opacity-0 group-hover/edge:opacity-100 transition-opacity duration-500 ease-out pointer-events-none"
+            style={{ background: 'radial-gradient(50% 35% at 50% 50%, rgba(99, 149, 255, 0.12) 0%, transparent 100%)' }}
           />
           {/* Vertical line */}
-          <div className="absolute left-1/2 -translate-x-1/2 top-8 bottom-8 w-px rounded-full transition-all duration-500 ease-out bg-[var(--border)] opacity-[0.15] group-hover/edge:opacity-100 group-hover/edge:w-[2px] group-hover/edge:bg-blue-400/60" style={{ boxShadow: '0 0 0 0 transparent', transition: 'all 500ms cubic-bezier(0.4, 0, 0.2, 1), box-shadow 500ms ease-out' }} />
-          {/* Glow shadow on hover (separate element for blur) */}
-          <div className="absolute left-1/2 -translate-x-1/2 top-12 bottom-12 w-1 rounded-full opacity-0 group-hover/edge:opacity-100 transition-opacity duration-700 ease-out pointer-events-none" style={{ background: 'rgba(99, 149, 255, 0.2)', filter: 'blur(6px)' }} />
+          <div
+            className="absolute left-1/2 -translate-x-1/2 top-6 bottom-6 rounded-full bg-[var(--border)] opacity-[0.2] group-hover/edge:opacity-100 group-hover/edge:bg-blue-400/70"
+            style={{ width: '1.5px', transition: 'all 400ms cubic-bezier(0.4, 0, 0.2, 1)' }}
+          />
+          {/* Glow shadow on hover */}
+          <div
+            className="absolute left-1/2 -translate-x-1/2 top-10 bottom-10 rounded-full opacity-0 group-hover/edge:opacity-100 pointer-events-none"
+            style={{ width: '4px', background: 'rgba(99, 149, 255, 0.35)', filter: 'blur(8px)', transition: 'opacity 500ms ease-out' }}
+          />
         </div>
 
         {/* Profile panel — slides in/out */}
