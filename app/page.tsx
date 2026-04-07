@@ -35,7 +35,7 @@ import {
   Plus, Loader2, ChevronLeft, ChevronRight,
   Calendar, Settings, CheckSquare, Square, Play, Clock, EyeOff, Eye,
   Search, ArrowUpDown, X, LogOut, Upload, Monitor, RotateCcw, Sparkles,
-  ChevronDown, SlidersHorizontal, FileSpreadsheet, Bookmark, Wind
+  ChevronDown, SlidersHorizontal, FileSpreadsheet, Bookmark, Wind, Menu
 } from 'lucide-react';
 import { AwayScreen } from '@/components/AwayScreen';
 import { useDraggableFab } from '@/hooks/useDraggableFab';
@@ -107,7 +107,8 @@ export default function HomePage() {
   const [batchProcessing, setBatchProcessing] = useState(false);
   const [batchProgress, setBatchProgress] = useState({ current: 0, total: 0 });
 
-  // Privacy
+  // Sidebar + Privacy
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [anonymize, setAnonymize] = useState(false);
   const [awayScreen, setAwayScreen] = useState(false);
   const [privacyMenuOpen, setPrivacyMenuOpen] = useState(false);
@@ -847,221 +848,165 @@ export default function HomePage() {
   return (
     <div className="min-h-screen pb-24">
       {/* Header */}
-      <header className="dash-header sticky top-0 z-40">
-        <div className="max-w-4xl mx-auto px-4">
-          {/* Top row: icon + title + date nav + user menu */}
-          <div className="flex items-center justify-between py-3">
-            <div className="flex items-center gap-3 min-w-0">
-              {/* App icon */}
-              <div
-                className="w-9 h-9 rounded-[12px] flex items-center justify-center flex-shrink-0 overflow-hidden"
-                style={{ background: 'linear-gradient(145deg, rgba(255,255,255,0.14) 0%, rgba(255,255,255,0.04) 100%)', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.1), 0 1px 3px rgba(0,0,0,0.1)' }}
-              >
-                <svg width="20" height="20" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <rect x="13" y="6" width="6" height="20" rx="3" fill="white" opacity="0.9" />
-                  <rect x="6" y="13" width="20" height="6" rx="3" fill="white" opacity="0.9" />
-                  <circle cx="25" cy="25" r="2.5" fill="#4a9ead" opacity="0.8" />
-                </svg>
-              </div>
-              {/* Title + Encounter Type */}
-              <div className="flex items-center gap-2 min-w-0">
-                <h1 className="text-[17px] font-bold tracking-[-0.02em]" style={{ color: 'var(--dash-text)' }}>ER Dashboard</h1>
-                <div className="relative" ref={encounterMenuRef}>
-                  <button
-                    onClick={() => setEncounterMenuOpen(!encounterMenuOpen)}
-                    className="flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-medium hover:bg-white/[0.07] transition-all duration-200"
-                    style={{ color: 'var(--dash-text-muted)' }}
-                    title="Encounter type"
-                  >
-                    {encounterTypes.find(t => t.id === activeEncounterType)?.label || 'ER'}
-                    <ChevronDown className={`w-3 h-3 transition-transform duration-200 ${encounterMenuOpen ? 'rotate-180' : ''} opacity-50`} />
-                  </button>
-                  {encounterMenuOpen && (
-                    <>
-                      <div className="fixed inset-0 z-40" onClick={() => setEncounterMenuOpen(false)} />
-                      <div className="absolute left-0 top-full mt-2 z-50 w-52 rounded-xl overflow-hidden backdrop-blur-xl animate-in fade-in slide-in-from-top-1 duration-200"
-                        style={{ background: 'color-mix(in srgb, var(--card-bg) 97%, transparent)', border: '1px solid var(--card-border)', boxShadow: '0 12px 40px rgba(0,0,0,0.25), 0 0 0 1px rgba(255,255,255,0.04)' }}>
-                        <div className="p-1.5">
-                          {encounterTypes.map(et => (
-                            <button
-                              key={et.id}
-                              onClick={() => {
-                                setActiveEncounterType(et.id);
-                                saveEncounterType(et.id);
-                                setEncounterMenuOpen(false);
-                              }}
-                              className="flex items-center gap-2.5 w-full px-3 py-2.5 rounded-lg text-left text-[13px] font-medium transition-colors hover:bg-black/5 dark:hover:bg-white/5"
-                              style={{ color: activeEncounterType === et.id ? 'var(--accent)' : 'var(--text-primary)', background: activeEncounterType === et.id ? 'var(--accent-light)' : undefined }}
-                            >
-                              {et.label}
-                              {activeEncounterType === et.id && (
-                                <span className="ml-auto text-[11px] font-semibold" style={{ color: 'var(--accent)' }}>Active</span>
-                              )}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    </>
+      {/* Collapsible sidebar */}
+      {sidebarOpen && (
+        <>
+          <div className="fixed inset-0 z-50 bg-black/40" onClick={() => setSidebarOpen(false)} />
+          <aside
+            className="fixed left-0 top-0 bottom-0 z-50 w-72 overflow-y-auto animate-in slide-in-from-left duration-200"
+            style={{ background: 'var(--card-bg)', borderRight: '1px solid var(--card-border)', boxShadow: '4px 0 24px rgba(0,0,0,0.15)' }}
+          >
+            {/* User header */}
+            <div className="px-5 pt-6 pb-4 border-b" style={{ borderColor: 'var(--border-light)' }}>
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0"
+                  style={{ background: 'linear-gradient(135deg, rgba(99,102,241,0.25), rgba(59,130,246,0.25))', color: 'var(--text-primary)' }}>
+                  {(userName || userEmail || '?').charAt(0).toUpperCase()}
+                </div>
+                <div className="min-w-0">
+                  <div className="text-[14px] font-semibold truncate" style={{ color: 'var(--text-primary)' }}>
+                    {anonymize ? 'Dr. ***' : userName || 'Doctor'}
+                  </div>
+                  {!anonymize && (
+                    <div className="text-[11px] truncate" style={{ color: 'var(--text-muted)' }}>{userEmail}</div>
                   )}
                 </div>
-              </div>
-
-              {/* Date navigation — in top row */}
-              <div className="hidden sm:flex items-center ml-2" style={{ borderLeft: '1px solid rgba(255,255,255,0.08)', paddingLeft: '12px' }}>
-                <button
-                  onClick={goToPreviousDay}
-                  className="p-1 hover:bg-white/[0.07] rounded-full transition-colors"
-                  style={{ color: 'var(--dash-text-sub)' }}
-                >
-                  <ChevronLeft className="w-3.5 h-3.5" />
-                </button>
-                <button
-                  onClick={() => datePickerRef.current?.showPicker()}
-                  className="flex items-center gap-1.5 px-1.5 py-0.5 hover:bg-white/[0.07] rounded-lg transition-colors"
-                >
-                  <Calendar className="w-3 h-3" style={{ color: 'var(--dash-text-muted)' }} />
-                  <span className="text-[13px] font-medium" style={{ color: 'var(--dash-text)' }}>{formatDateDisplay(currentDate)}</span>
-                  {!loading && patients.length > 0 && (
-                    <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-white/[0.12]" style={{ color: 'var(--dash-text-sub)' }}>
-                      {patients.length}
-                    </span>
-                  )}
-                </button>
-                <input
-                  ref={datePickerRef}
-                  type="date"
-                  className="sr-only"
-                  value={currentDate.toISOString().split('T')[0]}
-                  max={new Date().toISOString().split('T')[0]}
-                  onChange={(e) => {
-                    if (e.target.value) {
-                      const [y, m, d] = e.target.value.split('-').map(Number);
-                      changeDate(new Date(y, m - 1, d));
-                    }
-                  }}
-                />
-                {!isToday && (
-                  <button
-                    onClick={goToToday}
-                    className="text-[10px] font-semibold px-1.5 py-0.5 rounded text-amber-300 hover:bg-white/[0.07] transition-colors"
-                  >
-                    Today
-                  </button>
-                )}
-                <button
-                  onClick={goToNextDay}
-                  disabled={isToday}
-                  className="p-1 hover:bg-white/[0.07] rounded-full transition-colors disabled:opacity-30"
-                  style={{ color: 'var(--dash-text-sub)' }}
-                >
-                  <ChevronRight className="w-3.5 h-3.5" />
-                </button>
               </div>
             </div>
 
-            <div className="flex items-center gap-1">
-              {/* User menu */}
-              {userEmail && (
-                <div className="relative" ref={privacyRef}>
-                  <button
-                    onClick={() => setPrivacyMenuOpen(!privacyMenuOpen)}
-                    className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg hover:bg-white/[0.07] transition-all duration-200"
-                    style={{ color: 'var(--dash-text-muted)' }}
-                    title={userEmail}
-                  >
-                    <div className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold"
-                      style={{ background: 'linear-gradient(135deg, rgba(99,102,241,0.4), rgba(59,130,246,0.4))', color: 'var(--dash-text)' }}>
-                      {(userName || userEmail || '?').charAt(0).toUpperCase()}
-                    </div>
-                    <span className="text-[12px] font-medium max-w-[100px] truncate">
-                      {anonymize ? 'Dr. ***' : userName ? `Dr. ${userName.trim().split(/\s+/).pop()}` : ''}
-                    </span>
-                    <ChevronDown className={`w-3 h-3 transition-transform duration-200 ${privacyMenuOpen ? 'rotate-180' : ''} opacity-40`} />
-                  </button>
-                  {privacyMenuOpen && (
-                    <>
-                      <div className="fixed inset-0 z-40" onClick={() => setPrivacyMenuOpen(false)} />
-                      <div className="absolute right-0 top-full mt-2 z-50 w-52 rounded-xl overflow-hidden backdrop-blur-xl"
-                        style={{ background: 'color-mix(in srgb, var(--card-bg) 97%, transparent)', border: '1px solid var(--card-border)', boxShadow: '0 12px 40px rgba(0,0,0,0.25), 0 0 0 1px rgba(255,255,255,0.04)' }}>
-                        <div className="px-3 py-2.5 border-b" style={{ borderColor: 'var(--border-light)' }}>
-                          <div className="text-[13px] font-semibold" style={{ color: 'var(--text-primary)' }}>
-                            {anonymize ? 'Dr. ***' : userName || userEmail}
-                          </div>
-                          {!anonymize && userName && (
-                            <div className="text-[11px] mt-0.5" style={{ color: 'var(--text-muted)' }}>{userEmail}</div>
-                          )}
-                        </div>
-                        <div className="p-1.5">
-                          <button
-                            onClick={() => { setSavedResourcesOpen(true); setPrivacyMenuOpen(false); }}
-                            className="flex items-center gap-2.5 w-full px-3 py-2.5 rounded-lg text-left text-[13px] font-medium transition-colors hover:bg-black/5 dark:hover:bg-white/5"
-                            style={{ color: 'var(--text-primary)' }}
-                          >
-                            <Bookmark className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
-                            Saved Resources
-                          </button>
-                          <button
-                            onClick={() => { setAnonymize(!anonymize); setPrivacyMenuOpen(false); }}
-                            className="flex items-center gap-2.5 w-full px-3 py-2.5 rounded-lg text-left text-[13px] font-medium transition-colors hover:bg-black/5 dark:hover:bg-white/5"
-                            style={{ color: 'var(--text-primary)' }}
-                          >
-                            {anonymize ? <Eye className="w-4 h-4" style={{ color: 'var(--text-muted)' }} /> : <EyeOff className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />}
-                            {anonymize ? 'Show Names' : 'Anonymize'}
-                          </button>
-                          <button
-                            onClick={() => { setAwayScreen(true); setPrivacyMenuOpen(false); }}
-                            className="flex items-center gap-2.5 w-full px-3 py-2.5 rounded-lg text-left text-[13px] font-medium transition-colors hover:bg-black/5 dark:hover:bg-white/5"
-                            style={{ color: 'var(--text-primary)' }}
-                          >
-                            <Monitor className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
-                            Away Screen
-                          </button>
-                        </div>
-                        <div className="border-t p-1.5" style={{ borderColor: 'var(--border-light)' }}>
-                          <button
-                            onClick={() => router.push('/settings')}
-                            className="flex items-center gap-2.5 w-full px-3 py-2.5 rounded-lg text-left text-[13px] font-medium transition-colors hover:bg-black/5 dark:hover:bg-white/5"
-                            style={{ color: 'var(--text-primary)' }}
-                          >
-                            <Settings className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
-                            Settings
-                          </button>
-                          <button
-                            onClick={() => { setPrivacyMenuOpen(false); handleLogout(); }}
-                            className="flex items-center gap-2.5 w-full px-3 py-2.5 rounded-lg text-left text-[13px] font-medium transition-colors hover:bg-black/5 dark:hover:bg-white/5"
-                            style={{ color: 'var(--text-primary)' }}
-                          >
-                            <LogOut className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
-                            Sign Out
-                          </button>
-                        </div>
-                      </div>
-                    </>
-                  )}
-                </div>
+            {/* Encounter type */}
+            <div className="px-3 py-2 border-b" style={{ borderColor: 'var(--border-light)' }}>
+              <div className="text-[10px] font-semibold uppercase tracking-wider px-2 mb-1" style={{ color: 'var(--text-muted)' }}>Encounter Type</div>
+              {encounterTypes.map(et => (
+                <button
+                  key={et.id}
+                  onClick={() => { setActiveEncounterType(et.id); saveEncounterType(et.id); }}
+                  className="flex items-center gap-2.5 w-full px-3 py-2 rounded-lg text-left text-[13px] font-medium transition-colors hover:bg-black/5 dark:hover:bg-white/5"
+                  style={{ color: activeEncounterType === et.id ? 'var(--accent)' : 'var(--text-primary)', background: activeEncounterType === et.id ? 'var(--accent-light)' : undefined }}
+                >
+                  {et.label}
+                  {activeEncounterType === et.id && <span className="ml-auto text-[10px] font-semibold" style={{ color: 'var(--accent)' }}>Active</span>}
+                </button>
+              ))}
+            </div>
+
+            {/* Actions */}
+            <div className="p-3">
+              <button
+                onClick={() => { setSavedResourcesOpen(true); setSidebarOpen(false); }}
+                className="flex items-center gap-2.5 w-full px-3 py-2.5 rounded-lg text-left text-[13px] font-medium transition-colors hover:bg-black/5 dark:hover:bg-white/5"
+                style={{ color: 'var(--text-primary)' }}
+              >
+                <Bookmark className="w-4 h-4" style={{ color: 'var(--text-muted)' }} /> Saved Resources
+              </button>
+              <button
+                onClick={() => { setAnonymize(!anonymize); }}
+                className="flex items-center gap-2.5 w-full px-3 py-2.5 rounded-lg text-left text-[13px] font-medium transition-colors hover:bg-black/5 dark:hover:bg-white/5"
+                style={{ color: 'var(--text-primary)' }}
+              >
+                {anonymize ? <Eye className="w-4 h-4" style={{ color: 'var(--text-muted)' }} /> : <EyeOff className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />}
+                {anonymize ? 'Show Names' : 'Anonymize'}
+              </button>
+              <button
+                onClick={() => { setAwayScreen(true); setSidebarOpen(false); }}
+                className="flex items-center gap-2.5 w-full px-3 py-2.5 rounded-lg text-left text-[13px] font-medium transition-colors hover:bg-black/5 dark:hover:bg-white/5"
+                style={{ color: 'var(--text-primary)' }}
+              >
+                <Monitor className="w-4 h-4" style={{ color: 'var(--text-muted)' }} /> Away Screen
+              </button>
+            </div>
+
+            {/* Footer */}
+            <div className="border-t p-3 mt-auto" style={{ borderColor: 'var(--border-light)' }}>
+              <button
+                onClick={() => { router.push('/settings'); setSidebarOpen(false); }}
+                className="flex items-center gap-2.5 w-full px-3 py-2.5 rounded-lg text-left text-[13px] font-medium transition-colors hover:bg-black/5 dark:hover:bg-white/5"
+                style={{ color: 'var(--text-primary)' }}
+              >
+                <Settings className="w-4 h-4" style={{ color: 'var(--text-muted)' }} /> Settings
+              </button>
+              <button
+                onClick={() => { setSidebarOpen(false); handleLogout(); }}
+                className="flex items-center gap-2.5 w-full px-3 py-2.5 rounded-lg text-left text-[13px] font-medium transition-colors hover:bg-black/5 dark:hover:bg-white/5"
+                style={{ color: 'var(--text-primary)' }}
+              >
+                <LogOut className="w-4 h-4" style={{ color: 'var(--text-muted)' }} /> Sign Out
+              </button>
+            </div>
+          </aside>
+        </>
+      )}
+
+      <header className="dash-header sticky top-0 z-40">
+        <div className="max-w-4xl mx-auto px-4">
+          {/* Top row: menu + title + date */}
+          <div className="flex items-center justify-between py-3">
+            {/* Left: hamburger + title */}
+            <div className="flex items-center gap-3 min-w-0">
+              <button
+                onClick={() => setSidebarOpen(true)}
+                className="p-1.5 -ml-1.5 hover:bg-white/[0.07] rounded-lg transition-colors"
+                style={{ color: 'var(--dash-text-sub)' }}
+              >
+                <Menu className="w-5 h-5" />
+              </button>
+              <h1 className="text-[17px] font-bold tracking-[-0.02em]" style={{ color: 'var(--dash-text)' }}>ER Dashboard</h1>
+            </div>
+
+            {/* Right: date navigation */}
+            <div className="flex items-center">
+              <button
+                onClick={goToPreviousDay}
+                className="p-1 hover:bg-white/[0.07] rounded-full transition-colors"
+                style={{ color: 'var(--dash-text-sub)' }}
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => datePickerRef.current?.showPicker()}
+                className="flex items-center gap-1.5 px-2 py-1 hover:bg-white/[0.07] rounded-lg transition-colors"
+              >
+                <span className="text-[17px] font-bold tracking-[-0.02em]" style={{ color: 'var(--dash-text)' }}>{formatDateDisplay(currentDate)}</span>
+                {!loading && patients.length > 0 && (
+                  <span className="text-[11px] font-semibold px-1.5 py-0.5 rounded-full bg-white/[0.12]" style={{ color: 'var(--dash-text-sub)' }}>
+                    {patients.length}
+                  </span>
+                )}
+              </button>
+              <input
+                ref={datePickerRef}
+                type="date"
+                className="sr-only"
+                value={currentDate.toISOString().split('T')[0]}
+                max={new Date().toISOString().split('T')[0]}
+                onChange={(e) => {
+                  if (e.target.value) {
+                    const [y, m, d] = e.target.value.split('-').map(Number);
+                    changeDate(new Date(y, m - 1, d));
+                  }
+                }}
+              />
+              {!isToday && (
+                <button
+                  onClick={goToToday}
+                  className="text-[11px] font-semibold px-1.5 py-0.5 rounded text-amber-300 hover:bg-white/[0.07] transition-colors"
+                >
+                  Today
+                </button>
               )}
+              <button
+                onClick={goToNextDay}
+                disabled={isToday}
+                className="p-1 hover:bg-white/[0.07] rounded-full transition-colors disabled:opacity-30"
+                style={{ color: 'var(--dash-text-sub)' }}
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
             </div>
           </div>
 
           {/* Secondary bar: search + shift times */}
           <div className="flex items-center justify-between border-t py-2 gap-2" style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
-            {/* Mobile date nav (hidden on sm+) */}
-            <div className="flex sm:hidden items-center flex-shrink-0">
-              <button onClick={goToPreviousDay} className="p-1 hover:bg-white/[0.07] rounded-full transition-colors" style={{ color: 'var(--dash-text-sub)' }}>
-                <ChevronLeft className="w-3.5 h-3.5" />
-              </button>
-              <button onClick={() => datePickerRef.current?.showPicker()} className="flex items-center gap-1 px-1.5 py-0.5 hover:bg-white/[0.07] rounded-lg transition-colors">
-                <span className="text-[12px] font-medium" style={{ color: 'var(--dash-text)' }}>{formatDateDisplay(currentDate)}</span>
-                {!loading && patients.length > 0 && (
-                  <span className="text-[10px] font-semibold px-1 py-0.5 rounded-full bg-white/[0.12]" style={{ color: 'var(--dash-text-sub)' }}>{patients.length}</span>
-                )}
-              </button>
-              {!isToday && <button onClick={goToToday} className="text-[10px] font-semibold px-1 py-0.5 rounded text-amber-300 hover:bg-white/[0.07]">Today</button>}
-              <button onClick={goToNextDay} disabled={isToday} className="p-1 hover:bg-white/[0.07] rounded-full transition-colors disabled:opacity-30" style={{ color: 'var(--dash-text-sub)' }}>
-                <ChevronRight className="w-3.5 h-3.5" />
-              </button>
-            </div>
-
             {/* Search + Sort */}
             <div className="flex items-center gap-1.5 flex-1 max-w-[240px]">
               <div className="relative flex-1">
