@@ -70,9 +70,6 @@ export default function HomePage() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [showParseModal, setShowParseModal] = useState(false);
-  const [showQuickAdd, setShowQuickAdd] = useState(false);
-  const [quickAddName, setQuickAddName] = useState('');
-  const [quickAddSaving, setQuickAddSaving] = useState(false);
   const [currentDate, setCurrentDate] = useState(() => {
     if (typeof window !== 'undefined') {
       const saved = sessionStorage.getItem('ed-app-current-date');
@@ -160,17 +157,6 @@ export default function HomePage() {
   // Draggable FAB (extracted hook)
   const { fabPos, fabRef, handlePointerDown: fabPointerDown, resetPosition: resetFabPosition, wasDragged: fabWasDragged } = useDraggableFab();
 
-  // Track Cmd/Meta key for FAB quick-add mode
-  const [metaHeld, setMetaHeld] = useState(false);
-  useEffect(() => {
-    const down = (e: KeyboardEvent) => { if (e.metaKey || e.ctrlKey) setMetaHeld(true); };
-    const up = (e: KeyboardEvent) => { if (!e.metaKey && !e.ctrlKey) setMetaHeld(false); };
-    const blur = () => setMetaHeld(false);
-    window.addEventListener('keydown', down);
-    window.addEventListener('keyup', up);
-    window.addEventListener('blur', blur);
-    return () => { window.removeEventListener('keydown', down); window.removeEventListener('keyup', up); window.removeEventListener('blur', blur); };
-  }, []);
 
   const [sharedFile, setSharedFile] = useState<File | undefined>(undefined);
   const [sharedTranscript, setSharedTranscript] = useState<string | undefined>(undefined);
@@ -431,25 +417,6 @@ export default function HomePage() {
       }
     } catch (error) {
       console.error('Failed to save patient:', error);
-    }
-  };
-
-  const handleQuickAdd = async () => {
-    const name = quickAddName.trim();
-    if (!name) return;
-    setQuickAddSaving(true);
-    try {
-      const now = new Date();
-      const hours = now.getHours();
-      const minutes = Math.round(now.getMinutes() / 10) * 10;
-      const timestamp = `${hours.toString().padStart(2, '0')}:${(minutes % 60).toString().padStart(2, '0')}`;
-      await handleSavePatient({ name, timestamp });
-      setQuickAddName('');
-      setShowQuickAdd(false);
-    } catch (error) {
-      console.error('Quick add failed:', error);
-    } finally {
-      setQuickAddSaving(false);
     }
   };
 
@@ -938,17 +905,22 @@ export default function HomePage() {
       )}
 
       <header className="dash-header sticky top-0 z-40">
-        <div className="max-w-4xl mx-auto px-4">
-          {/* Top row: menu + title + date */}
+        <div className="max-w-2xl mx-auto px-[var(--page-px)]">
+          {/* Top row: icon + title + date */}
           <div className="flex items-center justify-between py-3">
-            {/* Left: hamburger + title */}
-            <div className="flex items-center gap-3 min-w-0">
+            {/* Left: icon + title */}
+            <div className="flex items-center gap-2.5 min-w-0">
               <button
                 onClick={() => setSidebarOpen(true)}
-                className="p-1.5 -ml-1.5 hover:bg-white/[0.07] rounded-lg transition-colors"
-                style={{ color: 'var(--dash-text-sub)' }}
+                className="w-9 h-9 rounded-[12px] flex items-center justify-center flex-shrink-0 overflow-hidden transition-all duration-200 hover:scale-105 active:scale-95"
+                style={{ background: 'linear-gradient(145deg, rgba(255,255,255,0.14) 0%, rgba(255,255,255,0.04) 100%)', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.1), 0 1px 3px rgba(0,0,0,0.1)' }}
+                title="Menu"
               >
-                <Menu className="w-5 h-5" />
+                <svg width="20" height="20" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <rect x="13" y="6" width="6" height="20" rx="3" fill="white" opacity="0.9" />
+                  <rect x="6" y="13" width="20" height="6" rx="3" fill="white" opacity="0.9" />
+                  <circle cx="25" cy="25" r="2.5" fill="#4a9ead" opacity="0.8" />
+                </svg>
               </button>
               <h1 className="text-[17px] font-bold tracking-[-0.02em]" style={{ color: 'var(--dash-text)' }}>ER Dashboard</h1>
             </div>
@@ -1282,32 +1254,12 @@ export default function HomePage() {
             <p className="text-[var(--text-muted)] mb-2">
               {isToday ? 'No patients yet today' : `No patients on ${sheetName}`}
             </p>
-            {/* Quick add inline */}
-            <form
-              onSubmit={(e) => { e.preventDefault(); handleQuickAdd(); }}
-              className="flex items-center gap-2 max-w-sm mx-auto"
-            >
-              <input
-                type="text"
-                value={quickAddName}
-                onChange={(e) => setQuickAddName(e.target.value)}
-                placeholder="Patient name..."
-                autoFocus
-                className="flex-1 px-3 py-2.5 border border-[var(--input-border)] rounded-xl text-sm bg-[var(--input-bg)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              />
-              <button
-                type="submit"
-                disabled={!quickAddName.trim() || quickAddSaving}
-                className="px-4 py-2.5 bg-[var(--accent)] text-white rounded-xl text-sm font-medium hover:brightness-110 active:scale-[0.97] transition-all disabled:opacity-40"
-              >
-                {quickAddSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Add'}
-              </button>
-            </form>
             <button
               onClick={() => setShowParseModal(true)}
-              className="text-xs text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-colors"
+              className="px-6 py-3 bg-[var(--accent)] text-white rounded-xl text-sm font-medium hover:brightness-110 active:scale-[0.97] transition-all flex items-center gap-2 mx-auto"
             >
-              or import from EMR
+              <Plus className="w-4 h-4" />
+              Add Patient
             </button>
           </div>
         ) : (
@@ -1319,38 +1271,6 @@ export default function HomePage() {
               </div>
             )}
 
-            {/* Quick Add Patient (triggered by ⌘+click on FAB) */}
-            {showQuickAdd && (
-              <form
-                onSubmit={(e) => { e.preventDefault(); handleQuickAdd(); }}
-                className="flex items-center gap-2 animate-fadeIn"
-              >
-                <input
-                  type="text"
-                  value={quickAddName}
-                  onChange={(e) => setQuickAddName(e.target.value)}
-                  placeholder="Patient name..."
-                  autoFocus
-                  className="flex-1 px-3 py-2 border border-[var(--input-border)] rounded-xl text-sm bg-[var(--input-bg)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  onKeyDown={(e) => { if (e.key === 'Escape') { setShowQuickAdd(false); setQuickAddName(''); } }}
-                />
-                <button
-                  type="submit"
-                  disabled={!quickAddName.trim() || quickAddSaving}
-                  className="px-3 py-2 bg-[var(--accent)] text-white rounded-xl text-sm font-medium hover:brightness-110 active:scale-[0.97] transition-all disabled:opacity-40 flex items-center gap-1.5"
-                >
-                  {quickAddSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
-                  Add
-                </button>
-                <button
-                  type="button"
-                  onClick={() => { setShowQuickAdd(false); setQuickAddName(''); }}
-                  className="p-2 text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </form>
-            )}
 
             {/* Batch Process Button */}
             {hasPending && !batchMode && (
@@ -1494,20 +1414,13 @@ export default function HomePage() {
             e.preventDefault();
             fabPointerDown(e);
           }}
-          onClick={(e) => {
+          onClick={() => {
             if (fabWasDragged()) return;
-            if (e.metaKey || e.ctrlKey) {
-              setShowQuickAdd(true);
-            } else {
-              setShowParseModal(true);
-            }
+            setShowParseModal(true);
           }}
-          className="w-14 h-14 text-white rounded-2xl flex items-center justify-center active:scale-[0.93] transition-all duration-200 touch-none select-none cursor-grab active:cursor-grabbing"
-          style={{
-            background: metaHeld ? 'var(--accent-green)' : 'var(--accent)',
-            boxShadow: metaHeld ? '0 4px 14px rgba(13,148,136,0.4)' : 'var(--fab-shadow)',
-          }}
-          title={metaHeld ? 'Quick add patient (⌘+click)' : 'Import from EMR'}
+          className="w-14 h-14 bg-[var(--accent)] text-white rounded-2xl flex items-center justify-center hover:brightness-110 active:scale-[0.93] transition-all duration-200 touch-none select-none cursor-grab active:cursor-grabbing"
+          style={{ boxShadow: 'var(--fab-shadow)' }}
+          title="Add patient"
         >
           <span className="w-9 h-9 flex items-center justify-center cursor-pointer">
             <Plus className="w-6 h-6 pointer-events-none" />
@@ -1520,6 +1433,13 @@ export default function HomePage() {
         isOpen={showParseModal}
         onClose={() => setShowParseModal(false)}
         onSave={handleSavePatient}
+        onQuickAdd={async (name) => {
+          await handleSavePatient({
+            name, age: '', gender: '', birthday: '', hcn: '', mrn: '',
+            timestamp: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false }),
+            triageVitals: '', transcript: '', encounterNotes: '', additional: '', pastDocs: '',
+          });
+        }}
       />
 
       {/* Patient Data Entry Modal */}

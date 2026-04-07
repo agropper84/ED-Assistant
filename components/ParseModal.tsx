@@ -13,6 +13,7 @@ interface ParseModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSave: (data: ParsedData) => void;
+  onQuickAdd?: (name: string) => void;
 }
 
 export interface ParsedData {
@@ -72,7 +73,9 @@ function getNearestSlot(): string {
 
 const TIME_SLOTS = generateTimeSlots();
 
-export function ParseModal({ isOpen, onClose, onSave }: ParseModalProps) {
+export function ParseModal({ isOpen, onClose, onSave, onQuickAdd }: ParseModalProps) {
+  const [quickName, setQuickName] = useState('');
+  const [quickSaving, setQuickSaving] = useState(false);
   const [pasteText, setPasteText] = useState('');
   const [triageVitals, setTriageVitals] = useState('');
   const [transcript, setTranscript] = useState('');
@@ -250,6 +253,37 @@ export function ParseModal({ isOpen, onClose, onSave }: ParseModalProps) {
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
+          {/* Quick Add */}
+          {onQuickAdd && (
+            <form
+              onSubmit={async (e) => {
+                e.preventDefault();
+                const n = quickName.trim();
+                if (!n || quickSaving) return;
+                setQuickSaving(true);
+                try { await onQuickAdd(n); setQuickName(''); onClose(); }
+                finally { setQuickSaving(false); }
+              }}
+              className="flex items-center gap-2 pb-3 border-b"
+              style={{ borderColor: 'var(--border-light)' }}
+            >
+              <input
+                type="text"
+                value={quickName}
+                onChange={(e) => setQuickName(e.target.value)}
+                placeholder="Quick add — just a name..."
+                className="flex-1 px-3 py-2 border border-[var(--input-border)] rounded-xl text-sm bg-[var(--input-bg)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
+              <button
+                type="submit"
+                disabled={!quickName.trim() || quickSaving}
+                className="px-3 py-2 bg-[var(--accent-green)] text-white rounded-xl text-sm font-medium hover:brightness-110 active:scale-[0.97] transition-all disabled:opacity-40 flex items-center gap-1.5 flex-shrink-0"
+              >
+                {quickSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Add'}
+              </button>
+            </form>
+          )}
+
           {/* Paste Area */}
           <div>
             <div className="flex items-center justify-between mb-1.5">
