@@ -159,6 +159,18 @@ export default function HomePage() {
   // Draggable FAB (extracted hook)
   const { fabPos, fabRef, handlePointerDown: fabPointerDown, resetPosition: resetFabPosition, wasDragged: fabWasDragged } = useDraggableFab();
 
+  // Track Cmd/Meta key for FAB quick-add mode
+  const [metaHeld, setMetaHeld] = useState(false);
+  useEffect(() => {
+    const down = (e: KeyboardEvent) => { if (e.metaKey || e.ctrlKey) setMetaHeld(true); };
+    const up = (e: KeyboardEvent) => { if (!e.metaKey && !e.ctrlKey) setMetaHeld(false); };
+    const blur = () => setMetaHeld(false);
+    window.addEventListener('keydown', down);
+    window.addEventListener('keyup', up);
+    window.addEventListener('blur', blur);
+    return () => { window.removeEventListener('keydown', down); window.removeEventListener('keyup', up); window.removeEventListener('blur', blur); };
+  }, []);
+
   const [sharedFile, setSharedFile] = useState<File | undefined>(undefined);
   const [sharedTranscript, setSharedTranscript] = useState<string | undefined>(undefined);
 
@@ -1362,8 +1374,8 @@ export default function HomePage() {
               </div>
             )}
 
-            {/* Quick Add Patient */}
-            {showQuickAdd ? (
+            {/* Quick Add Patient (triggered by ⌘+click on FAB) */}
+            {showQuickAdd && (
               <form
                 onSubmit={(e) => { e.preventDefault(); handleQuickAdd(); }}
                 className="flex items-center gap-2 animate-fadeIn"
@@ -1393,14 +1405,6 @@ export default function HomePage() {
                   <X className="w-4 h-4" />
                 </button>
               </form>
-            ) : (
-              <button
-                onClick={() => setShowQuickAdd(true)}
-                className="w-full py-2 border border-dashed border-[var(--border)] text-[var(--text-muted)] rounded-xl text-xs font-medium flex items-center justify-center gap-1.5 hover:bg-[var(--bg-tertiary)] active:scale-[0.99] transition-all"
-              >
-                <Plus className="w-3 h-3" />
-                Quick add patient
-              </button>
             )}
 
             {/* Batch Process Button */}
@@ -1545,11 +1549,20 @@ export default function HomePage() {
             e.preventDefault();
             fabPointerDown(e);
           }}
-          onClick={() => {
-            if (!fabWasDragged()) setShowParseModal(true);
+          onClick={(e) => {
+            if (fabWasDragged()) return;
+            if (e.metaKey || e.ctrlKey) {
+              setShowQuickAdd(true);
+            } else {
+              setShowParseModal(true);
+            }
           }}
-          className="w-14 h-14 bg-[var(--accent)] text-white rounded-2xl flex items-center justify-center hover:brightness-110 active:scale-[0.93] transition-all duration-200 touch-none select-none cursor-grab active:cursor-grabbing"
-          style={{ boxShadow: 'var(--fab-shadow)' }}
+          className="w-14 h-14 text-white rounded-2xl flex items-center justify-center active:scale-[0.93] transition-all duration-200 touch-none select-none cursor-grab active:cursor-grabbing"
+          style={{
+            background: metaHeld ? 'var(--accent-green)' : 'var(--accent)',
+            boxShadow: metaHeld ? '0 4px 14px rgba(13,148,136,0.4)' : 'var(--fab-shadow)',
+          }}
+          title={metaHeld ? 'Quick add patient (⌘+click)' : 'Import from EMR'}
         >
           <span className="w-9 h-9 flex items-center justify-center cursor-pointer">
             <Plus className="w-6 h-6 pointer-events-none" />
