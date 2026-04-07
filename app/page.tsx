@@ -840,6 +840,19 @@ export default function HomePage() {
           {/* Single row: title + encounter type + date nav + user menu */}
           <div className="flex items-center justify-between py-3">
             <div className="flex items-center gap-3 min-w-0">
+              {/* App icon */}
+              <div
+                className="w-10 h-10 rounded-[14px] flex items-center justify-center flex-shrink-0 overflow-hidden"
+                style={{ background: 'linear-gradient(145deg, rgba(255,255,255,0.14) 0%, rgba(255,255,255,0.04) 100%)', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.1), 0 1px 3px rgba(0,0,0,0.1)' }}
+              >
+                <svg width="22" height="22" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  {/* Medical cross */}
+                  <rect x="13" y="6" width="6" height="20" rx="3" fill="white" opacity="0.9" />
+                  <rect x="6" y="13" width="20" height="6" rx="3" fill="white" opacity="0.9" />
+                  {/* Pulse dot */}
+                  <circle cx="25" cy="25" r="2.5" fill="#4a9ead" opacity="0.8" />
+                </svg>
+              </div>
               {/* Title + Encounter Type */}
               <div className="flex items-center gap-2 min-w-0">
                 <h1 className="text-[17px] font-bold tracking-[-0.02em]" style={{ color: 'var(--dash-text)' }}>ED Dashboard</h1>
