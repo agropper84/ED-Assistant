@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next'
 import './globals.css'
 import { ThemeProvider } from '@/lib/theme'
+import { SWRProvider } from '@/lib/swr-config'
 
 export const metadata: Metadata = {
   title: 'Patient Dashboard',
@@ -66,7 +67,9 @@ export default function RootLayout({
       </head>
       <body className="min-h-screen">
         <ThemeProvider>
-          {children}
+          <SWRProvider>
+            {children}
+          </SWRProvider>
         </ThemeProvider>
       </body>
     </html>

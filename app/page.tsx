@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import useSWR from 'swr';
 import { Patient } from '@/lib/google-sheets';
 import {
   getPromptTemplates, getSettings, saveSettings, getEffectivePromptTemplates,
@@ -528,20 +529,15 @@ export default function HomePage() {
     }
   };
 
-  const fetchSheets = async () => {
-    try {
-      const res = await fetch('/api/patients?listSheets=1', { cache: 'no-store' });
-      const data = await res.json();
-      setAvailableSheets(data.sheets || []);
-    } catch (error) {
-      console.error('Failed to fetch sheets:', error);
-    }
-  };
+  // SWR: available date sheets (deduped, cached)
+  const { data: sheetsData } = useSWR<{ sheets: string[] }>('/api/patients?listSheets=1');
+  useEffect(() => {
+    if (sheetsData?.sheets) setAvailableSheets(sheetsData.sheets);
+  }, [sheetsData]);
 
   useEffect(() => {
     setLoading(true);
     fetchPatients();
-    fetchSheets();
   }, [sheetName]);
 
   // Re-fetch when window regains focus (e.g. returning from patient detail page)
@@ -582,41 +578,31 @@ export default function HomePage() {
     return () => { if (searchDebounce.current) clearTimeout(searchDebounce.current); };
   }, [searchQuery]);
 
+  // SWR: user profile (deduped, cached)
+  const { data: authData } = useSWR<{ email: string; name: string; termsAccepted?: boolean }>('/api/auth/me');
   useEffect(() => {
-    fetch('/api/auth/me')
-      .then(res => res.ok ? res.json() : null)
-      .then(data => {
-        if (data) {
-          if (data.termsAccepted === false) {
-            router.push('/terms');
-            return;
-          }
-          setUserEmail(data.email || '');
-          setUserName(data.name || '');
-        }
-      })
-      .catch(() => {});
+    if (!authData) return;
+    if (authData.termsAccepted === false) { router.push('/terms'); return; }
+    setUserEmail(authData.email || '');
+    setUserName(authData.name || '');
+  }, [authData]);
 
-    // Load billing config from Google Sheet → sync to localStorage
-    fetch('/api/billing-config')
-      .then(res => res.ok ? res.json() : null)
-      .then(config => {
-        if (config) {
-          const s = getSettings();
-          saveSettings({
-            ...s,
-            vchCprpId: config.vchCprpId || s.vchCprpId,
-            vchSiteFacility: config.vchSiteFacility || s.vchSiteFacility,
-            vchPracNumber: config.vchPracNumber || s.vchPracNumber,
-            vchPractitionerName: config.vchPractitionerName || s.vchPractitionerName,
-          });
-          if (config.billingRegion) {
-            saveRegion(config.billingRegion);
-          }
-        }
-      })
-      .catch(() => {});
-  }, []);
+  // SWR: billing config (deduped, cached)
+  const { data: billingConfig } = useSWR<Record<string, string>>('/api/billing-config');
+  useEffect(() => {
+    if (!billingConfig) return;
+    const s = getSettings();
+    saveSettings({
+      ...s,
+      vchCprpId: billingConfig.vchCprpId || s.vchCprpId,
+      vchSiteFacility: billingConfig.vchSiteFacility || s.vchSiteFacility,
+      vchPracNumber: billingConfig.vchPracNumber || s.vchPracNumber,
+      vchPractitionerName: billingConfig.vchPractitionerName || s.vchPractitionerName,
+    });
+    if (billingConfig.billingRegion) {
+      saveRegion(billingConfig.billingRegion);
+    }
+  }, [billingConfig]);
 
   // Web Share Target: detect ?share=1 and retrieve cached audio
   useEffect(() => {
