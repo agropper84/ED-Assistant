@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Trash2, Plus, Pencil, RotateCcw, Loader2, X, Sun, Moon, Monitor, Search, ChevronRight, Check, Copy, Key, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Trash2, Plus, Pencil, RotateCcw, Loader2, X, Sun, Moon, Monitor, Search, ChevronRight, Check, Copy, Key, AlertCircle, Brain, Sparkles } from 'lucide-react';
 import { useTheme } from '@/lib/theme';
 import {
   StyleGuide,
@@ -138,6 +138,60 @@ export default function SettingsPage() {
   const [transcribeWebApi, setTranscribeWebApi] = useState<TranscribeAPI>(() => getTranscribeWebAPI());
   const [transcribeWatchApi, setTranscribeWatchApi] = useState<TranscribeAPI>(() => getTranscribeWatchAPI());
   const [medDictMode, setMedDictMode] = useState<MedicalizeDictationMode>(() => getMedicalizeDictationMode());
+
+  // AI Calibration state
+  const [aiLearningEnabled, setAiLearningEnabled] = useState(true);
+  const [dictationCal, setDictationCal] = useState<{ rules: string; terminology: string; style: string; lastCalibrated?: string; samplesUsed?: string } | null>(null);
+  const [encounterCal, setEncounterCal] = useState<{ rules: string; terminology: string; speakerLabeling: string; lastCalibrated?: string; samplesUsed?: string } | null>(null);
+  const [calibrating, setCalibrating] = useState<string | null>(null);
+
+  // Load calibration from server settings
+  useEffect(() => {
+    fetch('/api/privacy-settings')
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (!data) return;
+        if (data.aiLearningEnabled !== undefined) setAiLearningEnabled(data.aiLearningEnabled);
+        if (data.dictationCalibration) setDictationCal(data.dictationCalibration);
+        if (data.encounterCalibration) setEncounterCal(data.encounterCalibration);
+      })
+      .catch(() => {});
+  }, []);
+
+  const saveCalSetting = async (key: string, value: any) => {
+    await fetch('/api/privacy-settings', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ [key]: value }),
+    });
+  };
+
+  const runCalibration = async (mode: 'dictation' | 'encounter') => {
+    setCalibrating(mode);
+    try {
+      const res = await fetch('/api/calibrate-transcription', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mode }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        alert(data.error || 'Calibration failed');
+        return;
+      }
+      const data = await res.json();
+      if (mode === 'dictation') {
+        setDictationCal(data.calibration);
+      } else {
+        setEncounterCal(data.calibration);
+      }
+      // Already saved by the API route
+    } catch (e: any) {
+      alert(e.message || 'Calibration failed');
+    } finally {
+      setCalibrating(null);
+    }
+  };
   const [deepgramApiKey, setDeepgramApiKey] = useState('');
   const [deepgramKeyMasked, setDeepgramKeyMasked] = useState<string | null>(null);
   const [wisprApiKey, setWisprApiKey] = useState('');
@@ -1091,6 +1145,136 @@ export default function SettingsPage() {
                 </select>
                 <p className="text-[10px] text-[var(--text-muted)] mt-0.5">Used for audio uploaded from the Watch app</p>
               </div>
+            </div>
+
+            {/* AI Transcription Calibration */}
+            <div className="bg-[var(--card-bg)] rounded-2xl border border-[var(--card-border)] p-5 space-y-4" style={{ boxShadow: 'var(--card-shadow)' }}>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Brain className="w-4 h-4 text-purple-500" />
+                  <h3 className="font-semibold text-[var(--text-primary)]">AI Transcription Learning</h3>
+                </div>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={aiLearningEnabled}
+                  onClick={() => { setAiLearningEnabled(!aiLearningEnabled); saveCalSetting('aiLearningEnabled', !aiLearningEnabled); }}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${aiLearningEnabled ? 'bg-purple-600' : 'bg-gray-300 dark:bg-gray-600'}`}
+                >
+                  <span className={`inline-block h-4 w-4 rounded-full bg-white transition-transform ${aiLearningEnabled ? 'translate-x-6' : 'translate-x-1'}`} />
+                </button>
+              </div>
+              <p className="text-xs text-[var(--text-muted)]">
+                AI analyzes your past dictations and encounter recordings to learn your terminology, speaking patterns, and writing style — improving transcription accuracy over time.
+              </p>
+
+              {aiLearningEnabled && (
+                <div className="space-y-4 pt-1">
+                  {/* Dictation Calibration */}
+                  <div className="border border-[var(--border-light)] rounded-xl p-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h4 className="text-sm font-semibold text-[var(--text-primary)]">Dictation Rules</h4>
+                        <p className="text-[11px] text-[var(--text-muted)]">How you dictate clinical notes</p>
+                      </div>
+                      {dictationCal?.lastCalibrated && (
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 font-medium">
+                          {dictationCal.samplesUsed} samples · {new Date(dictationCal.lastCalibrated).toLocaleDateString()}
+                        </span>
+                      )}
+                    </div>
+                    {dictationCal ? (
+                      <div className="space-y-2">
+                        <div>
+                          <label className="text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-wider">Processing Rules</label>
+                          <textarea value={dictationCal.rules} onChange={(e) => { const updated = { ...dictationCal, rules: e.target.value }; setDictationCal(updated); saveCalSetting('dictationCalibration', updated); }}
+                            className="w-full mt-1 p-2.5 border border-[var(--input-border)] rounded-lg text-xs bg-[var(--input-bg)] text-[var(--text-primary)] resize-y" rows={3} />
+                        </div>
+                        <div>
+                          <label className="text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-wider">Terminology</label>
+                          <textarea value={dictationCal.terminology} onChange={(e) => { const updated = { ...dictationCal, terminology: e.target.value }; setDictationCal(updated); saveCalSetting('dictationCalibration', updated); }}
+                            className="w-full mt-1 p-2.5 border border-[var(--input-border)] rounded-lg text-xs bg-[var(--input-bg)] text-[var(--text-primary)] resize-y" rows={2} />
+                        </div>
+                        <div>
+                          <label className="text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-wider">Writing Style</label>
+                          <textarea value={dictationCal.style} onChange={(e) => { const updated = { ...dictationCal, style: e.target.value }; setDictationCal(updated); saveCalSetting('dictationCalibration', updated); }}
+                            className="w-full mt-1 p-2.5 border border-[var(--input-border)] rounded-lg text-xs bg-[var(--input-bg)] text-[var(--text-primary)] resize-y" rows={2} />
+                        </div>
+                      </div>
+                    ) : null}
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => runCalibration('dictation')}
+                        disabled={calibrating !== null}
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-purple-600 text-white rounded-lg text-xs font-medium hover:bg-purple-700 active:scale-[0.97] transition-all disabled:opacity-40"
+                      >
+                        {calibrating === 'dictation' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
+                        {dictationCal ? 'Update from New Dictations' : 'Learn from Stored Dictations'}
+                      </button>
+                      {dictationCal && (
+                        <button
+                          onClick={() => { setDictationCal(null); saveCalSetting('dictationCalibration', null); }}
+                          className="px-3 py-1.5 text-xs font-medium text-[var(--text-muted)] hover:text-[var(--accent-red)] transition-colors"
+                        >
+                          Reset
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Encounter Calibration */}
+                  <div className="border border-[var(--border-light)] rounded-xl p-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h4 className="text-sm font-semibold text-[var(--text-primary)]">Encounter Transcript Rules</h4>
+                        <p className="text-[11px] text-[var(--text-muted)]">How you record patient encounters</p>
+                      </div>
+                      {encounterCal?.lastCalibrated && (
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 font-medium">
+                          {encounterCal.samplesUsed} samples · {new Date(encounterCal.lastCalibrated).toLocaleDateString()}
+                        </span>
+                      )}
+                    </div>
+                    {encounterCal ? (
+                      <div className="space-y-2">
+                        <div>
+                          <label className="text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-wider">Processing Rules</label>
+                          <textarea value={encounterCal.rules} onChange={(e) => { const updated = { ...encounterCal, rules: e.target.value }; setEncounterCal(updated); saveCalSetting('encounterCalibration', updated); }}
+                            className="w-full mt-1 p-2.5 border border-[var(--input-border)] rounded-lg text-xs bg-[var(--input-bg)] text-[var(--text-primary)] resize-y" rows={3} />
+                        </div>
+                        <div>
+                          <label className="text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-wider">Terminology</label>
+                          <textarea value={encounterCal.terminology} onChange={(e) => { const updated = { ...encounterCal, terminology: e.target.value }; setEncounterCal(updated); saveCalSetting('encounterCalibration', updated); }}
+                            className="w-full mt-1 p-2.5 border border-[var(--input-border)] rounded-lg text-xs bg-[var(--input-bg)] text-[var(--text-primary)] resize-y" rows={2} />
+                        </div>
+                        <div>
+                          <label className="text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-wider">Speaker Identification</label>
+                          <textarea value={encounterCal.speakerLabeling} onChange={(e) => { const updated = { ...encounterCal, speakerLabeling: e.target.value }; setEncounterCal(updated); saveCalSetting('encounterCalibration', updated); }}
+                            className="w-full mt-1 p-2.5 border border-[var(--input-border)] rounded-lg text-xs bg-[var(--input-bg)] text-[var(--text-primary)] resize-y" rows={2} />
+                        </div>
+                      </div>
+                    ) : null}
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => runCalibration('encounter')}
+                        disabled={calibrating !== null}
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-purple-600 text-white rounded-lg text-xs font-medium hover:bg-purple-700 active:scale-[0.97] transition-all disabled:opacity-40"
+                      >
+                        {calibrating === 'encounter' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
+                        {encounterCal ? 'Update from New Encounters' : 'Learn from Stored Encounters'}
+                      </button>
+                      {encounterCal && (
+                        <button
+                          onClick={() => { setEncounterCal(null); saveCalSetting('encounterCalibration', null); }}
+                          className="px-3 py-1.5 text-xs font-medium text-[var(--text-muted)] hover:text-[var(--accent-red)] transition-colors"
+                        >
+                          Reset
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Patient Data Format */}

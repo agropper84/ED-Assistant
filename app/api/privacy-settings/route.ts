@@ -25,6 +25,10 @@ export async function GET() {
       deepgramApiKeyMasked: deepgramKey ? `...${deepgramKey.slice(-4)}` : null,
       hasWisprApiKey: !!wisprKey,
       wisprApiKeyMasked: wisprKey ? `...${wisprKey.slice(-4)}` : null,
+      // AI calibration
+      aiLearningEnabled: settings?.aiLearningEnabled ?? true,
+      dictationCalibration: settings?.dictationCalibration || null,
+      encounterCalibration: settings?.encounterCalibration || null,
     });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
