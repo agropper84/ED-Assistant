@@ -16,7 +16,8 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { type ZodSchema } from 'zod';
-import { checkRateLimit, safeErrorLog, safeApiError } from '@med/shared';
+import { checkRateLimit } from '@/lib/rate-limit';
+import { safeErrorLog, safeApiError } from '@/lib/safe-error';
 import { getSessionFromCookies } from '@/lib/session';
 import { audit, type AuditAction } from '@/lib/audit';
 
