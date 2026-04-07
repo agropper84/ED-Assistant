@@ -34,11 +34,13 @@ export async function GET(request: NextRequest) {
 
   // Detect native app flow (state ends with _NATIVE)
   const isNative = !!state && state.endsWith('_NATIVE');
+  console.log('OAuth callback: state =', state?.slice(0, 10) + '...', 'isNative =', isNative);
 
   if (isNative) {
     const valid = await consumeNativeAuthState(state);
     if (!valid) {
-      return nativeRedirect('edassistant://auth-error?error=invalid_state');
+      console.error('Native auth: state not found in KV for state:', state);
+      return nativeRedirect('edassistant://auth-error?error=native_state_expired');
     }
   } else {
     const cookieStore = await cookies();
