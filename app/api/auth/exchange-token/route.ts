@@ -27,12 +27,15 @@ export async function GET(request: NextRequest) {
   session.approved = data.approved;
   await session.save();
 
-  // Native app calls with native=1 — return JSON (cookie is set via headers)
-  if (request.nextUrl.searchParams.get('native') === '1') {
+  // Detect native app (Accept: application/json or native=1 param)
+  const isNative = request.nextUrl.searchParams.get('native') === '1' ||
+    request.headers.get('accept')?.includes('application/json');
+
+  if (isNative) {
     return NextResponse.json({ success: true, approved: data.approved });
   }
 
-  // Redirect — honor ?redirect= param if provided
+  // Web: redirect
   const redirectPath = request.nextUrl.searchParams.get('redirect') || '/';
   return NextResponse.redirect(new URL(redirectPath, request.nextUrl.origin));
 }
