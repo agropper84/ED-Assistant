@@ -280,3 +280,28 @@ export async function deletePendingAudio(id: string, userId: string): Promise<vo
   await getRedis().del(`pending-audio:${id}`);
   await getRedis().srem(`pending-audio-list:${userId}`, id);
 }
+
+// --- Native app OAuth (KV-based state + exchange tokens, no cookies) ---
+
+export async function setNativeAuthState(state: string): Promise<void> {
+  await getRedis().set(`native-auth-state:${state}`, '1', 'EX', 600); // 10 min TTL
+}
+
+export async function consumeNativeAuthState(state: string): Promise<boolean> {
+  const val = await getRedis().get(`native-auth-state:${state}`);
+  if (val) {
+    await getRedis().del(`native-auth-state:${state}`);
+    return true;
+  }
+  return false;
+}
+
+export async function setAuthExchangeToken(token: string, sessionData: string): Promise<void> {
+  await getRedis().set(`auth-exchange:${token}`, sessionData, 'EX', 120); // 2 min TTL
+}
+
+export async function getAuthExchangeToken(token: string): Promise<string | null> {
+  const val = await getRedis().get(`auth-exchange:${token}`);
+  if (val) await getRedis().del(`auth-exchange:${token}`); // one-time use
+  return val;
+}
