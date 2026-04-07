@@ -836,110 +836,140 @@ export default function HomePage() {
     <div className="min-h-screen pb-24">
       {/* Header */}
       <header className="dash-header sticky top-0 z-40">
-        <div className="max-w-2xl mx-auto px-4">
-          {/* Top row: title + actions */}
-          <div className="flex items-center justify-between pt-3 pb-2">
-            <div className="flex items-center gap-2">
-              <h1 className="text-xl font-bold tracking-tight">My Patient Dashboard</h1>
-              {/* Encounter Type Selector */}
-              <div className="relative" ref={encounterMenuRef}>
-                <button
-                  onClick={() => setEncounterMenuOpen(!encounterMenuOpen)}
-                  className="flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-medium hover:bg-white/10 transition-colors"
-                  style={{ color: 'var(--dash-text-muted)' }}
-                  title="Encounter type"
-                >
-                  {encounterTypes.find(t => t.id === activeEncounterType)?.label || 'ER'}
-                  <ChevronDown className="w-2.5 h-2.5 opacity-50" />
-                </button>
-                {encounterMenuOpen && (
-                  <div className="absolute left-0 top-full mt-1 z-50 w-48 bg-gray-900 rounded-lg shadow-xl ring-1 ring-white/10 py-1 text-sm">
-                    {encounterTypes.map(et => (
-                      <button
-                        key={et.id}
-                        onClick={() => {
-                          setActiveEncounterType(et.id);
-                          saveEncounterType(et.id);
-                          setEncounterMenuOpen(false);
-                        }}
-                        className={`w-full flex items-center gap-2.5 px-3 py-2 text-left transition-colors ${
-                          activeEncounterType === et.id
-                            ? 'text-blue-400 bg-white/10'
-                            : 'text-gray-100 hover:bg-white/10'
-                        }`}
-                      >
-                        {et.label}
-                        {activeEncounterType === et.id && (
-                          <span className="ml-auto text-blue-400 text-xs">Active</span>
-                        )}
-                      </button>
-                    ))}
-                  </div>
-                )}
+        <div className="max-w-4xl mx-auto px-4">
+          {/* Single row: title + encounter type + date nav + user menu */}
+          <div className="flex items-center justify-between py-3">
+            <div className="flex items-center gap-3 min-w-0">
+              {/* Title + Encounter Type */}
+              <div className="flex items-center gap-2 min-w-0">
+                <h1 className="text-[17px] font-bold tracking-[-0.02em]" style={{ color: 'var(--dash-text)' }}>ED Dashboard</h1>
+                <div className="relative" ref={encounterMenuRef}>
+                  <button
+                    onClick={() => setEncounterMenuOpen(!encounterMenuOpen)}
+                    className="flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-medium hover:bg-white/[0.07] transition-all duration-200"
+                    style={{ color: 'var(--dash-text-muted)' }}
+                    title="Encounter type"
+                  >
+                    {encounterTypes.find(t => t.id === activeEncounterType)?.label || 'ER'}
+                    <ChevronDown className={`w-3 h-3 transition-transform duration-200 ${encounterMenuOpen ? 'rotate-180' : ''} opacity-50`} />
+                  </button>
+                  {encounterMenuOpen && (
+                    <>
+                      <div className="fixed inset-0 z-40" onClick={() => setEncounterMenuOpen(false)} />
+                      <div className="absolute left-0 top-full mt-2 z-50 w-52 rounded-xl overflow-hidden backdrop-blur-xl animate-in fade-in slide-in-from-top-1 duration-200"
+                        style={{ background: 'color-mix(in srgb, var(--card-bg) 97%, transparent)', border: '1px solid var(--card-border)', boxShadow: '0 12px 40px rgba(0,0,0,0.25), 0 0 0 1px rgba(255,255,255,0.04)' }}>
+                        <div className="p-1.5">
+                          {encounterTypes.map(et => (
+                            <button
+                              key={et.id}
+                              onClick={() => {
+                                setActiveEncounterType(et.id);
+                                saveEncounterType(et.id);
+                                setEncounterMenuOpen(false);
+                              }}
+                              className="flex items-center gap-2.5 w-full px-3 py-2.5 rounded-lg text-left text-[13px] font-medium transition-colors hover:bg-black/5 dark:hover:bg-white/5"
+                              style={{ color: activeEncounterType === et.id ? 'var(--accent)' : 'var(--text-primary)', background: activeEncounterType === et.id ? 'var(--accent-light)' : undefined }}
+                            >
+                              {et.label}
+                              {activeEncounterType === et.id && (
+                                <span className="ml-auto text-[11px] font-semibold" style={{ color: 'var(--accent)' }}>Active</span>
+                              )}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </div>
               </div>
             </div>
-            <div className="flex items-center gap-0.5">
-              {/* User name — click to show logout */}
+
+            <div className="flex items-center gap-1">
+              {/* User menu */}
               {userEmail && (
                 <div className="relative" ref={privacyRef}>
                   <button
                     onClick={() => setPrivacyMenuOpen(!privacyMenuOpen)}
-                    className="text-[11px] hidden sm:flex items-center gap-1 mr-1 px-2 py-1 rounded-lg hover:bg-white/10 transition-colors"
+                    className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg hover:bg-white/[0.07] transition-all duration-200"
                     style={{ color: 'var(--dash-text-muted)' }}
                     title={userEmail}
                   >
-                    <span className="max-w-[120px] truncate">
-                      {anonymize ? 'Dr. ***' : userName ? `Dr. ${userName.trim().split(/\s+/).pop()}` : userEmail}
+                    <div className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold"
+                      style={{ background: 'linear-gradient(135deg, rgba(99,102,241,0.4), rgba(59,130,246,0.4))', color: 'var(--dash-text)' }}>
+                      {(userName || userEmail || '?').charAt(0).toUpperCase()}
+                    </div>
+                    <span className="text-[12px] font-medium max-w-[100px] truncate">
+                      {anonymize ? 'Dr. ***' : userName ? `Dr. ${userName.trim().split(/\s+/).pop()}` : ''}
                     </span>
+                    <ChevronDown className={`w-3 h-3 transition-transform duration-200 ${privacyMenuOpen ? 'rotate-180' : ''} opacity-40`} />
                   </button>
                   {privacyMenuOpen && (
-                    <div className="absolute right-0 top-full mt-1 z-50 w-48 bg-gray-900 rounded-lg shadow-xl ring-1 ring-white/10 py-1 text-sm">
-                      <button
-                        onClick={() => { setSavedResourcesOpen(true); setPrivacyMenuOpen(false); }}
-                        className="w-full flex items-center gap-2.5 px-3 py-2 text-left text-gray-100 hover:bg-white/10 transition-colors"
-                      >
-                        <Bookmark className="w-4 h-4" />
-                        Saved Resources
-                      </button>
-                      <div className="border-t border-white/10 my-1" />
-                      <button
-                        onClick={() => { setAnonymize(!anonymize); setPrivacyMenuOpen(false); }}
-                        className="w-full flex items-center gap-2.5 px-3 py-2 text-left text-gray-100 hover:bg-white/10 transition-colors"
-                      >
-                        {anonymize ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
-                        {anonymize ? 'Show Names' : 'Anonymize Names'}
-                      </button>
-                      <button
-                        onClick={() => { setAwayScreen(true); setPrivacyMenuOpen(false); }}
-                        className="w-full flex items-center gap-2.5 px-3 py-2 text-left text-gray-100 hover:bg-white/10 transition-colors"
-                      >
-                        <Monitor className="w-4 h-4" />
-                        Away Screen
-                      </button>
-                      <div className="border-t border-white/10 my-1" />
-                      <button
-                        onClick={() => { setPrivacyMenuOpen(false); handleLogout(); }}
-                        className="w-full flex items-center gap-2.5 px-3 py-2 text-left text-gray-100 hover:bg-white/10 transition-colors"
-                      >
-                        <LogOut className="w-4 h-4" />
-                        Sign Out
-                      </button>
-                    </div>
+                    <>
+                      <div className="fixed inset-0 z-40" onClick={() => setPrivacyMenuOpen(false)} />
+                      <div className="absolute right-0 top-full mt-2 z-50 w-52 rounded-xl overflow-hidden backdrop-blur-xl"
+                        style={{ background: 'color-mix(in srgb, var(--card-bg) 97%, transparent)', border: '1px solid var(--card-border)', boxShadow: '0 12px 40px rgba(0,0,0,0.25), 0 0 0 1px rgba(255,255,255,0.04)' }}>
+                        <div className="px-3 py-2.5 border-b" style={{ borderColor: 'var(--border-light)' }}>
+                          <div className="text-[13px] font-semibold" style={{ color: 'var(--text-primary)' }}>
+                            {anonymize ? 'Dr. ***' : userName || userEmail}
+                          </div>
+                          {!anonymize && userName && (
+                            <div className="text-[11px] mt-0.5" style={{ color: 'var(--text-muted)' }}>{userEmail}</div>
+                          )}
+                        </div>
+                        <div className="p-1.5">
+                          <button
+                            onClick={() => { setSavedResourcesOpen(true); setPrivacyMenuOpen(false); }}
+                            className="flex items-center gap-2.5 w-full px-3 py-2.5 rounded-lg text-left text-[13px] font-medium transition-colors hover:bg-black/5 dark:hover:bg-white/5"
+                            style={{ color: 'var(--text-primary)' }}
+                          >
+                            <Bookmark className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
+                            Saved Resources
+                          </button>
+                          <button
+                            onClick={() => { setAnonymize(!anonymize); setPrivacyMenuOpen(false); }}
+                            className="flex items-center gap-2.5 w-full px-3 py-2.5 rounded-lg text-left text-[13px] font-medium transition-colors hover:bg-black/5 dark:hover:bg-white/5"
+                            style={{ color: 'var(--text-primary)' }}
+                          >
+                            {anonymize ? <Eye className="w-4 h-4" style={{ color: 'var(--text-muted)' }} /> : <EyeOff className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />}
+                            {anonymize ? 'Show Names' : 'Anonymize'}
+                          </button>
+                          <button
+                            onClick={() => { setAwayScreen(true); setPrivacyMenuOpen(false); }}
+                            className="flex items-center gap-2.5 w-full px-3 py-2.5 rounded-lg text-left text-[13px] font-medium transition-colors hover:bg-black/5 dark:hover:bg-white/5"
+                            style={{ color: 'var(--text-primary)' }}
+                          >
+                            <Monitor className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
+                            Away Screen
+                          </button>
+                        </div>
+                        <div className="border-t p-1.5" style={{ borderColor: 'var(--border-light)' }}>
+                          <button
+                            onClick={() => router.push('/settings')}
+                            className="flex items-center gap-2.5 w-full px-3 py-2.5 rounded-lg text-left text-[13px] font-medium transition-colors hover:bg-black/5 dark:hover:bg-white/5"
+                            style={{ color: 'var(--text-primary)' }}
+                          >
+                            <Settings className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
+                            Settings
+                          </button>
+                          <button
+                            onClick={() => { setPrivacyMenuOpen(false); handleLogout(); }}
+                            className="flex items-center gap-2.5 w-full px-3 py-2.5 rounded-lg text-left text-[13px] font-medium transition-colors hover:bg-black/5 dark:hover:bg-white/5"
+                            style={{ color: 'var(--text-primary)' }}
+                          >
+                            <LogOut className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
+                            Sign Out
+                          </button>
+                        </div>
+                      </div>
+                    </>
                   )}
                 </div>
               )}
-              <button
-                onClick={() => router.push('/settings')}
-                className="p-2 hover:bg-white/10 rounded-full transition-colors"
-                style={{ color: 'var(--dash-text-sub)' }}
-              >
-                <Settings className="w-[18px] h-[18px]" />
-              </button>
             </div>
           </div>
 
-          {/* Bottom row: date nav + shift times */}
-          <div className="flex items-center justify-between border-t border-white/10 pt-1.5 pb-2">
+          {/* Date nav + shift times bar */}
+          <div className="flex items-center justify-between border-t py-2" style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
             {/* Date navigation */}
             <div className="flex items-center">
               <button
@@ -1051,7 +1081,7 @@ export default function HomePage() {
                   <SlidersHorizontal className="w-3 h-3" />
                 </button>
                 {billingMenuOpen && (
-                  <div className="absolute right-0 top-full mt-1.5 z-50 bg-gray-900/95 backdrop-blur-sm rounded-xl shadow-2xl ring-1 ring-white/10 text-[13px] overflow-hidden" style={{ minWidth: '180px' }}>
+                  <div className="absolute right-0 top-full mt-2 z-50 rounded-xl overflow-hidden backdrop-blur-xl text-[13px]" style={{ minWidth: '180px', background: 'color-mix(in srgb, var(--card-bg) 97%, transparent)', border: '1px solid var(--card-border)', boxShadow: '0 12px 40px rgba(0,0,0,0.25), 0 0 0 1px rgba(255,255,255,0.04)' }}>
                     {/* Fee region */}
                     <div className="px-3 pt-2.5 pb-1 text-[9px] uppercase tracking-widest text-gray-500 font-semibold">Region</div>
                     {BILLING_REGIONS.map(r => {

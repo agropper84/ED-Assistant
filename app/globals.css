@@ -41,14 +41,14 @@
   --status-pending: linear-gradient(135deg, rgba(245,158,11,0.06) 0%, rgba(245,158,11,0.02) 40%, transparent 100%), var(--card-bg);
   --status-processed: linear-gradient(135deg, rgba(16,185,129,0.06) 0%, rgba(16,185,129,0.02) 40%, transparent 100%), var(--card-bg);
 
-  /* Dashboard header gradient — light blue palette */
-  --dash-header-from: #1d4ed8;
-  --dash-header-via: #2563eb;
-  --dash-header-to: #4a8fe8;
-  --dash-header-hover: linear-gradient(135deg, #2556d4 0%, #3b7af0 50%, #5c9ef0 100%);
-  --dash-text: #ffffff;
-  --dash-text-sub: rgba(255,255,255,0.8);
-  --dash-text-muted: rgba(255,255,255,0.55);
+  /* Dashboard header gradient — midnight navy palette (matches hosp_workbook) */
+  --dash-header-from: #0c1425;
+  --dash-header-via: #152040;
+  --dash-header-to: #1e3a8a;
+  --dash-header-hover: linear-gradient(160deg, #0e1830 0%, #1a2d58 50%, #223f8a 100%);
+  --dash-text: #e8efff;
+  --dash-text-sub: rgba(200,215,255,0.85);
+  --dash-text-muted: rgba(160,185,240,0.55);
 
 }
 
@@ -96,14 +96,14 @@
   --status-pending: linear-gradient(135deg, rgba(251,191,36,0.08) 0%, rgba(251,191,36,0.03) 40%, transparent 100%), var(--card-bg);
   --status-processed: linear-gradient(135deg, rgba(52,211,153,0.08) 0%, rgba(52,211,153,0.03) 40%, transparent 100%), var(--card-bg);
 
-  /* Dashboard header gradient — deep navy palette */
-  --dash-header-from: #060e24;
-  --dash-header-via: #0c1e4a;
-  --dash-header-to: #142d6b;
-  --dash-header-hover: linear-gradient(135deg, #0a1530 0%, #122a5e 50%, #1a3878 100%);
-  --dash-text: #e0e8ff;
+  /* Dashboard header gradient — ultra-deep navy (matches hosp_workbook dark) */
+  --dash-header-from: #040812;
+  --dash-header-via: #0a1228;
+  --dash-header-to: #122040;
+  --dash-header-hover: linear-gradient(160deg, #060c1a 0%, #0e1a38 50%, #163058 100%);
+  --dash-text: #d0dcf5;
   --dash-text-sub: rgba(200,215,255,0.75);
-  --dash-text-muted: rgba(160,180,230,0.5);
+  --dash-text-muted: rgba(140,170,220,0.45);
 
 }
 
@@ -142,12 +142,9 @@ button, .btn {
 
 /* Dashboard colored header */
 .dash-header {
-  background: linear-gradient(135deg, var(--dash-header-from) 0%, var(--dash-header-via) 50%, var(--dash-header-to) 100%);
+  background: linear-gradient(160deg, var(--dash-header-from) 0%, var(--dash-header-via) 50%, var(--dash-header-to) 100%);
   color: var(--dash-text);
   transition: background 0.4s ease;
-}
-.dash-header:hover {
-  background: var(--dash-header-hover);
 }
 
 /* Shift time selects — translucent, inside header gradient */
