@@ -23,6 +23,7 @@ export function PendingAudioBanner({ onProcessed }: Props) {
   const [dismissed, setDismissed] = useState(false);
   const pollRef = useRef<NodeJS.Timeout | null>(null);
   const busyRef = useRef(false); // single lock to prevent all races
+  const failCountRef = useRef(0);
 
   const checkQueue = useCallback(async () => {
     if (busyRef.current) return 0;
@@ -42,12 +43,15 @@ export function PendingAudioBanner({ onProcessed }: Props) {
     busyRef.current = true;
     setProcessing(true);
     setError(null);
+    let failed = false;
     try {
       const res = await fetch('/api/shortcuts/process-queue', { method: 'POST' });
       const data = await res.json();
       if (!res.ok) {
         setError(data.error || 'Processing failed');
+        failed = true;
       } else if (data.processed > 0) {
+        failCountRef.current = 0; // reset on success
         const mode = data.result?.mode;
         const label = mode === 'full' ? 'Note generated' :
                       mode === 'analyze' ? 'Analysis complete' :
@@ -59,14 +63,19 @@ export function PendingAudioBanner({ onProcessed }: Props) {
       }
     } catch (e: any) {
       setError(e.message || 'Processing failed');
+      failed = true;
     } finally {
       setProcessing(false);
       busyRef.current = false;
+      // Stop retrying after consecutive failures
+      if (failed) {
+        failCountRef.current++;
+        if (failCountRef.current >= 3) return; // give up after 3 consecutive failures
+      }
       // Check for more items after a short delay
       setTimeout(async () => {
         const count = await checkQueue();
-        // Auto-process next item if any
-        if (count > 0) {
+        if (count > 0 && !failed) {
           processOne();
         }
       }, 1000);
@@ -138,12 +147,27 @@ export function PendingAudioBanner({ onProcessed }: Props) {
           </div>
 
           {!processing && (pending.length > 0 || error) && (
-            <button
-              onClick={() => { setError(null); processOne(); }}
-              className="text-[11px] font-medium px-2 py-0.5 rounded bg-blue-500/20 text-blue-300 hover:bg-blue-500/30 transition-colors"
-            >
-              {error ? 'Retry' : 'Process'}
-            </button>
+            <>
+              <button
+                onClick={() => { setError(null); failCountRef.current = 0; processOne(); }}
+                className="text-[11px] font-medium px-2 py-0.5 rounded bg-blue-500/20 text-blue-300 hover:bg-blue-500/30 transition-colors"
+              >
+                {error ? 'Retry' : 'Process'}
+              </button>
+              {error && pending.length > 0 && (
+                <button
+                  onClick={async () => {
+                    await fetch('/api/shortcuts/process-queue?action=clear', { method: 'DELETE' });
+                    setPending([]);
+                    setError(null);
+                    failCountRef.current = 0;
+                  }}
+                  className="text-[11px] font-medium px-2 py-0.5 rounded bg-red-500/20 text-red-300 hover:bg-red-500/30 transition-colors"
+                >
+                  Clear
+                </button>
+              )}
+            </>
           )}
 
           {!processing && (

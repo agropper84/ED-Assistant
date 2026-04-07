@@ -63,8 +63,34 @@ export async function POST() {
       result,
     });
   } catch (error: any) {
-    console.error('Process queue error:', error);
+    console.error('Process queue error:', error?.message, error?.stack);
     return NextResponse.json({ error: error?.message || 'Processing failed' }, { status: 500 });
+  }
+}
+
+// DELETE /api/shortcuts/process-queue — Clear all pending items
+export async function DELETE() {
+  try {
+    const session = await getSessionFromCookies();
+    if (!session.userId) {
+      return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
+    }
+
+    const pendingIds = await getPendingAudioIds(session.userId);
+    for (const id of pendingIds) {
+      const pending = await getPendingAudio(id);
+      if (pending) {
+        try {
+          const blobToken = process.env.ed_audio_blob_public_READ_WRITE_TOKEN || process.env.BLOB_READ_WRITE_TOKEN;
+          await deleteBlob(pending.blobUrl, { token: blobToken });
+        } catch {}
+      }
+      await deletePendingAudio(id, session.userId);
+    }
+
+    return NextResponse.json({ cleared: pendingIds.length });
+  } catch (error: any) {
+    return NextResponse.json({ error: error?.message }, { status: 500 });
   }
 }
 
@@ -103,7 +129,11 @@ export async function GET() {
 
 async function processOne(pending: PendingAudio): Promise<{ transcript: string; mode: string }> {
   // 1. Fetch audio from Blob and transcribe
+  console.log('[process-queue] Starting:', { id: pending.id, mode: pending.mode, blobUrl: pending.blobUrl?.substring(0, 60) });
   const audioResponse = await fetch(pending.blobUrl);
+  if (!audioResponse.ok) {
+    throw new Error(`Blob fetch failed: ${audioResponse.status} ${audioResponse.statusText}`);
+  }
   const audioBuffer = Buffer.from(await audioResponse.arrayBuffer());
   const audioFile = new File([audioBuffer], pending.filename, { type: 'audio/m4a' });
 
@@ -111,6 +141,7 @@ async function processOne(pending: PendingAudio): Promise<{ transcript: string; 
   const userSettings = await getUserSettings(pending.userId);
   const watchApi = (userSettings?.watchTranscribeApi as string) || 'deepgram';
 
+  console.log('[process-queue] Audio fetched, size:', audioBuffer.length, 'bytes, transcribeApi:', watchApi);
   let transcript = '';
   const dgKey = await getDeepgramApiKey();
   if (watchApi === 'deepgram' && dgKey) {
@@ -131,6 +162,7 @@ async function processOne(pending: PendingAudio): Promise<{ transcript: string; 
     });
     transcript = transcription.text || '';
   }
+  console.log('[process-queue] Transcription done, length:', transcript.length);
   const ctx = await getSheetsContextForUser(pending.userId);
 
   // 2. Handle based on mode
