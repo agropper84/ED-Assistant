@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { Patient } from '@/lib/google-sheets';
 import { MEDICAL_SUGGESTIONS } from '@/lib/medical-suggestions';
-import { X, Loader2, Save, ExternalLink, RefreshCw, Check, Heart, ChevronRight } from 'lucide-react';
+import { X, Loader2, Save, ExternalLink, RefreshCw, Check, Heart } from 'lucide-react';
 import { PatientProfile } from '@/components/PatientProfile';
 import type { PatientProfile as ProfileData } from '@/app/api/profile/route';
 import { ExamToggles } from '@/components/ExamToggles';
@@ -179,6 +179,12 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
           pastDocs,
         }),
       });
+      // Auto-update medical profile in background
+      fetch('/api/profile', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rowIndex: patient.rowIndex, sheetName: patient.sheetName }),
+      }).catch(() => {});
       onSaved();
       onClose();
     } catch (error) {
@@ -196,32 +202,31 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
 
   return (
     <div className="fixed inset-0 modal-overlay z-50 flex items-end sm:items-center justify-center">
-      <div className={`bg-[var(--card-bg)] w-full ${showProfile ? 'sm:max-w-3xl' : 'sm:max-w-lg'} sm:rounded-3xl rounded-t-3xl max-h-[90vh] overflow-hidden flex flex-col animate-slideUp transition-all duration-300`} style={{ boxShadow: 'var(--card-shadow-elevated)' }}>
+      <div className="bg-[var(--card-bg)] w-full sm:rounded-3xl rounded-t-3xl max-h-[90vh] overflow-hidden flex flex-col animate-slideUp" style={{ maxWidth: showProfile ? '48rem' : '32rem', transition: 'max-width 500ms cubic-bezier(0.4, 0, 0.2, 1)', boxShadow: 'var(--card-shadow-elevated)' }}>
         {/* Header */}
         <div className="dash-header flex items-center justify-between px-5 py-4 sm:rounded-t-3xl">
           <div className="min-w-0">
             <h2 className="text-lg font-semibold truncate" style={{ color: 'var(--dash-text)' }}>
-              {patient.name || 'Unknown'}
+              Add clinical information
             </h2>
             <p className="text-sm" style={{ color: 'var(--dash-text-muted)' }}>
-              {patient.age && `${patient.age} `}{patient.gender && `${patient.gender} `}
-              {patient.timestamp && `• ${patient.timestamp}`}
+              {patient.name || 'Unknown'}
+              {patient.age && ` • ${patient.age}`}{patient.gender && ` ${patient.gender}`}
+              {patient.timestamp && ` • ${patient.timestamp}`}
             </p>
           </div>
           <div className="flex items-center gap-1 flex-shrink-0">
-            {/* Profile toggle button */}
+            {/* Mobile-only profile toggle */}
             <button
-              onClick={() => setShowProfile(!showProfile)}
-              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs font-semibold transition-all active:scale-95 ${
-                showProfile
-                  ? 'bg-blue-500/20 text-blue-200 hover:bg-blue-500/30'
-                  : profileData ? 'bg-white/10 text-blue-200 hover:bg-white/20' : 'bg-white/10 text-white/60 hover:bg-white/20'
-              }`}
-              title={showProfile ? 'Hide medical profile' : 'Show medical profile'}
+              onClick={() => {
+                const opening = !showProfile;
+                setShowProfile(opening);
+                if (opening && !profileData && !generatingProfile) handleGenerateProfile();
+              }}
+              className={`sm:hidden p-2 rounded-full transition-all ${showProfile ? 'bg-blue-500/20' : 'hover:bg-white/10'}`}
+              title={showProfile ? 'Hide profile' : 'Show profile'}
             >
-              <Heart className="w-3.5 h-3.5" fill={profileData ? 'currentColor' : 'none'} />
-              <span className="hidden sm:inline">Profile</span>
-              <ChevronRight className={`w-3 h-3 transition-transform duration-200 ${showProfile ? 'rotate-180' : ''}`} />
+              <Heart className="w-4 h-4" fill={profileData ? 'currentColor' : 'none'} style={{ color: profileData ? '#93c5fd' : 'var(--dash-text-sub)' }} />
             </button>
             <button
               onClick={onNavigate}
@@ -236,9 +241,9 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
           </div>
         </div>
 
-        {/* Content — side by side when profile is open */}
-        <div className={`flex-1 overflow-hidden flex ${showProfile ? 'flex-row' : 'flex-col'}`}>
-        <div className={`${showProfile ? 'w-1/2 border-r border-[var(--border)]' : 'w-full'} overflow-y-auto px-5 py-4 space-y-4`}>
+        {/* Content */}
+        <div className="flex-1 overflow-hidden flex flex-col sm:flex-row">
+        <div className="flex-1 min-w-0 overflow-y-auto px-5 py-4 space-y-4">
           {/* Triage Notes */}
           <div>
             <label className="block text-xs font-semibold text-[var(--text-muted)] uppercase tracking-widest mb-1.5">
@@ -365,9 +370,36 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
           </div>
         </div>
 
-        {/* Profile panel — side by side */}
-        {showProfile && (
-          <div className="w-1/2 overflow-y-auto px-4 py-4">
+        {/* Right edge — profile toggle (desktop only) */}
+        <div
+          className="hidden sm:block flex-shrink-0 w-3 cursor-pointer relative group/edge"
+          onClick={() => {
+            const opening = !showProfile;
+            setShowProfile(opening);
+            if (opening && !profileData && !generatingProfile) handleGenerateProfile();
+          }}
+          title={showProfile ? 'Hide profile' : 'Show profile'}
+        >
+          {/* Glow background on hover */}
+          <div
+            className="absolute inset-y-0 -left-4 -right-4 opacity-0 group-hover/edge:opacity-100 transition-opacity duration-700 ease-out pointer-events-none"
+            style={{ background: 'radial-gradient(50% 40% at 50% 50%, rgba(99, 149, 255, 0.08) 0%, transparent 100%)' }}
+          />
+          {/* Vertical line */}
+          <div className="absolute left-1/2 -translate-x-1/2 top-8 bottom-8 w-px rounded-full transition-all duration-500 ease-out bg-[var(--border)] opacity-[0.15] group-hover/edge:opacity-100 group-hover/edge:w-[2px] group-hover/edge:bg-blue-400/60" style={{ boxShadow: '0 0 0 0 transparent', transition: 'all 500ms cubic-bezier(0.4, 0, 0.2, 1), box-shadow 500ms ease-out' }} />
+          {/* Glow shadow on hover (separate element for blur) */}
+          <div className="absolute left-1/2 -translate-x-1/2 top-12 bottom-12 w-1 rounded-full opacity-0 group-hover/edge:opacity-100 transition-opacity duration-700 ease-out pointer-events-none" style={{ background: 'rgba(99, 149, 255, 0.2)', filter: 'blur(6px)' }} />
+        </div>
+
+        {/* Profile panel — slides in/out */}
+        <div
+          className="flex-shrink-0 overflow-hidden"
+          style={{
+            width: showProfile ? '50%' : '0',
+            transition: 'width 500ms cubic-bezier(0.4, 0, 0.2, 1)',
+          }}
+        >
+          <div className="h-full overflow-y-auto px-4 py-4 border-l border-[var(--border)]" style={{ minWidth: '250px' }}>
             <PatientProfile
               profile={profileData}
               age={patient.age}
@@ -376,7 +408,7 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
               generating={generatingProfile}
             />
           </div>
-        )}
+        </div>
         </div>
 
         {/* Footer — matching ParseModal style */}
@@ -423,6 +455,12 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
                       }),
                     });
                     if (res.ok) {
+                      // Auto-update medical profile in background
+                      fetch('/api/profile', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ rowIndex: patient.rowIndex, sheetName: patient.sheetName }),
+                      }).catch(() => {});
                       onSaved();
                       onClose();
                     }
