@@ -154,6 +154,23 @@ export default function HomePage() {
   // Date picker ref
   const datePickerRef = useRef<HTMLInputElement>(null);
 
+  // Track Cmd/Meta key for FAB quick-add mode
+  const [metaHeld, setMetaHeld] = useState(false);
+  useEffect(() => {
+    const down = (e: KeyboardEvent) => { if (e.metaKey || e.ctrlKey) setMetaHeld(true); };
+    const up = (e: KeyboardEvent) => { if (!e.metaKey && !e.ctrlKey) setMetaHeld(false); };
+    const blur = () => setMetaHeld(false);
+    window.addEventListener('keydown', down);
+    window.addEventListener('keyup', up);
+    window.addEventListener('blur', blur);
+    return () => { window.removeEventListener('keydown', down); window.removeEventListener('keyup', up); window.removeEventListener('blur', blur); };
+  }, []);
+
+  // Quick-add state (for ⌘+click on FAB)
+  const [showQuickAdd, setShowQuickAdd] = useState(false);
+  const [quickAddName, setQuickAddName] = useState('');
+  const [quickAddSaving, setQuickAddSaving] = useState(false);
+
   // Draggable FAB (extracted hook)
   const { fabPos, fabRef, handlePointerDown: fabPointerDown, resetPosition: resetFabPosition, wasDragged: fabWasDragged } = useDraggableFab();
 
@@ -1272,6 +1289,50 @@ export default function HomePage() {
             )}
 
 
+            {/* Quick Add (⌘+click on FAB) */}
+            {showQuickAdd && (
+              <form
+                onSubmit={async (e) => {
+                  e.preventDefault();
+                  const name = quickAddName.trim();
+                  if (!name || quickAddSaving) return;
+                  setQuickAddSaving(true);
+                  try {
+                    const timestamp = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+                    await handleSavePatient({ name, age: '', gender: '', birthday: '', hcn: '', mrn: '', timestamp, triageVitals: '', transcript: '', encounterNotes: '', additional: '', pastDocs: '' });
+                    setQuickAddName('');
+                    setShowQuickAdd(false);
+                  } finally { setQuickAddSaving(false); }
+                }}
+                className="flex items-center gap-2 animate-fadeIn"
+              >
+                <input
+                  type="text"
+                  value={quickAddName}
+                  onChange={(e) => setQuickAddName(e.target.value)}
+                  placeholder="Patient name..."
+                  autoFocus
+                  className="flex-1 px-3 py-2 border border-[var(--input-border)] rounded-xl text-sm bg-[var(--input-bg)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  onKeyDown={(e) => { if (e.key === 'Escape') { setShowQuickAdd(false); setQuickAddName(''); } }}
+                />
+                <button
+                  type="submit"
+                  disabled={!quickAddName.trim() || quickAddSaving}
+                  className="px-3 py-2 bg-[var(--accent-green)] text-white rounded-xl text-sm font-medium hover:brightness-110 active:scale-[0.97] transition-all disabled:opacity-40 flex items-center gap-1.5"
+                >
+                  {quickAddSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
+                  Add
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setShowQuickAdd(false); setQuickAddName(''); }}
+                  className="p-2 text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </form>
+            )}
+
             {/* Batch Process Button */}
             {hasPending && !batchMode && (
               <button
@@ -1414,13 +1475,20 @@ export default function HomePage() {
             e.preventDefault();
             fabPointerDown(e);
           }}
-          onClick={() => {
+          onClick={(e) => {
             if (fabWasDragged()) return;
-            setShowParseModal(true);
+            if (e.metaKey || e.ctrlKey) {
+              setShowQuickAdd(true);
+            } else {
+              setShowParseModal(true);
+            }
           }}
-          className="w-14 h-14 bg-[var(--accent)] text-white rounded-2xl flex items-center justify-center hover:brightness-110 active:scale-[0.93] transition-all duration-200 touch-none select-none cursor-grab active:cursor-grabbing"
-          style={{ boxShadow: 'var(--fab-shadow)' }}
-          title="Add patient"
+          className="w-14 h-14 text-white rounded-2xl flex items-center justify-center active:scale-[0.93] transition-all duration-200 touch-none select-none cursor-grab active:cursor-grabbing"
+          style={{
+            background: metaHeld ? 'var(--accent-green)' : 'var(--accent)',
+            boxShadow: metaHeld ? '0 4px 14px rgba(13,148,136,0.4)' : 'var(--fab-shadow)',
+          }}
+          title={metaHeld ? 'Quick add patient (name only)' : 'Add patient · ⌘+click to quick add'}
         >
           <span className="w-9 h-9 flex items-center justify-center cursor-pointer">
             <Plus className="w-6 h-6 pointer-events-none" />
