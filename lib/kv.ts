@@ -1,5 +1,5 @@
 import Redis from 'ioredis';
-import { encryptValue, decryptValue } from './encryption';
+import { encryptValue, decryptValue } from '@med/shared';
 
 let redis: Redis | null = null;
 

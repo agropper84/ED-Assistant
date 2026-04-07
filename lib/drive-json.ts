@@ -16,7 +16,7 @@ import {
   getUserDriveFolderId, setUserDriveFolderId,
   getUserPatientsFolderId, setUserPatientsFolderId,
 } from './kv';
-import { encryptValue, decryptValue, generateEncryptionKey } from './encryption';
+import { encryptValue, decryptValue, generateEncryptionKey } from '@med/shared';
 import type {
   DriveContext, DateSheetFile, MasterIndexFile, EDPatientFile, PatientFields, ShiftTimesData,
 } from './types-json';

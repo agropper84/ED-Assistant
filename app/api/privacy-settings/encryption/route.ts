@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getSessionFromCookies } from '@/lib/session';
 import { getUserEncryptionKey, setUserEncryptionKey } from '@/lib/kv';
-import { generateEncryptionKey } from '@/lib/encryption';
+import { generateEncryptionKey } from '@med/shared';
 
 // POST — generate encryption key if not exists
 export async function POST() {
