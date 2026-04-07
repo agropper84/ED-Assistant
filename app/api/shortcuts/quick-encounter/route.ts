@@ -29,10 +29,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
     }
 
-    const { transcript } = await request.json();
+    const body = await request.json();
+    const { transcript, name: patientName, age, gender, triageVitals } = body;
 
-    if (!transcript) {
-      return NextResponse.json({ error: 'transcript is required' }, { status: 400 });
+    if (!transcript && !patientName) {
+      return NextResponse.json({ error: 'transcript or name is required' }, { status: 400 });
     }
 
     const ctx = await getSheetsContextForUser(userId);
@@ -55,12 +56,17 @@ export async function POST(request: NextRequest) {
       timeZone: 'America/Toronto',
     });
 
-    await updatePatientFields(ctx, rowIndex, {
+    const fields: Record<string, string> = {
       patientNum: String(encounterNum),
-      name: encounterName,
+      name: patientName || encounterName,
       timestamp,
-      transcript,
-    }, sheetName);
+    };
+    if (transcript) fields.transcript = transcript;
+    if (age) fields.age = age;
+    if (gender) fields.gender = gender;
+    if (triageVitals) fields.triageVitals = triageVitals;
+
+    await updatePatientFields(ctx, rowIndex, fields, sheetName);
 
     return NextResponse.json({
       success: true,
