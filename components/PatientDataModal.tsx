@@ -204,8 +204,11 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
     <div className="fixed inset-0 modal-overlay z-50 flex items-end sm:items-center justify-center">
       <div className="bg-[var(--card-bg)] w-full sm:rounded-3xl rounded-t-3xl max-h-[90vh] overflow-hidden flex flex-col animate-slideUp" style={{ maxWidth: showProfile ? '48rem' : '32rem', transition: 'max-width 500ms cubic-bezier(0.4, 0, 0.2, 1)', boxShadow: 'var(--card-shadow-elevated)' }}>
         {/* Header */}
-        <div className="dash-header flex items-center justify-between px-5 py-4 sm:rounded-t-3xl">
-          <div className="min-w-0">
+        <div className="dash-header flex items-center gap-3 px-4 py-4 sm:rounded-t-3xl">
+          <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-full flex-shrink-0" title="Close">
+            <X className="w-5 h-5" style={{ color: 'var(--dash-text-sub)' }} />
+          </button>
+          <div className="flex-1 min-w-0">
             <h2 className="text-lg font-semibold truncate" style={{ color: 'var(--dash-text)' }}>
               Add clinical information
             </h2>
@@ -234,9 +237,6 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
               title="Open full detail"
             >
               <ExternalLink className="w-5 h-5" style={{ color: 'var(--dash-text-sub)' }} />
-            </button>
-            <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-full">
-              <X className="w-5 h-5" style={{ color: 'var(--dash-text-sub)' }} />
             </button>
           </div>
         </div>
@@ -370,41 +370,11 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
           </div>
         </div>
 
-        {/* Right edge — profile toggle (desktop only) */}
-        <div
-          className="hidden sm:flex flex-shrink-0 items-stretch cursor-pointer relative group/edge"
-          style={{ width: '6px', transition: 'width 400ms cubic-bezier(0.4, 0, 0.2, 1)' }}
-          onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.width = '18px'; }}
-          onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.width = '6px'; }}
-          onClick={() => {
-            const opening = !showProfile;
-            setShowProfile(opening);
-            if (opening && !profileData && !generatingProfile) handleGenerateProfile();
-          }}
-          title={showProfile ? 'Hide profile' : 'Show profile'}
-        >
-          {/* Glow background on hover */}
-          <div
-            className="absolute inset-y-0 -left-3 -right-3 opacity-0 group-hover/edge:opacity-100 transition-opacity duration-500 ease-out pointer-events-none"
-            style={{ background: 'radial-gradient(50% 35% at 50% 50%, rgba(99, 149, 255, 0.12) 0%, transparent 100%)' }}
-          />
-          {/* Vertical line */}
-          <div
-            className="absolute left-1/2 -translate-x-1/2 top-6 bottom-6 rounded-full bg-[var(--border)] opacity-[0.2] group-hover/edge:opacity-100 group-hover/edge:bg-blue-400/70"
-            style={{ width: '1.5px', transition: 'all 400ms cubic-bezier(0.4, 0, 0.2, 1)' }}
-          />
-          {/* Glow shadow on hover */}
-          <div
-            className="absolute left-1/2 -translate-x-1/2 top-10 bottom-10 rounded-full opacity-0 group-hover/edge:opacity-100 pointer-events-none"
-            style={{ width: '4px', background: 'rgba(99, 149, 255, 0.35)', filter: 'blur(8px)', transition: 'opacity 500ms ease-out' }}
-          />
-        </div>
-
         {/* Profile panel — slides in/out */}
         <div
           className="flex-shrink-0 overflow-hidden"
           style={{
-            width: showProfile ? '50%' : '0',
+            width: showProfile ? 'calc(50% - 8px)' : '0',
             transition: 'width 500ms cubic-bezier(0.4, 0, 0.2, 1)',
           }}
         >
@@ -417,6 +387,48 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
               generating={generatingProfile}
             />
           </div>
+        </div>
+
+        {/* Right edge — profile toggle (desktop), always far-right */}
+        <div
+          className="hidden sm:flex flex-shrink-0 items-stretch cursor-pointer relative group/edge"
+          style={{ width: '4px', transition: 'width 600ms cubic-bezier(0.23, 1, 0.32, 1)' }}
+          onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.width = '14px'; }}
+          onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.width = '4px'; }}
+          onClick={() => {
+            const opening = !showProfile;
+            setShowProfile(opening);
+            if (opening && !profileData && !generatingProfile) handleGenerateProfile();
+          }}
+          title={showProfile ? 'Hide profile' : 'Show profile'}
+        >
+          {/* Idle line — barely visible */}
+          <div
+            className="absolute left-1/2 -translate-x-1/2 rounded-full pointer-events-none group-hover/edge:opacity-0"
+            style={{
+              top: '15%', bottom: '15%', width: '1px', opacity: 0.2,
+              background: 'linear-gradient(to bottom, transparent, var(--border) 20%, var(--border) 80%, transparent)',
+              transition: 'opacity 600ms ease',
+            }}
+          />
+          {/* Hover glow fill */}
+          <div
+            className="absolute inset-0 rounded-full opacity-0 group-hover/edge:opacity-100 pointer-events-none"
+            style={{
+              top: '10%', bottom: '10%',
+              background: 'linear-gradient(to bottom, transparent, rgba(147, 197, 253, 0.12) 25%, rgba(147, 197, 253, 0.16) 50%, rgba(147, 197, 253, 0.12) 75%, transparent)',
+              transition: 'opacity 600ms cubic-bezier(0.23, 1, 0.32, 1)',
+            }}
+          />
+          {/* Hover center line */}
+          <div
+            className="absolute left-1/2 -translate-x-1/2 rounded-full opacity-0 group-hover/edge:opacity-100 pointer-events-none"
+            style={{
+              top: '12%', bottom: '12%', width: '1.5px',
+              background: 'linear-gradient(to bottom, transparent, rgba(147, 197, 253, 0.45) 25%, rgba(147, 197, 253, 0.55) 50%, rgba(147, 197, 253, 0.45) 75%, transparent)',
+              transition: 'opacity 600ms cubic-bezier(0.23, 1, 0.32, 1)',
+            }}
+          />
         </div>
         </div>
 
