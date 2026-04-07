@@ -968,8 +968,50 @@ export default function HomePage() {
             </div>
           </div>
 
-          {/* Date nav + search + shift times bar */}
+          {/* Search + date nav + shift times bar */}
           <div className="flex items-center justify-between border-t py-2 gap-2" style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
+            {/* Search + Sort */}
+            <div className="flex items-center gap-1.5 flex-1 max-w-[220px]">
+              <div className="relative flex-1">
+                {searching ? (
+                  <Loader2 className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 animate-spin" style={{ color: 'var(--dash-text-muted)' }} />
+                ) : (
+                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5" style={{ color: 'var(--dash-text-muted)' }} />
+                )}
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search..."
+                  className="w-full pl-8 pr-7 py-1.5 rounded-lg text-[12px] transition-all duration-200 outline-none"
+                  style={{
+                    background: searchQuery ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.06)',
+                    border: '1px solid rgba(255,255,255,0.08)',
+                    color: 'var(--dash-text)',
+                  }}
+                  onFocus={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.12)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.15)'; }}
+                  onBlur={(e) => { if (!searchQuery) { e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)'; } }}
+                />
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery('')}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 rounded hover:bg-white/10"
+                  >
+                    <X className="w-3 h-3" style={{ color: 'var(--dash-text-muted)' }} />
+                  </button>
+                )}
+              </div>
+              <button
+                onClick={() => setSortBy(prev => prev === 'time' ? 'name' : prev === 'name' ? 'status' : 'time')}
+                className="flex items-center gap-1 px-2 py-1.5 rounded-lg text-[11px] font-medium transition-colors hover:bg-white/[0.07] flex-shrink-0"
+                style={{ color: 'var(--dash-text-muted)' }}
+                title={`Sort by ${sortBy === 'time' ? 'name' : sortBy === 'name' ? 'status' : 'time'}`}
+              >
+                <ArrowUpDown className="w-3 h-3" />
+                <span className="hidden sm:inline">{sortBy === 'time' ? 'Time' : sortBy === 'name' ? 'A-Z' : 'Status'}</span>
+              </button>
+            </div>
+
             {/* Date navigation */}
             <div className="flex items-center flex-shrink-0">
               <button
@@ -1019,48 +1061,6 @@ export default function HomePage() {
                 style={{ color: 'var(--dash-text-sub)' }}
               >
                 <ChevronRight className="w-4 h-4" />
-              </button>
-            </div>
-
-            {/* Search + Sort (inline in banner) */}
-            <div className="flex items-center gap-1.5 flex-1 max-w-[220px] mx-2">
-              <div className="relative flex-1">
-                {searching ? (
-                  <Loader2 className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 animate-spin" style={{ color: 'var(--dash-text-muted)' }} />
-                ) : (
-                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5" style={{ color: 'var(--dash-text-muted)' }} />
-                )}
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search..."
-                  className="w-full pl-8 pr-7 py-1.5 rounded-lg text-[12px] transition-all duration-200 outline-none"
-                  style={{
-                    background: searchQuery ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.06)',
-                    border: '1px solid rgba(255,255,255,0.08)',
-                    color: 'var(--dash-text)',
-                  }}
-                  onFocus={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.12)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.15)'; }}
-                  onBlur={(e) => { if (!searchQuery) { e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)'; } }}
-                />
-                {searchQuery && (
-                  <button
-                    onClick={() => setSearchQuery('')}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 rounded hover:bg-white/10"
-                  >
-                    <X className="w-3 h-3" style={{ color: 'var(--dash-text-muted)' }} />
-                  </button>
-                )}
-              </div>
-              <button
-                onClick={() => setSortBy(prev => prev === 'time' ? 'name' : prev === 'name' ? 'status' : 'time')}
-                className="flex items-center gap-1 px-2 py-1.5 rounded-lg text-[11px] font-medium transition-colors hover:bg-white/[0.07] flex-shrink-0"
-                style={{ color: 'var(--dash-text-muted)' }}
-                title={`Sort by ${sortBy === 'time' ? 'name' : sortBy === 'name' ? 'status' : 'time'}`}
-              >
-                <ArrowUpDown className="w-3 h-3" />
-                <span className="hidden sm:inline">{sortBy === 'time' ? 'Time' : sortBy === 'name' ? 'A-Z' : 'Status'}</span>
               </button>
             </div>
 
