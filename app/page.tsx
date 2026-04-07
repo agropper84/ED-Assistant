@@ -837,25 +837,23 @@ export default function HomePage() {
       {/* Header */}
       <header className="dash-header sticky top-0 z-40">
         <div className="max-w-4xl mx-auto px-4">
-          {/* Single row: title + encounter type + date nav + user menu */}
+          {/* Top row: icon + title + date nav + user menu */}
           <div className="flex items-center justify-between py-3">
             <div className="flex items-center gap-3 min-w-0">
               {/* App icon */}
               <div
-                className="w-10 h-10 rounded-[14px] flex items-center justify-center flex-shrink-0 overflow-hidden"
+                className="w-9 h-9 rounded-[12px] flex items-center justify-center flex-shrink-0 overflow-hidden"
                 style={{ background: 'linear-gradient(145deg, rgba(255,255,255,0.14) 0%, rgba(255,255,255,0.04) 100%)', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.1), 0 1px 3px rgba(0,0,0,0.1)' }}
               >
-                <svg width="22" height="22" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  {/* Medical cross */}
+                <svg width="20" height="20" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
                   <rect x="13" y="6" width="6" height="20" rx="3" fill="white" opacity="0.9" />
                   <rect x="6" y="13" width="20" height="6" rx="3" fill="white" opacity="0.9" />
-                  {/* Pulse dot */}
                   <circle cx="25" cy="25" r="2.5" fill="#4a9ead" opacity="0.8" />
                 </svg>
               </div>
               {/* Title + Encounter Type */}
               <div className="flex items-center gap-2 min-w-0">
-                <h1 className="text-[17px] font-bold tracking-[-0.02em]" style={{ color: 'var(--dash-text)' }}>ED Dashboard</h1>
+                <h1 className="text-[17px] font-bold tracking-[-0.02em]" style={{ color: 'var(--dash-text)' }}>ER Dashboard</h1>
                 <div className="relative" ref={encounterMenuRef}>
                   <button
                     onClick={() => setEncounterMenuOpen(!encounterMenuOpen)}
@@ -894,6 +892,58 @@ export default function HomePage() {
                     </>
                   )}
                 </div>
+              </div>
+
+              {/* Date navigation — in top row */}
+              <div className="hidden sm:flex items-center ml-2" style={{ borderLeft: '1px solid rgba(255,255,255,0.08)', paddingLeft: '12px' }}>
+                <button
+                  onClick={goToPreviousDay}
+                  className="p-1 hover:bg-white/[0.07] rounded-full transition-colors"
+                  style={{ color: 'var(--dash-text-sub)' }}
+                >
+                  <ChevronLeft className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  onClick={() => datePickerRef.current?.showPicker()}
+                  className="flex items-center gap-1.5 px-1.5 py-0.5 hover:bg-white/[0.07] rounded-lg transition-colors"
+                >
+                  <Calendar className="w-3 h-3" style={{ color: 'var(--dash-text-muted)' }} />
+                  <span className="text-[13px] font-medium" style={{ color: 'var(--dash-text)' }}>{formatDateDisplay(currentDate)}</span>
+                  {!loading && patients.length > 0 && (
+                    <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-white/[0.12]" style={{ color: 'var(--dash-text-sub)' }}>
+                      {patients.length}
+                    </span>
+                  )}
+                </button>
+                <input
+                  ref={datePickerRef}
+                  type="date"
+                  className="sr-only"
+                  value={currentDate.toISOString().split('T')[0]}
+                  max={new Date().toISOString().split('T')[0]}
+                  onChange={(e) => {
+                    if (e.target.value) {
+                      const [y, m, d] = e.target.value.split('-').map(Number);
+                      changeDate(new Date(y, m - 1, d));
+                    }
+                  }}
+                />
+                {!isToday && (
+                  <button
+                    onClick={goToToday}
+                    className="text-[10px] font-semibold px-1.5 py-0.5 rounded text-amber-300 hover:bg-white/[0.07] transition-colors"
+                  >
+                    Today
+                  </button>
+                )}
+                <button
+                  onClick={goToNextDay}
+                  disabled={isToday}
+                  className="p-1 hover:bg-white/[0.07] rounded-full transition-colors disabled:opacity-30"
+                  style={{ color: 'var(--dash-text-sub)' }}
+                >
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </button>
               </div>
             </div>
 
@@ -981,10 +1031,27 @@ export default function HomePage() {
             </div>
           </div>
 
-          {/* Search + date nav + shift times bar */}
+          {/* Secondary bar: search + shift times */}
           <div className="flex items-center justify-between border-t py-2 gap-2" style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
+            {/* Mobile date nav (hidden on sm+) */}
+            <div className="flex sm:hidden items-center flex-shrink-0">
+              <button onClick={goToPreviousDay} className="p-1 hover:bg-white/[0.07] rounded-full transition-colors" style={{ color: 'var(--dash-text-sub)' }}>
+                <ChevronLeft className="w-3.5 h-3.5" />
+              </button>
+              <button onClick={() => datePickerRef.current?.showPicker()} className="flex items-center gap-1 px-1.5 py-0.5 hover:bg-white/[0.07] rounded-lg transition-colors">
+                <span className="text-[12px] font-medium" style={{ color: 'var(--dash-text)' }}>{formatDateDisplay(currentDate)}</span>
+                {!loading && patients.length > 0 && (
+                  <span className="text-[10px] font-semibold px-1 py-0.5 rounded-full bg-white/[0.12]" style={{ color: 'var(--dash-text-sub)' }}>{patients.length}</span>
+                )}
+              </button>
+              {!isToday && <button onClick={goToToday} className="text-[10px] font-semibold px-1 py-0.5 rounded text-amber-300 hover:bg-white/[0.07]">Today</button>}
+              <button onClick={goToNextDay} disabled={isToday} className="p-1 hover:bg-white/[0.07] rounded-full transition-colors disabled:opacity-30" style={{ color: 'var(--dash-text-sub)' }}>
+                <ChevronRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+
             {/* Search + Sort */}
-            <div className="flex items-center gap-1.5 flex-1 max-w-[220px]">
+            <div className="flex items-center gap-1.5 flex-1 max-w-[240px]">
               <div className="relative flex-1">
                 {searching ? (
                   <Loader2 className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 animate-spin" style={{ color: 'var(--dash-text-muted)' }} />
@@ -1022,58 +1089,6 @@ export default function HomePage() {
               >
                 <ArrowUpDown className="w-3 h-3" />
                 <span className="hidden sm:inline">{sortBy === 'time' ? 'Time' : sortBy === 'name' ? 'A-Z' : 'Status'}</span>
-              </button>
-            </div>
-
-            {/* Date navigation */}
-            <div className="flex items-center flex-shrink-0">
-              <button
-                onClick={goToPreviousDay}
-                className="p-1.5 hover:bg-white/[0.07] rounded-full transition-colors"
-                style={{ color: 'var(--dash-text-sub)' }}
-              >
-                <ChevronLeft className="w-4 h-4" />
-              </button>
-              <button
-                onClick={() => datePickerRef.current?.showPicker()}
-                className="flex items-center gap-1.5 px-2 py-1 hover:bg-white/[0.07] rounded-lg transition-colors"
-              >
-                <Calendar className="w-3.5 h-3.5" style={{ color: 'var(--dash-text-muted)' }} />
-                <span className="text-sm font-medium" style={{ color: 'var(--dash-text)' }}>{formatDateDisplay(currentDate)}</span>
-                {!loading && patients.length > 0 && (
-                  <span className="text-[11px] font-medium px-1.5 py-0.5 rounded-full bg-white/[0.12]" style={{ color: 'var(--dash-text-sub)' }}>
-                    {patients.length}
-                  </span>
-                )}
-              </button>
-              <input
-                ref={datePickerRef}
-                type="date"
-                className="sr-only"
-                value={currentDate.toISOString().split('T')[0]}
-                max={new Date().toISOString().split('T')[0]}
-                onChange={(e) => {
-                  if (e.target.value) {
-                    const [y, m, d] = e.target.value.split('-').map(Number);
-                    changeDate(new Date(y, m - 1, d));
-                  }
-                }}
-              />
-              {!isToday && (
-                <button
-                  onClick={goToToday}
-                  className="text-[11px] font-medium px-1.5 py-0.5 rounded text-amber-300 hover:bg-white/[0.07] transition-colors"
-                >
-                  Today
-                </button>
-              )}
-              <button
-                onClick={goToNextDay}
-                disabled={isToday}
-                className="p-1.5 hover:bg-white/[0.07] rounded-full transition-colors disabled:opacity-30"
-                style={{ color: 'var(--dash-text-sub)' }}
-              >
-                <ChevronRight className="w-4 h-4" />
               </button>
             </div>
 
