@@ -1,33 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createHash } from 'crypto';
-import { getShortcutTokenUser } from '@/lib/kv';
-import {
-  getSheetsContextForUser,
-  getOrCreateDateSheet,
-  getNextEmptyRow,
-  getPatientCount,
-  updatePatientFields,
-} from '@/lib/google-sheets';
+import { authenticateShortcut, isAuthed } from '@/lib/shortcut-auth';
+import { getPatients, getOrCreateDateSheet, updatePatientFields } from '@/lib/data-layer';
 
-function sha256(input: string): string {
-  return createHash('sha256').update(input).digest('hex');
-}
-
-// POST /api/shortcuts/quick-encounter — Create a new encounter row with transcript
+// POST /api/shortcuts/quick-encounter — Create a new patient/encounter row
 export async function POST(request: NextRequest) {
   try {
-    const authHeader = request.headers.get('authorization');
-    if (!authHeader?.startsWith('Bearer ')) {
-      return NextResponse.json({ error: 'Missing or invalid Authorization header' }, { status: 401 });
-    }
-
-    const token = authHeader.slice(7);
-    const hash = sha256(token);
-    const userId = await getShortcutTokenUser(hash);
-
-    if (!userId) {
-      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
-    }
+    const auth = await authenticateShortcut(request);
+    if (!isAuthed(auth)) return auth;
 
     const body = await request.json();
     const { transcript, name: patientName, age, gender, triageVitals } = body;
@@ -36,18 +15,25 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'transcript or name is required' }, { status: 400 });
     }
 
-    const ctx = await getSheetsContextForUser(userId);
+    const dataCtx = auth.dataCtx;
 
     // Ensure today's sheet exists
-    const sheetName = await getOrCreateDateSheet(ctx);
+    const sheetName = await getOrCreateDateSheet(dataCtx, '');
 
-    // Find next empty row and patient count for numbering
-    const rowIndex = await getNextEmptyRow(ctx, sheetName);
-    const patientCount = await getPatientCount(ctx, sheetName);
-    const encounterNum = patientCount + 1;
-    const encounterName = `New Encounter ${encounterNum}`;
+    // Get existing patients to determine next row + numbering
+    const existing = await getPatients(dataCtx, sheetName);
+    const encounterNum = existing.length + 1;
+    const encounterName = patientName || `New Encounter ${encounterNum}`;
 
-    // Write the new encounter
+    // Calculate next row index (data starts at row 8)
+    const DATA_START_ROW = 8;
+    let rowIndex = DATA_START_ROW;
+    if (existing.length > 0) {
+      // Find the max row index + 1
+      const maxRow = Math.max(...existing.map(p => p.rowIndex));
+      rowIndex = maxRow + 1;
+    }
+
     const now = new Date();
     const timestamp = now.toLocaleTimeString('en-US', {
       hour: '2-digit',
@@ -58,7 +44,7 @@ export async function POST(request: NextRequest) {
 
     const fields: Record<string, string> = {
       patientNum: String(encounterNum),
-      name: patientName || encounterName,
+      name: encounterName,
       timestamp,
     };
     if (transcript) fields.transcript = transcript;
@@ -66,7 +52,7 @@ export async function POST(request: NextRequest) {
     if (gender) fields.gender = gender;
     if (triageVitals) fields.triageVitals = triageVitals;
 
-    await updatePatientFields(ctx, rowIndex, fields, sheetName);
+    await updatePatientFields(dataCtx, rowIndex, fields, sheetName);
 
     return NextResponse.json({
       success: true,

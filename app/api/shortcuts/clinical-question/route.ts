@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { authenticateShortcut, isAuthed } from '@/lib/shortcut-auth';
-import { getPatient, updatePatientFields } from '@/lib/google-sheets';
+import { getPatient, updatePatientFields } from '@/lib/data-layer';
 import { getAnthropicClient } from '@/lib/api-keys';
 
 export const maxDuration = 30;
@@ -19,7 +19,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'question is required' }, { status: 400 });
     }
 
-    const patient = await getPatient(auth.ctx, rowIndex, sheetName);
+    const patient = await getPatient(auth.dataCtx, rowIndex, sheetName);
     if (!patient) {
       return NextResponse.json({ error: 'Patient not found' }, { status: 404 });
     }
@@ -64,7 +64,7 @@ export async function POST(request: NextRequest) {
       const existing = patient.clinicalQA ? JSON.parse(patient.clinicalQA) : [];
       existing.push({ role: 'user', content: question });
       existing.push({ role: 'assistant', content: answer });
-      await updatePatientFields(auth.ctx, rowIndex, { clinicalQA: JSON.stringify(existing) }, sheetName);
+      await updatePatientFields(auth.dataCtx, rowIndex, { clinicalQA: JSON.stringify(existing) }, sheetName);
     } catch {}
 
     return NextResponse.json({ answer });

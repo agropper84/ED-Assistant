@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createHash } from 'crypto';
 import { getShortcutTokenUser } from '@/lib/kv';
-import { getSheetsContextForUser, SheetsContext } from '@/lib/google-sheets';
+import { getDataContextForUser } from '@/lib/data-layer';
+import type { DataContext } from '@/lib/types-json';
 
 function sha256(input: string): string {
   return createHash('sha256').update(input).digest('hex');
@@ -9,10 +10,11 @@ function sha256(input: string): string {
 
 /**
  * Authenticate a shortcut/native app request via Bearer token.
- * Returns { userId, ctx } on success, or a NextResponse error on failure.
+ * Returns { userId, dataCtx } on success, or a NextResponse error on failure.
+ * Uses the data-layer abstraction (Drive + Sheets) instead of Sheets-only.
  */
 export async function authenticateShortcut(request: NextRequest): Promise<
-  { userId: string; ctx: SheetsContext } | NextResponse
+  { userId: string; dataCtx: DataContext } | NextResponse
 > {
   const authHeader = request.headers.get('authorization');
   if (!authHeader?.startsWith('Bearer ')) {
@@ -28,8 +30,8 @@ export async function authenticateShortcut(request: NextRequest): Promise<
   }
 
   try {
-    const ctx = await getSheetsContextForUser(userId);
-    return { userId, ctx };
+    const dataCtx = await getDataContextForUser(userId);
+    return { userId, dataCtx };
   } catch (error: any) {
     const message = error?.message || 'Auth failed';
     const status = message.includes('Not approved') ? 403 :
@@ -39,6 +41,6 @@ export async function authenticateShortcut(request: NextRequest): Promise<
 }
 
 /** Type guard: is the result an auth success (not an error response)? */
-export function isAuthed(result: { userId: string; ctx: SheetsContext } | NextResponse): result is { userId: string; ctx: SheetsContext } {
+export function isAuthed(result: { userId: string; dataCtx: DataContext } | NextResponse): result is { userId: string; dataCtx: DataContext } {
   return !(result instanceof NextResponse);
 }

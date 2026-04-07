@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { authenticateShortcut, isAuthed } from '@/lib/shortcut-auth';
-import { getPatient, updatePatientFields } from '@/lib/google-sheets';
+import { getPatient, updatePatientFields } from '@/lib/data-layer';
 
 // GET /api/shortcuts/patient?rowIndex=8&sheet=Apr+05,+2026
 // Returns full patient data (all fields)
@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'rowIndex is required' }, { status: 400 });
     }
 
-    const patient = await getPatient(auth.ctx, rowIndex, sheetName);
+    const patient = await getPatient(auth.dataCtx, rowIndex, sheetName || '');
     if (!patient) {
       return NextResponse.json({ error: 'Patient not found' }, { status: 404 });
     }
@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'rowIndex and fields are required' }, { status: 400 });
     }
 
-    await updatePatientFields(auth.ctx, rowIndex, fields, sheetName);
+    await updatePatientFields(auth.dataCtx, rowIndex, fields, sheetName);
     return NextResponse.json({ success: true });
   } catch (error: any) {
     console.error('Shortcut patient POST error:', error);

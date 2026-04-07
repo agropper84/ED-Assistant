@@ -90,6 +90,56 @@ export async function getDriveContext(): Promise<DriveContext> {
   return { drive, folderId, sheetsFolderId, encryptionKey };
 }
 
+/**
+ * Build a DriveContext for a specific userId (for bearer-token auth).
+ * Uses refresh token stored in KV instead of session cookies.
+ */
+export async function getDriveContextForUser(userId: string): Promise<DriveContext> {
+  const { getUserRefreshToken } = await import('./kv');
+  const refreshToken = await getUserRefreshToken(userId);
+  if (!refreshToken) throw new Error('No refresh token for user');
+
+  const newCreds = await refreshAccessToken(refreshToken);
+  const oauth2Client = getOAuth2Client();
+  oauth2Client.setCredentials({
+    access_token: newCreds.access_token,
+    refresh_token: refreshToken,
+  });
+
+  const drive = google.drive({ version: 'v3', auth: oauth2Client });
+
+  const [cachedFolderId, cachedSheetsFolderId, cachedKey] = await Promise.all([
+    getUserDriveFolderId(userId),
+    getUserPatientsFolderId(userId),
+    getUserEncryptionKey(userId),
+  ]);
+
+  let folderId = cachedFolderId;
+  if (!folderId) {
+    folderId = await ensureDataFolder(drive);
+    await setUserDriveFolderId(userId, folderId);
+  }
+
+  let sheetsFolderId = cachedSheetsFolderId;
+  if (!sheetsFolderId) {
+    sheetsFolderId = await findFileByName(drive, SHEETS_SUBFOLDER, folderId, true);
+    if (!sheetsFolderId) {
+      sheetsFolderId = await createFolder(drive, SHEETS_SUBFOLDER, folderId);
+    }
+    await setUserPatientsFolderId(userId, sheetsFolderId);
+  }
+
+  let encryptionKey: string;
+  if (cachedKey && isValidEncryptionKey(cachedKey)) {
+    encryptionKey = cachedKey;
+  } else {
+    encryptionKey = generateEncryptionKey();
+    await setUserEncryptionKey(userId, encryptionKey);
+  }
+
+  return { drive, folderId, sheetsFolderId, encryptionKey };
+}
+
 function isValidEncryptionKey(key: string): boolean {
   try {
     const buf = Buffer.from(key, 'base64');

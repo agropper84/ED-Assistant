@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createHash, randomBytes } from 'crypto';
 import { getOpenAIClient, getDeepgramApiKey } from '@/lib/api-keys';
 import { getShortcutTokenUser, setShortcutTranscript, getUserSettings } from '@/lib/kv';
-import { getSheetsContextForUser, updatePatientFields } from '@/lib/google-sheets';
+import { getDataContextForUser } from '@/lib/data-layer';
+import { updatePatientFields } from '@/lib/data-layer';
 import { DEVICE_WHISPER_PROMPT } from '@/lib/whisper-prompts';
 
 export const maxDuration = 60;
@@ -13,7 +14,6 @@ function sha256(input: string): string {
 
 export async function POST(request: NextRequest) {
   try {
-    // Validate Bearer token
     const authHeader = request.headers.get('authorization');
     if (!authHeader?.startsWith('Bearer ')) {
       return NextResponse.json({ error: 'Missing or invalid Authorization header' }, { status: 401 });
@@ -27,7 +27,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
     }
 
-    // Get audio file from multipart form data
     const formData = await request.formData();
     const audioFile = formData.get('audio');
 
@@ -35,11 +34,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No audio file provided' }, { status: 400 });
     }
 
-    // Check user's watch transcribe preference
+    // Check user's transcribe preference
     const userSettings = await getUserSettings(userId);
     const watchApi = (userSettings?.watchTranscribeApi as string) || 'deepgram';
 
-    // Transcribe with user's preferred engine
+    // Transcribe
     let transcriptionText = '';
     const dgKey = await getDeepgramApiKey();
     if (watchApi === 'deepgram' && dgKey) {
@@ -59,25 +58,24 @@ export async function POST(request: NextRequest) {
       const transcription = await openai.audio.transcriptions.create({
         file: audioFile, model: 'whisper-1', prompt: DEVICE_WHISPER_PROMPT, language: 'en',
       });
-      transcriptionText = transcriptionText || '';
+      transcriptionText = transcription.text || '';
     }
 
-    // If rowIndex provided, assign directly to patient
+    // If rowIndex provided, assign directly to patient via data layer
     const rowIndexStr = formData.get('rowIndex');
     const sheetName = formData.get('sheetName') as string | null;
 
     if (rowIndexStr) {
       const rowIndex = parseInt(rowIndexStr as string, 10);
-      const ctx = await getSheetsContextForUser(userId);
-      await updatePatientFields(ctx, rowIndex, { transcript: transcriptionText }, sheetName || undefined);
+      const dataCtx = await getDataContextForUser(userId);
+      await updatePatientFields(dataCtx, rowIndex, { transcript: transcriptionText }, sheetName || '');
       return NextResponse.json({ transcript: transcriptionText, assigned: true, rowIndex });
     }
 
-    // Store transcript in KV with 10 min TTL
+    // Store transcript in KV with 10 min TTL for later assignment
     const id = randomBytes(16).toString('hex');
     await setShortcutTranscript(id, { transcript: transcriptionText, userId }, 600);
 
-    // Build URL
     const host = request.headers.get('host') || 'localhost:3000';
     const protocol = request.headers.get('x-forwarded-proto') || 'https';
     const url = `${protocol}://${host}/?transcript=${id}`;
@@ -86,7 +84,6 @@ export async function POST(request: NextRequest) {
   } catch (error: any) {
     console.error('Shortcut upload error:', error);
     const message = error?.message || 'Upload failed';
-    const status = error?.status || 500;
-    return NextResponse.json({ error: message }, { status });
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

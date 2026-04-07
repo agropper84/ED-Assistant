@@ -43,6 +43,30 @@ export async function getDataContext(): Promise<DataContext> {
   }
 }
 
+/**
+ * Build a DataContext for a specific userId (for bearer-token / device-token auth).
+ * Used by /api/shortcuts/* endpoints that authenticate via token, not session cookies.
+ */
+export async function getDataContextForUser(userId: string): Promise<DataContext> {
+  const mode: StorageMode = (await getUserStorageMode(userId)) || 'dual';
+
+  const { getSheetsContextForUser } = await import('./google-sheets');
+  const sheets = await getSheetsContextForUser(userId);
+
+  if (mode === 'sheets') {
+    return { sheets, mode };
+  }
+
+  try {
+    const { getDriveContextForUser } = await import('./drive-json');
+    const drive = await getDriveContextForUser(userId);
+    return { drive, sheets, mode };
+  } catch (e) {
+    console.warn('Drive init failed for user, falling back to sheets:', (e as Error).message);
+    return { sheets, mode: 'sheets' };
+  }
+}
+
 // ============================================================
 // PATIENT LIST (all patients for a date sheet)
 // ============================================================

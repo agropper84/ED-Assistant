@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { authenticateShortcut, isAuthed } from '@/lib/shortcut-auth';
-import { getPatients } from '@/lib/google-sheets';
+import { getPatients } from '@/lib/data-layer';
 import { getAnthropicClient } from '@/lib/api-keys';
 
 export const maxDuration = 60;
@@ -16,7 +16,7 @@ export async function POST(request: NextRequest) {
     const anthropic = await getAnthropicClient();
     const { sheetName } = await request.json();
 
-    const patients = await getPatients(auth.ctx, sheetName);
+    const patients = await getPatients(auth.dataCtx, sheetName);
     if (patients.length === 0) {
       return NextResponse.json({ error: 'No patients found on this sheet' }, { status: 400 });
     }
