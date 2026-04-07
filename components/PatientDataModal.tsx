@@ -210,7 +210,7 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
           </button>
           <div className="flex-1 min-w-0">
             <h2 className="text-lg font-semibold truncate" style={{ color: 'var(--dash-text)' }}>
-              Add clinical information
+              Add Clinical Information
             </h2>
             <p className="text-sm" style={{ color: 'var(--dash-text-muted)' }}>
               {patient.name || 'Unknown'}
