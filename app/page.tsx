@@ -35,7 +35,8 @@ import {
   Plus, Loader2, ChevronLeft, ChevronRight,
   Calendar, Settings, CheckSquare, Square, Play, Clock, EyeOff, Eye,
   Search, ArrowUpDown, X, LogOut, Upload, Monitor, RotateCcw, Sparkles,
-  ChevronDown, SlidersHorizontal, FileSpreadsheet, Bookmark, Wind, Menu
+  ChevronDown, SlidersHorizontal, FileSpreadsheet, Bookmark, Wind, Menu,
+  LayoutGrid, LayoutList
 } from 'lucide-react';
 import { AwayScreen } from '@/components/AwayScreen';
 import { useDraggableFab } from '@/hooks/useDraggableFab';
@@ -184,6 +185,10 @@ export default function HomePage() {
   const [searching, setSearching] = useState(false);
   const searchDebounce = useRef<NodeJS.Timeout | null>(null);
   const [sortBy, setSortBy] = useState<'time' | 'name' | 'status'>('time');
+  const [viewMode, setViewMode] = useState<'list' | 'grid'>(() => {
+    if (typeof window !== 'undefined') return (localStorage.getItem('ed-view-mode') as 'list' | 'grid') || 'list';
+    return 'list';
+  });
 
   const sheetName = formatDateForSheet(currentDate);
   const isToday = (() => {
@@ -699,7 +704,49 @@ export default function HomePage() {
     setBillingPatientIdx(prev => prev === rowIndex ? null : rowIndex);
   };
 
+  const patientListClass = viewMode === 'grid'
+    ? 'grid grid-cols-2 sm:grid-cols-3 gap-3'
+    : 'space-y-3';
+
+  const renderPatientGrid = (patient: Patient) => (
+    <button
+      key={patient.rowIndex}
+      onClick={() => handlePatientClick(patient)}
+      className="patient-card-grid text-left p-4 flex flex-col gap-2"
+      data-status={patient.status}
+    >
+      <div className="flex items-center justify-between">
+        <span className="text-xs font-bold text-[var(--text-muted)] tabular-nums">
+          #{patient.patientNum || patient.rowIndex}
+        </span>
+        <span className="text-[10px] font-medium tabular-nums text-[var(--text-muted)]">
+          {patient.timestamp || ''}
+        </span>
+      </div>
+      <p className="font-semibold text-sm text-[var(--text-primary)] truncate">
+        {patient.name || 'Unknown'}
+      </p>
+      {patient.diagnosis && (
+        <p className="text-xs text-[var(--text-secondary)] truncate">{patient.diagnosis}</p>
+      )}
+      <div className="flex items-center gap-2 mt-auto pt-1">
+        {patient.age && <span className="text-[10px] text-[var(--text-muted)]">{patient.age}</span>}
+        {patient.gender && <span className="text-[10px] text-[var(--text-muted)]">{patient.gender}</span>}
+        <span className="ml-auto">
+          {patient.hasOutput ? (
+            <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" />
+          ) : patient.transcript ? (
+            <span className="w-2 h-2 rounded-full bg-amber-500 inline-block" />
+          ) : (
+            <span className="w-2 h-2 rounded-full bg-gray-400 dark:bg-gray-600 inline-block" />
+          )}
+        </span>
+      </div>
+    </button>
+  );
+
   const renderPatientWithBilling = (patient: Patient) => {
+    if (viewMode === 'grid') return renderPatientGrid(patient);
     const items = parseBillingItems(
       patient.visitProcedure || '', patient.procCode || '',
       patient.fee || '', patient.unit || ''
@@ -1048,6 +1095,18 @@ export default function HomePage() {
                 <ArrowUpDown className="w-3 h-3" />
                 <span className="hidden sm:inline">{sortBy === 'time' ? 'Time' : sortBy === 'name' ? 'A-Z' : 'Status'}</span>
               </button>
+              <button
+                onClick={() => {
+                  const next = viewMode === 'list' ? 'grid' : 'list';
+                  setViewMode(next);
+                  localStorage.setItem('ed-view-mode', next);
+                }}
+                className="flex items-center gap-1 px-2 py-1.5 rounded-lg text-[11px] font-medium transition-colors hover:bg-white/[0.07] flex-shrink-0"
+                style={{ color: 'var(--dash-text-muted)' }}
+                title={viewMode === 'list' ? 'Grid view' : 'List view'}
+              >
+                {viewMode === 'list' ? <LayoutGrid className="w-3 h-3" /> : <LayoutList className="w-3 h-3" />}
+              </button>
             </div>
 
             {/* Shift times / VCH controls */}
@@ -1371,7 +1430,7 @@ export default function HomePage() {
                       <Calendar className="w-3 h-3" />
                       {sheet}
                     </h3>
-                    <div className="space-y-3">
+                    <div className={patientListClass}>
                       {pts.map((patient) => renderPatientWithBilling(patient))}
                     </div>
                   </section>
@@ -1382,7 +1441,7 @@ export default function HomePage() {
                 {sortBy !== 'time' ? (
                   /* Name/Status sort: flat list, no status grouping */
                   <section>
-                    <div className="space-y-3">
+                    <div className={patientListClass}>
                       {sortedPatients.map((patient) =>
                         batchMode && patient.status === 'pending' ? (
                           <div key={patient.rowIndex} className="flex items-start gap-2">
@@ -1412,7 +1471,7 @@ export default function HomePage() {
                     {/* Ready to Process */}
                     {pendingPatients.length > 0 && (
                       <section>
-                        <div className="space-y-3">
+                        <div className={patientListClass}>
                           {pendingPatients.map((patient) =>
                             batchMode ? (
                               <div key={patient.rowIndex} className="flex items-start gap-2">
@@ -1441,7 +1500,7 @@ export default function HomePage() {
                     {/* New */}
                     {newPatients.length > 0 && (
                       <section>
-                        <div className="space-y-3">
+                        <div className={patientListClass}>
                           {newPatients.map((patient) => renderPatientWithBilling(patient))}
                         </div>
                       </section>
@@ -1450,7 +1509,7 @@ export default function HomePage() {
                     {/* Processed */}
                     {processedPatients.length > 0 && (
                       <section>
-                        <div className="space-y-3">
+                        <div className={patientListClass}>
                           {processedPatients.map((patient) => renderPatientWithBilling(patient))}
                         </div>
                       </section>

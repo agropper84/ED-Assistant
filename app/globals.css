@@ -215,40 +215,71 @@ button, .btn {
   @apply rounded-xl;
   transition: box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1),
               border-color 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-              transform 0.15s ease;
+              transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
-/* Highlight overlay — smooth fade on hover */
+/* Gradient overlay — visible at rest, intensified on hover */
 .patient-card::after {
   content: '';
   position: absolute;
   inset: 0;
   border-radius: inherit;
   pointer-events: none;
-  opacity: 0;
+  opacity: 0.6;
   transition: opacity 0.35s cubic-bezier(0.4, 0, 0.2, 1);
 }
 :root .patient-card::after {
-  background: linear-gradient(135deg, rgba(59,130,246,0.04) 0%, rgba(99,102,241,0.03) 50%, rgba(16,185,129,0.02) 100%);
+  background: linear-gradient(135deg, rgba(59,130,246,0.03) 0%, rgba(99,102,241,0.02) 50%, rgba(16,185,129,0.015) 100%);
 }
 .dark .patient-card::after {
-  background: linear-gradient(135deg, rgba(96,165,250,0.06) 0%, rgba(129,140,248,0.04) 50%, rgba(52,211,153,0.03) 100%);
+  background: linear-gradient(135deg, rgba(96,165,250,0.05) 0%, rgba(129,140,248,0.03) 50%, rgba(52,211,153,0.025) 100%);
 }
 .patient-card:hover::after {
   opacity: 1;
 }
-.patient-card[data-status="new"]       { background: var(--status-new); }
-.patient-card[data-status="pending"]   { background: var(--status-pending); }
-.patient-card[data-status="processed"] { background: var(--status-processed); }
+/* Status border at rest */
+.patient-card[data-status="new"]       { background: var(--status-new); border-left-color: var(--status-new-border); border-left-width: 3px; }
+.patient-card[data-status="pending"]   { background: var(--status-pending); border-left-color: var(--status-pending-border); border-left-width: 3px; }
+.patient-card[data-status="processed"] { background: var(--status-processed); border-left-color: var(--status-processed-border); border-left-width: 3px; }
+/* Hover: elevate + glow */
 .patient-card:hover {
-  box-shadow: var(--card-shadow-hover);
+  box-shadow: var(--card-shadow-hover), 0 0 0 1px var(--card-hover-border);
   border-color: var(--card-hover-border);
+  transform: translateY(-1px);
   z-index: 30;
 }
-.patient-card[data-status="new"]:hover       { border-left-color: var(--status-new-border); }
-.patient-card[data-status="pending"]:hover   { border-left-color: var(--status-pending-border); }
-.patient-card[data-status="processed"]:hover { border-left-color: var(--status-processed-border); }
+.patient-card[data-status="new"]:hover       { box-shadow: var(--card-shadow-hover), 0 0 12px rgba(59,130,246,0.08); }
+.patient-card[data-status="pending"]:hover   { box-shadow: var(--card-shadow-hover), 0 0 12px rgba(245,158,11,0.08); }
+.patient-card[data-status="processed"]:hover { box-shadow: var(--card-shadow-hover), 0 0 12px rgba(16,185,129,0.08); }
 .patient-card:active {
-  transform: scale(0.997);
+  transform: scale(0.997) translateY(0);
+  transition-duration: 80ms;
+}
+/* Grid view card variant */
+.patient-card-grid {
+  @apply rounded-xl;
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  box-shadow: var(--card-shadow);
+  position: relative;
+  overflow: hidden;
+  transition: box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+              transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.patient-card-grid::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+}
+.patient-card-grid[data-status="new"]::before       { background: var(--status-new-border); }
+.patient-card-grid[data-status="pending"]::before   { background: var(--status-pending-border); }
+.patient-card-grid[data-status="processed"]::before { background: var(--status-processed-border); }
+.patient-card-grid:hover {
+  box-shadow: var(--card-shadow-hover);
+  transform: translateY(-2px);
+}
+.patient-card-grid:active {
+  transform: scale(0.98);
   transition-duration: 80ms;
 }
 
