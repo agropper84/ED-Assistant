@@ -281,25 +281,29 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
         <div className="flex-1 min-w-0 overflow-y-auto px-5 py-4 space-y-4">
           {/* Triage Notes */}
           <div>
-            <div className="flex items-center justify-between mb-1.5">
-              <label className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-widest">
-                Triage Notes & Vitals
-              </label>
-              <button
-                onClick={() => handleSectionSubmit('triageVitals', triageVitals)}
-                disabled={!triageVitals.trim() || !!submitting}
-                className="flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-medium transition-all disabled:opacity-30 hover:bg-[var(--accent-light)] text-[var(--accent)]"
-              >
-                {submitting === 'triageVitals' ? <Loader2 className="w-3 h-3 animate-spin" /> : submitted === 'triageVitals' ? <Check className="w-3 h-3 text-emerald-500" /> : <ArrowUpCircle className="w-3 h-3" />}
-                {submitted === 'triageVitals' ? 'Saved' : 'Submit'}
-              </button>
-            </div>
+            <label className="block text-xs font-semibold text-[var(--text-muted)] uppercase tracking-widest mb-1.5">
+              Triage Notes & Vitals
+            </label>
             <textarea
               value={triageVitals}
               onChange={(e) => setTriageVitals(e.target.value)}
               placeholder="Chief complaint, vitals, triage assessment..."
               className="w-full h-20 p-3 border border-[var(--input-border)] rounded-xl text-sm resize-y focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)]"
             />
+            <button
+              onClick={() => handleSectionSubmit('triageVitals', triageVitals)}
+              disabled={!triageVitals.trim() || !!submitting}
+              className={`mt-1.5 w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs font-medium transition-all duration-300 ${
+                submitted === 'triageVitals'
+                  ? 'bg-emerald-500/15 text-emerald-500'
+                  : triageVitals.trim()
+                    ? 'bg-[var(--accent)]/10 text-[var(--accent)] hover:bg-[var(--accent)]/20 active:scale-[0.98]'
+                    : 'bg-transparent text-[var(--text-muted)] opacity-0'
+              }`}
+            >
+              {submitting === 'triageVitals' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : submitted === 'triageVitals' ? <Check className="w-3.5 h-3.5" /> : <ArrowUpCircle className="w-3.5 h-3.5" />}
+              {submitted === 'triageVitals' ? 'Saved' : 'Submit'}
+            </button>
           </div>
 
           {/* Transcript */}
@@ -308,25 +312,15 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
               <label className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-widest">
                 Transcript
               </label>
-              <div className="flex items-center gap-2">
-                <label className="flex items-center gap-1.5 cursor-pointer select-none">
-                  <input
-                    type="checkbox"
-                    checked={showLiveTranscript}
-                    onChange={(e) => setShowLiveTranscript(e.target.checked)}
-                    className="w-3 h-3 rounded text-blue-600 focus:ring-blue-500 accent-blue-600"
-                  />
-                  <span className="text-[10px] text-[var(--text-muted)]">Live text</span>
-                </label>
-                <button
-                  onClick={() => handleSectionSubmit('transcript', transcript)}
-                  disabled={!transcript.trim() || !!submitting}
-                  className="flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-medium transition-all disabled:opacity-30 hover:bg-[var(--accent-light)] text-[var(--accent)]"
-                >
-                  {submitting === 'transcript' ? <Loader2 className="w-3 h-3 animate-spin" /> : submitted === 'transcript' ? <Check className="w-3 h-3 text-emerald-500" /> : <ArrowUpCircle className="w-3 h-3" />}
-                  {submitted === 'transcript' ? 'Saved' : 'Submit'}
-                </button>
-              </div>
+              <label className="flex items-center gap-1.5 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={showLiveTranscript}
+                  onChange={(e) => setShowLiveTranscript(e.target.checked)}
+                  className="w-3 h-3 rounded text-blue-600 focus:ring-blue-500 accent-blue-600"
+                />
+                <span className="text-[10px] text-[var(--text-muted)]">Live text</span>
+              </label>
             </div>
             <div className="relative">
               <textarea
@@ -350,23 +344,27 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
                 />
               </div>
             </div>
+            <button
+              onClick={() => handleSectionSubmit('transcript', transcript)}
+              disabled={!transcript.trim() || !!submitting}
+              className={`mt-1.5 w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs font-medium transition-all duration-300 ${
+                submitted === 'transcript'
+                  ? 'bg-emerald-500/15 text-emerald-500'
+                  : transcript.trim()
+                    ? 'bg-[var(--accent)]/10 text-[var(--accent)] hover:bg-[var(--accent)]/20 active:scale-[0.98]'
+                    : 'bg-transparent text-[var(--text-muted)] opacity-0'
+              }`}
+            >
+              {submitting === 'transcript' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : submitted === 'transcript' ? <Check className="w-3.5 h-3.5" /> : <ArrowUpCircle className="w-3.5 h-3.5" />}
+              {submitted === 'transcript' ? 'Saved' : 'Submit'}
+            </button>
           </div>
 
           {/* Encounter Notes */}
           <div>
-            <div className="flex items-center justify-between mb-1.5">
-              <label className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-widest">
-                Encounter Notes
-              </label>
-              <button
-                onClick={() => handleSectionSubmit('encounterNotes', encounterNotes)}
-                disabled={!encounterNotes.trim() || !!submitting}
-                className="flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-medium transition-all disabled:opacity-30 hover:bg-[var(--accent-light)] text-[var(--accent)]"
-              >
-                {submitting === 'encounterNotes' ? <Loader2 className="w-3 h-3 animate-spin" /> : submitted === 'encounterNotes' ? <Check className="w-3 h-3 text-emerald-500" /> : <ArrowUpCircle className="w-3 h-3" />}
-                {submitted === 'encounterNotes' ? 'Saved' : 'Submit'}
-              </button>
-            </div>
+            <label className="block text-xs font-semibold text-[var(--text-muted)] uppercase tracking-widest mb-1.5">
+              Encounter Notes
+            </label>
             <div className="relative">
               <AutocompleteTextarea
                 value={encounterNotes}
@@ -389,23 +387,27 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
                 />
               </div>
             </div>
+            <button
+              onClick={() => handleSectionSubmit('encounterNotes', encounterNotes)}
+              disabled={!encounterNotes.trim() || !!submitting}
+              className={`mt-1.5 w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs font-medium transition-all duration-300 ${
+                submitted === 'encounterNotes'
+                  ? 'bg-emerald-500/15 text-emerald-500'
+                  : encounterNotes.trim()
+                    ? 'bg-[var(--accent)]/10 text-[var(--accent)] hover:bg-[var(--accent)]/20 active:scale-[0.98]'
+                    : 'bg-transparent text-[var(--text-muted)] opacity-0'
+              }`}
+            >
+              {submitting === 'encounterNotes' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : submitted === 'encounterNotes' ? <Check className="w-3.5 h-3.5" /> : <ArrowUpCircle className="w-3.5 h-3.5" />}
+              {submitted === 'encounterNotes' ? 'Saved' : 'Submit'}
+            </button>
           </div>
 
           {/* Additional Findings with Exam Toggles */}
           <div>
-            <div className="flex items-center justify-between mb-1.5">
-              <label className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-widest">
-                Additional Findings / Exam
-              </label>
-              <button
-                onClick={() => handleSectionSubmit('additional', additional)}
-                disabled={!additional.trim() || !!submitting}
-                className="flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-medium transition-all disabled:opacity-30 hover:bg-[var(--accent-light)] text-[var(--accent)]"
-              >
-                {submitting === 'additional' ? <Loader2 className="w-3 h-3 animate-spin" /> : submitted === 'additional' ? <Check className="w-3 h-3 text-emerald-500" /> : <ArrowUpCircle className="w-3 h-3" />}
-                {submitted === 'additional' ? 'Saved' : 'Submit'}
-              </button>
-            </div>
+            <label className="block text-xs font-semibold text-[var(--text-muted)] uppercase tracking-widest mb-1.5">
+              Additional Findings / Exam
+            </label>
             <ExamToggles value={additional} onChange={setAdditional} />
             <div className="relative">
               <AutocompleteTextarea
@@ -429,29 +431,47 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
                 />
               </div>
             </div>
+            <button
+              onClick={() => handleSectionSubmit('additional', additional)}
+              disabled={!additional.trim() || !!submitting}
+              className={`mt-1.5 w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs font-medium transition-all duration-300 ${
+                submitted === 'additional'
+                  ? 'bg-emerald-500/15 text-emerald-500'
+                  : additional.trim()
+                    ? 'bg-[var(--accent)]/10 text-[var(--accent)] hover:bg-[var(--accent)]/20 active:scale-[0.98]'
+                    : 'bg-transparent text-[var(--text-muted)] opacity-0'
+              }`}
+            >
+              {submitting === 'additional' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : submitted === 'additional' ? <Check className="w-3.5 h-3.5" /> : <ArrowUpCircle className="w-3.5 h-3.5" />}
+              {submitted === 'additional' ? 'Saved' : 'Submit'}
+            </button>
           </div>
 
           {/* Past Documentation */}
           <div>
-            <div className="flex items-center justify-between mb-1.5">
-              <label className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-widest">
-                Past Documentation
-              </label>
-              <button
-                onClick={() => handleSectionSubmit('pastDocs', pastDocs)}
-                disabled={!pastDocs.trim() || !!submitting}
-                className="flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-medium transition-all disabled:opacity-30 hover:bg-[var(--accent-light)] text-[var(--accent)]"
-              >
-                {submitting === 'pastDocs' ? <Loader2 className="w-3 h-3 animate-spin" /> : submitted === 'pastDocs' ? <Check className="w-3 h-3 text-emerald-500" /> : <ArrowUpCircle className="w-3 h-3" />}
-                {submitted === 'pastDocs' ? 'Saved' : 'Submit'}
-              </button>
-            </div>
+            <label className="block text-xs font-semibold text-[var(--text-muted)] uppercase tracking-widest mb-1.5">
+              Past Documentation
+            </label>
             <textarea
               value={pastDocs}
               onChange={(e) => setPastDocs(e.target.value)}
               placeholder="Previous visit notes, relevant history..."
               className="w-full h-20 p-3 border border-[var(--input-border)] rounded-xl text-sm resize-y focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)]"
             />
+            <button
+              onClick={() => handleSectionSubmit('pastDocs', pastDocs)}
+              disabled={!pastDocs.trim() || !!submitting}
+              className={`mt-1.5 w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs font-medium transition-all duration-300 ${
+                submitted === 'pastDocs'
+                  ? 'bg-emerald-500/15 text-emerald-500'
+                  : pastDocs.trim()
+                    ? 'bg-[var(--accent)]/10 text-[var(--accent)] hover:bg-[var(--accent)]/20 active:scale-[0.98]'
+                    : 'bg-transparent text-[var(--text-muted)] opacity-0'
+              }`}
+            >
+              {submitting === 'pastDocs' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : submitted === 'pastDocs' ? <Check className="w-3.5 h-3.5" /> : <ArrowUpCircle className="w-3.5 h-3.5" />}
+              {submitted === 'pastDocs' ? 'Saved' : 'Submit'}
+            </button>
           </div>
         </div>
 
