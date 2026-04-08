@@ -1,37 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createHash } from 'crypto';
-import { getShortcutTokenUser } from '@/lib/kv';
-import {
-  getSheetsContextForUser,
-  getPatient,
-  updatePatientFields,
-  getStyleGuideFromSheet,
-} from '@/lib/google-sheets';
+import { authenticateShortcut, isAuthed } from '@/lib/shortcut-auth';
+import { getPatient, updatePatientFields } from '@/lib/data-layer';
+import { getStyleGuideFromSheet } from '@/lib/google-sheets';
 import { processEncounter } from '@/lib/claude';
 
 export const maxDuration = 60;
-
-function sha256(input: string): string {
-  return createHash('sha256').update(input).digest('hex');
-}
 
 // POST /api/shortcuts/process — Process a patient encounter from device
 // mode: "analyze" (synopsis + DDx + management + evidence)
 //        "full" (analyze + generate encounter note)
 export async function POST(request: NextRequest) {
   try {
-    const authHeader = request.headers.get('authorization');
-    if (!authHeader?.startsWith('Bearer ')) {
-      return NextResponse.json({ error: 'Missing or invalid Authorization header' }, { status: 401 });
-    }
-
-    const token = authHeader.slice(7);
-    const hash = sha256(token);
-    const userId = await getShortcutTokenUser(hash);
-
-    if (!userId) {
-      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
-    }
+    const auth = await authenticateShortcut(request);
+    if (!isAuthed(auth)) return auth;
 
     const { rowIndex, sheetName, mode } = await request.json();
 
@@ -39,21 +20,27 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'rowIndex and mode are required' }, { status: 400 });
     }
 
-    const ctx = await getSheetsContextForUser(userId);
-    const patient = await getPatient(ctx, rowIndex, sheetName);
+    const patient = await getPatient(auth.dataCtx, rowIndex, sheetName);
 
     if (!patient) {
       return NextResponse.json({ error: 'Patient not found' }, { status: 404 });
     }
 
-    if (!patient.transcript && !patient.triageVitals && !patient.additional) {
+    if (!patient.transcript && !patient.encounterNotes && !patient.triageVitals && !patient.additional) {
       return NextResponse.json({ error: 'No clinical data to process' }, { status: 400 });
     }
+
+    // Merge transcript + encounterNotes (same as web /api/process does)
+    const mergedTranscript = [patient.transcript, patient.encounterNotes]
+      .filter(Boolean)
+      .join('\n\n--- ENCOUNTER NOTES ---\n');
+    // Override transcript on the patient object so processEncounter uses both
+    const patientForProcessing = { ...patient, transcript: mergedTranscript };
 
     // Load style guide
     let styleGuidance = '';
     try {
-      const guide = await getStyleGuideFromSheet(ctx);
+      const guide = await getStyleGuideFromSheet(auth.dataCtx.sheets);
       const parts: string[] = [];
       for (const [section, examples] of Object.entries(guide.examples)) {
         if ((examples as string[]).length > 0) {
@@ -71,11 +58,11 @@ export async function POST(request: NextRequest) {
 
     if (mode === 'full') {
       // Full processing: encounter note + DDx + analysis
-      const result = await processEncounter(patient, {
+      const result = await processEncounter(patientForProcessing, {
         styleGuidance,
       });
 
-      await updatePatientFields(ctx, rowIndex, {
+      await updatePatientFields(auth.dataCtx, rowIndex, {
         hpi: result.hpi || '',
         objective: result.objective || '',
         assessmentPlan: result.assessmentPlan || '',
@@ -92,7 +79,7 @@ export async function POST(request: NextRequest) {
     } else {
       // Analyze only: synopsis + DDx + management + evidence via processEncounter
       // We use processEncounter but only save the analysis fields
-      const result = await processEncounter(patient, {
+      const result = await processEncounter(patientForProcessing, {
         styleGuidance,
       });
 
@@ -112,7 +99,7 @@ export async function POST(request: NextRequest) {
       ].filter(Boolean).join(' | ');
       if (synopsisText) fields.synopsis = synopsisText;
 
-      await updatePatientFields(ctx, rowIndex, fields, sheetName);
+      await updatePatientFields(auth.dataCtx, rowIndex, fields, sheetName);
 
       return NextResponse.json({ success: true, mode: 'analyze' });
     }
