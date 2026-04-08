@@ -236,16 +236,16 @@ button, .btn {
 .patient-card[data-status="new"]       { background: var(--status-new); border-left-color: var(--status-new-border); }
 .patient-card[data-status="pending"]   { background: var(--status-pending); border-left-color: var(--status-pending-border); }
 .patient-card[data-status="processed"] { background: var(--status-processed); border-left-color: var(--status-processed-border); }
-/* Hover: glass intensifies */
+/* Hover: card lights up */
 :root .patient-card:hover {
-  background: rgba(255,255,255,0.78);
-  box-shadow: var(--card-shadow-hover);
-  border-color: rgba(255,255,255,0.55);
+  background: rgba(255,255,255,0.88);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.08), 0 0 0 1px rgba(255,255,255,0.6), 0 1px 0 rgba(255,255,255,0.9) inset;
+  border-color: rgba(255,255,255,0.7);
 }
 .dark .patient-card:hover {
-  background: rgba(255,255,255,0.07);
-  box-shadow: var(--card-shadow-hover);
-  border-color: rgba(255,255,255,0.12);
+  background: rgba(255,255,255,0.10);
+  box-shadow: 0 4px 24px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.12), 0 1px 0 rgba(255,255,255,0.08) inset;
+  border-color: rgba(255,255,255,0.15);
 }
 .patient-card[data-status="new"]:hover       { border-left-color: var(--status-new-border); }
 .patient-card[data-status="pending"]:hover   { border-left-color: var(--status-pending-border); }
@@ -294,14 +294,14 @@ button, .btn {
 .patient-card-grid[data-status="pending"]::before   { background: var(--status-pending-border); }
 .patient-card-grid[data-status="processed"]::before { background: var(--status-processed-border); }
 :root .patient-card-grid:hover {
-  background: rgba(255,255,255,0.78);
-  box-shadow: var(--card-shadow-hover);
-  border-color: rgba(255,255,255,0.55);
+  background: rgba(255,255,255,0.88);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.08), 0 0 0 1px rgba(255,255,255,0.6), 0 1px 0 rgba(255,255,255,0.9) inset;
+  border-color: rgba(255,255,255,0.7);
 }
 .dark .patient-card-grid:hover {
-  background: rgba(255,255,255,0.07);
-  box-shadow: var(--card-shadow-hover);
-  border-color: rgba(255,255,255,0.12);
+  background: rgba(255,255,255,0.10);
+  box-shadow: 0 4px 24px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.12), 0 1px 0 rgba(255,255,255,0.08) inset;
+  border-color: rgba(255,255,255,0.15);
 }
 .patient-card-grid:active {
   transform: scale(0.98);
