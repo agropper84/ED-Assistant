@@ -706,7 +706,7 @@ export default function HomePage() {
 
   const patientListClass = viewMode === 'grid'
     ? 'grid grid-cols-2 sm:grid-cols-3 gap-3'
-    : 'space-y-1.5';
+    : 'space-y-3';
 
   const renderPatientGrid = (patient: Patient) => {
     const billingItems = parseBillingItems(
