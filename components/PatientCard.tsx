@@ -194,12 +194,12 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
       {/* Main content area */}
       <button
         onClick={onClick}
-        className="flex-1 min-w-0 text-left px-5 py-3"
+        className="flex-1 min-w-0 text-left px-4 py-2"
       >
         {/* Top row: Name + badges + inline info icons */}
-        <div className="flex items-center gap-2.5 mb-0.5">
+        <div className="flex items-center gap-2 mb-px">
           <span
-            className={`font-medium text-[15px] tracking-tight text-[var(--text-primary)] truncate ${onUpdateFields ? 'hover:text-blue-600 dark:hover:text-blue-400 cursor-pointer' : ''}`}
+            className={`font-medium text-[14px] tracking-tight text-[var(--text-primary)] truncate ${onUpdateFields ? 'hover:text-blue-600 dark:hover:text-blue-400 cursor-pointer' : ''}`}
             onClick={onUpdateFields ? (e) => {
               e.stopPropagation();
               e.preventDefault();
@@ -215,56 +215,10 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
             {displayName}
           </span>
 
-          {/* Medical profile pill — always visible */}
-          <div className="relative flex-shrink-0">
-            <span
-              onClick={async (e) => {
-                e.stopPropagation();
-                if (hasProfileContent) {
-                  setShowProfilePopover(!showProfilePopover);
-                } else if (onGenerateProfile && !generatingProfile) {
-                  setGeneratingProfile(true);
-                  try { await onGenerateProfile(); } finally { setGeneratingProfile(false); }
-                }
-              }}
-              className={`inline-flex items-center gap-1 px-1.5 py-px rounded-full text-[10px] font-semibold tracking-wide cursor-pointer transition-all active:scale-95 border ${
-                hasProfileContent
-                  ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 border-blue-200/80 dark:border-blue-700/50 hover:bg-blue-200 dark:hover:bg-blue-800/50'
-                  : 'bg-gray-100 dark:bg-gray-800/40 text-gray-400 dark:text-gray-500 border-gray-200/80 dark:border-gray-700/50 hover:bg-gray-200 dark:hover:bg-gray-700/50'
-              }`}
-              title={hasProfileContent ? 'View medical profile' : 'Generate medical profile'}
-            >
-              {generatingProfile ? (
-                <Loader2 className="w-2.5 h-2.5 animate-spin" />
-              ) : (
-                <Heart className="w-2.5 h-2.5" fill={hasProfileContent ? 'currentColor' : 'none'} />
-              )}
-              PMHx
-            </span>
-            {showProfilePopover && hasProfileContent && parsedProfile && (
-              <>
-                <div
-                  className="fixed inset-0 z-[100]"
-                  onClick={(e) => { e.stopPropagation(); setShowProfilePopover(false); }}
-                />
-                <div
-                  className="absolute left-0 top-full mt-2 z-[101] w-72 max-h-72 overflow-y-auto p-3 bg-gray-900 text-gray-100 text-xs rounded-xl shadow-2xl ring-1 ring-white/10 animate-scaleIn"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-blue-400 font-semibold text-[13px]">Medical Profile</span>
-                    <button
-                      onClick={(e) => { e.stopPropagation(); setShowProfilePopover(false); }}
-                      className="p-0.5 rounded hover:bg-white/10 transition-colors"
-                    >
-                      <X className="w-3.5 h-3.5 text-gray-400" />
-                    </button>
-                  </div>
-                  <ProfileSummary profile={parsedProfile} />
-                </div>
-              </>
-            )}
-          </div>
+          {/* Medical profile indicator — subtle dot */}
+          {hasProfileContent && (
+            <Heart className="w-3 h-3 text-blue-400 flex-shrink-0 opacity-50" fill="currentColor" />
+          )}
 
           {/* Info icons — inline with name */}
           {showInfoIcons && (
@@ -522,7 +476,7 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
         </div>
 
         {/* Bottom row: metadata */}
-        <div className="flex items-center gap-3 text-[12px] text-[var(--text-muted)]">
+        <div className="flex items-center gap-2.5 text-[11px] text-[var(--text-muted)]">
           {patient.timestamp && !editingTime && (
             <span className="flex items-center gap-1">
               <span
