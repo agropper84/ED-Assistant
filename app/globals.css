@@ -37,12 +37,12 @@
   --card-hover-border: rgba(37,99,235,0.15);
 
   /* Status card — frosted glass gradient */
-  --status-new-border: #3b82f6;
+  --status-new-border: #22c55e;
   --status-pending-border: #f59e0b;
-  --status-processed-border: #10b981;
-  --status-new: linear-gradient(135deg, rgba(59,130,246,0.06) 0%, rgba(59,130,246,0.02) 40%, transparent 100%), var(--card-bg);
-  --status-pending: linear-gradient(135deg, rgba(245,158,11,0.06) 0%, rgba(245,158,11,0.02) 40%, transparent 100%), var(--card-bg);
-  --status-processed: linear-gradient(135deg, rgba(16,185,129,0.06) 0%, rgba(16,185,129,0.02) 40%, transparent 100%), var(--card-bg);
+  --status-processed-border: #3b82f6;
+  --status-new: var(--card-bg);
+  --status-pending: var(--card-bg);
+  --status-processed: var(--card-bg);
 
   /* Dashboard header gradient — midnight navy palette (matches hosp_workbook) */
   --dash-header-from: #0c1425;
@@ -95,12 +95,12 @@
   --card-hover-border: rgba(59,130,246,0.18);
 
   /* Status card — frosted glass gradient (dark) */
-  --status-new-border: #60a5fa;
+  --status-new-border: #4ade80;
   --status-pending-border: #fbbf24;
-  --status-processed-border: #34d399;
-  --status-new: linear-gradient(135deg, rgba(96,165,250,0.08) 0%, rgba(96,165,250,0.03) 40%, transparent 100%), var(--card-bg);
-  --status-pending: linear-gradient(135deg, rgba(251,191,36,0.08) 0%, rgba(251,191,36,0.03) 40%, transparent 100%), var(--card-bg);
-  --status-processed: linear-gradient(135deg, rgba(52,211,153,0.08) 0%, rgba(52,211,153,0.03) 40%, transparent 100%), var(--card-bg);
+  --status-processed-border: #60a5fa;
+  --status-new: var(--card-bg);
+  --status-pending: var(--card-bg);
+  --status-processed: var(--card-bg);
 
   /* Dashboard header gradient — ultra-deep navy (matches hosp_workbook dark) */
   --dash-header-from: #040812;
@@ -246,12 +246,12 @@ button, .btn {
   opacity: 1;
   transition: opacity 0.3s ease;
 }
-:root .patient-card[data-status="new"]::after       { background: linear-gradient(135deg, rgba(59,130,246,0.06) 0%, transparent 50%); }
+:root .patient-card[data-status="new"]::after       { background: linear-gradient(135deg, rgba(34,197,94,0.06) 0%, transparent 50%); }
 :root .patient-card[data-status="pending"]::after   { background: linear-gradient(135deg, rgba(245,158,11,0.06) 0%, transparent 50%); }
-:root .patient-card[data-status="processed"]::after { background: linear-gradient(135deg, rgba(16,185,129,0.06) 0%, transparent 50%); }
-.dark .patient-card[data-status="new"]::after       { background: linear-gradient(135deg, rgba(96,165,250,0.08) 0%, transparent 50%); }
+:root .patient-card[data-status="processed"]::after { background: linear-gradient(135deg, rgba(59,130,246,0.06) 0%, transparent 50%); }
+.dark .patient-card[data-status="new"]::after       { background: linear-gradient(135deg, rgba(74,222,128,0.08) 0%, transparent 50%); }
 .dark .patient-card[data-status="pending"]::after   { background: linear-gradient(135deg, rgba(251,191,36,0.08) 0%, transparent 50%); }
-.dark .patient-card[data-status="processed"]::after { background: linear-gradient(135deg, rgba(52,211,153,0.08) 0%, transparent 50%); }
+.dark .patient-card[data-status="processed"]::after { background: linear-gradient(135deg, rgba(96,165,250,0.08) 0%, transparent 50%); }
 /* Hover: card lights up — background changes freely now */
 :root .patient-card:hover {
   background: rgba(255,255,255,0.88);
