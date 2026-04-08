@@ -306,46 +306,46 @@ button, .btn {
 
 /* Light — new (green) */
 :root .patient-card[data-status="new"]:hover {
-  background: linear-gradient(160deg, rgba(240,253,244,0.92) 0%, rgba(255,255,255,0.82) 50%, rgba(240,253,244,0.75) 100%);
-  border-color: rgba(34,197,94,0.15);
-  box-shadow: 0 2px 8px rgba(0,0,0,0.05), 0 8px 24px rgba(34,197,94,0.06), inset 0 1px 0 rgba(255,255,255,0.90);
+  background: linear-gradient(160deg, rgba(220,252,231,0.95) 0%, rgba(255,255,255,0.90) 40%, rgba(240,253,244,0.88) 100%);
+  border-color: rgba(34,197,94,0.25);
+  box-shadow: 0 2px 8px rgba(34,197,94,0.08), 0 8px 30px rgba(34,197,94,0.10), 0 0 0 1px rgba(34,197,94,0.06), inset 0 1px 0 rgba(255,255,255,0.95);
 }
 /* Light — pending (amber) */
 :root .patient-card[data-status="pending"]:hover {
-  background: linear-gradient(160deg, rgba(255,251,235,0.92) 0%, rgba(255,255,255,0.82) 50%, rgba(255,251,235,0.75) 100%);
-  border-color: rgba(245,158,11,0.15);
-  box-shadow: 0 2px 8px rgba(0,0,0,0.05), 0 8px 24px rgba(245,158,11,0.06), inset 0 1px 0 rgba(255,255,255,0.90);
+  background: linear-gradient(160deg, rgba(254,243,199,0.95) 0%, rgba(255,255,255,0.90) 40%, rgba(255,251,235,0.88) 100%);
+  border-color: rgba(245,158,11,0.25);
+  box-shadow: 0 2px 8px rgba(245,158,11,0.08), 0 8px 30px rgba(245,158,11,0.10), 0 0 0 1px rgba(245,158,11,0.06), inset 0 1px 0 rgba(255,255,255,0.95);
 }
 /* Light — processed (blue) */
 :root .patient-card[data-status="processed"]:hover {
-  background: linear-gradient(160deg, rgba(239,246,255,0.92) 0%, rgba(255,255,255,0.82) 50%, rgba(239,246,255,0.75) 100%);
-  border-color: rgba(59,130,246,0.15);
-  box-shadow: 0 2px 8px rgba(0,0,0,0.05), 0 8px 24px rgba(59,130,246,0.06), inset 0 1px 0 rgba(255,255,255,0.90);
+  background: linear-gradient(160deg, rgba(219,234,254,0.95) 0%, rgba(255,255,255,0.90) 40%, rgba(239,246,255,0.88) 100%);
+  border-color: rgba(59,130,246,0.25);
+  box-shadow: 0 2px 8px rgba(59,130,246,0.08), 0 8px 30px rgba(59,130,246,0.10), 0 0 0 1px rgba(59,130,246,0.06), inset 0 1px 0 rgba(255,255,255,0.95);
 }
 
 /* Dark — new (green) */
 .dark .patient-card[data-status="new"]:hover {
-  background: linear-gradient(160deg, rgba(74,222,128,0.08) 0%, rgba(255,255,255,0.05) 40%, rgba(255,255,255,0.02) 100%);
-  border-color: rgba(74,222,128,0.15);
-  box-shadow: 0 2px 8px rgba(0,0,0,0.5), 0 8px 32px rgba(74,222,128,0.06), inset 0 1px 0 rgba(255,255,255,0.08);
+  background: linear-gradient(160deg, rgba(109,216,160,0.14) 0%, rgba(109,216,160,0.06) 35%, rgba(255,255,255,0.04) 100%);
+  border-color: rgba(109,216,160,0.22);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.5), 0 8px 36px rgba(109,216,160,0.10), 0 0 0 1px rgba(109,216,160,0.08), inset 0 1px 0 rgba(109,216,160,0.10);
 }
 /* Dark — pending (amber) */
 .dark .patient-card[data-status="pending"]:hover {
-  background: linear-gradient(160deg, rgba(251,191,36,0.08) 0%, rgba(255,255,255,0.05) 40%, rgba(255,255,255,0.02) 100%);
-  border-color: rgba(251,191,36,0.15);
-  box-shadow: 0 2px 8px rgba(0,0,0,0.5), 0 8px 32px rgba(251,191,36,0.06), inset 0 1px 0 rgba(255,255,255,0.08);
+  background: linear-gradient(160deg, rgba(251,191,36,0.14) 0%, rgba(251,191,36,0.06) 35%, rgba(255,255,255,0.04) 100%);
+  border-color: rgba(251,191,36,0.22);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.5), 0 8px 36px rgba(251,191,36,0.10), 0 0 0 1px rgba(251,191,36,0.08), inset 0 1px 0 rgba(251,191,36,0.10);
 }
 /* Dark — processed (blue) */
 .dark .patient-card[data-status="processed"]:hover {
-  background: linear-gradient(160deg, rgba(96,165,250,0.08) 0%, rgba(255,255,255,0.05) 40%, rgba(255,255,255,0.02) 100%);
-  border-color: rgba(96,165,250,0.15);
-  box-shadow: 0 2px 8px rgba(0,0,0,0.5), 0 8px 32px rgba(96,165,250,0.06), inset 0 1px 0 rgba(255,255,255,0.08);
+  background: linear-gradient(160deg, rgba(96,165,250,0.14) 0%, rgba(96,165,250,0.06) 35%, rgba(255,255,255,0.04) 100%);
+  border-color: rgba(96,165,250,0.22);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.5), 0 8px 36px rgba(96,165,250,0.10), 0 0 0 1px rgba(96,165,250,0.08), inset 0 1px 0 rgba(96,165,250,0.10);
 }
 
-:root .patient-card:hover::after { opacity: 0.2; }
-.dark .patient-card:hover::after { opacity: 0.4; }
+:root .patient-card:hover::after { opacity: 0.15; }
+.dark .patient-card:hover::after { opacity: 0.3; }
 .dark .patient-card:hover::before {
-  background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.10) 20%, rgba(255,255,255,0.18) 50%, rgba(255,255,255,0.10) 80%, transparent 100%);
+  background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.12) 20%, rgba(255,255,255,0.22) 50%, rgba(255,255,255,0.12) 80%, transparent 100%);
 }
 
 .patient-card:active {
