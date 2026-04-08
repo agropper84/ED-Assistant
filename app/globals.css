@@ -11,10 +11,10 @@
   --text-muted: #94a3b8;
   --border: #e2e8f0;
   --border-light: #f1f5f9;
-  --card-bg: #ffffff;
-  --card-border: #e8eaed;
+  --card-bg: rgba(255,255,255,0.65);
+  --card-border: rgba(255,255,255,0.45);
   --card-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.02);
-  --card-shadow-hover: 0 4px 12px rgba(0,0,0,0.08), 0 1px 3px rgba(0,0,0,0.04);
+  --card-shadow-hover: 0 4px 16px rgba(0,0,0,0.08), 0 2px 4px rgba(0,0,0,0.04);
   --card-shadow-elevated: 0 4px 12px rgba(0,0,0,0.06), 0 16px 40px rgba(0,0,0,0.1);
   --input-bg: #ffffff;
   --input-border: #cbd5e1;
@@ -70,10 +70,10 @@
   --text-muted: #71717a;
   --border: #27272a;
   --border-light: #1e1e22;
-  --card-bg: #18181b;
-  --card-border: #2a2a2e;
-  --card-shadow: 0 1px 3px rgba(0,0,0,0.3), 0 1px 2px rgba(0,0,0,0.2);
-  --card-shadow-hover: 0 4px 12px rgba(0,0,0,0.4), 0 1px 3px rgba(0,0,0,0.3);
+  --card-bg: rgba(255,255,255,0.04);
+  --card-border: rgba(255,255,255,0.08);
+  --card-shadow: 0 1px 4px rgba(0,0,0,0.3), 0 0 1px rgba(255,255,255,0.05) inset;
+  --card-shadow-hover: 0 4px 20px rgba(0,0,0,0.4), 0 0 1px rgba(255,255,255,0.08) inset;
   --card-shadow-elevated: 0 4px 12px rgba(0,0,0,0.3), 0 16px 40px rgba(0,0,0,0.4);
   --input-bg: #1a1a1e;
   --input-border: #3f3f46;
@@ -208,31 +208,45 @@ button, .btn {
   border-left: 3px solid transparent;
   box-shadow: var(--card-shadow);
   z-index: 0;
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(16px) saturate(1.4);
+  -webkit-backdrop-filter: blur(16px) saturate(1.4);
   position: relative;
   overflow: visible;
-  @apply rounded-xl;
-  transition: background 0.25s ease,
-              box-shadow 0.25s ease,
-              border-color 0.25s ease;
+  @apply rounded-2xl;
+  transition: background 0.3s ease,
+              box-shadow 0.3s ease,
+              border-color 0.3s ease;
+}
+/* Glass inner highlight — top edge catch light */
+.patient-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 4px; right: 4px;
+  height: 1px;
+  border-radius: inherit;
+  pointer-events: none;
+}
+:root .patient-card::before {
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.5) 30%, rgba(255,255,255,0.6) 50%, rgba(255,255,255,0.5) 70%, transparent);
+}
+.dark .patient-card::before {
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.08) 30%, rgba(255,255,255,0.12) 50%, rgba(255,255,255,0.08) 70%, transparent);
 }
 /* Status left border — always visible */
 .patient-card[data-status="new"]       { background: var(--status-new); border-left-color: var(--status-new-border); }
 .patient-card[data-status="pending"]   { background: var(--status-pending); border-left-color: var(--status-pending-border); }
 .patient-card[data-status="processed"] { background: var(--status-processed); border-left-color: var(--status-processed-border); }
-/* Hover: brighten background, no movement */
+/* Hover: glass intensifies */
 :root .patient-card:hover {
-  background: rgba(255,255,255,0.06);
-  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
-  border-color: rgba(0,0,0,0.08);
+  background: rgba(255,255,255,0.78);
+  box-shadow: var(--card-shadow-hover);
+  border-color: rgba(255,255,255,0.55);
 }
 .dark .patient-card:hover {
-  background: rgba(255,255,255,0.04);
-  box-shadow: 0 2px 12px rgba(0,0,0,0.3);
-  border-color: rgba(255,255,255,0.08);
+  background: rgba(255,255,255,0.07);
+  box-shadow: var(--card-shadow-hover);
+  border-color: rgba(255,255,255,0.12);
 }
-/* Keep status border on hover */
 .patient-card[data-status="new"]:hover       { border-left-color: var(--status-new-border); }
 .patient-card[data-status="pending"]:hover   { border-left-color: var(--status-pending-border); }
 .patient-card[data-status="processed"]:hover { border-left-color: var(--status-processed-border); }
@@ -240,29 +254,54 @@ button, .btn {
   transform: scale(0.997);
   transition-duration: 80ms;
 }
-/* Grid view card variant */
+/* Grid view card — glass morphism */
 .patient-card-grid {
-  @apply rounded-xl;
+  @apply rounded-2xl;
   background: var(--card-bg);
   border: 1px solid var(--card-border);
   box-shadow: var(--card-shadow);
+  backdrop-filter: blur(16px) saturate(1.4);
+  -webkit-backdrop-filter: blur(16px) saturate(1.4);
   position: relative;
   overflow: hidden;
-  transition: box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-              transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: background 0.3s ease,
+              box-shadow 0.3s ease,
+              border-color 0.3s ease;
 }
+/* Top edge highlight */
+.patient-card-grid::after {
+  content: '';
+  position: absolute;
+  top: 0; left: 8px; right: 8px;
+  height: 1px;
+  pointer-events: none;
+}
+:root .patient-card-grid::after {
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.5) 50%, transparent);
+}
+.dark .patient-card-grid::after {
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.08) 50%, transparent);
+}
+/* Status top bar */
 .patient-card-grid::before {
   content: '';
   position: absolute;
   top: 0; left: 0; right: 0;
-  height: 3px;
+  height: 2px;
+  z-index: 1;
 }
 .patient-card-grid[data-status="new"]::before       { background: var(--status-new-border); }
 .patient-card-grid[data-status="pending"]::before   { background: var(--status-pending-border); }
 .patient-card-grid[data-status="processed"]::before { background: var(--status-processed-border); }
-.patient-card-grid:hover {
+:root .patient-card-grid:hover {
+  background: rgba(255,255,255,0.78);
   box-shadow: var(--card-shadow-hover);
-  transform: translateY(-2px);
+  border-color: rgba(255,255,255,0.55);
+}
+.dark .patient-card-grid:hover {
+  background: rgba(255,255,255,0.07);
+  box-shadow: var(--card-shadow-hover);
+  border-color: rgba(255,255,255,0.12);
 }
 .patient-card-grid:active {
   transform: scale(0.98);

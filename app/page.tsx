@@ -708,42 +708,58 @@ export default function HomePage() {
     ? 'grid grid-cols-2 sm:grid-cols-3 gap-3'
     : 'space-y-3';
 
-  const renderPatientGrid = (patient: Patient) => (
-    <button
-      key={patient.rowIndex}
-      onClick={() => handlePatientClick(patient)}
-      className="patient-card-grid text-left p-4 flex flex-col gap-2"
-      data-status={patient.status}
-    >
-      <div className="flex items-center justify-between">
-        <span className="text-xs font-bold text-[var(--text-muted)] tabular-nums">
-          #{patient.patientNum || patient.rowIndex}
-        </span>
-        <span className="text-[10px] font-medium tabular-nums text-[var(--text-muted)]">
-          {patient.timestamp || ''}
-        </span>
-      </div>
-      <p className="font-semibold text-sm text-[var(--text-primary)] truncate">
-        {patient.name || 'Unknown'}
-      </p>
-      {patient.diagnosis && (
-        <p className="text-xs text-[var(--text-secondary)] truncate">{patient.diagnosis}</p>
-      )}
-      <div className="flex items-center gap-2 mt-auto pt-1">
-        {patient.age && <span className="text-[10px] text-[var(--text-muted)]">{patient.age}</span>}
-        {patient.gender && <span className="text-[10px] text-[var(--text-muted)]">{patient.gender}</span>}
-        <span className="ml-auto">
-          {patient.hasOutput ? (
-            <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" />
-          ) : patient.transcript ? (
-            <span className="w-2 h-2 rounded-full bg-amber-500 inline-block" />
+  const renderPatientGrid = (patient: Patient) => {
+    const billingItems = parseBillingItems(
+      patient.visitProcedure || '', patient.procCode || '',
+      patient.fee || '', patient.unit || ''
+    );
+    const billingText = billingItems.length > 0
+      ? billingItems.map(i => i.code).join(', ')
+      : '';
+
+    return (
+      <button
+        key={patient.rowIndex}
+        onClick={() => handlePatientClick(patient)}
+        className="patient-card-grid text-left p-4 flex flex-col gap-1.5 min-h-[120px]"
+        data-status={patient.status}
+      >
+        {/* Name */}
+        <p className="font-semibold text-[14px] text-[var(--text-primary)] truncate leading-tight">
+          {patient.name || 'Unknown'}
+        </p>
+
+        {/* Diagnosis */}
+        {patient.diagnosis ? (
+          <p className="text-[11px] text-[var(--text-secondary)] truncate leading-snug">{patient.diagnosis}</p>
+        ) : (
+          <p className="text-[11px] text-[var(--text-muted)] italic">No diagnosis</p>
+        )}
+
+        {/* Spacer */}
+        <div className="flex-1" />
+
+        {/* Bottom: time + billing */}
+        <div className="flex items-center justify-between gap-2 pt-1 border-t border-[var(--border-light)]">
+          <span className="text-[10px] text-[var(--text-muted)] tabular-nums flex items-center gap-1">
+            <Clock className="w-2.5 h-2.5 opacity-50" />
+            {patient.timestamp || '--:--'}
+          </span>
+          {billingText ? (
+            <span className="text-[9px] font-medium text-[var(--text-muted)] tabular-nums truncate max-w-[60px]">
+              {billingText}
+            </span>
           ) : (
-            <span className="w-2 h-2 rounded-full bg-gray-400 dark:bg-gray-600 inline-block" />
+            <span className="w-1.5 h-1.5 rounded-full" style={{
+              background: patient.hasOutput ? 'var(--status-processed-border)'
+                : patient.transcript ? 'var(--status-pending-border)'
+                : 'var(--text-muted)'
+            }} />
           )}
-        </span>
-      </div>
-    </button>
-  );
+        </div>
+      </button>
+    );
+  };
 
   const renderPatientWithBilling = (patient: Patient) => {
     if (viewMode === 'grid') return renderPatientGrid(patient);
