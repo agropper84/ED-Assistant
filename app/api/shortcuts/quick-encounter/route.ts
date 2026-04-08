@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { authenticateShortcut, isAuthed } from '@/lib/shortcut-auth';
 import { getPatients, getOrCreateDateSheet, updatePatientFields } from '@/lib/data-layer';
+import { getTodaySheetName } from '@/lib/google-sheets';
 
 // POST /api/shortcuts/quick-encounter — Create a new patient/encounter row
 export async function POST(request: NextRequest) {
@@ -18,7 +19,7 @@ export async function POST(request: NextRequest) {
     const dataCtx = auth.dataCtx;
 
     // Ensure today's sheet exists
-    const sheetName = await getOrCreateDateSheet(dataCtx, '');
+    const sheetName = await getOrCreateDateSheet(dataCtx, getTodaySheetName());
 
     // Get existing patients to determine next row + numbering
     const existing = await getPatients(dataCtx, sheetName);

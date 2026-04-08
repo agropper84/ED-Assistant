@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { authenticateShortcut, isAuthed } from '@/lib/shortcut-auth';
 import { getPatients, getDateSheets } from '@/lib/data-layer';
+import { getTodaySheetName } from '@/lib/google-sheets';
 
 // GET /api/shortcuts/patients?sheet=Mar+03,+2026
 export async function GET(request: NextRequest) {
@@ -17,7 +18,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Default to today's sheet if none specified
-    const sheet = sheetName || (await getDateSheets(auth.dataCtx))[0] || '';
+    const sheet = sheetName || (await getDateSheets(auth.dataCtx))[0] || getTodaySheetName();
     const patients = await getPatients(auth.dataCtx, sheet);
     return NextResponse.json({ patients, sheetName: sheet });
   } catch (error: any) {
