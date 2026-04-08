@@ -581,6 +581,7 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
                 onChange={(e) => setEditDiagnosis(e.target.value)}
                 onBlur={handleDiagnosisSave}
                 onKeyDown={(e) => {
+                  e.stopPropagation();
                   if (e.key === 'Enter') handleDiagnosisSave();
                   if (e.key === 'Escape') setEditingDiagnosis(false);
                 }}
