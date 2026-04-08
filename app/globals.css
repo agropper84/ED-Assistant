@@ -233,20 +233,38 @@ button, .btn {
   background: linear-gradient(90deg, transparent, rgba(255,255,255,0.08) 30%, rgba(255,255,255,0.12) 50%, rgba(255,255,255,0.08) 70%, transparent);
 }
 /* Status left border — always visible */
-.patient-card[data-status="new"]       { background: var(--status-new); border-left-color: var(--status-new-border); }
-.patient-card[data-status="pending"]   { background: var(--status-pending); border-left-color: var(--status-pending-border); }
-.patient-card[data-status="processed"] { background: var(--status-processed); border-left-color: var(--status-processed-border); }
-/* Hover: card lights up */
+.patient-card[data-status="new"]       { border-left-color: var(--status-new-border); }
+.patient-card[data-status="pending"]   { border-left-color: var(--status-pending-border); }
+.patient-card[data-status="processed"] { border-left-color: var(--status-processed-border); }
+/* Status color tint via ::after overlay (separate from background so hover can override bg) */
+.patient-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 1;
+  transition: opacity 0.3s ease;
+}
+:root .patient-card[data-status="new"]::after       { background: linear-gradient(135deg, rgba(59,130,246,0.06) 0%, transparent 50%); }
+:root .patient-card[data-status="pending"]::after   { background: linear-gradient(135deg, rgba(245,158,11,0.06) 0%, transparent 50%); }
+:root .patient-card[data-status="processed"]::after { background: linear-gradient(135deg, rgba(16,185,129,0.06) 0%, transparent 50%); }
+.dark .patient-card[data-status="new"]::after       { background: linear-gradient(135deg, rgba(96,165,250,0.08) 0%, transparent 50%); }
+.dark .patient-card[data-status="pending"]::after   { background: linear-gradient(135deg, rgba(251,191,36,0.08) 0%, transparent 50%); }
+.dark .patient-card[data-status="processed"]::after { background: linear-gradient(135deg, rgba(52,211,153,0.08) 0%, transparent 50%); }
+/* Hover: card lights up — background changes freely now */
 :root .patient-card:hover {
   background: rgba(255,255,255,0.88);
   box-shadow: 0 4px 20px rgba(0,0,0,0.08), 0 0 0 1px rgba(255,255,255,0.6), 0 1px 0 rgba(255,255,255,0.9) inset;
   border-color: rgba(255,255,255,0.7);
 }
+:root .patient-card:hover::after { opacity: 0.5; }
 .dark .patient-card:hover {
   background: rgba(255,255,255,0.10);
   box-shadow: 0 4px 24px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.12), 0 1px 0 rgba(255,255,255,0.08) inset;
   border-color: rgba(255,255,255,0.15);
 }
+.dark .patient-card:hover::after { opacity: 0.5; }
 .patient-card[data-status="new"]:hover       { border-left-color: var(--status-new-border); }
 .patient-card[data-status="pending"]:hover   { border-left-color: var(--status-pending-border); }
 .patient-card[data-status="processed"]:hover { border-left-color: var(--status-processed-border); }
