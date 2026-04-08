@@ -79,12 +79,13 @@ export async function getPatients(ctx: DataContext, sheetName: string): Promise<
 
   try {
     const dj = await import('./drive-json');
-    return dj.getPatientsFromDrive(ctx.drive, sheetName);
-  } catch {
-    // Fallback to Sheets
-    const gs = await import('./google-sheets');
-    return gs.getPatients(ctx.sheets, sheetName);
-  }
+    const drivePatients = await dj.getPatientsFromDrive(ctx.drive, sheetName);
+    if (drivePatients.length > 0) return drivePatients;
+  } catch {}
+
+  // Fallback to Sheets if Drive returns empty or fails
+  const gs = await import('./google-sheets');
+  return gs.getPatients(ctx.sheets, sheetName);
 }
 
 // ============================================================
@@ -99,8 +100,12 @@ export async function getPatient(ctx: DataContext, rowIndex: number, sheetName: 
 
   try {
     const dj = await import('./drive-json');
-    return dj.getPatientFromDrive(ctx.drive, rowIndex, sheetName);
-  } catch {
+    const drivePatient = await dj.getPatientFromDrive(ctx.drive, rowIndex, sheetName);
+    if (drivePatient) return drivePatient;
+  } catch {}
+
+  // Fallback to Sheets if Drive returns null or fails
+  {
     const gs = await import('./google-sheets');
     return gs.getPatient(ctx.sheets, rowIndex, sheetName);
   }
@@ -203,11 +208,13 @@ export async function getDateSheets(ctx: DataContext): Promise<string[]> {
 
   try {
     const dj = await import('./drive-json');
-    return dj.getDateSheetsFromDrive(ctx.drive);
-  } catch {
-    const gs = await import('./google-sheets');
-    return gs.getDateSheets(ctx.sheets);
-  }
+    const driveSheets = await dj.getDateSheetsFromDrive(ctx.drive);
+    // If Drive returns empty, fall back to Sheets (Drive may not be populated yet)
+    if (driveSheets.length > 0) return driveSheets;
+  } catch {}
+
+  const gs = await import('./google-sheets');
+  return gs.getDateSheets(ctx.sheets);
 }
 
 // ============================================================
