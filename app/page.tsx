@@ -415,6 +415,18 @@ export default function HomePage() {
         const { rowIndex, sheetName: savedSheet } = await res.json();
         fetchPatients();
 
+        // Create submission entries for each non-empty clinical section
+        const sectionFields = ['triageVitals', 'transcript', 'encounterNotes', 'additional', 'pastDocs'] as const;
+        for (const field of sectionFields) {
+          if (data[field]?.trim()) {
+            fetch(`/api/patients/${rowIndex}/submit`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ field, content: data[field], sheetName: savedSheet }),
+            }).catch(() => {});
+          }
+        }
+
         // Generate note if requested (from ParseModal checkbox) or auto-analysis enabled
         const shouldGenerate = data._generateNote || getAutoAnalysis();
         if (shouldGenerate) {

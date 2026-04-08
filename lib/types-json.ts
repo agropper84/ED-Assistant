@@ -7,6 +7,15 @@
 
 import type { Patient } from './google-sheets';
 
+// --- Submission Entry (per-section clinical data submissions) ---
+
+export interface SubmissionEntry {
+  id: string;
+  field: string;            // 'triageVitals' | 'transcript' | 'encounterNotes' | 'additional' | 'pastDocs'
+  content: string;
+  submittedAt: string;      // ISO timestamp
+}
+
 // --- Patient File (one per patient, stored in patients/ subfolder) ---
 
 export interface EDPatientFile {
@@ -16,6 +25,7 @@ export interface EDPatientFile {
   sheetName: string;        // The date sheet this patient belongs to (e.g. "Mar 03, 2026")
   rowIndex: number;         // Original row index for backward compat
   data: PatientFields;      // All patient fields (flat structure matching Sheets columns)
+  submissions?: SubmissionEntry[]; // Per-section submission history
 }
 
 /** All patient data fields — matches the COLUMNS in google-sheets.ts */

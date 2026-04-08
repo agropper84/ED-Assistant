@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { Patient } from '@/lib/google-sheets';
 import { MEDICAL_SUGGESTIONS } from '@/lib/medical-suggestions';
-import { X, Loader2, Save, ExternalLink, RefreshCw, Check, Heart } from 'lucide-react';
+import { X, Loader2, Save, ExternalLink, RefreshCw, Check, Heart, ArrowUpCircle } from 'lucide-react';
 import { PatientProfile } from '@/components/PatientProfile';
 import type { PatientProfile as ProfileData } from '@/app/api/profile/route';
 import { ExamToggles } from '@/components/ExamToggles';
@@ -57,6 +57,41 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
   const [generatingProfile, setGeneratingProfile] = useState(false);
   const [profileData, setProfileData] = useState<ProfileData | null>(null);
   const hasChangesRef = useRef(false);
+  const [submitting, setSubmitting] = useState<string | null>(null); // field name being submitted
+  const [submitted, setSubmitted] = useState<string | null>(null); // field name just submitted (for checkmark)
+
+  const handleSectionSubmit = async (field: string, content: string) => {
+    if (!patient || !content.trim() || submitting) return;
+    setSubmitting(field);
+    try {
+      const res = await fetch(`/api/patients/${patient.rowIndex}/submit`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ field, content, sheetName: patient.sheetName }),
+      });
+      if (res.ok) {
+        setSubmitted(field);
+        onSaved();
+        // Update profile data if profile panel is open
+        if (showProfile) {
+          setGeneratingProfile(true);
+          fetch('/api/profile', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ rowIndex: patient.rowIndex, sheetName: patient.sheetName }),
+          }).then(r => r.ok ? r.json() : null)
+            .then(data => { if (data?.profile) setProfileData(data.profile); })
+            .catch(() => {})
+            .finally(() => setGeneratingProfile(false));
+        }
+        setTimeout(() => setSubmitted(null), 2000);
+      }
+    } catch (e) {
+      console.error('Section submit failed:', e);
+    } finally {
+      setSubmitting(null);
+    }
+  };
 
   // Fetch user's saved phrases for autocomplete
   useEffect(() => {
@@ -246,9 +281,19 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
         <div className="flex-1 min-w-0 overflow-y-auto px-5 py-4 space-y-4">
           {/* Triage Notes */}
           <div>
-            <label className="block text-xs font-semibold text-[var(--text-muted)] uppercase tracking-widest mb-1.5">
-              Triage Notes & Vitals
-            </label>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-widest">
+                Triage Notes & Vitals
+              </label>
+              <button
+                onClick={() => handleSectionSubmit('triageVitals', triageVitals)}
+                disabled={!triageVitals.trim() || !!submitting}
+                className="flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-medium transition-all disabled:opacity-30 hover:bg-[var(--accent-light)] text-[var(--accent)]"
+              >
+                {submitting === 'triageVitals' ? <Loader2 className="w-3 h-3 animate-spin" /> : submitted === 'triageVitals' ? <Check className="w-3 h-3 text-emerald-500" /> : <ArrowUpCircle className="w-3 h-3" />}
+                {submitted === 'triageVitals' ? 'Saved' : 'Submit'}
+              </button>
+            </div>
             <textarea
               value={triageVitals}
               onChange={(e) => setTriageVitals(e.target.value)}
@@ -263,15 +308,25 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
               <label className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-widest">
                 Transcript
               </label>
-              <label className="flex items-center gap-1.5 cursor-pointer select-none">
-                <input
-                  type="checkbox"
-                  checked={showLiveTranscript}
-                  onChange={(e) => setShowLiveTranscript(e.target.checked)}
-                  className="w-3 h-3 rounded text-blue-600 focus:ring-blue-500 accent-blue-600"
-                />
-                <span className="text-[10px] text-[var(--text-muted)]">Live text</span>
-              </label>
+              <div className="flex items-center gap-2">
+                <label className="flex items-center gap-1.5 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={showLiveTranscript}
+                    onChange={(e) => setShowLiveTranscript(e.target.checked)}
+                    className="w-3 h-3 rounded text-blue-600 focus:ring-blue-500 accent-blue-600"
+                  />
+                  <span className="text-[10px] text-[var(--text-muted)]">Live text</span>
+                </label>
+                <button
+                  onClick={() => handleSectionSubmit('transcript', transcript)}
+                  disabled={!transcript.trim() || !!submitting}
+                  className="flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-medium transition-all disabled:opacity-30 hover:bg-[var(--accent-light)] text-[var(--accent)]"
+                >
+                  {submitting === 'transcript' ? <Loader2 className="w-3 h-3 animate-spin" /> : submitted === 'transcript' ? <Check className="w-3 h-3 text-emerald-500" /> : <ArrowUpCircle className="w-3 h-3" />}
+                  {submitted === 'transcript' ? 'Saved' : 'Submit'}
+                </button>
+              </div>
             </div>
             <div className="relative">
               <textarea
@@ -299,9 +354,19 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
 
           {/* Encounter Notes */}
           <div>
-            <label className="block text-xs font-semibold text-[var(--text-muted)] uppercase tracking-widest mb-1.5">
-              Encounter Notes
-            </label>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-widest">
+                Encounter Notes
+              </label>
+              <button
+                onClick={() => handleSectionSubmit('encounterNotes', encounterNotes)}
+                disabled={!encounterNotes.trim() || !!submitting}
+                className="flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-medium transition-all disabled:opacity-30 hover:bg-[var(--accent-light)] text-[var(--accent)]"
+              >
+                {submitting === 'encounterNotes' ? <Loader2 className="w-3 h-3 animate-spin" /> : submitted === 'encounterNotes' ? <Check className="w-3 h-3 text-emerald-500" /> : <ArrowUpCircle className="w-3 h-3" />}
+                {submitted === 'encounterNotes' ? 'Saved' : 'Submit'}
+              </button>
+            </div>
             <div className="relative">
               <AutocompleteTextarea
                 value={encounterNotes}
@@ -328,9 +393,19 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
 
           {/* Additional Findings with Exam Toggles */}
           <div>
-            <label className="block text-xs font-semibold text-[var(--text-muted)] uppercase tracking-widest mb-1.5">
-              Additional Findings / Exam
-            </label>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-widest">
+                Additional Findings / Exam
+              </label>
+              <button
+                onClick={() => handleSectionSubmit('additional', additional)}
+                disabled={!additional.trim() || !!submitting}
+                className="flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-medium transition-all disabled:opacity-30 hover:bg-[var(--accent-light)] text-[var(--accent)]"
+              >
+                {submitting === 'additional' ? <Loader2 className="w-3 h-3 animate-spin" /> : submitted === 'additional' ? <Check className="w-3 h-3 text-emerald-500" /> : <ArrowUpCircle className="w-3 h-3" />}
+                {submitted === 'additional' ? 'Saved' : 'Submit'}
+              </button>
+            </div>
             <ExamToggles value={additional} onChange={setAdditional} />
             <div className="relative">
               <AutocompleteTextarea
@@ -358,9 +433,19 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
 
           {/* Past Documentation */}
           <div>
-            <label className="block text-xs font-semibold text-[var(--text-muted)] uppercase tracking-widest mb-1.5">
-              Past Documentation
-            </label>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-widest">
+                Past Documentation
+              </label>
+              <button
+                onClick={() => handleSectionSubmit('pastDocs', pastDocs)}
+                disabled={!pastDocs.trim() || !!submitting}
+                className="flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-medium transition-all disabled:opacity-30 hover:bg-[var(--accent-light)] text-[var(--accent)]"
+              >
+                {submitting === 'pastDocs' ? <Loader2 className="w-3 h-3 animate-spin" /> : submitted === 'pastDocs' ? <Check className="w-3 h-3 text-emerald-500" /> : <ArrowUpCircle className="w-3 h-3" />}
+                {submitted === 'pastDocs' ? 'Saved' : 'Submit'}
+              </button>
+            </div>
             <textarea
               value={pastDocs}
               onChange={(e) => setPastDocs(e.target.value)}

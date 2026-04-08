@@ -472,6 +472,33 @@ export async function updatePatientInDrive(
   await saveDateSheetToDrive(ctx, dateSheet);
 }
 
+export async function addSubmissionToDrive(
+  ctx: DriveContext,
+  sheetName: string,
+  rowIndex: number,
+  entry: import('./types-json').SubmissionEntry,
+): Promise<import('./types-json').SubmissionEntry[]> {
+  const dateSheet = await getDateSheetFromDrive(ctx, sheetName);
+  if (!dateSheet) return [];
+
+  const idx = dateSheet.patients.findIndex(p => p.rowIndex === rowIndex);
+  if (idx === -1) return [];
+
+  const patient = dateSheet.patients[idx];
+  if (!patient.submissions) patient.submissions = [];
+  patient.submissions.push(entry);
+
+  // Update the flat field with submitted content
+  const field = entry.field as keyof import('./types-json').PatientFields;
+  if (field in patient.data) {
+    (patient.data as unknown as Record<string, string>)[field] = entry.content;
+  }
+
+  patient.lastModified = new Date().toISOString();
+  await saveDateSheetToDrive(ctx, dateSheet);
+  return patient.submissions;
+}
+
 export async function deletePatientFromDrive(
   ctx: DriveContext,
   sheetName: string,
