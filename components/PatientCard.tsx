@@ -188,6 +188,9 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
         onMouseEnter={() => {}}
       >
 
+      {/* Status left edge bar */}
+      <div className="patient-card-edge" />
+
       {/* Main content area */}
       <button
         onClick={onClick}
