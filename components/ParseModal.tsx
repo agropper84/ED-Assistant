@@ -807,7 +807,7 @@ export function ParseModal({ isOpen, onClose, onSave, onQuickAdd, patientRef }: 
               >
                 Save
               </button>
-              {(triageVitals.trim() || transcript.trim() || encounterNotes.trim() || additional.trim()) && (
+              {(triageVitals.trim() || transcript.trim() || encounterNotes.trim() || additional.trim() || submissions.length > 0) && (
                 <button
                   onClick={() => handleSave(true)}
                   disabled={!parsedData}

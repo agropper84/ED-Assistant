@@ -146,9 +146,14 @@ export async function addSubmission(
   sheetName: string,
   entry: SubmissionEntry,
 ): Promise<SubmissionEntry[]> {
-  // Always update the flat field in Sheets for backward compat
+  // Append to the flat field in Sheets (don't replace — accumulate submissions)
   const gs = await import('./google-sheets');
-  gs.updatePatientFields(ctx.sheets, rowIndex, { [entry.field]: entry.content }, sheetName)
+  const existingPatient = await gs.getPatient(ctx.sheets, rowIndex, sheetName);
+  const existingContent = existingPatient ? (existingPatient as any)[entry.field] || '' : '';
+  const combined = existingContent && entry.content
+    ? `${existingContent}\n\n${entry.content}`
+    : entry.content || existingContent;
+  gs.updatePatientFields(ctx.sheets, rowIndex, { [entry.field]: combined }, sheetName)
     .catch(e => console.warn('Sheets field update failed:', (e as Error).message));
 
   if (ctx.mode === 'sheets' || !ctx.drive) {

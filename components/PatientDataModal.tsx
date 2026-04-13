@@ -250,9 +250,14 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
     transcript.trim() ||
     encounterNotes.trim() ||
     additional.trim() ||
+    triageVitals.trim() ||
     pastDocs.trim() ||
     patient.hpi ||
-    patient.transcript?.replace(/--- ENCOUNTER NOTES ---[\s\S]*/, '').trim()
+    patient.transcript?.trim() ||
+    patient.encounterNotes?.trim() ||
+    patient.triageVitals?.trim() ||
+    patient.additional?.trim() ||
+    submissions.length > 0
   );
 
   const handleSave = async () => {
