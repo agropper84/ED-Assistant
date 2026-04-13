@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect, useMemo } from 'react';
-import { X, Clipboard, Check, Loader2, Clock, Upload } from 'lucide-react';
+import { X, Clipboard, Check, Loader2, Clock, Upload, Send, FileText, Trash2 } from 'lucide-react';
 import { ExamToggles } from '@/components/ExamToggles';
 import { AutocompleteTextarea } from '@/components/AutocompleteTextarea';
 import { MEDICAL_SUGGESTIONS } from '@/lib/medical-suggestions';
@@ -9,11 +9,20 @@ import { VoiceRecorder } from '@/components/VoiceRecorder';
 import { getParseRules, saveParseRules, ParseRules, DEFAULT_PARSE_RULES, INPUT_HEALTH_PARSE_RULES, BUILT_IN_FORMATS } from '@/lib/settings';
 import { savePhrasesInBackground } from '@/lib/user-phrases';
 
+interface FieldSubmission {
+  id: string;
+  field: string;
+  content: string;
+  submittedAt: string;
+}
+
 interface ParseModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSave: (data: ParsedData) => void;
   onQuickAdd?: (name: string) => void;
+  /** If set, enables per-field submission to an existing patient */
+  patientRef?: { rowIndex: number; sheetName: string };
 }
 
 export interface ParsedData {
@@ -73,9 +82,44 @@ function getNearestSlot(): string {
 
 const TIME_SLOTS = generateTimeSlots();
 
-export function ParseModal({ isOpen, onClose, onSave, onQuickAdd }: ParseModalProps) {
+export function ParseModal({ isOpen, onClose, onSave, onQuickAdd, patientRef }: ParseModalProps) {
   const [quickName, setQuickName] = useState('');
   const [quickSaving, setQuickSaving] = useState(false);
+
+  // Per-field submissions
+  const [submissions, setSubmissions] = useState<FieldSubmission[]>([]);
+  const [submittingField, setSubmittingField] = useState<string | null>(null);
+  const [hoveredSub, setHoveredSub] = useState<string | null>(null);
+
+  const submitField = async (field: string, content: string, clearFn: (v: string) => void) => {
+    if (!patientRef || !content.trim() || submittingField) return;
+    setSubmittingField(field);
+    try {
+      const res = await fetch(`/api/patients/${patientRef.rowIndex}/submit`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ field, content: content.trim(), sheetName: patientRef.sheetName }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setSubmissions(prev => [...prev, data.entry]);
+        clearFn('');
+      }
+    } catch {}
+    finally { setSubmittingField(null); }
+  };
+
+  const deleteSubmission = async (sub: FieldSubmission) => {
+    if (!patientRef) return;
+    try {
+      await fetch(`/api/patients/${patientRef.rowIndex}/submit`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ submissionId: sub.id, sheetName: patientRef.sheetName }),
+      });
+      setSubmissions(prev => prev.filter(s => s.id !== sub.id));
+    } catch {}
+  };
   const [pasteText, setPasteText] = useState('');
   const [triageVitals, setTriageVitals] = useState('');
   const [transcript, setTranscript] = useState('');
@@ -126,6 +170,58 @@ export function ParseModal({ isOpen, onClose, onSave, onQuickAdd }: ParseModalPr
     },
     [userPhrases]
   );
+
+  const fieldSubs = (field: string) => submissions.filter(s => s.field === field);
+
+  const SubmissionTags = ({ field }: { field: string }) => {
+    const subs = fieldSubs(field);
+    if (subs.length === 0) return null;
+    return (
+      <div className="flex flex-wrap gap-1 mt-1">
+        {subs.map(sub => (
+          <div key={sub.id} className="relative group/tag">
+            <span
+              className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 cursor-default"
+              onMouseEnter={() => setHoveredSub(sub.id)}
+              onMouseLeave={() => setHoveredSub(null)}
+            >
+              <FileText className="w-2.5 h-2.5" />
+              {new Date(sub.submittedAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
+              <button
+                onClick={() => deleteSubmission(sub)}
+                className="ml-0.5 p-0.5 rounded-full hover:bg-red-200 dark:hover:bg-red-900/40 transition-colors opacity-0 group-hover/tag:opacity-100"
+                title="Delete submission"
+              >
+                <Trash2 className="w-2.5 h-2.5 text-red-500" />
+              </button>
+            </span>
+            {hoveredSub === sub.id && (
+              <div className="absolute z-50 bottom-full left-0 mb-1 w-64 max-h-32 overflow-y-auto p-2 rounded-lg text-xs bg-[var(--card-bg)] border border-[var(--card-border)] shadow-lg whitespace-pre-wrap text-[var(--text-secondary)]"
+                style={{ boxShadow: 'var(--card-shadow-elevated)' }}>
+                {sub.content.length > 300 ? sub.content.substring(0, 300) + '...' : sub.content}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    );
+  };
+
+  const SubmitButton = ({ field, content, clearFn }: { field: string; content: string; clearFn: (v: string) => void }) => {
+    if (!patientRef || !content.trim()) return null;
+    return (
+      <button
+        type="button"
+        onClick={() => submitField(field, content, clearFn)}
+        disabled={submittingField !== null}
+        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-medium text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-900/20 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 transition-colors disabled:opacity-40"
+        title="Submit this section and clear"
+      >
+        {submittingField === field ? <Loader2 className="w-2.5 h-2.5 animate-spin" /> : <Send className="w-2.5 h-2.5" />}
+        Submit
+      </button>
+    );
+  };
 
   if (!isOpen) return null;
 
@@ -524,9 +620,13 @@ export function ParseModal({ isOpen, onClose, onSave, onQuickAdd }: ParseModalPr
 
           {/* Triage Notes */}
           <div>
-            <label className="block text-xs font-semibold text-[var(--text-muted)] uppercase tracking-widest mb-1.5">
-              Triage Notes & Vitals
-            </label>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-widest">
+                Triage Notes & Vitals
+              </label>
+              <SubmitButton field="triageVitals" content={triageVitals} clearFn={setTriageVitals} />
+            </div>
+            <SubmissionTags field="triageVitals" />
             <textarea
               value={triageVitals}
               onChange={(e) => setTriageVitals(e.target.value)}
@@ -538,9 +638,12 @@ export function ParseModal({ isOpen, onClose, onSave, onQuickAdd }: ParseModalPr
           {/* Transcript */}
           <div>
             <div className="flex items-center justify-between mb-1.5">
-              <label className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-widest">
-                Transcript
-              </label>
+              <div className="flex items-center gap-2">
+                <label className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-widest">
+                  Transcript
+                </label>
+                <SubmitButton field="transcript" content={transcript} clearFn={setTranscript} />
+              </div>
               <label className="flex items-center gap-1.5 cursor-pointer select-none">
                 <input
                   type="checkbox"
@@ -551,6 +654,7 @@ export function ParseModal({ isOpen, onClose, onSave, onQuickAdd }: ParseModalPr
                 <span className="text-[10px] text-[var(--text-muted)]">Live text</span>
               </label>
             </div>
+            <SubmissionTags field="transcript" />
             <div className="relative">
               <textarea
                 value={transcript}
@@ -577,9 +681,13 @@ export function ParseModal({ isOpen, onClose, onSave, onQuickAdd }: ParseModalPr
 
           {/* Encounter Notes */}
           <div>
-            <label className="block text-xs font-semibold text-[var(--text-muted)] uppercase tracking-widest mb-1.5">
-              Encounter Notes
-            </label>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-widest">
+                Encounter Notes
+              </label>
+              <SubmitButton field="encounterNotes" content={encounterNotes} clearFn={setEncounterNotes} />
+            </div>
+            <SubmissionTags field="encounterNotes" />
             <div className="relative">
               <AutocompleteTextarea
                 value={encounterNotes}
@@ -607,9 +715,13 @@ export function ParseModal({ isOpen, onClose, onSave, onQuickAdd }: ParseModalPr
 
           {/* Additional Findings with Exam Toggles */}
           <div>
-            <label className="block text-xs font-semibold text-[var(--text-muted)] uppercase tracking-widest mb-1.5">
-              Additional Findings / Exam
-            </label>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-widest">
+                Additional Findings / Exam
+              </label>
+              <SubmitButton field="additional" content={additional} clearFn={setAdditional} />
+            </div>
+            <SubmissionTags field="additional" />
             <ExamToggles value={additional} onChange={setAdditional} />
             <div className="relative">
               <AutocompleteTextarea
@@ -638,9 +750,13 @@ export function ParseModal({ isOpen, onClose, onSave, onQuickAdd }: ParseModalPr
 
           {/* Past Documentation */}
           <div>
-            <label className="block text-xs font-semibold text-[var(--text-muted)] uppercase tracking-widest mb-1.5">
-              Past Documentation
-            </label>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-widest">
+                Past Documentation
+              </label>
+              <SubmitButton field="pastDocs" content={pastDocs} clearFn={setPastDocs} />
+            </div>
+            <SubmissionTags field="pastDocs" />
             <textarea
               value={pastDocs}
               onChange={(e) => setPastDocs(e.target.value)}

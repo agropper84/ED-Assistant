@@ -45,3 +45,40 @@ export async function POST(
     return NextResponse.json({ error: error?.message || 'Submit failed' }, { status: 500 });
   }
 }
+
+// DELETE /api/patients/[rowIndex]/submit — Remove a submission by ID
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: { rowIndex: string } }
+) {
+  try {
+    const ctx = await getDataContext();
+    const rowIndex = parseInt(params.rowIndex);
+    const { submissionId, sheetName } = await request.json();
+
+    if (!submissionId || !sheetName) {
+      return NextResponse.json({ error: 'submissionId and sheetName are required' }, { status: 400 });
+    }
+
+    // For Drive-backed storage, remove from submissions array
+    if (ctx.mode !== 'sheets' && ctx.drive) {
+      const dj = await import('@/lib/drive-json');
+      const dateSheet = await dj.getDateSheetFromDrive(ctx.drive, sheetName);
+      if (dateSheet) {
+        const patientIdx = dateSheet.patients.findIndex(p => p.rowIndex === rowIndex);
+        if (patientIdx !== -1 && dateSheet.patients[patientIdx].submissions) {
+          dateSheet.patients[patientIdx].submissions = dateSheet.patients[patientIdx].submissions!.filter(
+            s => s.id !== submissionId
+          );
+          dateSheet.patients[patientIdx].lastModified = new Date().toISOString();
+          await dj.saveDateSheetToDrive(ctx.drive, dateSheet);
+        }
+      }
+    }
+
+    return NextResponse.json({ success: true });
+  } catch (error: any) {
+    console.error('Delete submission error:', error);
+    return NextResponse.json({ error: error?.message || 'Delete failed' }, { status: 500 });
+  }
+}

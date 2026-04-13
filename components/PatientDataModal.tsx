@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { Patient } from '@/lib/google-sheets';
 import { MEDICAL_SUGGESTIONS } from '@/lib/medical-suggestions';
-import { X, Loader2, Save, ExternalLink, RefreshCw, Check, Heart, ArrowUpCircle } from 'lucide-react';
+import { X, Loader2, Save, ExternalLink, RefreshCw, Check, Heart, ArrowUpCircle, FileText, Trash2 } from 'lucide-react';
 import { PatientProfile } from '@/components/PatientProfile';
 import type { PatientProfile as ProfileData } from '@/app/api/profile/route';
 import { ExamToggles } from '@/components/ExamToggles';
@@ -57,8 +57,19 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
   const [generatingProfile, setGeneratingProfile] = useState(false);
   const [profileData, setProfileData] = useState<ProfileData | null>(null);
   const hasChangesRef = useRef(false);
-  const [submitting, setSubmitting] = useState<string | null>(null); // field name being submitted
-  const [submitted, setSubmitted] = useState<string | null>(null); // field name just submitted (for checkmark)
+  const [submitting, setSubmitting] = useState<string | null>(null);
+  const [submitted, setSubmitted] = useState<string | null>(null);
+  const [submissions, setSubmissions] = useState<Array<{ id: string; field: string; content: string; submittedAt: string }>>([]);
+  const [hoveredSub, setHoveredSub] = useState<string | null>(null);
+
+  // Map field → state setter for clearing after submit
+  const fieldSetters: Record<string, (v: string) => void> = {
+    triageVitals: setTriageVitals,
+    transcript: setTranscript,
+    encounterNotes: setEncounterNotes,
+    additional: setAdditional,
+    pastDocs: setPastDocs,
+  };
 
   const handleSectionSubmit = async (field: string, content: string) => {
     if (!patient || !content.trim() || submitting) return;
@@ -70,9 +81,12 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
         body: JSON.stringify({ field, content, sheetName: patient.sheetName }),
       });
       if (res.ok) {
+        const data = await res.json();
+        setSubmissions(prev => [...prev, data.entry]);
+        // Clear the field after submission
+        if (fieldSetters[field]) fieldSetters[field]('');
         setSubmitted(field);
         onSaved();
-        // Update profile data if profile panel is open
         if (showProfile) {
           setGeneratingProfile(true);
           fetch('/api/profile', {
@@ -91,6 +105,51 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
     } finally {
       setSubmitting(null);
     }
+  };
+
+  const deleteSubmission = async (sub: { id: string }) => {
+    if (!patient) return;
+    try {
+      await fetch(`/api/patients/${patient.rowIndex}/submit`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ submissionId: sub.id, sheetName: patient.sheetName }),
+      });
+      setSubmissions(prev => prev.filter(s => s.id !== sub.id));
+    } catch {}
+  };
+
+  const SubmissionTags = ({ field }: { field: string }) => {
+    const subs = submissions.filter(s => s.field === field);
+    if (subs.length === 0) return null;
+    return (
+      <div className="flex flex-wrap gap-1 mb-1">
+        {subs.map(sub => (
+          <div key={sub.id} className="relative group/tag">
+            <span
+              className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 cursor-default"
+              onMouseEnter={() => setHoveredSub(sub.id)}
+              onMouseLeave={() => setHoveredSub(null)}
+            >
+              <FileText className="w-2.5 h-2.5" />
+              {new Date(sub.submittedAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
+              <button
+                onClick={() => deleteSubmission(sub)}
+                className="ml-0.5 p-0.5 rounded-full hover:bg-red-200 dark:hover:bg-red-900/40 transition-colors opacity-0 group-hover/tag:opacity-100"
+              >
+                <Trash2 className="w-2.5 h-2.5 text-red-500" />
+              </button>
+            </span>
+            {hoveredSub === sub.id && (
+              <div className="absolute z-50 bottom-full left-0 mb-1 w-64 max-h-32 overflow-y-auto p-2 rounded-lg text-xs bg-[var(--card-bg)] border border-[var(--card-border)] shadow-lg whitespace-pre-wrap text-[var(--text-secondary)]"
+                style={{ boxShadow: 'var(--card-shadow-elevated)' }}>
+                {sub.content.length > 300 ? sub.content.substring(0, 300) + '...' : sub.content}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    );
   };
 
   // Fetch user's saved phrases for autocomplete
@@ -284,6 +343,7 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
             <label className="block text-xs font-semibold text-[var(--text-muted)] uppercase tracking-widest mb-1.5">
               Triage Notes & Vitals
             </label>
+            <SubmissionTags field="triageVitals" />
             <textarea
               value={triageVitals}
               onChange={(e) => setTriageVitals(e.target.value)}
@@ -322,6 +382,7 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
                 <span className="text-[10px] text-[var(--text-muted)]">Live text</span>
               </label>
             </div>
+            <SubmissionTags field="transcript" />
             <div className="relative">
               <textarea
                 value={transcript}
@@ -365,6 +426,7 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
             <label className="block text-xs font-semibold text-[var(--text-muted)] uppercase tracking-widest mb-1.5">
               Encounter Notes
             </label>
+            <SubmissionTags field="encounterNotes" />
             <div className="relative">
               <AutocompleteTextarea
                 value={encounterNotes}
@@ -408,6 +470,7 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
             <label className="block text-xs font-semibold text-[var(--text-muted)] uppercase tracking-widest mb-1.5">
               Additional Findings / Exam
             </label>
+            <SubmissionTags field="additional" />
             <ExamToggles value={additional} onChange={setAdditional} />
             <div className="relative">
               <AutocompleteTextarea
@@ -452,6 +515,7 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
             <label className="block text-xs font-semibold text-[var(--text-muted)] uppercase tracking-widest mb-1.5">
               Past Documentation
             </label>
+            <SubmissionTags field="pastDocs" />
             <textarea
               value={pastDocs}
               onChange={(e) => setPastDocs(e.target.value)}
