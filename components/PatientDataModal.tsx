@@ -59,8 +59,12 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
   const hasChangesRef = useRef(false);
   const [submitting, setSubmitting] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState<string | null>(null);
-  const [submissions, setSubmissions] = useState<Array<{ id: string; field: string; content: string; submittedAt: string }>>([]);
+  const [submissions, setSubmissions] = useState<Array<{ id: string; field: string; content: string; submittedAt: string; title?: string; date?: string }>>([]);
   const [hoveredSub, setHoveredSub] = useState<string | null>(null);
+  // Pending submit: shows inline title/date inputs before confirming
+  const [pendingSubmit, setPendingSubmit] = useState<{ field: string; content: string } | null>(null);
+  const [submitTitle, setSubmitTitle] = useState('');
+  const [submitDate, setSubmitDate] = useState('');
 
   // Map field → state setter for clearing after submit
   const fieldSetters: Record<string, (v: string) => void> = {
@@ -71,19 +75,37 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
     pastDocs: setPastDocs,
   };
 
-  const handleSectionSubmit = async (field: string, content: string) => {
-    if (!patient || !content.trim() || submitting) return;
+  const startSubmit = (field: string, content: string) => {
+    if (!content.trim()) return;
+    setPendingSubmit({ field, content });
+    setSubmitTitle('');
+    setSubmitDate('');
+  };
+
+  const cancelSubmit = () => {
+    setPendingSubmit(null);
+    setSubmitTitle('');
+    setSubmitDate('');
+  };
+
+  const confirmSubmit = async () => {
+    if (!patient || !pendingSubmit) return;
+    const { field, content } = pendingSubmit;
     setSubmitting(field);
+    setPendingSubmit(null);
     try {
       const res = await fetch(`/api/patients/${patient.rowIndex}/submit`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ field, content, sheetName: patient.sheetName }),
+        body: JSON.stringify({
+          field, content, sheetName: patient.sheetName,
+          ...(submitTitle.trim() ? { title: submitTitle.trim() } : {}),
+          ...(submitDate ? { date: submitDate } : {}),
+        }),
       });
       if (res.ok) {
         const data = await res.json();
         setSubmissions(prev => [...prev, data.entry]);
-        // Clear the field after submission
         if (fieldSetters[field]) fieldSetters[field]('');
         setSubmitted(field);
         onSaved();
@@ -104,7 +126,14 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
       console.error('Section submit failed:', e);
     } finally {
       setSubmitting(null);
+      setSubmitTitle('');
+      setSubmitDate('');
     }
+  };
+
+  // Legacy direct submit (kept for backward compat)
+  const handleSectionSubmit = (field: string, content: string) => {
+    startSubmit(field, content);
   };
 
   const deleteSubmission = async (sub: { id: string }) => {
@@ -121,34 +150,73 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
 
   const SubmissionTags = ({ field }: { field: string }) => {
     const subs = submissions.filter(s => s.field === field);
-    if (subs.length === 0) return null;
+    const isPending = pendingSubmit?.field === field;
     return (
-      <div className="flex flex-wrap gap-1 mb-1">
-        {subs.map(sub => (
-          <div key={sub.id} className="relative group/tag">
-            <span
-              className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 cursor-default"
-              onMouseEnter={() => setHoveredSub(sub.id)}
-              onMouseLeave={() => setHoveredSub(null)}
+      <>
+        {/* Pending submit form — inline title/date inputs */}
+        {isPending && (
+          <div className="flex items-center gap-1.5 mb-1.5 animate-fadeIn">
+            <input
+              type="text"
+              value={submitTitle}
+              onChange={(e) => setSubmitTitle(e.target.value)}
+              placeholder="Title (optional)"
+              className="flex-1 px-2 py-1 border border-[var(--input-border)] rounded-lg text-xs bg-[var(--input-bg)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:ring-1 focus:ring-emerald-500"
+              autoFocus
+              onKeyDown={(e) => { if (e.key === 'Enter') confirmSubmit(); if (e.key === 'Escape') cancelSubmit(); }}
+            />
+            <input
+              type="date"
+              value={submitDate}
+              onChange={(e) => setSubmitDate(e.target.value)}
+              className="w-[120px] px-2 py-1 border border-[var(--input-border)] rounded-lg text-xs bg-[var(--input-bg)] text-[var(--text-primary)] focus:ring-1 focus:ring-emerald-500"
+            />
+            <button
+              onClick={confirmSubmit}
+              className="px-2 py-1 bg-emerald-600 text-white rounded-lg text-xs font-medium hover:bg-emerald-700 active:scale-[0.97] transition-all"
             >
-              <FileText className="w-2.5 h-2.5" />
-              {new Date(sub.submittedAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
-              <button
-                onClick={() => deleteSubmission(sub)}
-                className="ml-0.5 p-0.5 rounded-full hover:bg-red-200 dark:hover:bg-red-900/40 transition-colors opacity-0 group-hover/tag:opacity-100"
-              >
-                <Trash2 className="w-2.5 h-2.5 text-red-500" />
-              </button>
-            </span>
-            {hoveredSub === sub.id && (
-              <div className="absolute z-50 bottom-full left-0 mb-1 w-64 max-h-32 overflow-y-auto p-2 rounded-lg text-xs bg-[var(--card-bg)] border border-[var(--card-border)] shadow-lg whitespace-pre-wrap text-[var(--text-secondary)]"
-                style={{ boxShadow: 'var(--card-shadow-elevated)' }}>
-                {sub.content.length > 300 ? sub.content.substring(0, 300) + '...' : sub.content}
-              </div>
-            )}
+              {submitting === field ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
+            </button>
+            <button
+              onClick={cancelSubmit}
+              className="p-1 text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
+            >
+              <X className="w-3 h-3" />
+            </button>
           </div>
-        ))}
-      </div>
+        )}
+        {/* Existing submission tags */}
+        {subs.length > 0 && (
+          <div className="flex flex-wrap gap-1 mb-1">
+            {subs.map(sub => (
+              <div key={sub.id} className="relative group/tag">
+                <span
+                  className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 cursor-default"
+                  onMouseEnter={() => setHoveredSub(sub.id)}
+                  onMouseLeave={() => setHoveredSub(null)}
+                >
+                  <FileText className="w-2.5 h-2.5" />
+                  {sub.title || (sub.date ? new Date(sub.date + 'T12:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : new Date(sub.submittedAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }))}
+                  <button
+                    onClick={() => deleteSubmission(sub)}
+                    className="ml-0.5 p-0.5 rounded-full hover:bg-red-200 dark:hover:bg-red-900/40 transition-colors opacity-0 group-hover/tag:opacity-100"
+                  >
+                    <Trash2 className="w-2.5 h-2.5 text-red-500" />
+                  </button>
+                </span>
+                {hoveredSub === sub.id && (
+                  <div className="absolute z-50 bottom-full left-0 mb-1 w-64 max-h-32 overflow-y-auto p-2 rounded-lg text-xs bg-[var(--card-bg)] border border-[var(--card-border)] shadow-lg whitespace-pre-wrap text-[var(--text-secondary)]"
+                    style={{ boxShadow: 'var(--card-shadow-elevated)' }}>
+                    {sub.title && <div className="font-semibold text-[var(--text-primary)] mb-0.5">{sub.title}</div>}
+                    {sub.date && <div className="text-[var(--text-muted)] mb-0.5">{new Date(sub.date + 'T12:00').toLocaleDateString()}</div>}
+                    {sub.content.length > 300 ? sub.content.substring(0, 300) + '...' : sub.content}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </>
     );
   };
 

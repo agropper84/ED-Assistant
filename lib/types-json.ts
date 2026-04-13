@@ -14,6 +14,8 @@ export interface SubmissionEntry {
   field: string;            // 'triageVitals' | 'transcript' | 'encounterNotes' | 'additional' | 'pastDocs'
   content: string;
   submittedAt: string;      // ISO timestamp
+  title?: string;           // Optional user-provided title
+  date?: string;            // Optional user-provided date (e.g. "2026-04-13")
 }
 
 // --- Patient File (one per patient, stored in patients/ subfolder) ---

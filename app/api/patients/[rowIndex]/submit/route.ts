@@ -11,7 +11,7 @@ export async function POST(
   try {
     const ctx = await getDataContext();
     const rowIndex = parseInt(params.rowIndex);
-    const { field, content, sheetName } = await request.json();
+    const { field, content, sheetName, title, date } = await request.json();
 
     if (!field || typeof content !== 'string') {
       return NextResponse.json({ error: 'field and content are required' }, { status: 400 });
@@ -22,6 +22,8 @@ export async function POST(
       field,
       content,
       submittedAt: new Date().toISOString(),
+      ...(title ? { title } : {}),
+      ...(date ? { date } : {}),
     };
 
     const submissions = await addSubmission(ctx, rowIndex, sheetName, entry);
