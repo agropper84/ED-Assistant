@@ -146,7 +146,7 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
   const [showDelete, setShowDelete] = useState(false);
 
   return (
-    <div className="group/card relative">
+    <div className="group/card relative hover:z-10">
       {/* Delete zone — left hover area + button in one container */}
       {onDelete && (
         <div
