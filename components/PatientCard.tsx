@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { Patient } from '@/lib/google-sheets';
 import { Clock, User, FileText, Trash2, DollarSign, Stethoscope, Copy, Check, Brain, ListTree, BookOpen, Play, Loader2, X, MessageCircleQuestion, Merge, CalendarDays, GraduationCap, ExternalLink, Calculator, Bookmark, Heart } from 'lucide-react';
 import { ProfileSummary } from '@/components/PatientProfile';
@@ -73,6 +74,27 @@ function Linkified({ text }: { text: string }) {
   );
 }
 
+/** Portal-based tooltip that renders above all cards */
+function IconTooltip({ anchorRef, visible, children }: { anchorRef: React.RefObject<HTMLElement | null>; visible: boolean; children: React.ReactNode }) {
+  if (!visible || typeof document === 'undefined' || !anchorRef.current) return null;
+
+  const rect = anchorRef.current.getBoundingClientRect();
+  const top = rect.bottom + 8;
+  const left = Math.max(8, Math.min(rect.left, window.innerWidth - 320));
+
+  return createPortal(
+    <div
+      className="fixed z-[200] w-80 max-h-64 overflow-y-auto p-3 bg-gray-900 text-gray-100 text-xs rounded-lg shadow-xl ring-1 ring-white/10"
+      style={{ top, left }}
+      onMouseDown={(e) => e.stopPropagation()}
+      onClick={(e) => e.stopPropagation()}
+    >
+      {children}
+    </div>,
+    document.body
+  );
+}
+
 export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChange, onBillingToggle, billingCodes, onNavigate, onProcess, onGenerateAnalysis, onGenerateSynopsis, onGenerateManagement, onGenerateEvidence, onUpdateFields, onClinicalChat, onMerge, onDateChange, onGenerateEducation, showEducation, onCalculator, onSaveResource, savedResourceKey, onGenerateProfile }: PatientCardProps) {
   const [editingTime, setEditingTime] = useState(false);
   const [timeValue, setTimeValue] = useState(patient.timestamp || '');
@@ -94,6 +116,28 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
   const [savingDiagnosis, setSavingDiagnosis] = useState(false);
   const diagInputRef = useRef<HTMLInputElement>(null);
   const dateInputRef = useRef<HTMLInputElement>(null);
+
+  // Tooltip state — replaces CSS group-hover with portal-based tooltips
+  const [activeTooltip, setActiveTooltip] = useState<string | null>(null);
+  const tooltipRefs = {
+    note: useRef<HTMLSpanElement>(null),
+    synopsis: useRef<HTMLSpanElement>(null),
+    ddx: useRef<HTMLSpanElement>(null),
+    evidence: useRef<HTMLSpanElement>(null),
+    education: useRef<HTMLSpanElement>(null),
+    qa: useRef<HTMLSpanElement>(null),
+  };
+  const tooltipTimer = useRef<NodeJS.Timeout | null>(null);
+  const showTooltip = (name: string) => {
+    if (tooltipTimer.current) clearTimeout(tooltipTimer.current);
+    setActiveTooltip(name);
+  };
+  const hideTooltip = () => {
+    tooltipTimer.current = setTimeout(() => setActiveTooltip(null), 150);
+  };
+  const keepTooltip = () => {
+    if (tooltipTimer.current) clearTimeout(tooltipTimer.current);
+  };
 
   const hasEncounterNote = !!(patient.hpi || patient.objective || patient.assessmentPlan);
   const hasAnalysis = !!(patient.synopsis || patient.ddx || patient.evidence);
@@ -146,7 +190,7 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
   const [showDelete, setShowDelete] = useState(false);
 
   return (
-    <div className="group/card relative hover:z-10">
+    <div className="group/card relative" style={{ overflow: 'visible' }}>
       {/* Delete zone — left hover area + button in one container */}
       {onDelete && (
         <div
@@ -271,21 +315,18 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
             <>
               {/* Encounter note — emerald green */}
               {hasEncounterNote && onNavigate && (
-                <div className="relative group/note flex-shrink-0">
+                <div className="relative flex-shrink-0">
                   <span
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onNavigate();
-                    }}
+                    ref={tooltipRefs.note}
+                    onClick={(e) => { e.stopPropagation(); onNavigate(); }}
+                    onMouseEnter={() => showTooltip('note')}
+                    onMouseLeave={hideTooltip}
                     className="p-0.5 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 rounded transition-colors cursor-pointer inline-flex"
                   >
                     <FileText className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
                   </span>
-                  <div className="absolute left-0 top-full h-2 w-80 hidden group-hover/note:block" />
-                  <div
-                    className="absolute left-0 top-full mt-2 z-50 hidden group-hover/note:block w-80 max-h-64 overflow-y-auto p-3 bg-gray-900 text-gray-100 text-xs rounded-lg shadow-xl ring-1 ring-white/10"
-                    onClick={(e) => e.stopPropagation()}
-                  >
+                  <IconTooltip anchorRef={tooltipRefs.note} visible={activeTooltip === 'note'}>
+                    <div onMouseEnter={keepTooltip} onMouseLeave={hideTooltip}>
                     <div className="flex items-center justify-between mb-2 sticky top-0 bg-gray-900 pb-1">
                       <span className="text-emerald-400 font-medium">Encounter Note</span>
                       <button
@@ -313,184 +354,149 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
                         <div><span className="text-emerald-400 font-medium">A&P:</span> {patient.assessmentPlan}</div>
                       )}
                     </div>
-                  </div>
+                    </div>
+                  </IconTooltip>
                 </div>
               )}
 
-              {/* Synopsis — blue (echoes header) */}
-              <div className="relative group/synopsis flex-shrink-0">
+              {/* Synopsis — blue */}
+              <div className="relative flex-shrink-0">
                 <span
+                  ref={tooltipRefs.synopsis}
+                  onMouseEnter={() => patient.synopsis && showTooltip('synopsis')}
+                  onMouseLeave={hideTooltip}
                   onClick={(e) => {
                     e.stopPropagation();
                     if (!patient.synopsis && (onGenerateSynopsis || onGenerateAnalysis) && !generatingIcon) {
                       setGeneratingIcon('synopsis');
                       (onGenerateSynopsis || onGenerateAnalysis)!().finally(() => setGeneratingIcon(null));
-                    } else if (patient.synopsis && onNavigate) {
-                      onNavigate();
-                    }
+                    } else if (patient.synopsis && onNavigate) { onNavigate(); }
                   }}
                   className={`p-0.5 rounded transition-colors inline-flex ${patient.synopsis || onGenerateSynopsis || onGenerateAnalysis ? 'hover:bg-blue-50 dark:hover:bg-blue-900/30 cursor-pointer' : ''}`}
                   title={patient.synopsis ? '' : 'Generate synopsis & analysis'}
                 >
-                  {generatingIcon === 'synopsis' ? (
-                    <Loader2 className="w-4 h-4 text-blue-400 animate-spin" />
-                  ) : (
-                    <Brain className={`w-3.5 h-3.5 ${patient.synopsis ? 'text-blue-600 dark:text-blue-400' : EMPTY}`} />
-                  )}
+                  {generatingIcon === 'synopsis' ? <Loader2 className="w-4 h-4 text-blue-400 animate-spin" /> : <Brain className={`w-3.5 h-3.5 ${patient.synopsis ? 'text-blue-600 dark:text-blue-400' : EMPTY}`} />}
                 </span>
                 {patient.synopsis && (
-                  <>
-                    <div className="absolute left-0 top-full h-2 w-72 hidden group-hover/synopsis:block" />
-                    <div
-                      className="absolute left-0 top-full mt-2 z-50 hidden group-hover/synopsis:block w-72 max-h-48 overflow-y-auto p-3 bg-gray-900 text-gray-100 text-xs rounded-lg shadow-xl ring-1 ring-white/10"
-                      onClick={(e) => e.stopPropagation()}
-                    >
+                  <IconTooltip anchorRef={tooltipRefs.synopsis} visible={activeTooltip === 'synopsis'}>
+                    <div onMouseEnter={keepTooltip} onMouseLeave={hideTooltip}>
                       <span className="text-blue-400 font-medium block mb-1">Synopsis</span>
                       <p className="whitespace-pre-wrap leading-relaxed">{patient.synopsis}</p>
                     </div>
-                  </>
+                  </IconTooltip>
                 )}
               </div>
 
               {/* Differential Diagnosis — violet */}
-              <div className="relative group/ddx flex-shrink-0">
+              <div className="relative flex-shrink-0">
                 <span
+                  ref={tooltipRefs.ddx}
+                  onMouseEnter={() => patient.ddx && showTooltip('ddx')}
+                  onMouseLeave={hideTooltip}
                   onClick={(e) => {
                     e.stopPropagation();
                     if (!patient.ddx && onGenerateAnalysis && !generatingIcon) {
                       setGeneratingIcon('management');
                       onGenerateAnalysis().finally(() => setGeneratingIcon(null));
-                    } else if (patient.ddx && onNavigate) {
-                      onNavigate();
-                    }
+                    } else if (patient.ddx && onNavigate) { onNavigate(); }
                   }}
                   className={`p-0.5 rounded transition-colors inline-flex ${patient.ddx || onGenerateAnalysis ? 'hover:bg-violet-50 dark:hover:bg-violet-900/30 cursor-pointer' : ''}`}
                   title={patient.ddx ? '' : 'Generate differential diagnosis'}
                 >
-                  {generatingIcon === 'management' ? (
-                    <Loader2 className="w-4 h-4 text-violet-400 animate-spin" />
-                  ) : (
-                    <ListTree className={`w-3.5 h-3.5 ${patient.ddx ? 'text-violet-600 dark:text-violet-400' : EMPTY}`} />
-                  )}
+                  {generatingIcon === 'management' ? <Loader2 className="w-4 h-4 text-violet-400 animate-spin" /> : <ListTree className={`w-3.5 h-3.5 ${patient.ddx ? 'text-violet-600 dark:text-violet-400' : EMPTY}`} />}
                 </span>
                 {patient.ddx && (
-                  <>
-                    <div className="absolute left-0 top-full h-2 w-72 hidden group-hover/ddx:block" />
-                    <div
-                      className="absolute left-0 top-full mt-2 z-50 hidden group-hover/ddx:block w-72 max-h-48 overflow-y-auto p-3 bg-gray-900 text-gray-100 text-xs rounded-lg shadow-xl ring-1 ring-white/10"
-                      onClick={(e) => e.stopPropagation()}
-                    >
+                  <IconTooltip anchorRef={tooltipRefs.ddx} visible={activeTooltip === 'ddx'}>
+                    <div onMouseEnter={keepTooltip} onMouseLeave={hideTooltip}>
                       <span className="text-violet-400 font-medium block mb-1">Differential Diagnosis</span>
                       <p className="whitespace-pre-wrap leading-relaxed">{patient.ddx}</p>
                     </div>
-                  </>
+                  </IconTooltip>
                 )}
               </div>
 
-              {/* Evidence — amber (warm accent) */}
-              <div className="relative group/evidence flex-shrink-0">
+              {/* Evidence — amber */}
+              <div className="relative flex-shrink-0">
                 <span
+                  ref={tooltipRefs.evidence}
+                  onMouseEnter={() => patient.evidence && showTooltip('evidence')}
+                  onMouseLeave={hideTooltip}
                   onClick={(e) => {
                     e.stopPropagation();
                     if (!patient.evidence && (onGenerateEvidence || onGenerateAnalysis) && !generatingIcon) {
                       setGeneratingIcon('evidence');
                       (onGenerateEvidence || onGenerateAnalysis)!().finally(() => setGeneratingIcon(null));
-                    } else if (patient.evidence && onNavigate) {
-                      onNavigate();
-                    }
+                    } else if (patient.evidence && onNavigate) { onNavigate(); }
                   }}
                   className={`p-0.5 rounded transition-colors inline-flex ${patient.evidence || onGenerateEvidence || onGenerateAnalysis ? 'hover:bg-amber-50 dark:hover:bg-amber-900/30 cursor-pointer' : ''}`}
-                  title={patient.evidence ? '' : 'Generate synopsis & analysis'}
+                  title={patient.evidence ? '' : 'Generate evidence'}
                 >
-                  {generatingIcon === 'evidence' ? (
-                    <Loader2 className="w-4 h-4 text-amber-400 animate-spin" />
-                  ) : (
-                    <BookOpen className={`w-3.5 h-3.5 ${patient.evidence ? 'text-amber-600 dark:text-amber-400' : EMPTY}`} />
-                  )}
+                  {generatingIcon === 'evidence' ? <Loader2 className="w-4 h-4 text-amber-400 animate-spin" /> : <BookOpen className={`w-3.5 h-3.5 ${patient.evidence ? 'text-amber-600 dark:text-amber-400' : EMPTY}`} />}
                 </span>
                 {patient.evidence && (
-                  <>
-                    <div className="absolute left-0 top-full h-2 w-72 hidden group-hover/evidence:block" />
-                    <div
-                      className="absolute left-0 top-full mt-2 z-50 hidden group-hover/evidence:block w-72 max-h-48 overflow-y-auto p-3 bg-gray-900 text-gray-100 text-xs rounded-lg shadow-xl ring-1 ring-white/10"
-                      onClick={(e) => e.stopPropagation()}
-                    >
+                  <IconTooltip anchorRef={tooltipRefs.evidence} visible={activeTooltip === 'evidence'}>
+                    <div onMouseEnter={keepTooltip} onMouseLeave={hideTooltip}>
                       <div className="flex items-center justify-between mb-1">
                         <span className="text-amber-400 font-medium">Evidence</span>
                         {onSaveResource && (
-                          <button
-                            onClick={(e) => { e.stopPropagation(); onSaveResource({ type: 'evidence', content: patient.evidence, patientName: patient.name, diagnosis: patient.diagnosis }); }}
-                            className="p-0.5 rounded hover:bg-white/10 transition-colors"
-                            title={savedResourceKey?.('evidence') ? 'Saved' : 'Save to library'}
-                          >
+                          <button onClick={(e) => { e.stopPropagation(); onSaveResource({ type: 'evidence', content: patient.evidence, patientName: patient.name, diagnosis: patient.diagnosis }); }} className="p-0.5 rounded hover:bg-white/10 transition-colors" title={savedResourceKey?.('evidence') ? 'Saved' : 'Save to library'}>
                             <Bookmark className="w-3.5 h-3.5 text-amber-400" fill={savedResourceKey?.('evidence') ? 'currentColor' : 'none'} />
                           </button>
                         )}
                       </div>
                       <p className="whitespace-pre-wrap leading-relaxed"><Linkified text={patient.evidence} /></p>
                     </div>
-                  </>
+                  </IconTooltip>
                 )}
               </div>
 
-              {/* Education — emerald-green (learning) */}
+              {/* Education — emerald-green */}
               {showEducation && (
-                <div className="relative group/edu flex-shrink-0">
+                <div className="relative flex-shrink-0">
                   <span
+                    ref={tooltipRefs.education}
+                    onMouseEnter={() => patient.education && showTooltip('education')}
+                    onMouseLeave={hideTooltip}
                     onClick={(e) => {
                       e.stopPropagation();
                       if (!patient.education && onGenerateEducation && !generatingIcon) {
                         setGeneratingIcon('education');
                         onGenerateEducation().finally(() => setGeneratingIcon(null));
-                      } else if (patient.education && onNavigate) {
-                        onNavigate();
-                      }
+                      } else if (patient.education && onNavigate) { onNavigate(); }
                     }}
                     className={`p-0.5 rounded transition-colors inline-flex ${patient.education || onGenerateEducation ? 'hover:bg-emerald-50 dark:hover:bg-emerald-900/30 cursor-pointer' : ''}`}
                     title={patient.education ? '' : 'Generate learning resources'}
                   >
-                    {generatingIcon === 'education' ? (
-                      <Loader2 className="w-4 h-4 text-emerald-400 animate-spin" />
-                    ) : (
-                      <GraduationCap className={`w-3.5 h-3.5 ${patient.education ? 'text-emerald-600 dark:text-emerald-400' : EMPTY}`} />
-                    )}
+                    {generatingIcon === 'education' ? <Loader2 className="w-4 h-4 text-emerald-400 animate-spin" /> : <GraduationCap className={`w-3.5 h-3.5 ${patient.education ? 'text-emerald-600 dark:text-emerald-400' : EMPTY}`} />}
                   </span>
                   {patient.education && (
-                    <>
-                      <div className="absolute left-0 top-full h-2 w-72 hidden group-hover/edu:block" />
-                      <div
-                        className="absolute left-0 top-full mt-2 z-50 hidden group-hover/edu:block w-72 max-h-48 overflow-y-auto p-3 bg-gray-900 text-gray-100 text-xs rounded-lg shadow-xl ring-1 ring-white/10"
-                        onClick={(e) => e.stopPropagation()}
-                      >
+                    <IconTooltip anchorRef={tooltipRefs.education} visible={activeTooltip === 'education'}>
+                      <div onMouseEnter={keepTooltip} onMouseLeave={hideTooltip}>
                         <div className="flex items-center justify-between mb-1">
                           <span className="text-emerald-400 font-medium">Learning Resources</span>
                           {onSaveResource && (
-                            <button
-                              onClick={(e) => { e.stopPropagation(); onSaveResource({ type: 'education', content: patient.education, patientName: patient.name, diagnosis: patient.diagnosis }); }}
-                              className="p-0.5 rounded hover:bg-white/10 transition-colors"
-                              title={savedResourceKey?.('education') ? 'Saved' : 'Save to library'}
-                            >
+                            <button onClick={(e) => { e.stopPropagation(); onSaveResource({ type: 'education', content: patient.education, patientName: patient.name, diagnosis: patient.diagnosis }); }} className="p-0.5 rounded hover:bg-white/10 transition-colors" title={savedResourceKey?.('education') ? 'Saved' : 'Save to library'}>
                               <Bookmark className="w-3.5 h-3.5 text-emerald-400" fill={savedResourceKey?.('education') ? 'currentColor' : 'none'} />
                             </button>
                           )}
                         </div>
                         <p className="whitespace-pre-wrap leading-relaxed"><Linkified text={patient.education} /></p>
                       </div>
-                    </>
+                    </IconTooltip>
                   )}
                 </div>
               )}
             </>
           )}
 
-          {/* Clinical Q&A — cyan (conversational feel) */}
+          {/* Clinical Q&A — cyan */}
           {onClinicalChat && (
-            <div className="relative group/qa flex-shrink-0">
+            <div className="relative flex-shrink-0">
               <span
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onClinicalChat();
-                }}
+                ref={tooltipRefs.qa}
+                onMouseEnter={() => patient.clinicalQA && showTooltip('qa')}
+                onMouseLeave={hideTooltip}
+                onClick={(e) => { e.stopPropagation(); onClinicalChat(); }}
                 className="p-0.5 hover:bg-cyan-50 dark:hover:bg-cyan-900/30 rounded transition-colors cursor-pointer inline-flex"
                 title="Clinical questions"
               >
@@ -503,17 +509,13 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
                   const lastQ = qa[qa.length - 2];
                   const lastA = qa[qa.length - 1];
                   return (
-                    <>
-                      <div className="absolute left-0 top-full h-2 w-72 hidden group-hover/qa:block" />
-                      <div
-                        className="absolute left-0 top-full mt-2 z-50 hidden group-hover/qa:block w-72 max-h-48 overflow-y-auto p-3 bg-gray-900 text-gray-100 text-xs rounded-lg shadow-xl ring-1 ring-white/10"
-                        onClick={(e) => e.stopPropagation()}
-                      >
+                    <IconTooltip anchorRef={tooltipRefs.qa} visible={activeTooltip === 'qa'}>
+                      <div onMouseEnter={keepTooltip} onMouseLeave={hideTooltip}>
                         <span className="text-cyan-400 font-medium block mb-1">Last Q&A</span>
                         <p className="text-cyan-300/80 mb-1"><strong>Q:</strong> {lastQ?.content}</p>
                         <p className="whitespace-pre-wrap leading-relaxed"><strong>A:</strong> {lastA?.content?.slice(0, 200)}{lastA?.content?.length > 200 ? '...' : ''}</p>
                       </div>
-                    </>
+                    </IconTooltip>
                   );
                 } catch { return null; }
               })()}
