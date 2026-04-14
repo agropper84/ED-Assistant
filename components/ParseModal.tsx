@@ -21,7 +21,7 @@ interface FieldSubmission {
 interface ParseModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (data: ParsedData) => void;
+  onSave: (data: ParsedData) => Promise<{ rowIndex: number; sheetName: string } | null>;
   onQuickAdd?: (name: string) => void;
   /** If set, enables per-field submission to an existing patient */
   patientRef?: { rowIndex: number; sheetName: string };
@@ -84,9 +84,13 @@ function getNearestSlot(): string {
 
 const TIME_SLOTS = generateTimeSlots();
 
-export function ParseModal({ isOpen, onClose, onSave, onQuickAdd, patientRef }: ParseModalProps) {
+export function ParseModal({ isOpen, onClose, onSave, onQuickAdd, patientRef: externalPatientRef }: ParseModalProps) {
   const [quickName, setQuickName] = useState('');
   const [quickSaving, setQuickSaving] = useState(false);
+  // Internal patient ref — set after first save, enables per-field submissions
+  const [internalPatientRef, setInternalPatientRef] = useState<{ rowIndex: number; sheetName: string } | null>(null);
+  const patientRef = externalPatientRef || internalPatientRef;
+  const [patientSaved, setPatientSaved] = useState(false);
 
   // Per-field submissions
   const [submissions, setSubmissions] = useState<FieldSubmission[]>([]);
@@ -267,6 +271,23 @@ export function ParseModal({ isOpen, onClose, onSave, onQuickAdd, patientRef }: 
     );
   };
 
+  // Reset internal state when modal closes
+  useEffect(() => {
+    if (!isOpen) {
+      setInternalPatientRef(null);
+      setPatientSaved(false);
+      setSubmissions([]);
+      setPasteText('');
+      setTriageVitals('');
+      setTranscript('');
+      setEncounterNotes('');
+      setAdditional('');
+      setPastDocs('');
+      setEncounterTime('');
+      setParsedData(null);
+    }
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   const handleParse = async () => {
@@ -325,12 +346,12 @@ export function ParseModal({ isOpen, onClose, onSave, onQuickAdd, patientRef }: 
     }
   };
 
-  const handleSave = (shouldGenerate?: boolean) => {
+  const handleSave = async (shouldGenerate?: boolean) => {
     if (parsedData) {
       savePhrasesInBackground(encounterNotes, additional);
 
       const timestamp = encounterTime || getNearestSlot();
-      onSave({
+      const result = await onSave({
         ...parsedData,
         timestamp,
         triageVitals,
@@ -340,16 +361,22 @@ export function ParseModal({ isOpen, onClose, onSave, onQuickAdd, patientRef }: 
         pastDocs,
         _generateNote: shouldGenerate ?? generateNote,
       });
-      // Reset form
-      setPasteText('');
-      setTriageVitals('');
-      setTranscript('');
-      setEncounterNotes('');
-      setAdditional('');
-      setPastDocs('');
-      setEncounterTime('');
-      setParsedData(null);
-      onClose();
+
+      if (result) {
+        // Patient created — store ref so submit buttons activate
+        setInternalPatientRef(result);
+        setPatientSaved(true);
+        // Clear text fields (content is now saved to the patient)
+        setTriageVitals('');
+        setTranscript('');
+        setEncounterNotes('');
+        setAdditional('');
+        setPastDocs('');
+        // Don't close — user can now submit additional content per-field
+      } else {
+        // Save failed — close
+        onClose();
+      }
     }
   };
 
@@ -857,24 +884,53 @@ export function ParseModal({ isOpen, onClose, onSave, onQuickAdd, patientRef }: 
               <Check className="w-4 h-4" />
               Add All {daySheetPatients.length} Patients
             </button>
-          ) : (
-            <div className="flex gap-2">
-              <button
-                onClick={() => handleSave(false)}
-                disabled={!parsedData}
-                className="flex-1 py-3 min-h-[48px] bg-[var(--bg-primary)] border border-[var(--border)] text-[var(--text-primary)] rounded-xl font-medium disabled:opacity-40 flex items-center justify-center gap-2 hover:bg-[var(--bg-tertiary)] active:scale-[0.97] transition-all"
-              >
-                Save
-              </button>
-              {(triageVitals.trim() || transcript.trim() || encounterNotes.trim() || additional.trim() || submissions.length > 0) && (
+          ) : patientSaved ? (
+            <div className="space-y-2">
+              <p className="text-[11px] text-[var(--text-muted)] text-center">
+                Patient saved. Use <strong>Submit</strong> on each section to add more content, or type directly into the text boxes.
+                Both submitted and saved content will be used when generating the note.
+              </p>
+              <div className="flex gap-2">
                 <button
-                  onClick={() => handleSave(true)}
-                  disabled={!parsedData}
-                  className="flex-1 py-3 min-h-[48px] bg-emerald-600 dark:bg-emerald-500 text-white rounded-xl font-medium disabled:opacity-40 flex items-center justify-center gap-2 hover:bg-emerald-700 dark:hover:bg-emerald-600 active:scale-[0.97] transition-all"
+                  onClick={onClose}
+                  className="flex-1 py-3 min-h-[48px] bg-[var(--bg-primary)] border border-[var(--border)] text-[var(--text-primary)] rounded-xl font-medium flex items-center justify-center gap-2 hover:bg-[var(--bg-tertiary)] active:scale-[0.97] transition-all"
                 >
-                  Generate Note
+                  Done
                 </button>
-              )}
+                {(triageVitals.trim() || transcript.trim() || encounterNotes.trim() || additional.trim() || submissions.length > 0) && (
+                  <button
+                    onClick={() => handleSave(true)}
+                    disabled={!parsedData && !patientRef}
+                    className="flex-1 py-3 min-h-[48px] bg-emerald-600 dark:bg-emerald-500 text-white rounded-xl font-medium disabled:opacity-40 flex items-center justify-center gap-2 hover:bg-emerald-700 dark:hover:bg-emerald-600 active:scale-[0.97] transition-all"
+                  >
+                    Generate Note
+                  </button>
+                )}
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <p className="text-[11px] text-[var(--text-muted)] text-center">
+                All content in text boxes and submitted entries will be used to generate the encounter note.
+              </p>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => handleSave(false)}
+                  disabled={!parsedData}
+                  className="flex-1 py-3 min-h-[48px] bg-[var(--bg-primary)] border border-[var(--border)] text-[var(--text-primary)] rounded-xl font-medium disabled:opacity-40 flex items-center justify-center gap-2 hover:bg-[var(--bg-tertiary)] active:scale-[0.97] transition-all"
+                >
+                  Save
+                </button>
+                {(triageVitals.trim() || transcript.trim() || encounterNotes.trim() || additional.trim() || submissions.length > 0) && (
+                  <button
+                    onClick={() => handleSave(true)}
+                    disabled={!parsedData}
+                    className="flex-1 py-3 min-h-[48px] bg-emerald-600 dark:bg-emerald-500 text-white rounded-xl font-medium disabled:opacity-40 flex items-center justify-center gap-2 hover:bg-emerald-700 dark:hover:bg-emerald-600 active:scale-[0.97] transition-all"
+                  >
+                    Generate Note
+                  </button>
+                )}
+              </div>
             </div>
           )}
         </div>

@@ -752,8 +752,11 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
         </div>
         </div>
 
-        {/* Footer — matching ParseModal style */}
+        {/* Footer */}
         <div className="px-5 py-4 pb-safe border-t border-[var(--border)] bg-[var(--bg-tertiary)] sm:rounded-b-3xl">
+          <p className="text-[11px] text-[var(--text-muted)] text-center mb-2">
+            All content — both in text boxes and submitted entries — will be used to generate the note.
+          </p>
           <div className="flex gap-2">
             <button
               onClick={async () => {

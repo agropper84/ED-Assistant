@@ -416,7 +416,7 @@ export default function HomePage() {
     })();
   }, []);
 
-  const handleSavePatient = async (data: any) => {
+  const handleSavePatient = async (data: any): Promise<{ rowIndex: number; sheetName: string } | null> => {
     try {
       const res = await fetch('/api/patients', {
         method: 'POST',
@@ -448,10 +448,12 @@ export default function HomePage() {
             fetch('/api/analysis', { method: 'POST', headers, body: JSON.stringify({ rowIndex, sheetName: savedSheet }) }).catch(() => {});
           }
         }
+        return { rowIndex, sheetName: savedSheet };
       }
     } catch (error) {
       console.error('Failed to save patient:', error);
     }
+    return null;
   };
 
   const handleShiftTimeSave = async (overrides?: { start?: string; end?: string }) => {
@@ -1036,10 +1038,17 @@ export default function HomePage() {
                 style={{ background: 'linear-gradient(145deg, rgba(255,255,255,0.14) 0%, rgba(255,255,255,0.04) 100%)', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.1), 0 1px 3px rgba(0,0,0,0.1)' }}
                 title="Menu"
               >
-                <svg width="20" height="20" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <rect x="13" y="6" width="6" height="20" rx="3" fill="white" opacity="0.9" />
-                  <rect x="6" y="13" width="20" height="6" rx="3" fill="white" opacity="0.9" />
-                  <circle cx="25" cy="25" r="2.5" fill="#4a9ead" opacity="0.8" />
+                <svg width="22" height="22" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  {/* Stethoscope bell — diaphragm ring */}
+                  <circle cx="16" cy="17" r="9" stroke="white" strokeWidth="2.5" fill="none" opacity="0.85" />
+                  {/* Inner ring */}
+                  <circle cx="16" cy="17" r="4.5" stroke="white" strokeWidth="1.5" fill="none" opacity="0.4" />
+                  {/* Tube going up */}
+                  <line x1="16" y1="8" x2="16" y2="3" stroke="white" strokeWidth="2.5" strokeLinecap="round" opacity="0.85" />
+                  {/* Sound waves — left */}
+                  <path d="M4 13 Q2 17 4 21" stroke="#4a9ead" strokeWidth="1.5" strokeLinecap="round" fill="none" opacity="0.6" />
+                  {/* Sound waves — right */}
+                  <path d="M28 13 Q30 17 28 21" stroke="#4a9ead" strokeWidth="1.5" strokeLinecap="round" fill="none" opacity="0.6" />
                 </svg>
               </button>
               <h1 className="text-[17px] font-bold tracking-[-0.02em]" style={{ color: 'var(--dash-text)' }}>ER Dashboard</h1>
@@ -1099,21 +1108,35 @@ export default function HomePage() {
 
           {/* Secondary bar: search + shift times */}
           <div className="flex items-center justify-between border-t py-2 gap-2" style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
-            {/* Search + Sort */}
-            <div className="flex items-center gap-1.5 flex-1 max-w-[240px]">
-              <div className="relative flex-1">
+            {/* Left group: checkbox + search + sort + grid */}
+            <div className="flex items-center gap-1.5">
+              <span
+                onClick={() => {
+                  const next = !showCardIcons;
+                  setShowCardIcons(next);
+                  localStorage.setItem('ed-show-card-icons', String(next));
+                }}
+                title={showCardIcons ? 'Hide card icons' : 'Show card icons'}
+                className="w-3 h-3 rounded-[3px] flex-shrink-0 cursor-pointer transition-all duration-200"
+                style={{
+                  border: `1.5px solid rgba(255,255,255,${showCardIcons ? '0.35' : '0.1'})`,
+                  background: showCardIcons ? 'rgba(255,255,255,0.15)' : 'transparent',
+                }}
+              />
+              <div className="relative w-[130px]">
                 {searching ? (
-                  <Loader2 className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 animate-spin" style={{ color: 'var(--dash-text-muted)' }} />
+                  <Loader2 className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 animate-spin" style={{ color: 'var(--dash-text-muted)' }} />
                 ) : (
-                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5" style={{ color: 'var(--dash-text-muted)' }} />
+                  <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3" style={{ color: 'var(--dash-text-muted)' }} />
                 )}
                 <input
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Search..."
-                  className="w-full pl-8 pr-7 py-1.5 rounded-lg text-[12px] transition-all duration-200 outline-none"
+                  className="w-full pl-6.5 pr-6 py-1 rounded-md text-[11px] transition-all duration-200 outline-none"
                   style={{
+                    paddingLeft: '1.5rem',
                     background: searchQuery ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.06)',
                     border: '1px solid rgba(255,255,255,0.08)',
                     color: 'var(--dash-text)',
@@ -1124,15 +1147,15 @@ export default function HomePage() {
                 {searchQuery && (
                   <button
                     onClick={() => setSearchQuery('')}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 rounded hover:bg-white/10"
+                    className="absolute right-1.5 top-1/2 -translate-y-1/2 p-0.5 rounded hover:bg-white/10"
                   >
-                    <X className="w-3 h-3" style={{ color: 'var(--dash-text-muted)' }} />
+                    <X className="w-2.5 h-2.5" style={{ color: 'var(--dash-text-muted)' }} />
                   </button>
                 )}
               </div>
               <button
                 onClick={() => setSortBy(prev => prev === 'time' ? 'name' : prev === 'name' ? 'status' : 'time')}
-                className="flex items-center gap-1 px-2 py-1.5 rounded-lg text-[11px] font-medium transition-colors hover:bg-white/[0.07] flex-shrink-0"
+                className="flex items-center gap-1 px-1.5 py-1 rounded-md text-[11px] font-medium transition-colors hover:bg-white/[0.07]"
                 style={{ color: 'var(--dash-text-muted)' }}
                 title={`Sort by ${sortBy === 'time' ? 'name' : sortBy === 'name' ? 'status' : 'time'}`}
               >
@@ -1145,23 +1168,11 @@ export default function HomePage() {
                   setViewMode(next);
                   localStorage.setItem('ed-view-mode', next);
                 }}
-                className="flex items-center gap-1 px-2 py-1.5 rounded-lg text-[11px] font-medium transition-colors hover:bg-white/[0.07] flex-shrink-0"
+                className="p-1 rounded-md transition-colors hover:bg-white/[0.07]"
                 style={{ color: 'var(--dash-text-muted)' }}
                 title={viewMode === 'list' ? 'Grid view' : 'List view'}
               >
                 {viewMode === 'list' ? <LayoutGrid className="w-3 h-3" /> : <LayoutList className="w-3 h-3" />}
-              </button>
-              <button
-                onClick={() => {
-                  const next = !showCardIcons;
-                  setShowCardIcons(next);
-                  localStorage.setItem('ed-show-card-icons', String(next));
-                }}
-                className="flex items-center gap-1 px-2 py-1.5 rounded-lg text-[11px] font-medium transition-colors hover:bg-white/[0.07] flex-shrink-0"
-                style={{ color: showCardIcons ? 'var(--dash-text)' : 'var(--dash-text-muted)' }}
-                title={showCardIcons ? 'Hide card icons' : 'Show card icons'}
-              >
-                <Activity className="w-3 h-3" />
               </button>
             </div>
 
