@@ -144,6 +144,16 @@ export function ParseModal({ isOpen, onClose, onSave, onQuickAdd, patientRef }: 
       setSubmissions(prev => prev.filter(s => s.id !== sub.id));
     } catch {}
   };
+  // Track which fields are being refined by AI (show grey text)
+  const [refiningFields, setRefiningFields] = useState<Set<string>>(new Set());
+  const setFieldRefining = (field: string, refining: boolean) => {
+    setRefiningFields(prev => {
+      const next = new Set(prev);
+      if (refining) next.add(field); else next.delete(field);
+      return next;
+    });
+  };
+
   const [pasteText, setPasteText] = useState('');
   const [triageVitals, setTriageVitals] = useState('');
   const [transcript, setTranscript] = useState('');
@@ -698,8 +708,11 @@ export function ParseModal({ isOpen, onClose, onSave, onQuickAdd, patientRef }: 
                 value={transcript}
                 onChange={(e) => setTranscript(e.target.value)}
                 placeholder="Audio transcript or dictation..."
-                className="w-full h-28 p-3 pr-16 border border-[var(--input-border)] rounded-xl text-sm resize-y focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)]"
+                className={`w-full h-28 p-3 pr-16 border border-[var(--input-border)] rounded-xl text-sm resize-y focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] placeholder:text-[var(--text-muted)] transition-colors duration-300 ${refiningFields.has('transcript') ? 'text-[var(--text-muted)] italic' : 'text-[var(--text-primary)]'}`}
               />
+              {refiningFields.has('transcript') && (
+                <div className="absolute bottom-2 left-3 text-[10px] text-blue-400 font-medium animate-pulse">Refining transcription...</div>
+              )}
               <div className="absolute top-1.5 right-1.5">
                 <VoiceRecorder
                   mode="encounter"
@@ -707,11 +720,13 @@ export function ParseModal({ isOpen, onClose, onSave, onQuickAdd, patientRef }: 
                   onTranscript={(text) => {
                     const base = preRecordTranscript || transcript;
                     setTranscript(base ? `${base}\n\n${text}` : text);
+                    setFieldRefining('transcript', false);
                   }}
                   onRecordingStart={() => setPreRecordTranscript(transcript)}
                   onInterimTranscript={showLiveTranscript ? (text) => {
                     setTranscript(preRecordTranscript ? `${preRecordTranscript}\n\n${text}` : text);
                   } : undefined}
+                  onProcessingChange={(p) => setFieldRefining('transcript', p)}
                 />
               </div>
             </div>
@@ -732,20 +747,25 @@ export function ParseModal({ isOpen, onClose, onSave, onQuickAdd, patientRef }: 
                 onChange={setEncounterNotes}
                 suggestions={allSuggestions}
                 placeholder="Physician notes, clinical observations, plan..."
-                textareaClassName="w-full h-28 p-3 pr-10 border border-[var(--input-border)] rounded-xl text-sm resize-y focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)]"
+                textareaClassName={`w-full h-28 p-3 pr-10 border border-[var(--input-border)] rounded-xl text-sm resize-y focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] placeholder:text-[var(--text-muted)] transition-colors duration-300 ${refiningFields.has('encounterNotes') ? 'text-[var(--text-muted)] italic' : 'text-[var(--text-primary)]'}`}
                 patientContext={patientContext}
               />
+              {refiningFields.has('encounterNotes') && (
+                <div className="absolute bottom-2 left-3 text-[10px] text-blue-400 font-medium animate-pulse z-10">Refining dictation...</div>
+              )}
               <div className="absolute top-1.5 right-1.5 z-10">
                 <VoiceRecorder
                   mode="dictation"
                   onTranscript={(text) => {
                     const base = preRecordEncounter || encounterNotes;
                     setEncounterNotes(base ? `${base}\n${text}` : text);
+                    setFieldRefining('encounterNotes', false);
                   }}
                   onRecordingStart={() => setPreRecordEncounter(encounterNotes)}
                   onInterimTranscript={(text) => {
                     setEncounterNotes(preRecordEncounter ? `${preRecordEncounter}\n${text}` : text);
                   }}
+                  onProcessingChange={(p) => setFieldRefining('encounterNotes', p)}
                 />
               </div>
             </div>
@@ -767,20 +787,25 @@ export function ParseModal({ isOpen, onClose, onSave, onQuickAdd, patientRef }: 
                 onChange={setAdditional}
                 suggestions={allSuggestions}
                 placeholder="Exam findings, investigations, results, updates..."
-                textareaClassName="w-full h-24 p-3 pr-10 border border-[var(--input-border)] rounded-xl text-sm resize-y focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)]"
+                textareaClassName={`w-full h-24 p-3 pr-10 border border-[var(--input-border)] rounded-xl text-sm resize-y focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] placeholder:text-[var(--text-muted)] transition-colors duration-300 ${refiningFields.has('additional') ? 'text-[var(--text-muted)] italic' : 'text-[var(--text-primary)]'}`}
                 patientContext={patientContext}
               />
+              {refiningFields.has('additional') && (
+                <div className="absolute bottom-2 left-3 text-[10px] text-blue-400 font-medium animate-pulse z-10">Refining dictation...</div>
+              )}
               <div className="absolute top-1.5 right-1.5 z-10">
                 <VoiceRecorder
                   mode="dictation"
                   onTranscript={(text) => {
                     const base = preRecordAdditional || additional;
                     setAdditional(base ? `${base}\n${text}` : text);
+                    setFieldRefining('additional', false);
                   }}
                   onRecordingStart={() => setPreRecordAdditional(additional)}
                   onInterimTranscript={(text) => {
                     setAdditional(preRecordAdditional ? `${preRecordAdditional}\n${text}` : text);
                   }}
+                  onProcessingChange={(p) => setFieldRefining('additional', p)}
                 />
               </div>
             </div>

@@ -32,13 +32,15 @@ interface VoiceRecorderProps {
   onTranscript: (text: string) => void;
   onInterimTranscript?: (text: string) => void;
   onRecordingStart?: () => void;
+  /** Called with true when raw STT text is shown (being refined), false when final text arrives */
+  onProcessingChange?: (processing: boolean) => void;
   disabled?: boolean;
   mode?: 'encounter' | 'dictation';
   showUpload?: boolean;
 }
 
 export function VoiceRecorder({
-  onTranscript, onInterimTranscript, onRecordingStart,
+  onTranscript, onInterimTranscript, onRecordingStart, onProcessingChange,
   disabled, mode = 'dictation', showUpload,
 }: VoiceRecorderProps) {
   const [state, setState] = useState<RecorderState>('idle');
@@ -74,6 +76,8 @@ export function VoiceRecorder({
   onInterimRef.current = onInterimTranscript;
   const onTranscriptRef = useRef(onTranscript);
   onTranscriptRef.current = onTranscript;
+  const onProcessingRef = useRef(onProcessingChange);
+  onProcessingRef.current = onProcessingChange;
 
   const useStreaming = mode === 'dictation' && !!onInterimTranscript;
 
@@ -264,6 +268,7 @@ export function VoiceRecorder({
 
     if (useDeepgramCleanup && blob && blob.size > 2000 && webSpeechText.length > 5) {
       setRecState('transcribing');
+      onProcessingRef.current?.(true); // Signal: text is being refined
       try {
         const formData = new FormData();
         formData.append('audio', blob, `recording.${getFileExtension(mimeTypeRef.current)}`);
@@ -274,6 +279,7 @@ export function VoiceRecorder({
           if (text?.trim() && text.trim().length > 5) onInterimRef.current?.(text.trim());
         }
       } catch {}
+      onProcessingRef.current?.(false); // Signal: refinement complete
     }
 
     accumulatedTextRef.current = '';
@@ -356,6 +362,7 @@ export function VoiceRecorder({
         if (blob.size === 0) { setRecState('idle'); return; }
 
         setRecState('transcribing');
+        onProcessingRef.current?.(true); // Signal: refining transcript
         try {
           const formData = new FormData();
           formData.append('audio', blob, `recording.${getFileExtension(mimeType)}`);
@@ -384,7 +391,9 @@ export function VoiceRecorder({
             const { text } = await res.json();
             if (text?.trim()) onTranscript(text.trim());
           }
+          onProcessingRef.current?.(false); // Signal: refinement done
         } catch (err: any) {
+          onProcessingRef.current?.(false);
           console.error('Transcription error:', err);
         }
         setRecState('idle');
