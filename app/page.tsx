@@ -423,17 +423,8 @@ export default function HomePage() {
         setPinnedRowIndex(rowIndex);
         fetchPatients();
 
-        // Create submission entries for each non-empty clinical section
-        const sectionFields = ['triageVitals', 'transcript', 'encounterNotes', 'additional', 'pastDocs'] as const;
-        for (const field of sectionFields) {
-          if (data[field]?.trim()) {
-            fetch(`/api/patients/${rowIndex}/submit`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ field, content: data[field], sheetName: savedSheet }),
-            }).catch(() => {});
-          }
-        }
+        // Note: POST /api/patients already wrote the clinical content to the Sheet.
+        // Do NOT also call /submit here — that would DOUBLE the content via append.
 
         // Generate note if requested (from ParseModal checkbox) or auto-analysis enabled
         const shouldGenerate = data._generateNote || getAutoAnalysis();

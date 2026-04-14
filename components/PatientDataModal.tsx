@@ -246,10 +246,9 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
     [userPhrases]
   );
 
-  // Sync state when patient changes
+  // Sync state when patient changes — MUST reset submissions to prevent cross-patient leaks
   useEffect(() => {
     if (patient) {
-      // Use dedicated encounterNotes column if available, fall back to splitting combined transcript
       if (patient.encounterNotes) {
         setTranscript(patient.transcript || '');
         setEncounterNotes(patient.encounterNotes);
@@ -261,6 +260,12 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
       setTriageVitals(patient.triageVitals || '');
       setAdditional(patient.additional || '');
       setPastDocs(patient.pastDocs || '');
+      // Reset submission tracking for new patient
+      setSubmissions([]);
+      setHoveredSub(null);
+      setPendingSubmit(null);
+      setSubmitTitle('');
+      setSubmitDate('');
     }
   }, [patient]);
 
