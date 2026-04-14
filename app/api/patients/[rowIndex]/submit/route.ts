@@ -16,6 +16,16 @@ export async function POST(
     if (!field || typeof content !== 'string') {
       return NextResponse.json({ error: 'field and content are required' }, { status: 400 });
     }
+    if (!sheetName) {
+      return NextResponse.json({ error: 'sheetName is required' }, { status: 400 });
+    }
+
+    // Verify the patient exists at this rowIndex before saving
+    const { getPatient } = await import('@/lib/data-layer');
+    const patient = await getPatient(ctx, rowIndex, sheetName);
+    if (!patient) {
+      return NextResponse.json({ error: 'Patient not found at this row' }, { status: 404 });
+    }
 
     const entry: SubmissionEntry = {
       id: generateId('sub'),

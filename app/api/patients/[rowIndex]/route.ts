@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSheetsContext, getPatient, updatePatientFields, clearPatientRow, saveBillingRows, upsertDiagnosisCode, movePatientToSheet } from '@/lib/google-sheets';
+import { getDataContext, deletePatient } from '@/lib/data-layer';
 
 // GET /api/patients/[rowIndex]?sheet=Mar+03,+2026
 export async function GET(
@@ -97,11 +98,16 @@ export async function DELETE(
   { params }: { params: { rowIndex: string } }
 ) {
   try {
-    const ctx = await getSheetsContext();
     const rowIndex = parseInt(params.rowIndex);
     const sheetName = request.nextUrl.searchParams.get('sheet') || undefined;
 
-    await clearPatientRow(ctx, rowIndex, sheetName);
+    // Delete from both Drive AND Sheets
+    const ctx = await getDataContext();
+    await deletePatient(ctx, rowIndex, sheetName || '');
+
+    // Also clear the Sheets row (deletePatient handles Drive, clearPatientRow handles Sheets)
+    const sheetsCtx = await getSheetsContext();
+    await clearPatientRow(sheetsCtx, rowIndex, sheetName);
 
     return NextResponse.json({ success: true });
   } catch (error: any) {

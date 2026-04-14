@@ -488,10 +488,13 @@ export async function addSubmissionToDrive(
   if (!patient.submissions) patient.submissions = [];
   patient.submissions.push(entry);
 
-  // Update the flat field with submitted content
+  // Append to the flat field (don't replace — accumulate submissions)
   const field = entry.field as keyof import('./types-json').PatientFields;
   if (field in patient.data) {
-    (patient.data as unknown as Record<string, string>)[field] = entry.content;
+    const existing = (patient.data as unknown as Record<string, string>)[field] || '';
+    (patient.data as unknown as Record<string, string>)[field] = existing && entry.content
+      ? `${existing}\n\n${entry.content}`
+      : entry.content || existing;
   }
 
   patient.lastModified = new Date().toISOString();
