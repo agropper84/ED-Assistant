@@ -92,6 +92,7 @@ export default function HomePage() {
   const [shiftCode, setShiftCode] = useState('');
   const [shiftFee, setShiftFee] = useState('');
   const [shiftTotal, setShiftTotal] = useState('');
+  const [showDayTotal, setShowDayTotal] = useState(false);
 
   // Patient data modal
   const [dataModalPatient, setDataModalPatient] = useState<Patient | null>(null);
@@ -582,6 +583,14 @@ export default function HomePage() {
     }
     return parseTimeToMin(a.timestamp) - parseTimeToMin(b.timestamp);
   });
+
+  // Day total: sum of all patient visit fees + time-based shift fee
+  const visitFeesTotal = patients.reduce((sum, p) => {
+    const items = parseBillingItems(p.visitProcedure || '', p.procCode || '', p.fee || '', p.unit || '');
+    return sum + items.reduce((s, item) => s + (parseFloat(item.fee) || 0) * (parseInt(item.unit) || 1), 0);
+  }, 0);
+  const timeBasedFee = parseFloat(shiftTotal) || 0;
+  const dayTotal = visitFeesTotal + timeBasedFee;
 
   // Batch processing
   const pendingPatients = sortedPatients.filter(p => p.status === 'pending');
@@ -1199,7 +1208,14 @@ export default function HomePage() {
                     <span className="text-xs font-medium flex-shrink-0" style={{ color: 'var(--dash-text-sub)' }}>{shiftHours}h</span>
                   )}
                   {shiftCode && (
-                    <span className="text-[11px] font-mono font-medium flex-shrink-0" style={{ color: 'var(--dash-text-sub)' }}>{shiftCode}</span>
+                    <span
+                      onClick={() => setShowDayTotal(!showDayTotal)}
+                      className="text-[11px] font-mono font-medium flex-shrink-0 cursor-pointer hover:bg-white/[0.07] px-1.5 py-0.5 rounded transition-colors"
+                      style={{ color: showDayTotal ? 'var(--dash-text)' : 'var(--dash-text-sub)' }}
+                      title={showDayTotal ? 'Show fee code' : 'Show day total'}
+                    >
+                      {showDayTotal ? `$${dayTotal.toFixed(2)}` : shiftCode}
+                    </span>
                   )}
                 </>
               )}
