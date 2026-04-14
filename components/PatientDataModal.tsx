@@ -249,6 +249,21 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
   // Track which patient is currently loaded to detect actual patient changes vs data refreshes
   const currentPatientRef = useRef<string | null>(null);
 
+  // Populate text fields from patient data
+  const populateFromPatient = (p: Patient) => {
+    if (p.encounterNotes) {
+      setTranscript(p.transcript || '');
+      setEncounterNotes(p.encounterNotes);
+    } else {
+      const { transcript: t, encounterNotes: en } = splitTranscriptAndNotes(p.transcript || '');
+      setTranscript(t);
+      setEncounterNotes(en);
+    }
+    setTriageVitals(p.triageVitals || '');
+    setAdditional(p.additional || '');
+    setPastDocs(p.pastDocs || '');
+  };
+
   // Sync state when patient/modal changes
   useEffect(() => {
     if (!patient || !isOpen) return;
@@ -257,80 +272,28 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
     const isSamePatient = currentPatientRef.current === patientKey;
 
     if (!isSamePatient) {
-      // NEW patient or modal just opened — fetch submissions from server
+      // NEW patient or modal just opened
       currentPatientRef.current = patientKey;
 
-      // Clear text fields (user enters fresh content, submitted content is in tags)
-      setTranscript('');
-      setEncounterNotes('');
-      setTriageVitals('');
-      setAdditional('');
-      setPastDocs('');
+      // Always populate text fields from saved patient data (what's in the Sheet)
+      populateFromPatient(patient);
+
+      // Reset submission UI
       setHoveredSub(null);
       setPendingSubmit(null);
       setSubmitTitle('');
       setSubmitDate('');
 
-      // Load existing submissions from server
+      // Load existing submissions from server (shown as tags above text fields)
       fetch(`/api/patients/${patient.rowIndex}/submit?sheet=${encodeURIComponent(patient.sheetName)}`)
         .then(r => r.ok ? r.json() : { submissions: [] })
         .then(data => setSubmissions(data.submissions || []))
         .catch(() => setSubmissions([]));
-
-      // If there are NO submissions yet (fresh patient), populate text fields from patient data
-      // so user sees existing content. We check after a short delay to let the fetch complete.
-      // But we can also check synchronously: if the patient has content but we're about to
-      // fetch submissions, we should show content only if no submissions exist.
-      // Simplest approach: check if patient has content and pre-fill, then clear if submissions arrive.
-      const hasSubmittedContent = !!(patient.transcript || patient.encounterNotes || patient.triageVitals || patient.additional || patient.pastDocs);
-      if (hasSubmittedContent) {
-        // Pre-fill from patient data — will be visible until submissions load
-        // If submissions exist, the tags will show the history and fields stay clear
-        // If no submissions exist, this content is the "unsaved draft" and should show in text box
-        fetch(`/api/patients/${patient.rowIndex}/submit?sheet=${encodeURIComponent(patient.sheetName)}`)
-          .then(r => r.ok ? r.json() : { submissions: [] })
-          .then(data => {
-            const subs = data.submissions || [];
-            setSubmissions(subs);
-            if (subs.length === 0) {
-              // No submissions — show existing patient data in text boxes
-              if (patient.encounterNotes) {
-                setTranscript(patient.transcript || '');
-                setEncounterNotes(patient.encounterNotes);
-              } else {
-                const { transcript: t, encounterNotes: en } = splitTranscriptAndNotes(patient.transcript || '');
-                setTranscript(t);
-                setEncounterNotes(en);
-              }
-              setTriageVitals(patient.triageVitals || '');
-              setAdditional(patient.additional || '');
-              setPastDocs(patient.pastDocs || '');
-            }
-            // If submissions exist: text fields stay empty (ready for new input),
-            // submitted content is visible via tags
-          })
-          .catch(() => {
-            // On error, fall back to showing content in text boxes
-            if (patient.encounterNotes) {
-              setTranscript(patient.transcript || '');
-              setEncounterNotes(patient.encounterNotes);
-            } else {
-              const { transcript: t, encounterNotes: en } = splitTranscriptAndNotes(patient.transcript || '');
-              setTranscript(t);
-              setEncounterNotes(en);
-            }
-            setTriageVitals(patient.triageVitals || '');
-            setAdditional(patient.additional || '');
-            setPastDocs(patient.pastDocs || '');
-          });
-      } else {
-        setSubmissions([]);
-      }
     }
     // SAME patient refresh (after onSaved/fetchPatients) — do NOT touch text fields or submissions
   }, [patient, isOpen]);
 
-  // Clear ref when modal closes so next open fetches fresh
+  // Clear ref when modal closes so next open repopulates from patient data
   useEffect(() => {
     if (!isOpen) {
       currentPatientRef.current = null;
@@ -352,19 +315,18 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
     try {
       // Save current data first if changed
       if (hasChangesRef.current) {
-        await fetch(`/api/patients/${patient.rowIndex}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            _sheetName: patient.sheetName,
-            _patientName: patient.name,
-            transcript,
-            encounterNotes,
-            triageVitals,
-            additional,
-            pastDocs,
-          }),
-        });
+        const fields = buildFieldsToSave();
+        if (Object.keys(fields).length > 0) {
+          await fetch(`/api/patients/${patient.rowIndex}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              _sheetName: patient.sheetName,
+              _patientName: patient.name,
+              ...fields,
+            }),
+          });
+        }
       }
       const res = await fetch('/api/profile', {
         method: 'POST',
@@ -385,12 +347,9 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
   if (!isOpen || !patient) return null;
 
   const combinedTranscript = combineTranscriptAndNotes(transcript, encounterNotes);
-  const hasChanges =
-    transcript !== (patient.transcript || '') ||
-    encounterNotes !== (patient.encounterNotes || '') ||
-    triageVitals !== (patient.triageVitals || '') ||
-    additional !== (patient.additional || '') ||
-    pastDocs !== (patient.pastDocs || '');
+  // Only consider non-empty text boxes as "changes" — empty boxes should NOT overwrite saved/submitted data
+  const hasNewContent = !!(transcript.trim() || encounterNotes.trim() || triageVitals.trim() || additional.trim() || pastDocs.trim());
+  const hasChanges = hasNewContent;
   hasChangesRef.current = hasChanges;
 
   // Can generate note if any content exists beyond just triage/vitals
@@ -408,9 +367,25 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
     submissions.length > 0
   );
 
+  // Build fields object with only non-empty text box content (don't overwrite submitted data with empty)
+  const buildFieldsToSave = () => {
+    const fields: Record<string, string> = {};
+    if (transcript.trim()) fields.transcript = transcript;
+    if (encounterNotes.trim()) fields.encounterNotes = encounterNotes;
+    if (triageVitals.trim()) fields.triageVitals = triageVitals;
+    if (additional.trim()) fields.additional = additional;
+    if (pastDocs.trim()) fields.pastDocs = pastDocs;
+    return fields;
+  };
+
   const handleSave = async () => {
-    // Save user phrases for future autocomplete (fire-and-forget)
     savePhrasesInBackground(encounterNotes, additional);
+
+    const fields = buildFieldsToSave();
+    if (Object.keys(fields).length === 0) {
+      onSaved();
+      return;
+    }
 
     setSaving(true);
     try {
@@ -420,11 +395,7 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
         body: JSON.stringify({
           _sheetName: patient.sheetName,
           _patientName: patient.name,
-          transcript,
-          encounterNotes,
-          triageVitals,
-          additional,
-          pastDocs,
+          ...fields,
         }),
       });
       // Auto-update medical profile in background
@@ -775,21 +746,20 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
                 onClick={async () => {
                   setGenerating(true);
                   try {
-                    // Save first if there are changes
+                    // Save any new text box content first (won't overwrite submitted data)
                     if (hasChanges) {
-                      await fetch(`/api/patients/${patient.rowIndex}`, {
-                        method: 'PATCH',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                          _sheetName: patient.sheetName,
-                          _patientName: patient.name,
-                          transcript,
-                          encounterNotes,
-                          triageVitals,
-                          additional,
-                          pastDocs,
-                        }),
-                      });
+                      const fields = buildFieldsToSave();
+                      if (Object.keys(fields).length > 0) {
+                        await fetch(`/api/patients/${patient.rowIndex}`, {
+                          method: 'PATCH',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({
+                            _sheetName: patient.sheetName,
+                            _patientName: patient.name,
+                            ...fields,
+                          }),
+                        });
+                      }
                     }
                     const res = await fetch('/api/process', {
                       method: 'POST',
