@@ -42,7 +42,21 @@ export async function PATCH(
     const ctx = await getSheetsContext();
     const rowIndex = parseInt(params.rowIndex);
     const body = await request.json();
-    const { _sheetName, _billingItems, _upsertDiagnosis, _moveToSheet, ...fields } = body;
+    const { _sheetName, _billingItems, _upsertDiagnosis, _moveToSheet, _patientName, ...fields } = body;
+
+    // Verify patient exists and matches expected identity before any write
+    if (_sheetName) {
+      const existingPatient = await getPatient(ctx, rowIndex, _sheetName);
+      if (!existingPatient) {
+        return NextResponse.json({ error: 'Patient not found at this row' }, { status: 404 });
+      }
+      if (_patientName && existingPatient.name && existingPatient.name !== _patientName) {
+        return NextResponse.json(
+          { error: 'Patient identity mismatch — please close and reopen the chart.' },
+          { status: 409 }
+        );
+      }
+    }
 
     // Move patient to a different date sheet
     if (_moveToSheet) {

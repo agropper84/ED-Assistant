@@ -99,10 +99,16 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           field, content, sheetName: patient.sheetName,
+          patientName: patient.name, // identity verification
           ...(submitTitle.trim() ? { title: submitTitle.trim() } : {}),
           ...(submitDate ? { date: submitDate } : {}),
         }),
       });
+      if (res.status === 409) {
+        const data = await res.json();
+        alert(data.error || 'Patient identity mismatch. Please close and reopen.');
+        return;
+      }
       if (res.ok) {
         const data = await res.json();
         setSubmissions(prev => [...prev, data.entry]);
@@ -278,6 +284,7 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             _sheetName: patient.sheetName,
+            _patientName: patient.name,
             transcript,
             encounterNotes,
             triageVitals,
@@ -339,6 +346,7 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           _sheetName: patient.sheetName,
+          _patientName: patient.name,
           transcript,
           encounterNotes,
           triageVitals,
@@ -701,6 +709,7 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
                           _sheetName: patient.sheetName,
+                          _patientName: patient.name,
                           transcript,
                           encounterNotes,
                           triageVitals,

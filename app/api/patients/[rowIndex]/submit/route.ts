@@ -11,7 +11,7 @@ export async function POST(
   try {
     const ctx = await getDataContext();
     const rowIndex = parseInt(params.rowIndex);
-    const { field, content, sheetName, title, date } = await request.json();
+    const { field, content, sheetName, title, date, patientName } = await request.json();
 
     if (!field || typeof content !== 'string') {
       return NextResponse.json({ error: 'field and content are required' }, { status: 400 });
@@ -20,11 +20,20 @@ export async function POST(
       return NextResponse.json({ error: 'sheetName is required' }, { status: 400 });
     }
 
-    // Verify the patient exists at this rowIndex before saving
+    // Verify the patient exists at this rowIndex
     const { getPatient } = await import('@/lib/data-layer');
     const patient = await getPatient(ctx, rowIndex, sheetName);
     if (!patient) {
       return NextResponse.json({ error: 'Patient not found at this row' }, { status: 404 });
+    }
+
+    // Identity verification — ensure the patient at this row is who the caller expects
+    if (patientName && patient.name && patient.name !== patientName) {
+      console.error(`Patient identity mismatch! Expected "${patientName}" at row ${rowIndex}, found "${patient.name}"`);
+      return NextResponse.json(
+        { error: 'Patient identity mismatch — the patient at this row has changed. Please close and reopen the chart.' },
+        { status: 409 }
+      );
     }
 
     const entry: SubmissionEntry = {
