@@ -2,37 +2,49 @@ import { google, type Auth } from 'googleapis';
 
 const HEADER_ROW = 7; // Row 7 has column headers (1-indexed)
 
-const HEADERS = [
-  '#',           // A
-  'Time',        // B
-  'Patient Name',// C
-  'Age',         // D
-  'Gender',      // E
-  'DOB',         // F
-  'HCN',         // G
-  'MRN',         // H
-  'Diagnosis',   // I
-  'ICD-9',       // J
-  'ICD-10',      // K
-  'Procedure',   // L
-  'Code',        // M
-  'Fee',         // N
-  'Unit',        // O
-  'Total',       // P
-  'Comments',    // Q
-  'Triage/Vitals',// R
-  'Transcript',  // S
-  'Additional',  // T
-  'DDx',         // U
-  'Investigations',// V
-  'HPI',         // W
-  'Objective',   // X
+// Billing sheet headers (columns A-Q)
+const BILLING_HEADERS = [
+  '#',             // A - Patient number
+  'Time',          // B - Encounter time
+  'Patient Name',  // C
+  'Age',           // D
+  'Gender',        // E
+  'DOB',           // F - Date of birth
+  'HCN',           // G - Health card number
+  'MRN',           // H - Medical record number
+  'Diagnosis',     // I
+  'ICD-9',         // J
+  'ICD-10',        // K
+  'Procedure',     // L - Visit procedure description
+  'Code',          // M - Billing code
+  'Fee',           // N - Fee amount
+  'Unit',          // O - Number of units
+  'Total',         // P - Total fee
+  'Comments',      // Q - Billing comments
+];
+
+// Legacy: full headers for backward compat (A-AJ in single sheet)
+const LEGACY_HEADERS = [
+  ...BILLING_HEADERS,
+  'Triage/Vitals',     // R
+  'Transcript',        // S
+  'Additional',        // T
+  'DDx',               // U
+  'Investigations',    // V
+  'HPI',               // W
+  'Objective',         // X
   'Assessment & Plan', // Y
-  'Referral',    // Z
-  'Past Docs',   // AA
-  'Synopsis',    // AB
-  'Management',  // AC
-  'Evidence',    // AD
+  'Referral',          // Z
+  'Past Docs',         // AA
+  'Synopsis',          // AB
+  'Management',        // AC
+  'Evidence',          // AD
+  'A&P Notes',         // AE
+  'Clinical Q&A',      // AF
+  'Education',         // AG
+  'Encounter Notes',   // AH
+  'Admission',         // AI
+  'Profile',           // AJ
 ];
 
 export async function createUserSpreadsheet(
@@ -53,7 +65,7 @@ export async function createUserSpreadsheet(
             title: 'Template',
             gridProperties: {
               rowCount: 200,
-              columnCount: 30, // A through AD
+              columnCount: 36, // A through AJ
             },
           },
         },
@@ -64,17 +76,17 @@ export async function createUserSpreadsheet(
   const spreadsheetId = response.data.spreadsheetId!;
   const sheetId = response.data.sheets![0].properties!.sheetId!;
 
-  // Write header row at row 7
+  // Write full legacy header row at row 7
   await sheets.spreadsheets.values.update({
     spreadsheetId,
-    range: `'Template'!A${HEADER_ROW}:AD${HEADER_ROW}`,
+    range: `'Template'!A${HEADER_ROW}:AJ${HEADER_ROW}`,
     valueInputOption: 'RAW',
     requestBody: {
-      values: [HEADERS],
+      values: [LEGACY_HEADERS],
     },
   });
 
-  // Apply formatting: bold header row, freeze rows above data
+  // Apply formatting
   await sheets.spreadsheets.batchUpdate({
     spreadsheetId,
     requestBody: {
@@ -84,10 +96,10 @@ export async function createUserSpreadsheet(
           repeatCell: {
             range: {
               sheetId,
-              startRowIndex: HEADER_ROW - 1, // 0-indexed
+              startRowIndex: HEADER_ROW - 1,
               endRowIndex: HEADER_ROW,
               startColumnIndex: 0,
-              endColumnIndex: 30,
+              endColumnIndex: 36,
             },
             cell: {
               userEnteredFormat: {
@@ -108,25 +120,11 @@ export async function createUserSpreadsheet(
             fields: 'gridProperties.frozenRowCount',
           },
         },
-        // Set column widths for key columns
+        // Column widths
         {
           updateDimensionProperties: {
-            range: { sheetId, dimension: 'COLUMNS', startIndex: 2, endIndex: 3 }, // C: Patient Name
+            range: { sheetId, dimension: 'COLUMNS', startIndex: 2, endIndex: 3 },
             properties: { pixelSize: 180 },
-            fields: 'pixelSize',
-          },
-        },
-        {
-          updateDimensionProperties: {
-            range: { sheetId, dimension: 'COLUMNS', startIndex: 17, endIndex: 20 }, // R-T: Triage, Transcript, Additional
-            properties: { pixelSize: 300 },
-            fields: 'pixelSize',
-          },
-        },
-        {
-          updateDimensionProperties: {
-            range: { sheetId, dimension: 'COLUMNS', startIndex: 22, endIndex: 25 }, // W-Y: HPI, Objective, Assessment
-            properties: { pixelSize: 400 },
             fields: 'pixelSize',
           },
         },

@@ -273,7 +273,7 @@ export async function getOrCreateDateSheet(ctx: SheetsContext, dateOrName?: Date
 
   const newSheetId = dupResponse.data.sheetId;
 
-  // Rename the duplicated sheet and ensure it has enough columns (30 = AD)
+  // Rename the duplicated sheet (billing sheet)
   await sheets.spreadsheets.batchUpdate({
     spreadsheetId,
     requestBody: {
@@ -296,6 +296,79 @@ export async function getOrCreateDateSheet(ctx: SheetsContext, dateOrName?: Date
       ],
     },
   });
+
+  // Create the clinical companion sheet
+  const clinicalName = clinicalSheetName(sheetName);
+  const existsClinical = allSheets.some((s: any) => s.properties.title === clinicalName);
+  if (!existsClinical) {
+    try {
+      const clinicalRes = await sheets.spreadsheets.batchUpdate({
+        spreadsheetId,
+        requestBody: {
+          requests: [{
+            addSheet: {
+              properties: {
+                title: clinicalName,
+                gridProperties: { rowCount: 200, columnCount: 21 },
+              },
+            },
+          }],
+        },
+      });
+      const clinicalSheetId = clinicalRes.data.replies?.[0]?.addSheet?.properties?.sheetId;
+
+      // Write clinical headers at row 7
+      const clinicalHeaders = [
+        'Patient Name', 'HCN',
+        'Triage & Vitals', 'Transcript', 'Encounter Notes', 'Additional Findings',
+        'Past Documentation', 'Differential Diagnosis', 'Investigations', 'HPI',
+        'Objective', 'Assessment & Plan', 'Referral',
+        'Synopsis', 'Management', 'Evidence',
+        'A&P Notes', 'Clinical Q&A', 'Education',
+        'Admission', 'Profile',
+      ];
+      await sheets.spreadsheets.values.update({
+        spreadsheetId,
+        range: `'${clinicalName}'!A7:U7`,
+        valueInputOption: 'RAW',
+        requestBody: { values: [clinicalHeaders] },
+      });
+
+      // Format clinical sheet headers
+      if (clinicalSheetId) {
+        await sheets.spreadsheets.batchUpdate({
+          spreadsheetId,
+          requestBody: {
+            requests: [
+              {
+                repeatCell: {
+                  range: { sheetId: clinicalSheetId, startRowIndex: 6, endRowIndex: 7, startColumnIndex: 0, endColumnIndex: 21 },
+                  cell: { userEnteredFormat: { textFormat: { bold: true }, backgroundColor: { red: 0.9, green: 0.92, blue: 0.98 } } },
+                  fields: 'userEnteredFormat(textFormat,backgroundColor)',
+                },
+              },
+              {
+                updateSheetProperties: {
+                  properties: { sheetId: clinicalSheetId, gridProperties: { frozenRowCount: 7 } },
+                  fields: 'gridProperties.frozenRowCount',
+                },
+              },
+              // Wider columns for text content
+              {
+                updateDimensionProperties: {
+                  range: { sheetId: clinicalSheetId, dimension: 'COLUMNS', startIndex: 2, endIndex: 13 },
+                  properties: { pixelSize: 300 },
+                  fields: 'pixelSize',
+                },
+              },
+            ],
+          },
+        });
+      }
+    } catch (e) {
+      console.warn('Failed to create clinical sheet:', (e as Error).message);
+    }
+  }
 
   // Write sheet header layout:
   // A1: Date
@@ -829,7 +902,43 @@ export async function getPatient(ctx: SheetsContext, rowIndex: number, sheetName
   return patient;
 }
 
-/** Update specific columns for a patient */
+// Column maps for the two-sheet dev mirror
+const BILLING_COLUMN_MAP: Record<string, string> = {
+  patientNum: 'A', timestamp: 'B', name: 'C', age: 'D', gender: 'E', birthday: 'F',
+  hcn: 'G', mrn: 'H', diagnosis: 'I', icd9: 'J', icd10: 'K',
+  visitProcedure: 'L', procCode: 'M', fee: 'N', unit: 'O', total: 'P', comments: 'Q',
+};
+
+const CLINICAL_COLUMN_MAP: Record<string, string> = {
+  // A = name, B = HCN (identity columns written separately)
+  triageVitals: 'C', transcript: 'D', encounterNotes: 'E', additional: 'F',
+  pastDocs: 'G', ddx: 'H', investigations: 'I', hpi: 'J',
+  objective: 'K', assessmentPlan: 'L', referral: 'M',
+  synopsis: 'N', management: 'O', evidence: 'P',
+  apNotes: 'Q', clinicalQA: 'R', education: 'S',
+  admission: 'T', profile: 'U',
+};
+
+// For backward compat: combined map for reading from old single-sheet format
+const LEGACY_COLUMN_MAP: Record<string, string> = {
+  patientNum: 'A', name: 'C', age: 'D', gender: 'E', birthday: 'F',
+  hcn: 'G', mrn: 'H', diagnosis: 'I', timestamp: 'B',
+  icd9: 'J', icd10: 'K',
+  visitProcedure: 'L', procCode: 'M', fee: 'N', unit: 'O', total: 'P', comments: 'Q',
+  triageVitals: 'R', transcript: 'S', additional: 'T',
+  ddx: 'U', investigations: 'V', hpi: 'W',
+  objective: 'X', assessmentPlan: 'Y', referral: 'Z',
+  pastDocs: 'AA', synopsis: 'AB', management: 'AC', evidence: 'AD',
+  apNotes: 'AE', clinicalQA: 'AF', education: 'AG',
+  encounterNotes: 'AH', admission: 'AI', profile: 'AJ',
+};
+
+/** Clinical sheet name suffix */
+export function clinicalSheetName(billingSheet: string): string {
+  return `${billingSheet} - Clinical`;
+}
+
+/** Update specific columns for a patient — writes to billing and clinical sheets */
 export async function updatePatientFields(
   ctx: SheetsContext,
   rowIndex: number,
@@ -837,42 +946,37 @@ export async function updatePatientFields(
   sheetName?: string
 ): Promise<void> {
   const sheet = sheetName || getTodaySheetName();
+  const clinicalSheet = clinicalSheetName(sheet);
   const { sheets, spreadsheetId } = ctx;
 
-  const columnMap: Record<string, string> = {
-    patientNum: 'A', name: 'C', age: 'D', gender: 'E', birthday: 'F',
-    hcn: 'G', mrn: 'H', diagnosis: 'I', timestamp: 'B',
-    icd9: 'J', icd10: 'K',
-    visitProcedure: 'L', procCode: 'M', fee: 'N', unit: 'O', total: 'P', comments: 'Q',
-    triageVitals: 'R', transcript: 'S', additional: 'T',
-    ddx: 'U', investigations: 'V', hpi: 'W',
-    objective: 'X', assessmentPlan: 'Y', referral: 'Z',
-    pastDocs: 'AA',
-    synopsis: 'AB',
-    management: 'AC',
-    evidence: 'AD',
-    apNotes: 'AE',
-    clinicalQA: 'AF',
-    education: 'AG',
-    encounterNotes: 'AH',
-    admission: 'AI',
-    profile: 'AJ',
-  };
+  const data: Array<{ range: string; values: string[][] }> = [];
 
-  const data = Object.entries(fields)
-    .filter(([field]) => columnMap[field])
-    .map(([field, value]) => ({
-      range: `'${sheet}'!${columnMap[field]}${rowIndex}`,
-      values: [[value]],
-    }));
+  // Split fields into billing and clinical
+  for (const [field, value] of Object.entries(fields)) {
+    if (BILLING_COLUMN_MAP[field]) {
+      data.push({ range: `'${sheet}'!${BILLING_COLUMN_MAP[field]}${rowIndex}`, values: [[value]] });
+    }
+    if (CLINICAL_COLUMN_MAP[field]) {
+      data.push({ range: `'${clinicalSheet}'!${CLINICAL_COLUMN_MAP[field]}${rowIndex}`, values: [[value]] });
+    }
+    // Also write name + HCN to clinical sheet identity columns
+    if (field === 'name') {
+      data.push({ range: `'${clinicalSheet}'!A${rowIndex}`, values: [[value]] });
+    }
+    if (field === 'hcn') {
+      data.push({ range: `'${clinicalSheet}'!B${rowIndex}`, values: [[value]] });
+    }
+    // Legacy: also write to old single-sheet format for backward compat
+    if (LEGACY_COLUMN_MAP[field]) {
+      data.push({ range: `'${sheet}'!${LEGACY_COLUMN_MAP[field]}${rowIndex}`, values: [[value]] });
+    }
+  }
 
   if (data.length === 0) return;
 
-  // If writing to columns beyond Z, ensure the sheet has enough columns
-  const needsExpand = data.some(d => /![A-Z]{2,}/.test(d.range));
-  if (needsExpand) {
-    await ensureColumnCount(ctx, sheet, 36);
-  }
+  // Ensure both sheets have enough columns
+  await ensureColumnCount(ctx, sheet, 36).catch(() => {});
+  await ensureColumnCount(ctx, clinicalSheet, 21).catch(() => {}); // A-U
 
   await sheets.spreadsheets.values.batchUpdate({
     spreadsheetId,
