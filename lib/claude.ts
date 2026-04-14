@@ -268,8 +268,23 @@ function buildPrompt(patientData: PatientData, options?: ProcessOptions): string
     dataSection += `TRANSCRIPT OF ENCOUNTER:\n${patientData.transcript}\n\n`;
   }
 
-  if (patientData.additional) {
-    dataSection += `ADDITIONAL FINDINGS (exam, investigations, plan):\n${patientData.additional}\n\n`;
+  // Extract verbatim exam findings (from toggle buttons) vs free-text
+  let verbatimExamFindings: string[] = [];
+  let additionalText = patientData.additional || '';
+  if (additionalText) {
+    const verbatimRegex = /\[VERBATIM_EXAM\]([\s\S]*?)\[\/VERBATIM_EXAM\]/g;
+    let match;
+    while ((match = verbatimRegex.exec(additionalText)) !== null) {
+      verbatimExamFindings.push(match[1].trim());
+    }
+    // Remove markers for the data section (Claude sees clean text)
+    additionalText = additionalText
+      .replace(/\[VERBATIM_EXAM\]/g, '')
+      .replace(/\[\/VERBATIM_EXAM\]/g, '')
+      .trim();
+  }
+  if (additionalText) {
+    dataSection += `ADDITIONAL FINDINGS (exam, investigations, plan):\n${additionalText}\n\n`;
   }
 
   if (patientData.pastDocs) {
@@ -385,7 +400,7 @@ Respond in EXACTLY this format with these exact headers:
   })()}]
 
 ===OBJECTIVE===
-[${pt.objective}${(() => {
+[${pt.objective}${verbatimExamFindings.length > 0 ? `\n\nCRITICAL — VERBATIM EXAM FINDINGS: The following exam findings were entered by the physician using standardized buttons and MUST be included word-for-word in the Objective section. Do NOT rephrase, summarize, or alter these findings:\n${verbatimExamFindings.join('\n')}` : ''}${(() => {
     const ex = options?.styleExamples?.objective;
     if (ex && ex.length > 0) {
       return `\n\nYou MUST write the Objective in the same style as these examples:\n${ex.map((e, i) => `--- Example ${i + 1} ---\n${e}`).join('\n\n')}\n\nMatch this physician's exact formatting, abbreviation use, and level of detail.`;

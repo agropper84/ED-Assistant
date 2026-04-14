@@ -20,17 +20,22 @@ export function ExamToggles({ value, onChange }: ExamTogglesProps) {
   };
 
   const toggle = (system: { text: string }) => {
-    if (isActive(system)) {
-      // Remove - strip the text and any surrounding newlines
+    const markedText = `[VERBATIM_EXAM]${system.text}[/VERBATIM_EXAM]`;
+    const isMarked = value.includes(markedText);
+    const isUnmarked = !isMarked && value.includes(system.text);
+
+    if (isMarked || isUnmarked) {
+      // Remove — strip the marked or unmarked version
       const newValue = value
+        .replace(markedText, '')
         .replace(system.text, '')
         .replace(/\n{3,}/g, '\n\n')
         .trim();
       onChange(newValue);
     } else {
-      // Append
+      // Append with verbatim marker
       const separator = value.trim() ? '\n' : '';
-      onChange(value.trim() + separator + system.text);
+      onChange(value.trim() + separator + markedText);
     }
   };
 
