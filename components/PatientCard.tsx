@@ -140,7 +140,7 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
   };
 
   const hasEncounterNote = !!(patient.hpi || patient.objective || patient.assessmentPlan);
-  const hasAnalysis = !!(patient.synopsis || patient.ddx || patient.evidence);
+  const hasAnalysis = !!(patient.synopsis || patient.ddx || patient.investigations || patient.management || patient.evidence);
 
   // Parse profile JSON for display
   let parsedProfile: PatientProfile | null = null;
@@ -387,64 +387,84 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
                 )}
               </div>
 
-              {/* Differential Diagnosis — violet */}
+              {/* DDx & Investigations — violet */}
               <div className="relative flex-shrink-0">
                 <span
                   ref={tooltipRefs.ddx}
-                  onMouseEnter={() => patient.ddx && showTooltip('ddx')}
+                  onMouseEnter={() => (patient.ddx || patient.investigations) && showTooltip('ddx')}
                   onMouseLeave={hideTooltip}
                   onClick={(e) => {
                     e.stopPropagation();
-                    if (!patient.ddx && onGenerateAnalysis && !generatingIcon) {
+                    if (!patient.ddx && !patient.investigations && onGenerateAnalysis && !generatingIcon) {
                       setGeneratingIcon('management');
                       onGenerateAnalysis().finally(() => setGeneratingIcon(null));
-                    } else if (patient.ddx && onNavigate) { onNavigate(); }
+                    } else if ((patient.ddx || patient.investigations) && onNavigate) { onNavigate(); }
                   }}
-                  className={`p-0.5 rounded transition-colors inline-flex ${patient.ddx || onGenerateAnalysis ? 'hover:bg-violet-50 dark:hover:bg-violet-900/30 cursor-pointer' : ''}`}
-                  title={patient.ddx ? '' : 'Generate differential diagnosis'}
+                  className={`p-0.5 rounded transition-colors inline-flex ${patient.ddx || patient.investigations || onGenerateAnalysis ? 'hover:bg-violet-50 dark:hover:bg-violet-900/30 cursor-pointer' : ''}`}
+                  title={patient.ddx || patient.investigations ? '' : 'Generate DDx & investigations'}
                 >
-                  {generatingIcon === 'management' ? <Loader2 className="w-4 h-4 text-violet-400 animate-spin" /> : <ListTree className={`w-3.5 h-3.5 ${patient.ddx ? 'text-violet-600 dark:text-violet-400' : EMPTY}`} />}
+                  {generatingIcon === 'management' ? <Loader2 className="w-4 h-4 text-violet-400 animate-spin" /> : <ListTree className={`w-3.5 h-3.5 ${patient.ddx || patient.investigations ? 'text-violet-600 dark:text-violet-400' : EMPTY}`} />}
                 </span>
-                {patient.ddx && (
+                {(patient.ddx || patient.investigations) && (
                   <IconTooltip anchorRef={tooltipRefs.ddx} visible={activeTooltip === 'ddx'}>
                     <div onMouseEnter={keepTooltip} onMouseLeave={hideTooltip}>
-                      <span className="text-violet-400 font-medium block mb-1">Differential Diagnosis</span>
-                      <p className="whitespace-pre-wrap leading-relaxed">{patient.ddx}</p>
+                      {patient.ddx && (
+                        <>
+                          <span className="text-violet-400 font-medium block mb-1">Differential Diagnosis</span>
+                          <p className="whitespace-pre-wrap leading-relaxed mb-2">{patient.ddx}</p>
+                        </>
+                      )}
+                      {patient.investigations && (
+                        <>
+                          <span className="text-violet-400 font-medium block mb-1 border-t border-white/10 pt-2">Investigations</span>
+                          <p className="whitespace-pre-wrap leading-relaxed">{patient.investigations}</p>
+                        </>
+                      )}
                     </div>
                   </IconTooltip>
                 )}
               </div>
 
-              {/* Evidence — amber */}
+              {/* Management & Evidence — amber */}
               <div className="relative flex-shrink-0">
                 <span
                   ref={tooltipRefs.evidence}
-                  onMouseEnter={() => patient.evidence && showTooltip('evidence')}
+                  onMouseEnter={() => (patient.management || patient.evidence) && showTooltip('evidence')}
                   onMouseLeave={hideTooltip}
                   onClick={(e) => {
                     e.stopPropagation();
-                    if (!patient.evidence && (onGenerateEvidence || onGenerateAnalysis) && !generatingIcon) {
+                    if (!patient.management && !patient.evidence && (onGenerateEvidence || onGenerateAnalysis) && !generatingIcon) {
                       setGeneratingIcon('evidence');
                       (onGenerateEvidence || onGenerateAnalysis)!().finally(() => setGeneratingIcon(null));
-                    } else if (patient.evidence && onNavigate) { onNavigate(); }
+                    } else if ((patient.management || patient.evidence) && onNavigate) { onNavigate(); }
                   }}
-                  className={`p-0.5 rounded transition-colors inline-flex ${patient.evidence || onGenerateEvidence || onGenerateAnalysis ? 'hover:bg-amber-50 dark:hover:bg-amber-900/30 cursor-pointer' : ''}`}
-                  title={patient.evidence ? '' : 'Generate evidence'}
+                  className={`p-0.5 rounded transition-colors inline-flex ${patient.management || patient.evidence || onGenerateEvidence || onGenerateAnalysis ? 'hover:bg-amber-50 dark:hover:bg-amber-900/30 cursor-pointer' : ''}`}
+                  title={patient.management || patient.evidence ? '' : 'Generate management & evidence'}
                 >
-                  {generatingIcon === 'evidence' ? <Loader2 className="w-4 h-4 text-amber-400 animate-spin" /> : <BookOpen className={`w-3.5 h-3.5 ${patient.evidence ? 'text-amber-600 dark:text-amber-400' : EMPTY}`} />}
+                  {generatingIcon === 'evidence' ? <Loader2 className="w-4 h-4 text-amber-400 animate-spin" /> : <BookOpen className={`w-3.5 h-3.5 ${patient.management || patient.evidence ? 'text-amber-600 dark:text-amber-400' : EMPTY}`} />}
                 </span>
-                {patient.evidence && (
+                {(patient.management || patient.evidence) && (
                   <IconTooltip anchorRef={tooltipRefs.evidence} visible={activeTooltip === 'evidence'}>
                     <div onMouseEnter={keepTooltip} onMouseLeave={hideTooltip}>
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-amber-400 font-medium">Evidence</span>
-                        {onSaveResource && (
-                          <button onClick={(e) => { e.stopPropagation(); onSaveResource({ type: 'evidence', content: patient.evidence, patientName: patient.name, diagnosis: patient.diagnosis }); }} className="p-0.5 rounded hover:bg-white/10 transition-colors" title={savedResourceKey?.('evidence') ? 'Saved' : 'Save to library'}>
-                            <Bookmark className="w-3.5 h-3.5 text-amber-400" fill={savedResourceKey?.('evidence') ? 'currentColor' : 'none'} />
-                          </button>
-                        )}
-                      </div>
-                      <p className="whitespace-pre-wrap leading-relaxed"><Linkified text={patient.evidence} /></p>
+                      {patient.management && (
+                        <>
+                          <span className="text-amber-400 font-medium block mb-1">Management</span>
+                          <p className="whitespace-pre-wrap leading-relaxed mb-2">{patient.management}</p>
+                        </>
+                      )}
+                      {patient.evidence && (
+                        <>
+                          <div className="flex items-center justify-between mb-1 border-t border-white/10 pt-2">
+                            <span className="text-amber-400 font-medium">Evidence</span>
+                            {onSaveResource && (
+                              <button onClick={(e) => { e.stopPropagation(); onSaveResource({ type: 'evidence', content: patient.evidence, patientName: patient.name, diagnosis: patient.diagnosis }); }} className="p-0.5 rounded hover:bg-white/10 transition-colors" title={savedResourceKey?.('evidence') ? 'Saved' : 'Save to library'}>
+                                <Bookmark className="w-3.5 h-3.5 text-amber-400" fill={savedResourceKey?.('evidence') ? 'currentColor' : 'none'} />
+                              </button>
+                            )}
+                          </div>
+                          <p className="whitespace-pre-wrap leading-relaxed"><Linkified text={patient.evidence} /></p>
+                        </>
+                      )}
                     </div>
                   </IconTooltip>
                 )}
