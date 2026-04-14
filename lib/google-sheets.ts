@@ -273,7 +273,7 @@ export async function getOrCreateDateSheet(ctx: SheetsContext, dateOrName?: Date
 
   const newSheetId = dupResponse.data.sheetId;
 
-  // Rename the duplicated sheet (billing sheet)
+  // Rename the duplicated sheet (billing sheet) — limit to 17 columns (A-Q)
   await sheets.spreadsheets.batchUpdate({
     spreadsheetId,
     requestBody: {
@@ -288,9 +288,97 @@ export async function getOrCreateDateSheet(ctx: SheetsContext, dateOrName?: Date
           updateSheetProperties: {
             properties: {
               sheetId: newSheetId,
-              gridProperties: { columnCount: 36 },
+              gridProperties: { columnCount: 17 },
             },
             fields: 'gridProperties.columnCount',
+          },
+        },
+      ],
+    },
+  });
+
+  // Format A1:G6 — time-based fee header section
+  await sheets.spreadsheets.batchUpdate({
+    spreadsheetId,
+    requestBody: {
+      requests: [
+        // A1 — Date: bold, larger font
+        {
+          repeatCell: {
+            range: { sheetId: newSheetId, startRowIndex: 0, endRowIndex: 1, startColumnIndex: 0, endColumnIndex: 4 },
+            cell: { userEnteredFormat: { textFormat: { bold: true, fontSize: 12 } } },
+            fields: 'userEnteredFormat(textFormat)',
+          },
+        },
+        // A3 — "TIME BASED FEE" header: bold, background
+        {
+          repeatCell: {
+            range: { sheetId: newSheetId, startRowIndex: 2, endRowIndex: 3, startColumnIndex: 0, endColumnIndex: 7 },
+            cell: { userEnteredFormat: { textFormat: { bold: true, fontSize: 10 }, backgroundColor: { red: 0.95, green: 0.95, blue: 0.95 } } },
+            fields: 'userEnteredFormat(textFormat,backgroundColor)',
+          },
+        },
+        // A4:G4 — Sub-headers (START, END, etc.): bold, centered, light border
+        {
+          repeatCell: {
+            range: { sheetId: newSheetId, startRowIndex: 3, endRowIndex: 4, startColumnIndex: 0, endColumnIndex: 7 },
+            cell: {
+              userEnteredFormat: {
+                textFormat: { bold: true, fontSize: 9 },
+                horizontalAlignment: 'CENTER',
+                backgroundColor: { red: 0.93, green: 0.93, blue: 0.96 },
+                borders: {
+                  bottom: { style: 'SOLID', width: 1, color: { red: 0.7, green: 0.7, blue: 0.7 } },
+                },
+              },
+            },
+            fields: 'userEnteredFormat(textFormat,horizontalAlignment,backgroundColor,borders)',
+          },
+        },
+        // A5:G5 — Shift time values: centered
+        {
+          repeatCell: {
+            range: { sheetId: newSheetId, startRowIndex: 4, endRowIndex: 5, startColumnIndex: 0, endColumnIndex: 7 },
+            cell: { userEnteredFormat: { horizontalAlignment: 'CENTER' } },
+            fields: 'userEnteredFormat(horizontalAlignment)',
+          },
+        },
+        // Row 7 header — bold, background (billing headers A-Q)
+        {
+          repeatCell: {
+            range: { sheetId: newSheetId, startRowIndex: 6, endRowIndex: 7, startColumnIndex: 0, endColumnIndex: 17 },
+            cell: {
+              userEnteredFormat: {
+                textFormat: { bold: true },
+                backgroundColor: { red: 0.88, green: 0.9, blue: 0.95 },
+                borders: {
+                  bottom: { style: 'SOLID', width: 1, color: { red: 0.6, green: 0.6, blue: 0.7 } },
+                },
+              },
+            },
+            fields: 'userEnteredFormat(textFormat,backgroundColor,borders)',
+          },
+        },
+        // Column widths for billing
+        {
+          updateDimensionProperties: {
+            range: { sheetId: newSheetId, dimension: 'COLUMNS', startIndex: 2, endIndex: 3 }, // C: Patient Name
+            properties: { pixelSize: 160 },
+            fields: 'pixelSize',
+          },
+        },
+        {
+          updateDimensionProperties: {
+            range: { sheetId: newSheetId, dimension: 'COLUMNS', startIndex: 8, endIndex: 9 }, // I: Diagnosis
+            properties: { pixelSize: 180 },
+            fields: 'pixelSize',
+          },
+        },
+        {
+          updateDimensionProperties: {
+            range: { sheetId: newSheetId, dimension: 'COLUMNS', startIndex: 11, endIndex: 12 }, // L: Procedure
+            properties: { pixelSize: 160 },
+            fields: 'pixelSize',
           },
         },
       ],
@@ -370,13 +458,15 @@ export async function getOrCreateDateSheet(ctx: SheetsContext, dateOrName?: Date
     }
   }
 
-  // Write sheet header layout:
+  // Write billing sheet layout:
   // A1: Date
   // A3: "TIME BASED FEE" header
-  // A4:F4: START, END, HOURS, FEE TYPE, CODE, TOTAL
-  // A5:F5: values (auto-populated from shift times)
+  // A4:G4: START, END, HOURS, FEE TYPE, CODE, FEE, TOTAL
+  // A7:Q7: Billing column headers
   const today = dateOrName instanceof Date ? dateOrName : localNow();
   const dateStr = `${today.getMonth() + 1}/${today.getDate()}/${today.getFullYear()}`;
+  const billingHeaders = ['#', 'Time', 'Patient Name', 'Age', 'Gender', 'DOB', 'HCN', 'MRN',
+    'Diagnosis', 'ICD-9', 'ICD-10', 'Procedure', 'Code', 'Fee', 'Unit', 'Total', 'Comments'];
   await sheets.spreadsheets.values.batchUpdate({
     spreadsheetId,
     requestBody: {
@@ -385,6 +475,7 @@ export async function getOrCreateDateSheet(ctx: SheetsContext, dateOrName?: Date
         { range: `'${sheetName}'!A1`, values: [[dateStr]] },
         { range: `'${sheetName}'!A3`, values: [['TIME BASED FEE']] },
         { range: `'${sheetName}'!A4:G4`, values: [['START', 'END', 'HOURS', 'FEE TYPE', 'CODE', 'FEE', 'TOTAL']] },
+        { range: `'${sheetName}'!A7:Q7`, values: [billingHeaders] },
       ],
     },
   });
@@ -974,8 +1065,7 @@ export async function updatePatientFields(
 
   if (data.length === 0) return;
 
-  // Ensure both sheets have enough columns
-  await ensureColumnCount(ctx, sheet, 36).catch(() => {});
+  // Ensure sheets have enough columns
   await ensureColumnCount(ctx, clinicalSheet, 21).catch(() => {}); // A-U
 
   await sheets.spreadsheets.values.batchUpdate({
