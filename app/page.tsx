@@ -70,6 +70,7 @@ export default function HomePage() {
   const [patients, setPatients] = useState<Patient[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [pinnedRowIndex, setPinnedRowIndex] = useState<number | null>(null);
   const [showParseModal, setShowParseModal] = useState(false);
   const [currentDate, setCurrentDate] = useState(() => {
     if (typeof window !== 'undefined') {
@@ -418,6 +419,7 @@ export default function HomePage() {
 
       if (res.ok) {
         const { rowIndex, sheetName: savedSheet } = await res.json();
+        setPinnedRowIndex(rowIndex);
         fetchPatients();
 
         // Create submission entries for each non-empty clinical section
@@ -498,6 +500,7 @@ export default function HomePage() {
 
   const changeDate = (date: Date) => {
     setCurrentDate(date);
+    setPinnedRowIndex(null); // Clear pin when changing dates
     sessionStorage.setItem('ed-app-current-date', date.toISOString());
   };
 
@@ -559,6 +562,11 @@ export default function HomePage() {
 
   const STATUS_ORDER: Record<string, number> = { new: 0, pending: 1, processed: 2 };
   const sortedPatients = [...activePatients].sort((a, b) => {
+    // Pinned patient always floats to top
+    if (pinnedRowIndex !== null) {
+      if (a.rowIndex === pinnedRowIndex) return -1;
+      if (b.rowIndex === pinnedRowIndex) return 1;
+    }
     if (sortBy === 'name') {
       return (a.name || '').localeCompare(b.name || '');
     }
@@ -568,7 +576,6 @@ export default function HomePage() {
       if (sa !== sb) return sa - sb;
       return parseTimeToMin(a.timestamp) - parseTimeToMin(b.timestamp);
     }
-    // When searching across dates, sort by date (sheetName) then time
     if (isSearching) {
       const dateCompare = (b.sheetName || '').localeCompare(a.sheetName || '');
       if (dateCompare !== 0) return dateCompare;
@@ -795,12 +802,16 @@ export default function HomePage() {
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ rowIndex: patient.rowIndex, sheetName: patient.sheetName, settings, promptTemplates: getEffectivePromptTemplates() }),
             });
-            if (res.ok) fetchPatients();
+            if (res.ok) {
+              setPinnedRowIndex(patient.rowIndex);
+              fetchPatients();
+            }
           }}
           onGenerateAnalysis={async () => {
             const educationMode = getEducationConfig().enabled;
             const body = JSON.stringify({ rowIndex: patient.rowIndex, sheetName: patient.sheetName, educationMode });
             const headers = { 'Content-Type': 'application/json' };
+            setPinnedRowIndex(patient.rowIndex);
             await Promise.all([
               fetch('/api/synopsis', { method: 'POST', headers, body: JSON.stringify({ rowIndex: patient.rowIndex, sheetName: patient.sheetName }) }),
               fetch('/api/analysis', { method: 'POST', headers, body }),
