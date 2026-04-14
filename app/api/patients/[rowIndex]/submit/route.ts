@@ -1,29 +1,29 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getDataContext, addSubmission } from '@/lib/data-layer';
-import { getPatientSubmissions, setPatientSubmissions } from '@/lib/kv';
+import { getDataContext, getPatient, addSubmission, getSubmissions, deleteSubmission } from '@/lib/data-layer';
 import { generateId } from '@/lib/types-json';
 import type { SubmissionEntry } from '@/lib/types-json';
 
-// GET /api/patients/[rowIndex]/submit?sheet=... — Fetch existing submissions (encrypted in KV)
+// GET /api/patients/[rowIndex]/submit?sheet=... — Fetch submissions from encrypted Drive JSON
 export async function GET(
   request: NextRequest,
   { params }: { params: { rowIndex: string } }
 ) {
   try {
+    const ctx = await getDataContext();
     const rowIndex = parseInt(params.rowIndex);
     const sheetName = request.nextUrl.searchParams.get('sheet');
     if (!sheetName) {
       return NextResponse.json({ error: 'sheet param required' }, { status: 400 });
     }
 
-    const submissions = await getPatientSubmissions(sheetName, rowIndex);
+    const submissions = await getSubmissions(ctx, rowIndex, sheetName);
     return NextResponse.json({ submissions });
   } catch (error: any) {
     return NextResponse.json({ error: error?.message || 'Failed' }, { status: 500 });
   }
 }
 
-// POST /api/patients/[rowIndex]/submit — Save a single section as a new submission
+// POST /api/patients/[rowIndex]/submit — Save submission to encrypted Drive JSON + append to Sheets flat field
 export async function POST(
   request: NextRequest,
   { params }: { params: { rowIndex: string } }
@@ -41,7 +41,6 @@ export async function POST(
     }
 
     // Verify the patient exists at this rowIndex
-    const { getPatient } = await import('@/lib/data-layer');
     const patient = await getPatient(ctx, rowIndex, sheetName);
     if (!patient) {
       return NextResponse.json({ error: 'Patient not found at this row' }, { status: 404 });
@@ -65,13 +64,11 @@ export async function POST(
       ...(date ? { date } : {}),
     };
 
-    // Append to the flat field in Sheets (for note generation)
-    await addSubmission(ctx, rowIndex, sheetName, entry);
-
-    // Store submission entry in KV (encrypted, for tag display)
-    const existing = await getPatientSubmissions(sheetName, rowIndex);
-    existing.push(entry);
-    await setPatientSubmissions(sheetName, rowIndex, existing);
+    // addSubmission writes to:
+    // 1. Drive JSON patient.submissions[] (encrypted, for tag persistence)
+    // 2. Drive JSON patient.data flat field (encrypted, appended for note generation)
+    // 3. Sheets flat field (async mirror, appended for dev visibility)
+    const submissions = await addSubmission(ctx, rowIndex, sheetName, entry);
 
     // Auto-update medical profile in background
     fetch(new URL('/api/profile', request.url), {
@@ -83,7 +80,7 @@ export async function POST(
       body: JSON.stringify({ rowIndex, sheetName }),
     }).catch(() => {});
 
-    return NextResponse.json({ success: true, entry, submissions: existing });
+    return NextResponse.json({ success: true, entry, submissions });
   } catch (error: any) {
     console.error('Submit error:', error);
     if (error?.message?.includes('Not authenticated') || error?.message?.includes('re-login')) {
@@ -93,12 +90,13 @@ export async function POST(
   }
 }
 
-// DELETE /api/patients/[rowIndex]/submit — Remove a submission by ID
+// DELETE /api/patients/[rowIndex]/submit — Remove submission from encrypted Drive JSON
 export async function DELETE(
   request: NextRequest,
   { params }: { params: { rowIndex: string } }
 ) {
   try {
+    const ctx = await getDataContext();
     const rowIndex = parseInt(params.rowIndex);
     const { submissionId, sheetName } = await request.json();
 
@@ -106,29 +104,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'submissionId and sheetName are required' }, { status: 400 });
     }
 
-    // Remove from KV
-    const existing = await getPatientSubmissions(sheetName, rowIndex);
-    const updated = existing.filter((s: any) => s.id !== submissionId);
-    await setPatientSubmissions(sheetName, rowIndex, updated);
-
-    // Also remove from Drive if available
-    try {
-      const ctx = await getDataContext();
-      if (ctx.mode !== 'sheets' && ctx.drive) {
-        const dj = await import('@/lib/drive-json');
-        const dateSheet = await dj.getDateSheetFromDrive(ctx.drive, sheetName);
-        if (dateSheet) {
-          const patientIdx = dateSheet.patients.findIndex(p => p.rowIndex === rowIndex);
-          if (patientIdx !== -1 && dateSheet.patients[patientIdx].submissions) {
-            dateSheet.patients[patientIdx].submissions = dateSheet.patients[patientIdx].submissions!.filter(
-              s => s.id !== submissionId
-            );
-            dateSheet.patients[patientIdx].lastModified = new Date().toISOString();
-            await dj.saveDateSheetToDrive(ctx.drive, dateSheet);
-          }
-        }
-      }
-    } catch {}
+    await deleteSubmission(ctx, rowIndex, sheetName, submissionId);
 
     return NextResponse.json({ success: true });
   } catch (error: any) {

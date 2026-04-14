@@ -244,6 +244,45 @@ export async function getOrCreateDateSheet(
 }
 
 // ============================================================
+// GET SUBMISSIONS (for tag display)
+// ============================================================
+
+export async function getSubmissions(ctx: DataContext, rowIndex: number, sheetName: string): Promise<SubmissionEntry[]> {
+  if (ctx.mode !== 'sheets' && ctx.drive) {
+    try {
+      const dj = await import('./drive-json');
+      const dateSheet = await dj.getDateSheetFromDrive(ctx.drive, sheetName);
+      if (dateSheet) {
+        const patient = dateSheet.patients.find(p => p.rowIndex === rowIndex);
+        if (patient?.submissions) return patient.submissions;
+      }
+    } catch {}
+  }
+  return [];
+}
+
+// ============================================================
+// DELETE SUBMISSION
+// ============================================================
+
+export async function deleteSubmission(ctx: DataContext, rowIndex: number, sheetName: string, submissionId: string): Promise<void> {
+  if (ctx.mode !== 'sheets' && ctx.drive) {
+    const dj = await import('./drive-json');
+    const dateSheet = await dj.getDateSheetFromDrive(ctx.drive, sheetName);
+    if (dateSheet) {
+      const patientIdx = dateSheet.patients.findIndex(p => p.rowIndex === rowIndex);
+      if (patientIdx !== -1 && dateSheet.patients[patientIdx].submissions) {
+        dateSheet.patients[patientIdx].submissions = dateSheet.patients[patientIdx].submissions!.filter(
+          s => s.id !== submissionId
+        );
+        dateSheet.patients[patientIdx].lastModified = new Date().toISOString();
+        await dj.saveDateSheetToDrive(ctx.drive, dateSheet);
+      }
+    }
+  }
+}
+
+// ============================================================
 // SHIFT TIMES
 // ============================================================
 
