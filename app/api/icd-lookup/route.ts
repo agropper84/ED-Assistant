@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { lookupICDCodes } from '@/lib/claude';
-import { getDataContext } from '@/lib/data-layer';
-import { findDiagnosisCode, upsertDiagnosisCode } from '@/lib/google-sheets';
+import { getDataContext, findDiagnosisCode, upsertDiagnosisCode } from '@/lib/data-layer';
 import { withApiHandler, parseBody } from '@/lib/api-handler';
 import { icdLookupSchema } from '@/lib/schemas';
 
@@ -16,9 +15,9 @@ export const POST = withApiHandler(
     // Check the Diagnosis Codes registry first
     try {
       const ctx = await getDataContext();
-      const cached = await findDiagnosisCode(ctx.sheets, trimmed);
+      const cached = await findDiagnosisCode(ctx, trimmed);
       if (cached) {
-        await upsertDiagnosisCode(ctx.sheets, cached);
+        await upsertDiagnosisCode(ctx, cached);
         return NextResponse.json(cached);
       }
 
@@ -26,7 +25,7 @@ export const POST = withApiHandler(
       const result = await lookupICDCodes(trimmed);
 
       // Save to registry (fire-and-forget)
-      upsertDiagnosisCode(ctx.sheets, result).catch(() => {});
+      upsertDiagnosisCode(ctx, result).catch(() => {});
 
       return NextResponse.json(result);
     } catch (authError: any) {

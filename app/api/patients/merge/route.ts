@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSheetsContext, getPatient, updatePatientFields, clearPatientRow } from '@/lib/google-sheets';
+import { getDataContext, getPatient, updatePatientFields, clearPatient } from '@/lib/data-layer';
 
 // POST /api/patients/merge — Merge one patient's transcript into another
 export async function POST(request: NextRequest) {
@@ -10,7 +10,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'sourceRowIndex and targetRowIndex are required' }, { status: 400 });
     }
 
-    const ctx = await getSheetsContext();
+    const ctx = await getDataContext();
 
     const source = await getPatient(ctx, sourceRowIndex, sheetName);
     const target = await getPatient(ctx, targetRowIndex, sheetName);
@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
     await updatePatientFields(ctx, targetRowIndex, { transcript: mergedTranscript }, sheetName);
 
     // Clear the source row
-    await clearPatientRow(ctx, sourceRowIndex, sheetName);
+    await clearPatient(ctx, sourceRowIndex, sheetName);
 
     return NextResponse.json({ success: true });
   } catch (error: any) {

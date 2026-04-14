@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAnthropicClient } from '@/lib/api-keys';
-import { getSheetsContext, getPatient, updatePatientFields } from '@/lib/google-sheets';
+import { getDataContext, getPatient, updatePatientFields } from '@/lib/data-layer';
+import { MODELS } from '@/lib/config';
 
 export const maxDuration = 30;
 
@@ -18,7 +19,7 @@ export interface PatientProfile {
 export async function POST(request: NextRequest) {
   try {
     const anthropic = await getAnthropicClient();
-    const ctx = await getSheetsContext();
+    const ctx = await getDataContext();
     const { rowIndex, sheetName } = await request.json();
 
     const patient = await getPatient(ctx, rowIndex, sheetName);
@@ -43,7 +44,7 @@ export async function POST(request: NextRequest) {
     }
 
     const response = await anthropic.messages.create({
-      model: 'claude-haiku-4-5-20251001',
+      model: MODELS.fast,
       max_tokens: 1024,
       temperature: 0.1,
       messages: [{

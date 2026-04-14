@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSheetsContext, getPatients, getPatient } from '@/lib/google-sheets';
+import { getDataContext, getPatients } from '@/lib/data-layer';
 import { getAnthropicClient } from '@/lib/api-keys';
 import { getSessionFromCookies } from '@/lib/session';
 import { getUserSettings, setUserSettings } from '@/lib/kv';
 import { withApiHandler } from '@/lib/api-handler';
+import { MODELS } from '@/lib/config';
 
 export const maxDuration = 120;
 
@@ -21,14 +22,14 @@ export const POST = withApiHandler({ rateLimit: { limit: 5, window: 60 } }, asyn
     return NextResponse.json({ error: 'Mode must be "dictation" or "encounter"' }, { status: 400 });
   }
 
-  const ctx = await getSheetsContext();
+  const ctx = await getDataContext();
   const session = await getSessionFromCookies();
 
   // Gather transcript samples from recent patients
   const samples: { date: string; text: string; patientContext: string }[] = [];
 
   // Get available date sheets and scan recent ones
-  const { getDateSheets } = await import('@/lib/google-sheets');
+  const { getDateSheets } = await import('@/lib/data-layer');
   const sheets = await getDateSheets(ctx);
 
   for (const sheetName of sheets.slice(0, 10)) {
@@ -111,7 +112,7 @@ Be specific. Only include well-supported patterns from the data.`;
 
   const client = await getAnthropicClient();
   const response = await client.messages.create({
-    model: 'claude-sonnet-4-20250514',
+    model: MODELS.default,
     max_tokens: 2048,
     temperature: 0.2,
     messages: [{ role: 'user', content: prompt }],

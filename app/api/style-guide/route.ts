@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSheetsContext, getStyleGuideFromSheet, saveStyleGuideToSheet } from '@/lib/google-sheets';
+import { getDataContext, getStyleGuide, saveStyleGuide } from '@/lib/data-layer';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
-    const ctx = await getSheetsContext();
-    const guide = await getStyleGuideFromSheet(ctx);
+    const ctx = await getDataContext();
+    const guide = await getStyleGuide(ctx);
     return NextResponse.json(guide);
   } catch (error: any) {
     console.error('Error reading style guide:', error);
@@ -25,9 +25,9 @@ export async function GET() {
 
 export async function PUT(request: NextRequest) {
   try {
-    const ctx = await getSheetsContext();
+    const ctx = await getDataContext();
     const guide = await request.json();
-    await saveStyleGuideToSheet(ctx, guide);
+    await saveStyleGuide(ctx, guide);
     return NextResponse.json({ success: true });
   } catch (error: any) {
     console.error('Error saving style guide:', error);

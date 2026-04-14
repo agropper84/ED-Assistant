@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { Patient } from '@/lib/google-sheets';
-import { MEDICAL_SUGGESTIONS } from '@/lib/medical-suggestions';
+import { getMedicalSuggestions } from '@/lib/medical-suggestions';
 import { X, Loader2, Save, ExternalLink, RefreshCw, Check, Heart, ArrowUpCircle, FileText, Trash2 } from 'lucide-react';
 import { PatientProfile } from '@/components/PatientProfile';
 import type { PatientProfile as ProfileData } from '@/app/api/profile/route';
@@ -240,7 +240,7 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
   const allSuggestions = useMemo(
     () => {
       const set = new Set<string>(userPhrases);
-      for (const s of MEDICAL_SUGGESTIONS) set.add(s);
+      for (const s of getMedicalSuggestions()) set.add(s);
       return Array.from(set);
     },
     [userPhrases]

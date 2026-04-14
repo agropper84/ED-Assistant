@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSessionFromCookies } from '@/lib/session';
 import { setUserStatus, getUserInfo } from '@/lib/kv';
-
-const ADMIN_EMAIL = 'aaron@gropper.me';
+import { ADMIN_EMAIL } from '@/lib/config';
 
 // POST /api/auth/admin-approve — Approve a user by email (admin only)
 export async function POST(request: NextRequest) {

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAnthropicClient } from '@/lib/api-keys';
+import { MODELS } from '@/lib/config';
 
 export const maxDuration = 60;
 
@@ -33,7 +34,7 @@ export async function POST(request: NextRequest) {
     // Use AI to extract structured patient data from the day sheet text
     const anthropic = await getAnthropicClient();
     const response = await anthropic.messages.create({
-      model: 'claude-haiku-4-5-20251001',
+      model: MODELS.fast,
       max_tokens: 4096,
       temperature: 0,
       messages: [{

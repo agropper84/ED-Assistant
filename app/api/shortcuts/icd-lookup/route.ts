@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { authenticateShortcut, isAuthed } from '@/lib/shortcut-auth';
 import { getAnthropicClient } from '@/lib/api-keys';
+import { MODELS } from '@/lib/config';
 
 export const maxDuration = 15;
 
@@ -19,7 +20,7 @@ export async function POST(request: NextRequest) {
     }
 
     const response = await anthropic.messages.create({
-      model: 'claude-haiku-4-5-20251001',
+      model: MODELS.fast,
       max_tokens: 256,
       temperature: 0.1,
       messages: [{

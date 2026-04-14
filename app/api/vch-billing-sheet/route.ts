@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getDataContext } from '@/lib/data-layer';
 import {
-  getSheetsContext,
   writeVchBillingSheet,
   readVchBillingSegments,
   type VchBillingRow,
@@ -14,7 +14,7 @@ import {
 // GET - read saved time segments from VCH Billing sheet for a specific date
 export async function GET(req: NextRequest) {
   try {
-    const ctx = await getSheetsContext();
+    const ctx = await getDataContext();
     const { searchParams } = new URL(req.url);
     const sheetName = searchParams.get('sheet') || '';
 
@@ -27,7 +27,7 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    const segments = await readVchBillingSegments(ctx, dateStr || undefined);
+    const segments = await readVchBillingSegments(ctx.sheets, dateStr || undefined);
     return NextResponse.json(segments);
   } catch (err: any) {
     if (err.message === 'Not authenticated') {
@@ -39,7 +39,7 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const ctx = await getSheetsContext();
+    const ctx = await getDataContext();
     const body = await req.json();
     const { sheetName, cprpId, siteFacility, pracNumber, practitionerName, shiftSegments } = body;
 
@@ -82,7 +82,7 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    await writeVchBillingSheet(ctx, rows, dateStr);
+    await writeVchBillingSheet(ctx.sheets, rows, dateStr);
 
     return NextResponse.json({ success: true, count: rows.length });
   } catch (err: any) {

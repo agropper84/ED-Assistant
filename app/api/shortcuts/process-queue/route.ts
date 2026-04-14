@@ -10,14 +10,15 @@ import {
   PendingAudio,
 } from '@/lib/kv';
 import {
-  getSheetsContextForUser,
+  getDataContextForUser,
   getPatient,
   updatePatientFields,
   getOrCreateDateSheet,
-  getNextEmptyRow,
+  getNextRowIndex,
   getPatientCount,
-  getStyleGuideFromSheet,
-} from '@/lib/google-sheets';
+  getStyleGuide,
+} from '@/lib/data-layer';
+import { getTodaySheetName } from '@/lib/google-sheets';
 import { processEncounter } from '@/lib/claude';
 import { DEVICE_WHISPER_PROMPT } from '@/lib/whisper-prompts';
 
@@ -163,13 +164,13 @@ async function processOne(pending: PendingAudio): Promise<{ transcript: string; 
     transcript = transcription.text || '';
   }
   console.log('[process-queue] Transcription done, length:', transcript.length);
-  const ctx = await getSheetsContextForUser(pending.userId);
+  const ctx = await getDataContextForUser(pending.userId);
 
   // 2. Handle based on mode
   if (pending.mode === 'quick') {
     // Create new encounter row
-    const sheetName = await getOrCreateDateSheet(ctx);
-    const rowIndex = await getNextEmptyRow(ctx, sheetName);
+    const sheetName = await getOrCreateDateSheet(ctx, getTodaySheetName());
+    const rowIndex = await getNextRowIndex(ctx, sheetName);
     const patientCount = await getPatientCount(ctx, sheetName);
     const encounterNum = patientCount + 1;
 
@@ -190,7 +191,7 @@ async function processOne(pending: PendingAudio): Promise<{ transcript: string; 
 
   // Patient-specific modes
   const rowIndex = pending.rowIndex!;
-  const sheetName = pending.sheetName;
+  const sheetName = pending.sheetName || getTodaySheetName();
 
   // Assign transcript (append if needed)
   if (pending.append) {
@@ -212,7 +213,7 @@ async function processOne(pending: PendingAudio): Promise<{ transcript: string; 
     if (patient) {
       let styleGuidance = '';
       try {
-        const guide = await getStyleGuideFromSheet(ctx);
+        const guide = await getStyleGuide(ctx);
         const parts: string[] = [];
         for (const [section, examples] of Object.entries(guide.examples)) {
           if ((examples as string[]).length > 0) {

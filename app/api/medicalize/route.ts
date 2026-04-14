@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { callWithPHIProtection } from '@/lib/claude';
 import { withApiHandler, parseBody } from '@/lib/api-handler';
 import { medicalizeSchema } from '@/lib/schemas';
+import { MODELS } from '@/lib/config';
 
 export const maxDuration = 30;
 
@@ -33,7 +34,7 @@ ${contextBlock}${text}`;
     const result = await callWithPHIProtection(
       prompt,
       null,
-      { model: 'claude-haiku-4-5-20251001', maxTokens: 2048, temperature: 0 },
+      { model: MODELS.fast, maxTokens: 2048, temperature: 0 },
     );
 
     const trimmed = result.trim();

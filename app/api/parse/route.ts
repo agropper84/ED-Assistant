@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { parsePatientInfo, getRoundedTime } from '@/lib/parse-patient';
 import Anthropic from '@anthropic-ai/sdk';
 import { getAnthropicClient } from '@/lib/api-keys';
+import { MODELS } from '@/lib/config';
 
 export const maxDuration = 30;
 
@@ -58,7 +59,7 @@ async function parseWithAI(
   example: FormatExample,
 ): Promise<{ name: string; age: string; gender: string; birthday: string; hcn: string; mrn: string }> {
   const response = await anthropic.messages.create({
-    model: 'claude-haiku-4-5-20251001',
+    model: MODELS.fast,
     max_tokens: 256,
     temperature: 0,
     messages: [{

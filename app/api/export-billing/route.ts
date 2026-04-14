@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSheetsContext } from '@/lib/google-sheets';
+import { getDataContext } from '@/lib/data-layer';
 import ExcelJS from 'exceljs';
 
 // GET /api/export-billing?start=2026-03-01&end=2026-03-16&format=yukon|vch
 export async function GET(req: NextRequest) {
   try {
-    const ctx = await getSheetsContext();
+    const ctx = await getDataContext();
     const { searchParams } = new URL(req.url);
     const startStr = searchParams.get('start') || '';
     const endStr = searchParams.get('end') || '';
@@ -24,7 +24,7 @@ export async function GET(req: NextRequest) {
     const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
     if (format === 'vch') {
-      const buffer = await exportVchExcel(ctx, startDate, endDate);
+      const buffer = await exportVchExcel(ctx.sheets, startDate, endDate);
       return new NextResponse(buffer as unknown as BodyInit, {
         headers: {
           'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
@@ -32,7 +32,7 @@ export async function GET(req: NextRequest) {
         },
       });
     } else {
-      const buffer = await exportYukonExcel(ctx, startDate, endDate, months);
+      const buffer = await exportYukonExcel(ctx.sheets, startDate, endDate, months);
       return new NextResponse(buffer as unknown as BodyInit, {
         headers: {
           'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { authenticateShortcut, isAuthed } from '@/lib/shortcut-auth';
 import { getPatient, updatePatientFields } from '@/lib/data-layer';
 import { getAnthropicClient } from '@/lib/api-keys';
+import { MODELS } from '@/lib/config';
 
 export const maxDuration = 30;
 
@@ -30,7 +31,7 @@ export async function POST(request: NextRequest) {
     if (patient.transcript) parts.push(`Transcript: ${patient.transcript}`);
 
     const response = await anthropic.messages.create({
-      model: 'claude-haiku-4-5-20251001',
+      model: MODELS.fast,
       max_tokens: 1024,
       temperature: 0.2,
       messages: [{

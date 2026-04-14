@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import {
-  getSheetsContext,
+  getDataContext,
   getBillingCodes,
-  saveBillingCodesToSheet,
-  addBillingCodeToSheet,
-  updateBillingCodeInSheet,
-  deleteBillingCodeFromSheet,
-} from '@/lib/google-sheets';
+  saveBillingCodes,
+  addBillingCode,
+  updateBillingCode,
+  deleteBillingCode,
+} from '@/lib/data-layer';
 import { getDefaultCodesForRegion } from '@/lib/billing';
 
 export const dynamic = 'force-dynamic';
@@ -24,14 +24,14 @@ function authError(error: any) {
 // GET /api/billing-codes?region=yukon - Fetch billing codes, auto-populate if empty
 export async function GET(request: NextRequest) {
   try {
-    const ctx = await getSheetsContext();
+    const ctx = await getDataContext();
     let codes = await getBillingCodes(ctx);
 
     // Auto-populate if sheet is empty
     if (codes.length === 0) {
       const region = request.nextUrl.searchParams.get('region') || 'yukon';
       const defaults = getDefaultCodesForRegion(region);
-      await saveBillingCodesToSheet(ctx, defaults);
+      await saveBillingCodes(ctx, defaults);
       codes = await getBillingCodes(ctx);
     }
 
@@ -50,13 +50,13 @@ export async function GET(request: NextRequest) {
 // POST /api/billing-codes - Add a code or reset all to defaults
 export async function POST(request: NextRequest) {
   try {
-    const ctx = await getSheetsContext();
+    const ctx = await getDataContext();
     const body = await request.json();
 
     if (body.action === 'reset') {
       const region = body.region || 'yukon';
       const defaults = getDefaultCodesForRegion(region);
-      await saveBillingCodesToSheet(ctx, defaults);
+      await saveBillingCodes(ctx, defaults);
       const codes = await getBillingCodes(ctx);
       return NextResponse.json(codes);
     }
@@ -66,7 +66,7 @@ export async function POST(request: NextRequest) {
     if (!code || !description) {
       return NextResponse.json({ error: 'code and description are required' }, { status: 400 });
     }
-    await addBillingCodeToSheet(ctx, {
+    await addBillingCode(ctx, {
       code: code.trim(),
       description: description.trim(),
       fee: (fee || '').trim(),
@@ -87,19 +87,16 @@ export async function POST(request: NextRequest) {
 // PUT /api/billing-codes - Update an existing code
 export async function PUT(request: NextRequest) {
   try {
-    const ctx = await getSheetsContext();
+    const ctx = await getDataContext();
     const { code, description, fee, group } = await request.json();
     if (!code) {
       return NextResponse.json({ error: 'code is required' }, { status: 400 });
     }
-    const updated = await updateBillingCodeInSheet(ctx, code.trim(), {
+    await updateBillingCode(ctx, code.trim(), {
       description: (description || '').trim(),
       fee: (fee || '').trim(),
       group: (group || 'Other').trim(),
     });
-    if (!updated) {
-      return NextResponse.json({ error: 'Code not found' }, { status: 404 });
-    }
     return NextResponse.json({ ok: true });
   } catch (error: any) {
     console.error('Error updating billing code:', error);
@@ -115,15 +112,12 @@ export async function PUT(request: NextRequest) {
 // DELETE /api/billing-codes - Remove a code
 export async function DELETE(request: NextRequest) {
   try {
-    const ctx = await getSheetsContext();
+    const ctx = await getDataContext();
     const { code } = await request.json();
     if (!code) {
       return NextResponse.json({ error: 'code is required' }, { status: 400 });
     }
-    const deleted = await deleteBillingCodeFromSheet(ctx, code.trim());
-    if (!deleted) {
-      return NextResponse.json({ error: 'Code not found' }, { status: 404 });
-    }
+    await deleteBillingCode(ctx, code.trim());
     return NextResponse.json({ ok: true });
   } catch (error: any) {
     console.error('Error deleting billing code:', error);

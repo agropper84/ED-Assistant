@@ -128,8 +128,64 @@ export function generateId(prefix: string): string {
   return `${prefix}_${ts}_${rand}_${++_idCounter}`;
 }
 
+// --- Auxiliary Data Files (stored as encrypted JSON in Drive root) ---
+
+export interface StyleGuideFile {
+  version: 1;
+  lastModified: string;
+  examples: {
+    hpi: string[];
+    objective: string[];
+    assessmentPlan: string[];
+    referral: string[];
+    admission: string[];
+  };
+  extractedFeatures: string[];
+  customGuidance: string;
+}
+
+export interface BillingCodeEntry {
+  code: string;
+  description: string;
+  fee: string;
+  group: string;
+}
+
+export interface DiagnosisCodeEntry {
+  diagnosis: string;
+  icd9: string;
+  icd10: string;
+  count: number;
+}
+
+export interface ParseFormatEntry {
+  name: string;
+  sampleText: string;
+  fieldName: string;
+  fieldAge: string;
+  fieldGender: string;
+  fieldDob: string;
+  fieldMrn: string;
+  fieldHcn: string;
+  ageDobPattern: string;
+  hcnPattern: string;
+  mrnPattern: string;
+  nameCleanup: string;
+}
+
+export interface UserPhrasesFile {
+  version: 1;
+  lastModified: string;
+  phrases: Array<{ phrase: string; count: number }>;
+}
+
 // --- Constants ---
 
 export const DRIVE_FOLDER_NAME = 'ED Assistant Data';
 export const SHEETS_SUBFOLDER = 'sheets';
+export const STYLE_GUIDE_FILE = 'style_guide.json';
+export const BILLING_CODES_FILE = 'billing_codes.json';
+export const DIAGNOSIS_CODES_FILE = 'diagnosis_codes.json';
+export const PARSE_FORMATS_FILE = 'parse_formats.json';
+export const USER_PHRASES_FILE = 'user_phrases.json';
 export const MASTER_INDEX_FILE = 'master_index.json';

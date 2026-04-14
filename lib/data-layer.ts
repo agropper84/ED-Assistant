@@ -392,3 +392,215 @@ export async function clearPatient(ctx: DataContext, rowIndex: number, sheetName
   const gs = await import('./google-sheets');
   await gs.clearPatientRow(ctx.sheets, rowIndex, sheetName);
 }
+
+// ============================================================
+// STYLE GUIDE (Drive primary, Sheets mirror)
+// ============================================================
+
+export async function getStyleGuide(ctx: DataContext) {
+  if (ctx.mode !== 'sheets' && ctx.drive) {
+    try {
+      const dj = await import('./drive-json');
+      const guide = await dj.getStyleGuideFromDrive(ctx.drive);
+      if (guide) return guide;
+    } catch {}
+  }
+  const gs = await import('./google-sheets');
+  return gs.getStyleGuideFromSheet(ctx.sheets);
+}
+
+export async function saveStyleGuide(ctx: DataContext, guide: any) {
+  // Drive primary
+  if (ctx.mode !== 'sheets' && ctx.drive) {
+    const dj = await import('./drive-json');
+    await dj.saveStyleGuideToDrive(ctx.drive, { version: 1, lastModified: new Date().toISOString(), ...guide });
+  }
+  // Sheets mirror (fire-and-forget)
+  import('./google-sheets').then(gs =>
+    gs.saveStyleGuideToSheet(ctx.sheets, guide)
+  ).catch(e => console.warn('Style guide Sheets mirror failed:', (e as Error).message));
+}
+
+// ============================================================
+// BILLING CODES (Drive primary, Sheets mirror)
+// ============================================================
+
+export async function getBillingCodes(ctx: DataContext) {
+  if (ctx.mode !== 'sheets' && ctx.drive) {
+    try {
+      const dj = await import('./drive-json');
+      const codes = await dj.getBillingCodesFromDrive(ctx.drive);
+      if (codes.length > 0) return codes;
+    } catch {}
+  }
+  const gs = await import('./google-sheets');
+  return gs.getBillingCodes(ctx.sheets);
+}
+
+export async function saveBillingCodes(ctx: DataContext, codes: any[]) {
+  if (ctx.mode !== 'sheets' && ctx.drive) {
+    const dj = await import('./drive-json');
+    await dj.saveBillingCodesToDrive(ctx.drive, codes);
+  }
+  import('./google-sheets').then(gs =>
+    gs.saveBillingCodesToSheet(ctx.sheets, codes)
+  ).catch(e => console.warn('Billing codes Sheets mirror failed:', (e as Error).message));
+}
+
+export async function addBillingCode(ctx: DataContext, code: any) {
+  // Read existing, add, save
+  const existing = await getBillingCodes(ctx);
+  existing.push(code);
+  await saveBillingCodes(ctx, existing);
+}
+
+export async function updateBillingCode(ctx: DataContext, codeId: string, update: any) {
+  const existing = await getBillingCodes(ctx);
+  const idx = existing.findIndex((c: any) => c.code === codeId);
+  if (idx !== -1) {
+    existing[idx] = { ...existing[idx], ...update };
+    await saveBillingCodes(ctx, existing);
+  }
+}
+
+export async function deleteBillingCode(ctx: DataContext, codeId: string) {
+  const existing = await getBillingCodes(ctx);
+  const filtered = existing.filter((c: any) => c.code !== codeId);
+  await saveBillingCodes(ctx, filtered);
+}
+
+// ============================================================
+// DIAGNOSIS CODES (Drive primary, Sheets mirror)
+// ============================================================
+
+export async function getDiagnosisCodes(ctx: DataContext) {
+  if (ctx.mode !== 'sheets' && ctx.drive) {
+    try {
+      const dj = await import('./drive-json');
+      const codes = await dj.getDiagnosisCodesFromDrive(ctx.drive);
+      if (codes.length > 0) return codes;
+    } catch {}
+  }
+  const gs = await import('./google-sheets');
+  return gs.getDiagnosisCodes(ctx.sheets);
+}
+
+export async function findDiagnosisCode(ctx: DataContext, diagnosis: string) {
+  const codes = await getDiagnosisCodes(ctx);
+  const needle = diagnosis.toLowerCase().trim();
+  const match = codes.find((c: any) => c.diagnosis?.toLowerCase().trim() === needle);
+  return match ? { diagnosis: match.diagnosis, icd9: match.icd9, icd10: match.icd10 } : null;
+}
+
+export async function upsertDiagnosisCode(ctx: DataContext, entry: { diagnosis: string; icd9: string; icd10: string }) {
+  const codes = await getDiagnosisCodes(ctx);
+  const needle = entry.diagnosis.toLowerCase().trim();
+  const idx = codes.findIndex((c: any) => c.diagnosis?.toLowerCase().trim() === needle);
+  if (idx !== -1) {
+    codes[idx] = { ...codes[idx], ...entry, count: (codes[idx].count || 0) + 1 };
+  } else {
+    codes.push({ ...entry, count: 1 });
+  }
+  // Drive primary
+  if (ctx.mode !== 'sheets' && ctx.drive) {
+    const dj = await import('./drive-json');
+    await dj.saveDiagnosisCodesToDrive(ctx.drive, codes);
+  }
+  // Sheets mirror
+  import('./google-sheets').then(gs =>
+    gs.upsertDiagnosisCode(ctx.sheets, entry)
+  ).catch(e => console.warn('Diagnosis code Sheets mirror failed:', (e as Error).message));
+}
+
+// ============================================================
+// PARSE FORMATS (Drive primary, Sheets mirror)
+// ============================================================
+
+export async function getParseFormats(ctx: DataContext) {
+  if (ctx.mode !== 'sheets' && ctx.drive) {
+    try {
+      const dj = await import('./drive-json');
+      const formats = await dj.getParseFormatsFromDrive(ctx.drive);
+      if (formats.length > 0) return formats;
+    } catch {}
+  }
+  const gs = await import('./google-sheets');
+  return gs.getParseFormats(ctx.sheets);
+}
+
+export async function saveParseFormat(ctx: DataContext, format: any) {
+  const existing = await getParseFormats(ctx);
+  const idx = existing.findIndex((f: any) => f.name === format.name);
+  if (idx !== -1) existing[idx] = format;
+  else existing.push(format);
+
+  if (ctx.mode !== 'sheets' && ctx.drive) {
+    const dj = await import('./drive-json');
+    await dj.saveParseFormatsToDrive(ctx.drive, existing);
+  }
+  import('./google-sheets').then(gs =>
+    gs.saveParseFormat(ctx.sheets, format)
+  ).catch(e => console.warn('Parse format Sheets mirror failed:', (e as Error).message));
+}
+
+export async function deleteParseFormat(ctx: DataContext, name: string) {
+  const existing = await getParseFormats(ctx);
+  const filtered = existing.filter((f: any) => f.name !== name);
+
+  if (ctx.mode !== 'sheets' && ctx.drive) {
+    const dj = await import('./drive-json');
+    await dj.saveParseFormatsToDrive(ctx.drive, filtered);
+  }
+  import('./google-sheets').then(gs =>
+    gs.deleteParseFormat(ctx.sheets, name)
+  ).catch(e => console.warn('Parse format Sheets mirror failed:', (e as Error).message));
+}
+
+// ============================================================
+// USER PHRASES (Drive primary, Sheets mirror)
+// ============================================================
+
+export async function getUserPhrases(ctx: DataContext): Promise<string[]> {
+  if (ctx.mode !== 'sheets' && ctx.drive) {
+    try {
+      const dj = await import('./drive-json');
+      const phrases = await dj.getUserPhrasesFromDrive(ctx.drive);
+      if (phrases.length > 0) return phrases.sort((a, b) => b.count - a.count).map(p => p.phrase);
+    } catch {}
+  }
+  const gs = await import('./google-sheets');
+  return gs.getUserPhrases(ctx.sheets);
+}
+
+export async function saveUserPhrases(ctx: DataContext, newPhrases: string[]) {
+  // Merge with existing (increment counts)
+  let existing: Array<{ phrase: string; count: number }> = [];
+  if (ctx.mode !== 'sheets' && ctx.drive) {
+    try {
+      const dj = await import('./drive-json');
+      existing = await dj.getUserPhrasesFromDrive(ctx.drive);
+    } catch {}
+  }
+
+  const map = new Map<string, number>();
+  for (const e of existing) map.set(e.phrase.toLowerCase(), e.count);
+  for (const p of newPhrases) {
+    if (p.trim().length < 5) continue;
+    const key = p.trim().toLowerCase();
+    map.set(key, (map.get(key) || 0) + 1);
+  }
+
+  const merged = Array.from(map.entries())
+    .map(([phrase, count]) => ({ phrase, count }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 2000);
+
+  if (ctx.mode !== 'sheets' && ctx.drive) {
+    const dj = await import('./drive-json');
+    await dj.saveUserPhrasesToDrive(ctx.drive, merged);
+  }
+  // Sheets mirror
+  import('./google-sheets').then(gs =>
+    gs.saveUserPhrases(ctx.sheets, newPhrases)
+  ).catch(e => console.warn('User phrases Sheets mirror failed:', (e as Error).message));
+}

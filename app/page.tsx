@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import useSWR from 'swr';
 import { Patient } from '@/lib/google-sheets';
@@ -10,6 +10,7 @@ import {
   EncounterType,
 } from '@/lib/settings';
 import { PatientCard } from '@/components/PatientCard';
+import { PatientGridCell } from '@/components/PatientGridCell';
 import { ParseModal } from '@/components/ParseModal';
 import { PatientDataModal } from '@/components/PatientDataModal';
 import { BatchTranscribeModal } from '@/components/BatchTranscribeModal';
@@ -36,10 +37,11 @@ import {
   Calendar, Settings, CheckSquare, Square, Play, Clock, EyeOff, Eye,
   Search, ArrowUpDown, X, LogOut, Upload, Monitor, RotateCcw, Sparkles,
   ChevronDown, SlidersHorizontal, FileSpreadsheet, Bookmark, Wind, Menu,
-  LayoutGrid, LayoutList
+  LayoutGrid, LayoutList, Activity
 } from 'lucide-react';
 import { AwayScreen } from '@/components/AwayScreen';
 import { useDraggableFab } from '@/hooks/useDraggableFab';
+import { useAwayScreen } from '@/hooks/useAwayScreen';
 
 function formatDateForSheet(date: Date): string {
   const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
@@ -110,7 +112,7 @@ export default function HomePage() {
   // Sidebar + Privacy
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [anonymize, setAnonymize] = useState(false);
-  const [awayScreen, setAwayScreen] = useState(false);
+  const away = useAwayScreen();
   const [privacyMenuOpen, setPrivacyMenuOpen] = useState(false);
   const [savedResourcesOpen, setSavedResourcesOpen] = useState(false);
   const [savedResourceKeys, setSavedResourceKeys] = useState<Set<string>>(new Set());
@@ -190,6 +192,10 @@ export default function HomePage() {
   const [viewMode, setViewMode] = useState<'list' | 'grid'>(() => {
     if (typeof window !== 'undefined') return (localStorage.getItem('ed-view-mode') as 'list' | 'grid') || 'list';
     return 'list';
+  });
+  const [showCardIcons, setShowCardIcons] = useState(() => {
+    if (typeof window !== 'undefined') return localStorage.getItem('ed-show-card-icons') === 'true';
+    return false;
   });
 
   const sheetName = formatDateForSheet(currentDate);
@@ -538,7 +544,7 @@ export default function HomePage() {
   const activePatients = isSearching && searchResults !== null ? searchResults : patients;
 
   /** Parse a time string (HH:MM, H:MM, HH:MM AM/PM) to minutes since midnight for sorting */
-  const parseTimeToMin = (t: string): number => {
+  const parseTimeToMin = useCallback((t: string): number => {
     if (!t) return 9999;
     const match = t.match(/(\d{1,2}):(\d{2})\s*(AM|PM)?/i);
     if (!match) return 9999;
@@ -550,43 +556,47 @@ export default function HomePage() {
       if (!isPM && h === 12) h = 0;
     }
     return h * 60 + m;
-  };
+  }, []);
 
-  const STATUS_ORDER: Record<string, number> = { new: 0, pending: 1, processed: 2 };
-  const sortedPatients = [...activePatients].sort((a, b) => {
-    // Pinned patient always floats to top
-    if (pinnedRowIndex !== null) {
-      if (a.rowIndex === pinnedRowIndex) return -1;
-      if (b.rowIndex === pinnedRowIndex) return 1;
-    }
-    if (sortBy === 'name') {
-      return (a.name || '').localeCompare(b.name || '');
-    }
-    if (sortBy === 'status') {
-      const sa = STATUS_ORDER[a.status || 'new'] ?? 0;
-      const sb = STATUS_ORDER[b.status || 'new'] ?? 0;
-      if (sa !== sb) return sa - sb;
+  const sortedPatients = useMemo(() => {
+    const STATUS_ORDER: Record<string, number> = { new: 0, pending: 1, processed: 2 };
+    return [...activePatients].sort((a, b) => {
+      if (pinnedRowIndex !== null) {
+        if (a.rowIndex === pinnedRowIndex) return -1;
+        if (b.rowIndex === pinnedRowIndex) return 1;
+      }
+      if (sortBy === 'name') {
+        return (a.name || '').localeCompare(b.name || '');
+      }
+      if (sortBy === 'status') {
+        const sa = STATUS_ORDER[a.status || 'new'] ?? 0;
+        const sb = STATUS_ORDER[b.status || 'new'] ?? 0;
+        if (sa !== sb) return sa - sb;
+        return parseTimeToMin(a.timestamp) - parseTimeToMin(b.timestamp);
+      }
+      if (isSearching) {
+        const dateCompare = (b.sheetName || '').localeCompare(a.sheetName || '');
+        if (dateCompare !== 0) return dateCompare;
+      }
       return parseTimeToMin(a.timestamp) - parseTimeToMin(b.timestamp);
-    }
-    if (isSearching) {
-      const dateCompare = (b.sheetName || '').localeCompare(a.sheetName || '');
-      if (dateCompare !== 0) return dateCompare;
-    }
-    return parseTimeToMin(a.timestamp) - parseTimeToMin(b.timestamp);
-  });
+    });
+  }, [activePatients, sortBy, pinnedRowIndex, isSearching, parseTimeToMin]);
 
   // Day total: sum of all patient visit fees + time-based shift fee
-  const visitFeesTotal = patients.reduce((sum, p) => {
-    const items = parseBillingItems(p.visitProcedure || '', p.procCode || '', p.fee || '', p.unit || '');
-    return sum + items.reduce((s, item) => s + (parseFloat(item.fee) || 0) * (parseInt(item.unit) || 1), 0);
-  }, 0);
-  const timeBasedFee = parseFloat(shiftTotal) || 0;
-  const dayTotal = visitFeesTotal + timeBasedFee;
+  const dayTotal = useMemo(() => {
+    const visitFeesTotal = patients.reduce((sum, p) => {
+      const items = parseBillingItems(p.visitProcedure || '', p.procCode || '', p.fee || '', p.unit || '');
+      return sum + items.reduce((s, item) => s + (parseFloat(item.fee) || 0) * (parseInt(item.unit) || 1), 0);
+    }, 0);
+    return visitFeesTotal + (parseFloat(shiftTotal) || 0);
+  }, [patients, shiftTotal]);
 
-  // Batch processing
-  const pendingPatients = sortedPatients.filter(p => p.status === 'pending');
-  const processedPatients = sortedPatients.filter(p => p.status === 'processed');
-  const newPatients = sortedPatients.filter(p => p.status === 'new');
+  // Batch processing — derived from sortedPatients
+  const { pendingPatients, processedPatients, newPatients } = useMemo(() => ({
+    pendingPatients: sortedPatients.filter(p => p.status === 'pending'),
+    processedPatients: sortedPatients.filter(p => p.status === 'processed'),
+    newPatients: sortedPatients.filter(p => p.status === 'new'),
+  }), [sortedPatients]);
   const hasPending = pendingPatients.length > 0;
 
   const togglePatientSelection = (rowIndex: number) => {
@@ -612,25 +622,29 @@ export default function HomePage() {
 
     setBatchProcessing(true);
     setBatchProgress({ current: 0, total: toProcess.length });
+    let completed = 0;
     let failures = 0;
+    const CONCURRENCY = 3;
 
-    for (let i = 0; i < toProcess.length; i++) {
-      setBatchProgress({ current: i + 1, total: toProcess.length });
-      try {
-        const res = await fetch('/api/process', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ rowIndex: toProcess[i].rowIndex, sheetName, promptTemplates: getEffectivePromptTemplates() }),
-        });
-        if (!res.ok) {
-          const err = await res.json().catch(() => ({}));
-          console.error(`Failed to process ${toProcess[i].name}:`, err.detail || err.error);
-          failures++;
-        }
-      } catch (error) {
-        console.error(`Failed to process patient ${toProcess[i].name}:`, error);
-        failures++;
+    // Process in parallel chunks of CONCURRENCY
+    for (let i = 0; i < toProcess.length; i += CONCURRENCY) {
+      const chunk = toProcess.slice(i, i + CONCURRENCY);
+      const results = await Promise.allSettled(
+        chunk.map(p =>
+          fetch('/api/process', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ rowIndex: p.rowIndex, sheetName, promptTemplates: getEffectivePromptTemplates() }),
+          }).then(res => {
+            if (!res.ok) throw new Error(`Failed: ${p.name}`);
+          })
+        )
+      );
+      for (const r of results) {
+        completed++;
+        if (r.status === 'rejected') failures++;
       }
+      setBatchProgress({ current: completed, total: toProcess.length });
     }
 
     setBatchProcessing(false);
@@ -716,55 +730,22 @@ export default function HomePage() {
     : 'space-y-3';
 
   const renderPatientGrid = (patient: Patient) => {
-    const billingItems = parseBillingItems(
-      patient.visitProcedure || '', patient.procCode || '',
-      patient.fee || '', patient.unit || ''
-    );
-    const billingText = billingItems.length > 0
-      ? billingItems.map(i => i.code).join(', ')
-      : '';
-
     return (
-      <button
+      <PatientGridCell
         key={patient.rowIndex}
+        patient={patient}
         onClick={() => handlePatientClick(patient)}
-        className="patient-card-grid text-left p-4 flex flex-col gap-1.5 min-h-[120px]"
-        data-status={patient.status}
-      >
-        {/* Name */}
-        <p className="font-semibold text-[14px] text-[var(--text-primary)] truncate leading-tight">
-          {patient.name || 'Unknown'}
-        </p>
-
-        {/* Diagnosis */}
-        {patient.diagnosis ? (
-          <p className="text-[11px] text-[var(--text-secondary)] truncate leading-snug">{patient.diagnosis}</p>
-        ) : (
-          <p className="text-[11px] text-[var(--text-muted)] italic">No diagnosis</p>
-        )}
-
-        {/* Spacer */}
-        <div className="flex-1" />
-
-        {/* Bottom: time + billing */}
-        <div className="flex items-center justify-between gap-2 pt-1 border-t border-[var(--border-light)]">
-          <span className="text-[10px] text-[var(--text-muted)] tabular-nums flex items-center gap-1">
-            <Clock className="w-2.5 h-2.5 opacity-50" />
-            {patient.timestamp || '--:--'}
-          </span>
-          {billingText ? (
-            <span className="text-[9px] font-medium text-[var(--text-muted)] tabular-nums truncate max-w-[60px]">
-              {billingText}
-            </span>
-          ) : (
-            <span className="w-1.5 h-1.5 rounded-full" style={{
-              background: patient.hasOutput ? 'var(--status-processed-border)'
-                : patient.transcript ? 'var(--status-pending-border)'
-                : 'var(--text-muted)'
-            }} />
-          )}
-        </div>
-      </button>
+        onTimeChange={(time) => handleTimeChange(patient, time)}
+        onUpdateFields={async (fields) => {
+          await fetch(`/api/patients/${patient.rowIndex}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ...fields, sheetName: patient.sheetName }),
+          });
+          fetchPatients();
+        }}
+        onBillingSave={(items) => handleDashboardBillingSave(patient, items)}
+      />
     );
   };
 
@@ -874,6 +855,7 @@ export default function HomePage() {
           onMerge={() => setMergeSource(patient)}
           onDateChange={(newSheet) => handleDateChange(patient, newSheet)}
           showEducation={getEducationConfig().enabled}
+          showIconsAlways={showCardIcons}
           onSaveResource={(resource) => {
             addSavedResource(resource);
             setSavedResourceKeys(prev => new Set(prev).add(`${patient.rowIndex}:${patient.sheetName}:${resource.type}`));
@@ -930,8 +912,24 @@ export default function HomePage() {
     router.push(`/patient/${patient.rowIndex}?sheet=${encodeURIComponent(patient.sheetName)}`);
   };
 
-  if (awayScreen) {
-    return <AwayScreen onClose={() => setAwayScreen(false)} />;
+  if (away.awayScreen) {
+    return (
+      <AwayScreen
+        onClose={() => away.setAwayScreen(false)}
+        awayTime={away.awayTime}
+        awayWeather={away.awayWeather}
+        awayPhotoUrl={away.awayPhotoUrl}
+        awayFunFact={away.awayFunFact}
+        setAwayFunFact={away.setAwayFunFact}
+        awayBreathing={away.awayBreathing}
+        setAwayBreathing={away.setAwayBreathing}
+        breathPhase={away.breathPhase}
+        breathCount={away.breathCount}
+        calmPhotoUrl={away.calmPhotoUrl}
+        setCalmPhotoUrl={away.setCalmPhotoUrl}
+        cyclePhoto={away.cyclePhoto}
+      />
+    );
   }
 
   return (
@@ -997,7 +995,7 @@ export default function HomePage() {
                 {anonymize ? 'Show Names' : 'Anonymize'}
               </button>
               <button
-                onClick={() => { setAwayScreen(true); setSidebarOpen(false); }}
+                onClick={() => { away.setAwayScreen(true); setSidebarOpen(false); }}
                 className="flex items-center gap-2.5 w-full px-3 py-2.5 rounded-lg text-left text-[13px] font-medium transition-colors hover:bg-black/5 dark:hover:bg-white/5"
                 style={{ color: 'var(--text-primary)' }}
               >
@@ -1152,6 +1150,18 @@ export default function HomePage() {
                 title={viewMode === 'list' ? 'Grid view' : 'List view'}
               >
                 {viewMode === 'list' ? <LayoutGrid className="w-3 h-3" /> : <LayoutList className="w-3 h-3" />}
+              </button>
+              <button
+                onClick={() => {
+                  const next = !showCardIcons;
+                  setShowCardIcons(next);
+                  localStorage.setItem('ed-show-card-icons', String(next));
+                }}
+                className="flex items-center gap-1 px-2 py-1.5 rounded-lg text-[11px] font-medium transition-colors hover:bg-white/[0.07] flex-shrink-0"
+                style={{ color: showCardIcons ? 'var(--dash-text)' : 'var(--dash-text-muted)' }}
+                title={showCardIcons ? 'Hide card icons' : 'Show card icons'}
+              >
+                <Activity className="w-3 h-3" />
               </button>
             </div>
 

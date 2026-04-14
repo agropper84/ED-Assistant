@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAnthropicClient } from '@/lib/api-keys';
+import { MODELS } from '@/lib/config';
 
 export const maxDuration = 30;
 
@@ -26,7 +27,7 @@ export async function POST(request: NextRequest) {
     // Mode 1: Get required variables for a calculator
     if (mode === 'variables') {
       const response = await anthropic.messages.create({
-        model: 'claude-haiku-4-5-20251001',
+        model: MODELS.fast,
         max_tokens: 1024,
         temperature: 0,
         messages: [{
@@ -75,7 +76,7 @@ Return ONLY valid JSON.`,
         .join('\n');
 
       const response = await anthropic.messages.create({
-        model: 'claude-haiku-4-5-20251001',
+        model: MODELS.fast,
         max_tokens: 1024,
         temperature: 0,
         messages: [{
@@ -102,7 +103,7 @@ Be concise. Use markdown.`,
     messages.push({ role: 'user', content: query.trim() });
 
     const response = await anthropic.messages.create({
-      model: 'claude-haiku-4-5-20251001',
+      model: MODELS.fast,
       max_tokens: 1024,
       temperature: 0,
       system: `You are a medical calculator assistant with access to patient data.

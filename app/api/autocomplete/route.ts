@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
 import { getSessionFromCookies } from '@/lib/session';
+import { MODELS } from '@/lib/config';
 
 export const maxDuration = 10;
 
@@ -50,7 +51,7 @@ Output ONLY the remaining text to complete this sentence. Rules:
 - Output nothing but the completion text, no quotes, no explanation`;
 
     const message = await anthropic.messages.create({
-      model: 'claude-haiku-4-5-20251001',
+      model: MODELS.fast,
       max_tokens: 60,
       temperature: 0.3,
       messages: [{ role: 'user', content: prompt }],

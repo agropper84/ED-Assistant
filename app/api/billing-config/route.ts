@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSheetsContext, getBillingConfig, saveBillingConfig } from '@/lib/google-sheets';
+import { getDataContext } from '@/lib/data-layer';
+import { getBillingConfig, saveBillingConfig } from '@/lib/google-sheets';
 
 // GET — read billing config from Google Sheet
 export async function GET() {
   try {
-    const ctx = await getSheetsContext();
-    const config = await getBillingConfig(ctx);
+    const ctx = await getDataContext();
+    const config = await getBillingConfig(ctx.sheets);
     return NextResponse.json(config);
   } catch (err: any) {
     if (err.message === 'Not authenticated') {
@@ -19,9 +20,9 @@ export async function GET() {
 // PUT — save billing config to Google Sheet
 export async function PUT(req: NextRequest) {
   try {
-    const ctx = await getSheetsContext();
+    const ctx = await getDataContext();
     const config = await req.json();
-    await saveBillingConfig(ctx, {
+    await saveBillingConfig(ctx.sheets, {
       billingRegion: config.billingRegion || 'yukon',
       vchCprpId: config.vchCprpId || '',
       vchSiteFacility: config.vchSiteFacility || '',

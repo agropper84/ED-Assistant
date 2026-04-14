@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { callWithPHIProtection } from '@/lib/claude';
 import { withApiHandler, parseBody } from '@/lib/api-handler';
 import { editTextSchema } from '@/lib/schemas';
+import { MODELS } from '@/lib/config';
 
 export const maxDuration = 30;
 
@@ -38,7 +39,7 @@ ${context ? `Surrounding context from the same section:\n${context}\n` : ''}${in
     const result = await callWithPHIProtection(
       prompt,
       null,
-      { model: 'claude-sonnet-4-20250514', maxTokens: 1024, temperature: 0.2 },
+      { model: MODELS.default, maxTokens: 1024, temperature: 0.2 },
     );
 
     return NextResponse.json({ success: true, result: result.trim() });

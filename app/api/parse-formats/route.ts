@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSheetsContext, getParseFormats, saveParseFormat, deleteParseFormat } from '@/lib/google-sheets';
+import { getDataContext, getParseFormats, saveParseFormat, deleteParseFormat } from '@/lib/data-layer';
 
 // GET - list all saved parse formats
 export async function GET() {
   try {
-    const ctx = await getSheetsContext();
+    const ctx = await getDataContext();
     const formats = await getParseFormats(ctx);
     return NextResponse.json(formats);
   } catch (err: any) {
@@ -19,7 +19,7 @@ export async function GET() {
 // POST - save a parse format
 export async function POST(req: NextRequest) {
   try {
-    const ctx = await getSheetsContext();
+    const ctx = await getDataContext();
     const format = await req.json();
     if (!format.name?.trim()) {
       return NextResponse.json({ error: 'Format name is required' }, { status: 400 });
@@ -38,7 +38,7 @@ export async function POST(req: NextRequest) {
 // DELETE - delete a parse format by name
 export async function DELETE(req: NextRequest) {
   try {
-    const ctx = await getSheetsContext();
+    const ctx = await getDataContext();
     const { name } = await req.json();
     if (!name?.trim()) {
       return NextResponse.json({ error: 'Format name is required' }, { status: 400 });

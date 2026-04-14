@@ -2,6 +2,7 @@ import { PromptTemplates, DEFAULT_PROMPT_TEMPLATES } from './settings';
 import { buildPHIMapping, deidentifyText, reidentifyText } from './phi-filter';
 import { getAnthropicClient } from './api-keys';
 import { verifyLinks } from './verify-links';
+import { MODELS } from '@/lib/config';
 
 export interface ProcessedNote {
   ddx: string;
@@ -62,7 +63,7 @@ export async function processEncounter(
   const phiMapping = buildPHIMapping(patientData);
   prompt = deidentifyText(prompt, phiMapping);
 
-  const model = options?.settings?.model || 'claude-sonnet-4-20250514';
+  const model = options?.settings?.model || MODELS.default;
   const maxTokens = options?.settings?.maxTokens || 4096;
   const temperature = options?.settings?.temperature ?? 0.3;
 
@@ -113,7 +114,7 @@ export async function streamProcessEncounter(
   const phiMapping = buildPHIMapping(patientData);
   prompt = deidentifyText(prompt, phiMapping);
 
-  const model = options?.settings?.model || 'claude-sonnet-4-20250514';
+  const model = options?.settings?.model || MODELS.default;
   const maxTokens = options?.settings?.maxTokens || 4096;
   const temperature = options?.settings?.temperature ?? 0.3;
 
@@ -170,7 +171,7 @@ export async function streamGenericPrompt(
     finalPrompt = deidentifyText(prompt, phiMapping);
   }
 
-  const model = settings?.model || 'claude-sonnet-4-20250514';
+  const model = settings?.model || MODELS.default;
   const maxTokens = settings?.maxTokens || 4096;
   const temperature = settings?.temperature ?? 0.3;
 
@@ -226,7 +227,7 @@ export async function callWithPHIProtection(
     finalPrompt = deidentifyText(prompt, phiMapping);
   }
 
-  const model = settings?.model || 'claude-sonnet-4-20250514';
+  const model = settings?.model || MODELS.default;
   const maxTokens = settings?.maxTokens || 4096;
   const temperature = settings?.temperature ?? 0.3;
 
@@ -591,7 +592,7 @@ DIAGNOSIS: [clean diagnosis name]
 ICD9: [code only, no description]
 ICD10: [code only, no description]`,
     null,
-    { model: 'claude-sonnet-4-20250514', maxTokens: 200, temperature: 0.1 },
+    { model: MODELS.default, maxTokens: 200, temperature: 0.1 },
   );
 
   const diagMatch = result.match(/DIAGNOSIS:\s*(.+)/i);

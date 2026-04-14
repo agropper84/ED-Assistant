@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSessionFromCookies } from '@/lib/session';
-import { getSheetsContext, getUserPhrases, saveUserPhrases } from '@/lib/google-sheets';
+import { getDataContext, getUserPhrases, saveUserPhrases } from '@/lib/data-layer';
 
 /** GET — Fetch user's saved phrases for autocomplete */
 export async function GET() {
@@ -10,7 +10,7 @@ export async function GET() {
       return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
     }
 
-    const ctx = await getSheetsContext();
+    const ctx = await getDataContext();
     const phrases = await getUserPhrases(ctx);
     return NextResponse.json({ phrases });
   } catch (error: any) {
@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'phrases must be an array' }, { status: 400 });
     }
 
-    const ctx = await getSheetsContext();
+    const ctx = await getDataContext();
     await saveUserPhrases(ctx, phrases);
     return NextResponse.json({ ok: true });
   } catch (error: any) {

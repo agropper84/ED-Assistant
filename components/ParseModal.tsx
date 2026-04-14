@@ -4,7 +4,7 @@ import { useState, useRef, useEffect, useMemo } from 'react';
 import { X, Clipboard, Check, Loader2, Clock, Upload, Send, FileText, Trash2 } from 'lucide-react';
 import { ExamToggles } from '@/components/ExamToggles';
 import { AutocompleteTextarea } from '@/components/AutocompleteTextarea';
-import { MEDICAL_SUGGESTIONS } from '@/lib/medical-suggestions';
+import { getMedicalSuggestions } from '@/lib/medical-suggestions';
 import { VoiceRecorder } from '@/components/VoiceRecorder';
 import { getParseRules, saveParseRules, ParseRules, DEFAULT_PARSE_RULES, INPUT_HEALTH_PARSE_RULES, BUILT_IN_FORMATS } from '@/lib/settings';
 import { savePhrasesInBackground } from '@/lib/user-phrases';
@@ -199,7 +199,7 @@ export function ParseModal({ isOpen, onClose, onSave, onQuickAdd, patientRef }: 
   const allSuggestions = useMemo(
     () => {
       const set = new Set<string>(userPhrases);
-      for (const s of MEDICAL_SUGGESTIONS) set.add(s);
+      for (const s of getMedicalSuggestions()) set.add(s);
       return Array.from(set);
     },
     [userPhrases]

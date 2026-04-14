@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, memo } from 'react';
 import { createPortal } from 'react-dom';
 import { Patient } from '@/lib/google-sheets';
 import { Clock, User, FileText, Trash2, DollarSign, Stethoscope, Copy, Check, Brain, ListTree, BookOpen, Play, Loader2, X, MessageCircleQuestion, Merge, CalendarDays, GraduationCap, ExternalLink, Calculator, Bookmark, Heart } from 'lucide-react';
@@ -29,6 +29,7 @@ interface PatientCardProps {
   onDateChange?: (newSheetName: string) => void;
   onGenerateEducation?: () => Promise<void>;
   showEducation?: boolean;
+  showIconsAlways?: boolean;
   onGenerateProfile?: () => Promise<void>;
   onCalculator?: () => void;
   onSaveResource?: (resource: { type: 'evidence' | 'education'; content: string; patientName: string; diagnosis: string }) => void;
@@ -97,7 +98,7 @@ function IconTooltip({ anchorRef, visible, children }: { anchorRef: React.RefObj
   );
 }
 
-export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChange, onBillingToggle, billingCodes, onNavigate, onProcess, onGenerateAnalysis, onGenerateSynopsis, onGenerateManagement, onGenerateEvidence, onGenerateDdxInvestigations, onGenerateManagementEvidence, onUpdateFields, onClinicalChat, onMerge, onDateChange, onGenerateEducation, showEducation, onCalculator, onSaveResource, savedResourceKey, onGenerateProfile }: PatientCardProps) {
+export const PatientCard = memo(function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChange, onBillingToggle, billingCodes, onNavigate, onProcess, onGenerateAnalysis, onGenerateSynopsis, onGenerateManagement, onGenerateEvidence, onGenerateDdxInvestigations, onGenerateManagementEvidence, onUpdateFields, onClinicalChat, onMerge, onDateChange, onGenerateEducation, showEducation, showIconsAlways, onCalculator, onSaveResource, savedResourceKey, onGenerateProfile }: PatientCardProps) {
   const [editingTime, setEditingTime] = useState(false);
   const [timeValue, setTimeValue] = useState(patient.timestamp || '');
   const [noteCopied, setNoteCopied] = useState(false);
@@ -261,7 +262,8 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
             {displayName}
           </span>
 
-          {/* Medical profile pill — always visible */}
+          {/* Icons: PMHx through Clinical Q&A — visible on card hover */}
+          <div className={`flex items-center gap-1.5 transition-opacity duration-200 ${showIconsAlways ? 'opacity-100' : 'opacity-0 group-hover/card:opacity-100'}`}>
           <div className="relative flex-shrink-0">
             <span
               onClick={async (e) => {
@@ -545,6 +547,7 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
               })()}
             </div>
           )}
+          </div>{/* end hover icons wrapper */}
         </div>
 
         {/* Bottom row: metadata */}
@@ -860,4 +863,4 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
       </div>{/* end patient-card */}
     </div>
   );
-}
+});

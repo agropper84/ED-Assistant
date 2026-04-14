@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getSessionFromCookies } from '@/lib/session';
-import { getSheetsContext, getDateSheets, getPatients } from '@/lib/google-sheets';
+import { getDataContext, getDateSheets, getPatients } from '@/lib/data-layer';
 
 export const maxDuration = 30;
 
@@ -20,7 +20,7 @@ export async function GET() {
       return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
     }
 
-    const ctx = await getSheetsContext();
+    const ctx = await getDataContext();
     const allSheets = await getDateSheets(ctx);
     // Limit to last 30 sheets for performance
     const sheets = allSheets.slice(0, 30);

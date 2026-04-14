@@ -19,9 +19,11 @@ import {
 import { encryptValue, decryptValue, generateEncryptionKey } from './encryption';
 import type {
   DriveContext, DateSheetFile, MasterIndexFile, EDPatientFile, PatientFields, ShiftTimesData,
+  StyleGuideFile, BillingCodeEntry, DiagnosisCodeEntry, ParseFormatEntry, UserPhrasesFile,
 } from './types-json';
 import {
   DRIVE_FOLDER_NAME, SHEETS_SUBFOLDER, MASTER_INDEX_FILE,
+  STYLE_GUIDE_FILE, BILLING_CODES_FILE, DIAGNOSIS_CODES_FILE, PARSE_FORMATS_FILE, USER_PHRASES_FILE,
 } from './types-json';
 import type { Patient } from './google-sheets';
 
@@ -545,4 +547,69 @@ export async function setShiftTimesInDrive(
   const dateSheet = await getOrCreateDateSheetInDrive(ctx, sheetName);
   dateSheet.shiftTimes = times;
   await saveDateSheetToDrive(ctx, dateSheet);
+}
+
+// ============================================================
+// AUXILIARY DATA: STYLE GUIDE
+// ============================================================
+
+export async function getStyleGuideFromDrive(ctx: DriveContext): Promise<StyleGuideFile | null> {
+  return readDriveFile<StyleGuideFile>(ctx, STYLE_GUIDE_FILE);
+}
+
+export async function saveStyleGuideToDrive(ctx: DriveContext, guide: StyleGuideFile): Promise<void> {
+  guide.lastModified = new Date().toISOString();
+  await writeDriveFile(ctx, STYLE_GUIDE_FILE, guide);
+}
+
+// ============================================================
+// AUXILIARY DATA: BILLING CODES
+// ============================================================
+
+export async function getBillingCodesFromDrive(ctx: DriveContext): Promise<BillingCodeEntry[]> {
+  const data = await readDriveFile<{ codes: BillingCodeEntry[] }>(ctx, BILLING_CODES_FILE);
+  return data?.codes || [];
+}
+
+export async function saveBillingCodesToDrive(ctx: DriveContext, codes: BillingCodeEntry[]): Promise<void> {
+  await writeDriveFile(ctx, BILLING_CODES_FILE, { version: 1, lastModified: new Date().toISOString(), codes });
+}
+
+// ============================================================
+// AUXILIARY DATA: DIAGNOSIS CODES
+// ============================================================
+
+export async function getDiagnosisCodesFromDrive(ctx: DriveContext): Promise<DiagnosisCodeEntry[]> {
+  const data = await readDriveFile<{ codes: DiagnosisCodeEntry[] }>(ctx, DIAGNOSIS_CODES_FILE);
+  return data?.codes || [];
+}
+
+export async function saveDiagnosisCodesToDrive(ctx: DriveContext, codes: DiagnosisCodeEntry[]): Promise<void> {
+  await writeDriveFile(ctx, DIAGNOSIS_CODES_FILE, { version: 1, lastModified: new Date().toISOString(), codes });
+}
+
+// ============================================================
+// AUXILIARY DATA: PARSE FORMATS
+// ============================================================
+
+export async function getParseFormatsFromDrive(ctx: DriveContext): Promise<ParseFormatEntry[]> {
+  const data = await readDriveFile<{ formats: ParseFormatEntry[] }>(ctx, PARSE_FORMATS_FILE);
+  return data?.formats || [];
+}
+
+export async function saveParseFormatsToDrive(ctx: DriveContext, formats: ParseFormatEntry[]): Promise<void> {
+  await writeDriveFile(ctx, PARSE_FORMATS_FILE, { version: 1, lastModified: new Date().toISOString(), formats });
+}
+
+// ============================================================
+// AUXILIARY DATA: USER PHRASES
+// ============================================================
+
+export async function getUserPhrasesFromDrive(ctx: DriveContext): Promise<Array<{ phrase: string; count: number }>> {
+  const data = await readDriveFile<UserPhrasesFile>(ctx, USER_PHRASES_FILE);
+  return data?.phrases || [];
+}
+
+export async function saveUserPhrasesToDrive(ctx: DriveContext, phrases: Array<{ phrase: string; count: number }>): Promise<void> {
+  await writeDriveFile(ctx, USER_PHRASES_FILE, { version: 1, lastModified: new Date().toISOString(), phrases });
 }
