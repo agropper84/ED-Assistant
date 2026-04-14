@@ -36,8 +36,40 @@ export const POST = withApiHandler(
       evidence: `Cite pertinent evidence, guidelines, or clinical decision rules relevant to this presentation. ONLY use URLs you are confident are real — use PubMed links with actual PMIDs. If unsure of a URL, cite by name without a link. Use narrative form with [Name](URL) markdown links.`,
     };
 
+    const ddxInstruction = educationMode
+      ? `List a BROAD differential diagnosis for educational purposes. Include common, uncommon, and must-not-miss diagnoses — even unlikely ones worth considering. For each, include brief reasoning for why it should be on the differential and key distinguishing features. Aim for 8-15 diagnoses ranked by likelihood.`
+      : `List the differential diagnoses ranked by likelihood. Include brief reasoning.`;
+
     let prompt: string;
-    if (section && sectionPrompts[section]) {
+    if (section === 'ddx-investigations') {
+      prompt = `You are an experienced emergency medicine physician. Based on the following patient data, generate ONLY the differential diagnosis and recommended investigations.
+
+Patient: ${patient.name || 'Unknown'}, ${patient.age || '?'} ${patient.gender || ''}
+
+${parts.join('\n\n')}
+
+Respond in EXACTLY this format:
+
+===DDX===
+${ddxInstruction}
+
+===INVESTIGATIONS===
+List recommended investigations/workup.`;
+    } else if (section === 'management-evidence') {
+      prompt = `You are an experienced emergency medicine physician. Based on the following patient data, generate ONLY the management plan and supporting evidence.
+
+Patient: ${patient.name || 'Unknown'}, ${patient.age || '?'} ${patient.gender || ''}
+
+${parts.join('\n\n')}
+
+Respond in EXACTLY this format:
+
+===MANAGEMENT===
+Provide recommended management steps including disposition planning.
+
+===EVIDENCE===
+Cite pertinent evidence, guidelines, or clinical decision rules relevant to this presentation. ONLY use URLs you are confident are real. If unsure of a URL, cite by name without a link.`;
+    } else if (section && sectionPrompts[section]) {
       prompt = `You are an experienced physician. Based on the following patient data, generate ONLY the ${section} section.
 
 Patient: ${patient.name || 'Unknown'}, ${patient.age || '?'} ${patient.gender || ''}
@@ -48,10 +80,6 @@ ${sectionPrompts[section]}
 
 Output ONLY the ${section} content, nothing else.`;
     } else {
-      const ddxInstruction = educationMode
-        ? `List a BROAD differential diagnosis for educational purposes. Include common, uncommon, and must-not-miss diagnoses — even unlikely ones worth considering. For each, include brief reasoning for why it should be on the differential and key distinguishing features. Aim for 8-15 diagnoses ranked by likelihood.`
-        : `List the differential diagnoses ranked by likelihood. Include brief reasoning.`;
-
       prompt = `You are an experienced emergency medicine physician. Based on the following patient data, generate a differential diagnosis, recommended management plan, and pertinent evidence-based references.
 
 Patient: ${patient.name || 'Unknown'}, ${patient.age || '?'} ${patient.gender || ''}
@@ -83,16 +111,25 @@ Cite pertinent evidence, guidelines, or clinical decision rules relevant to this
     text = await verifyLinks(text);
 
     const fields: Record<string, string> = {};
+    const getSection = (key: string): string => {
+      const regex = new RegExp(`===${key}===\\s*([\\s\\S]*?)(?====\\w|$)`);
+      const match = text.match(regex);
+      return match ? match[1].trim() : '';
+    };
 
-    if (section) {
+    if (section === 'ddx-investigations') {
+      const ddx = getSection('DDX');
+      const investigations = getSection('INVESTIGATIONS');
+      if (ddx) fields.ddx = ddx;
+      if (investigations) fields.investigations = investigations;
+    } else if (section === 'management-evidence') {
+      const management = getSection('MANAGEMENT');
+      const evidence = getSection('EVIDENCE');
+      if (management) fields.management = management;
+      if (evidence) fields.evidence = evidence;
+    } else if (section) {
       if (text.trim()) fields[section] = text.trim();
     } else {
-      const getSection = (key: string): string => {
-        const regex = new RegExp(`===${key}===\\s*([\\s\\S]*?)(?====\\w|$)`);
-        const match = text.match(regex);
-        return match ? match[1].trim() : '';
-      };
-
       const ddx = getSection('DDX');
       const investigations = getSection('INVESTIGATIONS');
       const management = getSection('MANAGEMENT');

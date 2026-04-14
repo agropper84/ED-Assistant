@@ -31,7 +31,7 @@ export const processSchema = z.object({
 export const analysisSchema = z.object({
   rowIndex,
   sheetName,
-  section: z.enum(['management', 'evidence']).optional(),
+  section: z.enum(['management', 'evidence', 'ddx-investigations', 'management-evidence']).optional(),
   educationMode: z.boolean().optional(),
 });
 

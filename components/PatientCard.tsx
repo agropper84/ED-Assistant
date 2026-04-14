@@ -21,6 +21,8 @@ interface PatientCardProps {
   onGenerateSynopsis?: () => Promise<void>;
   onGenerateManagement?: () => Promise<void>;
   onGenerateEvidence?: () => Promise<void>;
+  onGenerateDdxInvestigations?: () => Promise<void>;
+  onGenerateManagementEvidence?: () => Promise<void>;
   onUpdateFields?: (fields: Record<string, string>) => Promise<void>;
   onClinicalChat?: () => void;
   onMerge?: () => void;
@@ -95,7 +97,7 @@ function IconTooltip({ anchorRef, visible, children }: { anchorRef: React.RefObj
   );
 }
 
-export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChange, onBillingToggle, billingCodes, onNavigate, onProcess, onGenerateAnalysis, onGenerateSynopsis, onGenerateManagement, onGenerateEvidence, onUpdateFields, onClinicalChat, onMerge, onDateChange, onGenerateEducation, showEducation, onCalculator, onSaveResource, savedResourceKey, onGenerateProfile }: PatientCardProps) {
+export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChange, onBillingToggle, billingCodes, onNavigate, onProcess, onGenerateAnalysis, onGenerateSynopsis, onGenerateManagement, onGenerateEvidence, onGenerateDdxInvestigations, onGenerateManagementEvidence, onUpdateFields, onClinicalChat, onMerge, onDateChange, onGenerateEducation, showEducation, onCalculator, onSaveResource, savedResourceKey, onGenerateProfile }: PatientCardProps) {
   const [editingTime, setEditingTime] = useState(false);
   const [timeValue, setTimeValue] = useState(patient.timestamp || '');
   const [noteCopied, setNoteCopied] = useState(false);
@@ -395,12 +397,13 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
                   onMouseLeave={hideTooltip}
                   onClick={(e) => {
                     e.stopPropagation();
-                    if (!patient.ddx && !patient.investigations && onGenerateAnalysis && !generatingIcon) {
+                    const gen = onGenerateDdxInvestigations || onGenerateAnalysis;
+                    if (!patient.ddx && !patient.investigations && gen && !generatingIcon) {
                       setGeneratingIcon('management');
-                      onGenerateAnalysis().finally(() => setGeneratingIcon(null));
+                      gen().finally(() => setGeneratingIcon(null));
                     } else if ((patient.ddx || patient.investigations) && onNavigate) { onNavigate(); }
                   }}
-                  className={`p-0.5 rounded transition-colors inline-flex ${patient.ddx || patient.investigations || onGenerateAnalysis ? 'hover:bg-violet-50 dark:hover:bg-violet-900/30 cursor-pointer' : ''}`}
+                  className={`p-0.5 rounded transition-colors inline-flex ${patient.ddx || patient.investigations || onGenerateDdxInvestigations || onGenerateAnalysis ? 'hover:bg-violet-50 dark:hover:bg-violet-900/30 cursor-pointer' : ''}`}
                   title={patient.ddx || patient.investigations ? '' : 'Generate DDx & investigations'}
                 >
                   {generatingIcon === 'management' ? <Loader2 className="w-4 h-4 text-violet-400 animate-spin" /> : <ListTree className={`w-3.5 h-3.5 ${patient.ddx || patient.investigations ? 'text-violet-600 dark:text-violet-400' : EMPTY}`} />}
@@ -433,12 +436,13 @@ export function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChang
                   onMouseLeave={hideTooltip}
                   onClick={(e) => {
                     e.stopPropagation();
-                    if (!patient.management && !patient.evidence && (onGenerateEvidence || onGenerateAnalysis) && !generatingIcon) {
+                    const gen = onGenerateManagementEvidence || onGenerateEvidence || onGenerateAnalysis;
+                    if (!patient.management && !patient.evidence && gen && !generatingIcon) {
                       setGeneratingIcon('evidence');
-                      (onGenerateEvidence || onGenerateAnalysis)!().finally(() => setGeneratingIcon(null));
+                      gen().finally(() => setGeneratingIcon(null));
                     } else if ((patient.management || patient.evidence) && onNavigate) { onNavigate(); }
                   }}
-                  className={`p-0.5 rounded transition-colors inline-flex ${patient.management || patient.evidence || onGenerateEvidence || onGenerateAnalysis ? 'hover:bg-amber-50 dark:hover:bg-amber-900/30 cursor-pointer' : ''}`}
+                  className={`p-0.5 rounded transition-colors inline-flex ${patient.management || patient.evidence || onGenerateManagementEvidence || onGenerateEvidence || onGenerateAnalysis ? 'hover:bg-amber-50 dark:hover:bg-amber-900/30 cursor-pointer' : ''}`}
                   title={patient.management || patient.evidence ? '' : 'Generate management & evidence'}
                 >
                   {generatingIcon === 'evidence' ? <Loader2 className="w-4 h-4 text-amber-400 animate-spin" /> : <BookOpen className={`w-3.5 h-3.5 ${patient.management || patient.evidence ? 'text-amber-600 dark:text-amber-400' : EMPTY}`} />}

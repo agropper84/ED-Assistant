@@ -818,6 +818,25 @@ export default function HomePage() {
             ]);
             fetchPatients();
           }}
+          onGenerateDdxInvestigations={async () => {
+            const educationMode = getEducationConfig().enabled;
+            setPinnedRowIndex(patient.rowIndex);
+            await fetch('/api/analysis', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ rowIndex: patient.rowIndex, sheetName: patient.sheetName, section: 'ddx-investigations', educationMode }),
+            });
+            fetchPatients();
+          }}
+          onGenerateManagementEvidence={async () => {
+            setPinnedRowIndex(patient.rowIndex);
+            await fetch('/api/analysis', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ rowIndex: patient.rowIndex, sheetName: patient.sheetName, section: 'management-evidence' }),
+            });
+            fetchPatients();
+          }}
           onGenerateSynopsis={async () => {
             await fetch('/api/synopsis', {
               method: 'POST',
