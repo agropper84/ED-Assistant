@@ -247,41 +247,90 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
   );
 
   // Track which patient is currently loaded to detect actual patient changes vs data refreshes
-  const currentPatientRef = useRef<{ rowIndex: number; sheetName: string } | null>(null);
+  const currentPatientRef = useRef<string | null>(null);
 
-  // Sync state when patient changes
+  // Sync state when patient/modal changes
   useEffect(() => {
-    if (patient) {
-      const isSamePatient = currentPatientRef.current &&
-        currentPatientRef.current.rowIndex === patient.rowIndex &&
-        currentPatientRef.current.sheetName === patient.sheetName;
+    if (!patient || !isOpen) return;
 
-      if (!isSamePatient) {
-        // NEW patient — reset everything and populate from patient data
-        currentPatientRef.current = { rowIndex: patient.rowIndex, sheetName: patient.sheetName };
-        if (patient.encounterNotes) {
-          setTranscript(patient.transcript || '');
-          setEncounterNotes(patient.encounterNotes);
-        } else {
-          const { transcript: t, encounterNotes: en } = splitTranscriptAndNotes(patient.transcript || '');
-          setTranscript(t);
-          setEncounterNotes(en);
-        }
-        setTriageVitals(patient.triageVitals || '');
-        setAdditional(patient.additional || '');
-        setPastDocs(patient.pastDocs || '');
+    const patientKey = `${patient.rowIndex}:${patient.sheetName}`;
+    const isSamePatient = currentPatientRef.current === patientKey;
+
+    if (!isSamePatient) {
+      // NEW patient or modal just opened — fetch submissions from server
+      currentPatientRef.current = patientKey;
+
+      // Clear text fields (user enters fresh content, submitted content is in tags)
+      setTranscript('');
+      setEncounterNotes('');
+      setTriageVitals('');
+      setAdditional('');
+      setPastDocs('');
+      setHoveredSub(null);
+      setPendingSubmit(null);
+      setSubmitTitle('');
+      setSubmitDate('');
+
+      // Load existing submissions from server
+      fetch(`/api/patients/${patient.rowIndex}/submit?sheet=${encodeURIComponent(patient.sheetName)}`)
+        .then(r => r.ok ? r.json() : { submissions: [] })
+        .then(data => setSubmissions(data.submissions || []))
+        .catch(() => setSubmissions([]));
+
+      // If there are NO submissions yet (fresh patient), populate text fields from patient data
+      // so user sees existing content. We check after a short delay to let the fetch complete.
+      // But we can also check synchronously: if the patient has content but we're about to
+      // fetch submissions, we should show content only if no submissions exist.
+      // Simplest approach: check if patient has content and pre-fill, then clear if submissions arrive.
+      const hasSubmittedContent = !!(patient.transcript || patient.encounterNotes || patient.triageVitals || patient.additional || patient.pastDocs);
+      if (hasSubmittedContent) {
+        // Pre-fill from patient data — will be visible until submissions load
+        // If submissions exist, the tags will show the history and fields stay clear
+        // If no submissions exist, this content is the "unsaved draft" and should show in text box
+        fetch(`/api/patients/${patient.rowIndex}/submit?sheet=${encodeURIComponent(patient.sheetName)}`)
+          .then(r => r.ok ? r.json() : { submissions: [] })
+          .then(data => {
+            const subs = data.submissions || [];
+            setSubmissions(subs);
+            if (subs.length === 0) {
+              // No submissions — show existing patient data in text boxes
+              if (patient.encounterNotes) {
+                setTranscript(patient.transcript || '');
+                setEncounterNotes(patient.encounterNotes);
+              } else {
+                const { transcript: t, encounterNotes: en } = splitTranscriptAndNotes(patient.transcript || '');
+                setTranscript(t);
+                setEncounterNotes(en);
+              }
+              setTriageVitals(patient.triageVitals || '');
+              setAdditional(patient.additional || '');
+              setPastDocs(patient.pastDocs || '');
+            }
+            // If submissions exist: text fields stay empty (ready for new input),
+            // submitted content is visible via tags
+          })
+          .catch(() => {
+            // On error, fall back to showing content in text boxes
+            if (patient.encounterNotes) {
+              setTranscript(patient.transcript || '');
+              setEncounterNotes(patient.encounterNotes);
+            } else {
+              const { transcript: t, encounterNotes: en } = splitTranscriptAndNotes(patient.transcript || '');
+              setTranscript(t);
+              setEncounterNotes(en);
+            }
+            setTriageVitals(patient.triageVitals || '');
+            setAdditional(patient.additional || '');
+            setPastDocs(patient.pastDocs || '');
+          });
+      } else {
         setSubmissions([]);
-        setHoveredSub(null);
-        setPendingSubmit(null);
-        setSubmitTitle('');
-        setSubmitDate('');
       }
-      // SAME patient refresh (after onSaved/fetchPatients) — do NOT touch text fields or submissions
-      // The user may have cleared a field after submitting; we don't want to refill it
     }
-  }, [patient]);
+    // SAME patient refresh (after onSaved/fetchPatients) — do NOT touch text fields or submissions
+  }, [patient, isOpen]);
 
-  // Clear ref when modal closes so next open is treated as new patient
+  // Clear ref when modal closes so next open fetches fresh
   useEffect(() => {
     if (!isOpen) {
       currentPatientRef.current = null;

@@ -3,6 +3,36 @@ import { getDataContext, addSubmission } from '@/lib/data-layer';
 import { generateId } from '@/lib/types-json';
 import type { SubmissionEntry } from '@/lib/types-json';
 
+// GET /api/patients/[rowIndex]/submit?sheet=... — Fetch existing submissions
+export async function GET(
+  request: NextRequest,
+  { params }: { params: { rowIndex: string } }
+) {
+  try {
+    const ctx = await getDataContext();
+    const rowIndex = parseInt(params.rowIndex);
+    const sheetName = request.nextUrl.searchParams.get('sheet');
+    if (!sheetName) {
+      return NextResponse.json({ error: 'sheet param required' }, { status: 400 });
+    }
+
+    if (ctx.mode !== 'sheets' && ctx.drive) {
+      const dj = await import('@/lib/drive-json');
+      const dateSheet = await dj.getDateSheetFromDrive(ctx.drive, sheetName);
+      if (dateSheet) {
+        const patient = dateSheet.patients.find(p => p.rowIndex === rowIndex);
+        if (patient?.submissions) {
+          return NextResponse.json({ submissions: patient.submissions });
+        }
+      }
+    }
+
+    return NextResponse.json({ submissions: [] });
+  } catch (error: any) {
+    return NextResponse.json({ error: error?.message || 'Failed' }, { status: 500 });
+  }
+}
+
 // POST /api/patients/[rowIndex]/submit — Save a single section as a new submission
 export async function POST(
   request: NextRequest,
