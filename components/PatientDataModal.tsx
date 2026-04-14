@@ -275,20 +275,55 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
       // NEW patient or modal just opened
       currentPatientRef.current = patientKey;
 
-      // Always populate text fields from saved patient data (what's in the Sheet)
-      populateFromPatient(patient);
-
-      // Reset submission UI
+      // Clear everything first
+      setTranscript('');
+      setEncounterNotes('');
+      setTriageVitals('');
+      setAdditional('');
+      setPastDocs('');
+      setSubmissions([]);
       setHoveredSub(null);
       setPendingSubmit(null);
       setSubmitTitle('');
       setSubmitDate('');
 
-      // Load existing submissions from server (shown as tags above text fields)
+      // Fetch submissions, then populate text boxes only for fields WITHOUT submissions
       fetch(`/api/patients/${patient.rowIndex}/submit?sheet=${encodeURIComponent(patient.sheetName)}`)
         .then(r => r.ok ? r.json() : { submissions: [] })
-        .then(data => setSubmissions(data.submissions || []))
-        .catch(() => setSubmissions([]));
+        .then(data => {
+          const subs: Array<{ id: string; field: string; content: string; submittedAt: string; title?: string; date?: string }> = data.submissions || [];
+          setSubmissions(subs);
+
+          // Fields that have submissions → leave text box empty (content is in tags)
+          // Fields without submissions → populate from patient data (Sheet)
+          const submittedFields = new Set(subs.map(s => s.field));
+
+          if (!submittedFields.has('transcript') && !submittedFields.has('encounterNotes')) {
+            if (patient.encounterNotes) {
+              setTranscript(patient.transcript || '');
+              setEncounterNotes(patient.encounterNotes);
+            } else {
+              const { transcript: t, encounterNotes: en } = splitTranscriptAndNotes(patient.transcript || '');
+              setTranscript(t);
+              setEncounterNotes(en);
+            }
+          } else {
+            // Only populate the field that doesn't have submissions
+            if (!submittedFields.has('transcript')) {
+              setTranscript(patient.transcript || '');
+            }
+            if (!submittedFields.has('encounterNotes')) {
+              setEncounterNotes(patient.encounterNotes || '');
+            }
+          }
+          if (!submittedFields.has('triageVitals')) setTriageVitals(patient.triageVitals || '');
+          if (!submittedFields.has('additional')) setAdditional(patient.additional || '');
+          if (!submittedFields.has('pastDocs')) setPastDocs(patient.pastDocs || '');
+        })
+        .catch(() => {
+          // On error, populate everything from patient data
+          populateFromPatient(patient);
+        });
     }
     // SAME patient refresh (after onSaved/fetchPatients) — do NOT touch text fields or submissions
   }, [patient, isOpen]);
