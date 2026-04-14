@@ -245,6 +245,31 @@ export async function setUserPatientsFolderId(userId: string, folderId: string):
   await getRedis().set(`user:${userId}:patients-folder-id`, folderId);
 }
 
+// --- Patient submissions (encrypted at rest, per-patient) ---
+
+function submissionsKey(sheetName: string, rowIndex: number): string {
+  return `submissions:${sheetName}:${rowIndex}`;
+}
+
+export async function getPatientSubmissions(sheetName: string, rowIndex: number): Promise<any[]> {
+  const val = await getRedis().get(submissionsKey(sheetName, rowIndex));
+  if (!val) return [];
+  try {
+    return JSON.parse(decryptSecret(val));
+  } catch {
+    return [];
+  }
+}
+
+export async function setPatientSubmissions(sheetName: string, rowIndex: number, submissions: any[]): Promise<void> {
+  const json = JSON.stringify(submissions);
+  await getRedis().set(submissionsKey(sheetName, rowIndex), encryptSecret(json));
+}
+
+export async function deletePatientSubmissions(sheetName: string, rowIndex: number): Promise<void> {
+  await getRedis().del(submissionsKey(sheetName, rowIndex));
+}
+
 // --- Pending audio queue for async watch uploads ---
 
 export interface PendingAudio {
