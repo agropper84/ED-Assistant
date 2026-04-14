@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { callWithPHIProtection } from '@/lib/claude';
-import { getSheetsContext, getPatient, updatePatientFields, getStyleGuideFromSheet } from '@/lib/google-sheets';
+import { getDataContext, getPatient, updatePatientFields } from '@/lib/data-layer';
+import { getStyleGuideFromSheet } from '@/lib/google-sheets';
 import { withApiHandler, parseBody } from '@/lib/api-handler';
 import { regenerateSectionSchema } from '@/lib/schemas';
+import { MODELS } from '@/lib/config';
 
 export const maxDuration = 60;
 
@@ -22,7 +24,7 @@ export const POST = withApiHandler(
   { rateLimit: { limit: 15, window: 60 }, auditEvent: 'generate.edit' },
   async (request: NextRequest) => {
     const { rowIndex, sheetName, section, updates } = await parseBody(request, regenerateSectionSchema);
-    const ctx = await getSheetsContext();
+    const ctx = await getDataContext();
 
     const patient = await getPatient(ctx, rowIndex, sheetName);
     if (!patient) {
@@ -32,7 +34,7 @@ export const POST = withApiHandler(
     // Build style guidance
     let styleSection = '';
     try {
-      const guide = await getStyleGuideFromSheet(ctx);
+      const guide = await getStyleGuideFromSheet(ctx.sheets);
       const parts: string[] = [];
       const sectionExamples = guide.examples[section as keyof typeof guide.examples];
       if (sectionExamples?.length > 0) {
@@ -71,7 +73,7 @@ Respond with ONLY the regenerated section content. No headers, labels, or extra 
     const regenerated = await callWithPHIProtection(
       prompt,
       { name: patient.name, age: patient.age, gender: patient.gender, birthday: patient.birthday, triageVitals: patient.triageVitals, transcript: patient.transcript, additional: patient.additional, pastDocs: patient.pastDocs },
-      { model: 'claude-sonnet-4-20250514', maxTokens: 2048, temperature: 0.3 },
+      { model: MODELS.default, maxTokens: 2048, temperature: 0.3 },
     );
 
     await updatePatientFields(ctx, rowIndex, { [section]: regenerated.trim() }, sheetName);

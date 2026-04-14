@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { callWithPHIProtection } from '@/lib/claude';
-import { getSheetsContext, getPatient, updatePatientFields } from '@/lib/google-sheets';
+import { getDataContext, getPatient, updatePatientFields } from '@/lib/data-layer';
 import { verifyLinks } from '@/lib/verify-links';
 import { withApiHandler, parseBody } from '@/lib/api-handler';
 import { analysisSchema } from '@/lib/schemas';
+import { MODELS } from '@/lib/config';
 
 export const maxDuration = 30;
 
@@ -11,7 +12,7 @@ export const POST = withApiHandler(
   { rateLimit: { limit: 20, window: 60 }, auditEvent: 'generate.analysis' },
   async (request: NextRequest) => {
     const { rowIndex, sheetName, section, educationMode } = await parseBody(request, analysisSchema);
-    const ctx = await getSheetsContext();
+    const ctx = await getDataContext();
 
     const patient = await getPatient(ctx, rowIndex, sheetName);
     if (!patient) {
@@ -105,7 +106,7 @@ Cite pertinent evidence, guidelines, or clinical decision rules relevant to this
     let text = await callWithPHIProtection(
       prompt,
       { name: patient.name, age: patient.age, gender: patient.gender, birthday: patient.birthday, triageVitals: patient.triageVitals, transcript: patient.transcript, additional: patient.additional, pastDocs: patient.pastDocs },
-      { model: 'claude-haiku-4-5-20251001', maxTokens: 2048, temperature: 0.3 },
+      { model: MODELS.fast, maxTokens: 2048, temperature: 0.3 },
     );
 
     text = await verifyLinks(text);

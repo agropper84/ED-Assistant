@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { callWithPHIProtection } from '@/lib/claude';
-import { getSheetsContext, getPatient, updatePatientFields } from '@/lib/google-sheets';
+import { getDataContext, getPatient, updatePatientFields } from '@/lib/data-layer';
 import { withApiHandler, parseBody } from '@/lib/api-handler';
 import { synopsisSchema } from '@/lib/schemas';
+import { MODELS } from '@/lib/config';
 
 export const maxDuration = 30;
 
@@ -10,7 +11,7 @@ export const POST = withApiHandler(
   { rateLimit: { limit: 20, window: 60 } },
   async (request: NextRequest) => {
     const { rowIndex, sheetName } = await parseBody(request, synopsisSchema);
-    const ctx = await getSheetsContext();
+    const ctx = await getDataContext();
 
     const patient = await getPatient(ctx, rowIndex, sheetName);
     if (!patient) {
@@ -43,7 +44,7 @@ Write ONLY the synopsis, no headers or labels.`;
     const synopsis = await callWithPHIProtection(
       prompt,
       { name: patient.name, age: patient.age, gender: patient.gender, birthday: patient.birthday, triageVitals: patient.triageVitals, transcript: patient.transcript, additional: patient.additional, pastDocs: patient.pastDocs },
-      { model: 'claude-haiku-4-5-20251001', maxTokens: 512, temperature: 0.2 },
+      { model: MODELS.fast, maxTokens: 512, temperature: 0.2 },
     );
 
     await updatePatientFields(ctx, rowIndex, { synopsis: synopsis.trim() }, sheetName);

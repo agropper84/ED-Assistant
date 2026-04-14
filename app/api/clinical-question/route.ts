@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { callWithPHIProtection } from '@/lib/claude';
-import { getSheetsContext, getPatient, updatePatientFields } from '@/lib/google-sheets';
+import { getDataContext, getPatient, updatePatientFields } from '@/lib/data-layer';
 import { withApiHandler, parseBody } from '@/lib/api-handler';
 import { clinicalQuestionSchema } from '@/lib/schemas';
+import { MODELS } from '@/lib/config';
 
 export const maxDuration = 60;
 
@@ -16,7 +17,7 @@ export const POST = withApiHandler(
   { rateLimit: { limit: 20, window: 60 }, auditEvent: 'clinical.question' },
   async (request: NextRequest) => {
     const { rowIndex, sheetName, question, history, useOpenEvidence } = await parseBody(request, clinicalQuestionSchema);
-    const ctx = await getSheetsContext();
+    const ctx = await getDataContext();
 
     const patient = await getPatient(ctx, rowIndex, sheetName);
     if (!patient) {
@@ -78,7 +79,7 @@ Original question: "${question.trim()}"
 
 Output ONLY the reframed question, nothing else.`,
         patientDataForPHI,
-        { model: 'claude-haiku-4-5-20251001', maxTokens: 200, temperature: 0 },
+        { model: MODELS.fast, maxTokens: 200, temperature: 0 },
       );
       oeQuery = oeQuery.trim();
     }
@@ -98,7 +99,7 @@ Output ONLY the reframed question, nothing else.`,
       fullPrompt,
       patientDataForPHI,
       {
-        model: useOpenEvidence ? 'claude-sonnet-4-20250514' : 'claude-haiku-4-5-20251001',
+        model: useOpenEvidence ? MODELS.default : MODELS.fast,
         maxTokens: useOpenEvidence ? 2048 : 1024,
         temperature: 0.2,
       },

@@ -1,21 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server';
 import {
-  getSheetsContext,
+  getDataContext,
   getPatients,
   updatePatientFields,
-  getNextEmptyRow,
-  getOrCreateDateSheet,
   getDateSheets,
+  getOrCreateDateSheet,
+  getNextRowIndex,
   getPatientCount,
   getShiftTimes,
   setShiftTimes,
-  searchPatientsAcrossSheets,
-} from '@/lib/google-sheets';
+  searchPatients,
+  addPatient,
+} from '@/lib/data-layer';
+import type { Patient } from '@/lib/google-sheets';
 
 // GET /api/patients?sheet=Mar+03,+2026
 export async function GET(request: NextRequest) {
   try {
-    const ctx = await getSheetsContext();
+    const ctx = await getDataContext();
     const sheetName = request.nextUrl.searchParams.get('sheet') || undefined;
     const listSheets = request.nextUrl.searchParams.get('listSheets');
     const search = request.nextUrl.searchParams.get('search')?.toLowerCase().trim();
@@ -26,17 +28,17 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ sheets });
     }
 
-    // Cross-sheet search — single batchGet call instead of N sequential calls
+    // Cross-sheet search
     if (search) {
       const allSheets = await getDateSheets(ctx);
       const sheetsToSearch = allSheets.slice(0, 30);
-      const results = await searchPatientsAcrossSheets(ctx, sheetsToSearch, search);
+      const results = await searchPatients(ctx, sheetsToSearch, search);
       return NextResponse.json({ patients: results, searchQuery: search });
     }
 
     const [patients, shiftTimes] = await Promise.all([
-      getPatients(ctx, sheetName),
-      getShiftTimes(ctx, sheetName),
+      getPatients(ctx, sheetName || ''),
+      getShiftTimes(ctx, sheetName || ''),
     ]);
     return NextResponse.json({ patients, sheetName, shiftTimes });
   } catch (error: any) {
@@ -57,7 +59,7 @@ export async function GET(request: NextRequest) {
 // POST /api/patients - Create new patient (auto-creates date sheet)
 export async function POST(request: NextRequest) {
   try {
-    const ctx = await getSheetsContext();
+    const ctx = await getDataContext();
     const body = await request.json();
 
     // Use specified sheet or default to today
@@ -65,13 +67,17 @@ export async function POST(request: NextRequest) {
     delete body._sheetName;
 
     // Get next empty row and patient count for numbering
-    const rowIndex = await getNextEmptyRow(ctx, sheetName);
+    const rowIndex = await getNextRowIndex(ctx, sheetName);
     const count = await getPatientCount(ctx, sheetName);
 
     // Add patient number
     body.patientNum = String(count + 1);
 
+    // Write to data layer (Drive primary + Sheets mirror)
     await updatePatientFields(ctx, rowIndex, body, sheetName);
+
+    // Also add to Drive patient array
+    await addPatient(ctx, { rowIndex, sheetName, ...body } as Patient, sheetName);
 
     return NextResponse.json({ success: true, rowIndex, sheetName });
   } catch (error: any) {
@@ -92,13 +98,13 @@ export async function POST(request: NextRequest) {
 // PATCH /api/patients - Update shift times
 export async function PATCH(request: NextRequest) {
   try {
-    const ctx = await getSheetsContext();
+    const ctx = await getDataContext();
     const { sheetName, shiftStart, shiftEnd } = await request.json();
     if (!sheetName) {
       return NextResponse.json({ error: 'sheetName required' }, { status: 400 });
     }
     const shiftTimes = await setShiftTimes(ctx, sheetName, shiftStart || '', shiftEnd || '');
-    return NextResponse.json({ success: true, shiftTimes });
+    return NextResponse.json({ shiftTimes });
   } catch (error: any) {
     console.error('Error updating shift times:', error);
     if (error?.message?.includes('Not approved')) {

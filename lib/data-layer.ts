@@ -242,3 +242,114 @@ export async function getOrCreateDateSheet(
 
   return name;
 }
+
+// ============================================================
+// SHIFT TIMES
+// ============================================================
+
+export async function getShiftTimes(ctx: DataContext, sheetName: string) {
+  // Drive primary
+  if (ctx.mode !== 'sheets' && ctx.drive) {
+    try {
+      const dj = await import('./drive-json');
+      const times = await dj.getShiftTimesFromDrive(ctx.drive, sheetName);
+      if (times) return times;
+    } catch {}
+  }
+  // Sheets fallback
+  const gs = await import('./google-sheets');
+  return gs.getShiftTimes(ctx.sheets, sheetName);
+}
+
+export async function setShiftTimes(ctx: DataContext, sheetName: string, start: string, end: string) {
+  // Sheets computes fee logic, then we store the result in Drive
+  const gs = await import('./google-sheets');
+  const result = await gs.setShiftTimes(ctx.sheets, sheetName, start, end);
+
+  // Mirror to Drive
+  if (ctx.mode !== 'sheets' && ctx.drive) {
+    import('./drive-json').then(dj =>
+      dj.setShiftTimesInDrive(ctx.drive!, sheetName, result)
+    ).catch(e => console.warn('Drive shift time mirror failed:', (e as Error).message));
+  }
+
+  return result;
+}
+
+// ============================================================
+// ROW INDEX & PATIENT COUNT (for new patient creation)
+// ============================================================
+
+export async function getNextRowIndex(ctx: DataContext, sheetName: string): Promise<number> {
+  if (ctx.mode !== 'sheets' && ctx.drive) {
+    try {
+      const dj = await import('./drive-json');
+      const dateSheet = await dj.getDateSheetFromDrive(ctx.drive, sheetName);
+      if (dateSheet && dateSheet.patients.length > 0) {
+        return Math.max(...dateSheet.patients.map(p => p.rowIndex)) + 1;
+      }
+    } catch {}
+  }
+  // Sheets fallback
+  const gs = await import('./google-sheets');
+  return gs.getNextEmptyRow(ctx.sheets, sheetName);
+}
+
+export async function getPatientCount(ctx: DataContext, sheetName: string): Promise<number> {
+  if (ctx.mode !== 'sheets' && ctx.drive) {
+    try {
+      const dj = await import('./drive-json');
+      const dateSheet = await dj.getDateSheetFromDrive(ctx.drive, sheetName);
+      if (dateSheet) return dateSheet.patients.length;
+    } catch {}
+  }
+  const gs = await import('./google-sheets');
+  return gs.getPatientCount(ctx.sheets, sheetName);
+}
+
+// ============================================================
+// SEARCH PATIENTS (across multiple date sheets)
+// ============================================================
+
+export async function searchPatients(ctx: DataContext, sheetNames: string[], query: string): Promise<Patient[]> {
+  if (ctx.mode !== 'sheets' && ctx.drive) {
+    try {
+      const dj = await import('./drive-json');
+      const needle = query.toLowerCase().trim();
+      const results: Patient[] = [];
+      for (const name of sheetNames.slice(0, 30)) {
+        const dateSheet = await dj.getDateSheetFromDrive(ctx.drive, name);
+        if (!dateSheet) continue;
+        for (const pf of dateSheet.patients) {
+          const p = dj.fieldsToPatient(pf);
+          if (
+            p.name?.toLowerCase().includes(needle) ||
+            p.diagnosis?.toLowerCase().includes(needle) ||
+            p.triageVitals?.toLowerCase().includes(needle)
+          ) {
+            results.push(p);
+          }
+        }
+      }
+      if (results.length > 0) return results;
+    } catch {}
+  }
+  // Sheets fallback
+  const gs = await import('./google-sheets');
+  return gs.searchPatientsAcrossSheets(ctx.sheets, sheetNames, query);
+}
+
+// ============================================================
+// CLEAR PATIENT (delete from Drive + clear Sheets row)
+// ============================================================
+
+export async function clearPatient(ctx: DataContext, rowIndex: number, sheetName: string): Promise<void> {
+  // Drive delete
+  if (ctx.mode !== 'sheets' && ctx.drive) {
+    const dj = await import('./drive-json');
+    await dj.deletePatientFromDrive(ctx.drive, sheetName, rowIndex);
+  }
+  // Sheets clear
+  const gs = await import('./google-sheets');
+  await gs.clearPatientRow(ctx.sheets, rowIndex, sheetName);
+}

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSheetsContext, getPatient, updatePatientFields, clearPatientRow, saveBillingRows, upsertDiagnosisCode, movePatientToSheet } from '@/lib/google-sheets';
-import { getDataContext, deletePatient } from '@/lib/data-layer';
+import { saveBillingRows, upsertDiagnosisCode, movePatientToSheet } from '@/lib/google-sheets';
+import { getDataContext, getPatient, updatePatientFields, clearPatient } from '@/lib/data-layer';
 
 // GET /api/patients/[rowIndex]?sheet=Mar+03,+2026
 export async function GET(
@@ -8,9 +8,9 @@ export async function GET(
   { params }: { params: { rowIndex: string } }
 ) {
   try {
-    const ctx = await getSheetsContext();
+    const ctx = await getDataContext();
     const rowIndex = parseInt(params.rowIndex);
-    const sheetName = request.nextUrl.searchParams.get('sheet') || undefined;
+    const sheetName = request.nextUrl.searchParams.get('sheet') || '';
     const patient = await getPatient(ctx, rowIndex, sheetName);
 
     if (!patient) {
@@ -39,7 +39,7 @@ export async function PATCH(
   { params }: { params: { rowIndex: string } }
 ) {
   try {
-    const ctx = await getSheetsContext();
+    const ctx = await getDataContext();
     const rowIndex = parseInt(params.rowIndex);
     const body = await request.json();
     const { _sheetName, _billingItems, _upsertDiagnosis, _moveToSheet, _patientName, ...fields } = body;
@@ -60,13 +60,13 @@ export async function PATCH(
 
     // Move patient to a different date sheet
     if (_moveToSheet) {
-      const result = await movePatientToSheet(ctx, rowIndex, _sheetName || '', _moveToSheet);
+      const result = await movePatientToSheet(ctx.sheets, rowIndex, _sheetName || '', _moveToSheet);
       return NextResponse.json({ success: true, ...result });
     }
 
     if (_billingItems) {
       // Multi-row billing save
-      await saveBillingRows(ctx, rowIndex, _billingItems, _sheetName || undefined);
+      await saveBillingRows(ctx.sheets, rowIndex, _billingItems, _sheetName || undefined);
       // Also save non-billing fields (like comments)
       const nonBillingFields = { ...fields };
       delete nonBillingFields.visitProcedure;
@@ -83,7 +83,7 @@ export async function PATCH(
 
     // Upsert diagnosis→ICD mapping to registry if requested
     if (_upsertDiagnosis && _upsertDiagnosis.diagnosis?.trim()) {
-      upsertDiagnosisCode(ctx, {
+      upsertDiagnosisCode(ctx.sheets, {
         diagnosis: _upsertDiagnosis.diagnosis,
         icd9: _upsertDiagnosis.icd9 || '',
         icd10: _upsertDiagnosis.icd10 || '',
@@ -113,15 +113,11 @@ export async function DELETE(
 ) {
   try {
     const rowIndex = parseInt(params.rowIndex);
-    const sheetName = request.nextUrl.searchParams.get('sheet') || undefined;
+    const sheetName = request.nextUrl.searchParams.get('sheet') || '';
 
-    // Delete from both Drive AND Sheets
+    // Delete from Drive + clear Sheets row
     const ctx = await getDataContext();
-    await deletePatient(ctx, rowIndex, sheetName || '');
-
-    // Also clear the Sheets row (deletePatient handles Drive, clearPatientRow handles Sheets)
-    const sheetsCtx = await getSheetsContext();
-    await clearPatientRow(sheetsCtx, rowIndex, sheetName);
+    await clearPatient(ctx, rowIndex, sheetName || '');
 
     return NextResponse.json({ success: true });
   } catch (error: any) {

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { generateReferral } from '@/lib/claude';
-import { getSheetsContext, getPatient, updatePatientFields, getStyleGuideFromSheet } from '@/lib/google-sheets';
+import { getDataContext, getPatient, updatePatientFields } from '@/lib/data-layer';
+import { getStyleGuideFromSheet } from '@/lib/google-sheets';
 import { withApiHandler, parseBody } from '@/lib/api-handler';
 import { referralSchema } from '@/lib/schemas';
 
@@ -10,7 +11,7 @@ export const POST = withApiHandler(
   { rateLimit: { limit: 10, window: 60 }, auditEvent: 'generate.referral' },
   async (request: NextRequest) => {
     const { rowIndex, sheetName, specialty, urgency, reason } = await parseBody(request, referralSchema);
-    const ctx = await getSheetsContext();
+    const ctx = await getDataContext();
 
     const patient = await getPatient(ctx, rowIndex, sheetName);
     if (!patient) {
@@ -51,7 +52,7 @@ export const POST = withApiHandler(
       { specialty, urgency, reason },
       await (async () => {
         try {
-          const guide = await getStyleGuideFromSheet(ctx);
+          const guide = await getStyleGuideFromSheet(ctx.sheets);
           return (guide.examples as any).referral || [];
         } catch { return []; }
       })(),

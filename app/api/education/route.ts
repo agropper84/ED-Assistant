@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSheetsContext, getPatient, updatePatientFields } from '@/lib/google-sheets';
+import { getDataContext, getPatient, updatePatientFields } from '@/lib/data-layer';
 import { callWithPHIProtection } from '@/lib/claude';
 import { verifyLinks } from '@/lib/verify-links';
 import { withApiHandler, parseBody } from '@/lib/api-handler';
 import { educationSchema } from '@/lib/schemas';
+import { MODELS } from '@/lib/config';
 
 export const maxDuration = 60;
 
@@ -11,7 +12,7 @@ export const POST = withApiHandler(
   { rateLimit: { limit: 10, window: 60 } },
   async (request: NextRequest) => {
     const { rowIndex, sheetName, sources } = await parseBody(request, educationSchema);
-    const ctx = await getSheetsContext();
+    const ctx = await getDataContext();
 
     const patient = await getPatient(ctx, rowIndex, sheetName);
     if (!patient) {
@@ -57,7 +58,7 @@ Respond in this format for each topic:
     let education = await callWithPHIProtection(
       prompt,
       { name: patient.name, age: patient.age, gender: patient.gender, birthday: patient.birthday, triageVitals: patient.triageVitals, transcript: patient.transcript, additional: patient.additional, pastDocs: patient.pastDocs },
-      { model: 'claude-sonnet-4-20250514', maxTokens: 2048, temperature: 0.3 },
+      { model: MODELS.default, maxTokens: 2048, temperature: 0.3 },
     );
 
     education = await verifyLinks(education);

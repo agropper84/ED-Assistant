@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { processEncounter, streamProcessEncounter, parseClaudeResponse, ProcessedNote } from '@/lib/claude';
-import { getSheetsContext, getPatient, updatePatientFields, saveBillingRows, getStyleGuideFromSheet, upsertDiagnosisCode } from '@/lib/google-sheets';
+import { getDataContext, getPatient, updatePatientFields } from '@/lib/data-layer';
+import { saveBillingRows, getStyleGuideFromSheet, upsertDiagnosisCode } from '@/lib/google-sheets';
 import { getAutoBilling, BillingItem } from '@/lib/billing';
 import { withApiHandler, parseBody } from '@/lib/api-handler';
 import { processSchema } from '@/lib/schemas';
@@ -12,7 +13,7 @@ export const POST = withApiHandler(
   { rateLimit: { limit: 10, window: 60 }, auditEvent: 'generate.process' },
   async (request: NextRequest) => {
     const { rowIndex, sheetName, modifications, styleGuidance, settings, promptTemplates, stream: useStream } = await parseBody(request, processSchema);
-    const ctx = await getSheetsContext();
+    const ctx = await getDataContext();
 
     const patient = await getPatient(ctx, rowIndex, sheetName);
     if (!patient) {
@@ -41,7 +42,7 @@ export const POST = withApiHandler(
     let customGuidance = '';
     if (!effectiveStyleGuidance) {
       try {
-        const guide = await getStyleGuideFromSheet(ctx);
+        const guide = await getStyleGuideFromSheet(ctx.sheets);
         const hasExamples = Object.values(guide.examples).some(arr => arr.length > 0);
         if (hasExamples || guide.customGuidance || guide.extractedFeatures.length > 0) {
           styleExamples = guide.examples as Record<string, string[]>;
@@ -107,7 +108,7 @@ export const POST = withApiHandler(
           await updatePatientFields(ctx, rowIndex, fieldsToUpdate, sheetName);
 
           if (result.diagnosis?.trim()) {
-            upsertDiagnosisCode(ctx, {
+            upsertDiagnosisCode(ctx.sheets, {
               diagnosis: result.diagnosis,
               icd9: result.icd9,
               icd10: result.icd10,
@@ -145,7 +146,7 @@ export const POST = withApiHandler(
     await updatePatientFields(ctx, rowIndex, fieldsToUpdate, sheetName);
 
     if (result.diagnosis?.trim()) {
-      upsertDiagnosisCode(ctx, {
+      upsertDiagnosisCode(ctx.sheets, {
         diagnosis: result.diagnosis,
         icd9: result.icd9,
         icd10: result.icd10,
@@ -172,7 +173,7 @@ export const POST = withApiHandler(
         { code: '1100', description: 'ED Visit', fee: '50.90', unit: '1', category: 'visitType' },
       ];
 
-      await saveBillingRows(ctx, rowIndex, billingItems, sheetName);
+      await saveBillingRows(ctx.sheets, rowIndex, billingItems, sheetName);
     }
 
     return NextResponse.json({ success: true, result });
