@@ -246,28 +246,47 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
     [userPhrases]
   );
 
-  // Sync state when patient changes — MUST reset submissions to prevent cross-patient leaks
+  // Track which patient is currently loaded to detect actual patient changes vs data refreshes
+  const currentPatientRef = useRef<{ rowIndex: number; sheetName: string } | null>(null);
+
+  // Sync state when patient changes
   useEffect(() => {
     if (patient) {
-      if (patient.encounterNotes) {
-        setTranscript(patient.transcript || '');
-        setEncounterNotes(patient.encounterNotes);
-      } else {
-        const { transcript: t, encounterNotes: en } = splitTranscriptAndNotes(patient.transcript || '');
-        setTranscript(t);
-        setEncounterNotes(en);
+      const isSamePatient = currentPatientRef.current &&
+        currentPatientRef.current.rowIndex === patient.rowIndex &&
+        currentPatientRef.current.sheetName === patient.sheetName;
+
+      if (!isSamePatient) {
+        // NEW patient — reset everything and populate from patient data
+        currentPatientRef.current = { rowIndex: patient.rowIndex, sheetName: patient.sheetName };
+        if (patient.encounterNotes) {
+          setTranscript(patient.transcript || '');
+          setEncounterNotes(patient.encounterNotes);
+        } else {
+          const { transcript: t, encounterNotes: en } = splitTranscriptAndNotes(patient.transcript || '');
+          setTranscript(t);
+          setEncounterNotes(en);
+        }
+        setTriageVitals(patient.triageVitals || '');
+        setAdditional(patient.additional || '');
+        setPastDocs(patient.pastDocs || '');
+        setSubmissions([]);
+        setHoveredSub(null);
+        setPendingSubmit(null);
+        setSubmitTitle('');
+        setSubmitDate('');
       }
-      setTriageVitals(patient.triageVitals || '');
-      setAdditional(patient.additional || '');
-      setPastDocs(patient.pastDocs || '');
-      // Reset submission tracking for new patient
-      setSubmissions([]);
-      setHoveredSub(null);
-      setPendingSubmit(null);
-      setSubmitTitle('');
-      setSubmitDate('');
+      // SAME patient refresh (after onSaved/fetchPatients) — do NOT touch text fields or submissions
+      // The user may have cleared a field after submitting; we don't want to refill it
     }
   }, [patient]);
+
+  // Clear ref when modal closes so next open is treated as new patient
+  useEffect(() => {
+    if (!isOpen) {
+      currentPatientRef.current = null;
+    }
+  }, [isOpen]);
 
   // Parse profile JSON when patient loads
   useEffect(() => {
