@@ -146,13 +146,18 @@ export async function addSubmission(
   sheetName: string,
   entry: SubmissionEntry,
 ): Promise<SubmissionEntry[]> {
+  // Build the content with title label (so AI knows what the content represents)
+  const labeledContent = entry.title
+    ? `[${entry.title.toUpperCase()}]\n${entry.content}`
+    : entry.content;
+
   // Append to the flat field in Sheets (don't replace — accumulate submissions)
   const gs = await import('./google-sheets');
   const existingPatient = await gs.getPatient(ctx.sheets, rowIndex, sheetName);
   const existingContent = existingPatient ? (existingPatient as any)[entry.field] || '' : '';
-  const combined = existingContent && entry.content
-    ? `${existingContent}\n\n${entry.content}`
-    : entry.content || existingContent;
+  const combined = existingContent && labeledContent
+    ? `${existingContent}\n\n${labeledContent}`
+    : labeledContent || existingContent;
   gs.updatePatientFields(ctx.sheets, rowIndex, { [entry.field]: combined }, sheetName)
     .catch(e => console.warn('Sheets field update failed:', (e as Error).message));
 

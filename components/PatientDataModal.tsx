@@ -61,10 +61,9 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
   const [submitted, setSubmitted] = useState<string | null>(null);
   const [submissions, setSubmissions] = useState<Array<{ id: string; field: string; content: string; submittedAt: string; title?: string; date?: string }>>([]);
   const [hoveredSub, setHoveredSub] = useState<string | null>(null);
-  // Pending submit: shows inline title/date inputs before confirming
+  // Pending submit: shows inline title input before confirming
   const [pendingSubmit, setPendingSubmit] = useState<{ field: string; content: string } | null>(null);
   const [submitTitle, setSubmitTitle] = useState('');
-  const [submitDate, setSubmitDate] = useState('');
 
   // Map field → state setter for clearing after submit
   const fieldSetters: Record<string, (v: string) => void> = {
@@ -79,13 +78,11 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
     if (!content.trim()) return;
     setPendingSubmit({ field, content });
     setSubmitTitle('');
-    setSubmitDate('');
   };
 
   const cancelSubmit = () => {
     setPendingSubmit(null);
     setSubmitTitle('');
-    setSubmitDate('');
   };
 
   const confirmSubmit = async () => {
@@ -101,7 +98,6 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
           field, content, sheetName: patient.sheetName,
           patientName: patient.name, // identity verification
           ...(submitTitle.trim() ? { title: submitTitle.trim() } : {}),
-          ...(submitDate ? { date: submitDate } : {}),
         }),
       });
       if (res.status === 409) {
@@ -133,7 +129,6 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
     } finally {
       setSubmitting(null);
       setSubmitTitle('');
-      setSubmitDate('');
     }
   };
 
@@ -159,23 +154,17 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
     const isPending = pendingSubmit?.field === field;
     return (
       <>
-        {/* Pending submit form — inline title/date inputs */}
+        {/* Pending submit form — inline title input */}
         {isPending && (
           <div className="flex items-center gap-1.5 mb-1.5 animate-fadeIn">
             <input
               type="text"
               value={submitTitle}
               onChange={(e) => setSubmitTitle(e.target.value)}
-              placeholder="Title (optional)"
+              placeholder="Title (optional, e.g. HPI, Plan, Exam)"
               className="flex-1 px-2 py-1 border border-[var(--input-border)] rounded-lg text-xs bg-[var(--input-bg)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:ring-1 focus:ring-emerald-500"
               autoFocus
               onKeyDown={(e) => { if (e.key === 'Enter') confirmSubmit(); if (e.key === 'Escape') cancelSubmit(); }}
-            />
-            <input
-              type="date"
-              value={submitDate}
-              onChange={(e) => setSubmitDate(e.target.value)}
-              className="w-[120px] px-2 py-1 border border-[var(--input-border)] rounded-lg text-xs bg-[var(--input-bg)] text-[var(--text-primary)] focus:ring-1 focus:ring-emerald-500"
             />
             <button
               onClick={confirmSubmit}
@@ -202,7 +191,7 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
                   onMouseLeave={() => setHoveredSub(null)}
                 >
                   <FileText className="w-2.5 h-2.5" />
-                  {sub.title || (sub.date ? new Date(sub.date + 'T12:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : new Date(sub.submittedAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }))}
+                  {sub.title || new Date(sub.submittedAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
                   <button
                     onClick={() => deleteSubmission(sub)}
                     className="ml-0.5 p-0.5 rounded-full hover:bg-red-200 dark:hover:bg-red-900/40 transition-colors opacity-0 group-hover/tag:opacity-100"
@@ -214,7 +203,6 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
                   <div className="absolute z-50 bottom-full left-0 mb-1 w-64 max-h-32 overflow-y-auto p-2 rounded-lg text-xs bg-[var(--card-bg)] border border-[var(--card-border)] shadow-lg whitespace-pre-wrap text-[var(--text-secondary)]"
                     style={{ boxShadow: 'var(--card-shadow-elevated)' }}>
                     {sub.title && <div className="font-semibold text-[var(--text-primary)] mb-0.5">{sub.title}</div>}
-                    {sub.date && <div className="text-[var(--text-muted)] mb-0.5">{new Date(sub.date + 'T12:00').toLocaleDateString()}</div>}
                     {sub.content.length > 300 ? sub.content.substring(0, 300) + '...' : sub.content}
                   </div>
                 )}
@@ -285,7 +273,6 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
       setHoveredSub(null);
       setPendingSubmit(null);
       setSubmitTitle('');
-      setSubmitDate('');
 
       // Fetch submissions, then populate text boxes only for fields WITHOUT submissions
       fetch(`/api/patients/${patient.rowIndex}/submit?sheet=${encodeURIComponent(patient.sheetName)}`)

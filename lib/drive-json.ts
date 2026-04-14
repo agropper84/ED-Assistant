@@ -490,13 +490,18 @@ export async function addSubmissionToDrive(
   if (!patient.submissions) patient.submissions = [];
   patient.submissions.push(entry);
 
+  // Build labeled content (title tells AI what the content represents)
+  const labeledContent = entry.title
+    ? `[${entry.title.toUpperCase()}]\n${entry.content}`
+    : entry.content;
+
   // Append to the flat field (don't replace — accumulate submissions)
   const field = entry.field as keyof import('./types-json').PatientFields;
   if (field in patient.data) {
     const existing = (patient.data as unknown as Record<string, string>)[field] || '';
-    (patient.data as unknown as Record<string, string>)[field] = existing && entry.content
-      ? `${existing}\n\n${entry.content}`
-      : entry.content || existing;
+    (patient.data as unknown as Record<string, string>)[field] = existing && labeledContent
+      ? `${existing}\n\n${labeledContent}`
+      : labeledContent || existing;
   }
 
   patient.lastModified = new Date().toISOString();
