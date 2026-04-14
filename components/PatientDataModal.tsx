@@ -156,28 +156,31 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
       <>
         {/* Pending submit form — inline title input */}
         {isPending && (
-          <div className="flex items-center gap-1.5 mb-1.5 animate-fadeIn">
-            <input
-              type="text"
-              value={submitTitle}
-              onChange={(e) => setSubmitTitle(e.target.value)}
-              placeholder="Title (optional, e.g. HPI, Plan, Exam)"
-              className="flex-1 px-2 py-1 border border-[var(--input-border)] rounded-lg text-xs bg-[var(--input-bg)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:ring-1 focus:ring-emerald-500"
-              autoFocus
-              onKeyDown={(e) => { if (e.key === 'Enter') confirmSubmit(); if (e.key === 'Escape') cancelSubmit(); }}
-            />
-            <button
-              onClick={confirmSubmit}
-              className="px-2 py-1 bg-emerald-600 text-white rounded-lg text-xs font-medium hover:bg-emerald-700 active:scale-[0.97] transition-all"
-            >
-              {submitting === field ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
-            </button>
-            <button
-              onClick={cancelSubmit}
-              className="p-1 text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
+          <div className="mb-1.5 animate-fadeIn">
+            <div className="flex items-center gap-1.5">
+              <input
+                type="text"
+                value={submitTitle}
+                onChange={(e) => setSubmitTitle(e.target.value)}
+                placeholder="Label, e.g. HPI, Plan, Exam (optional)"
+                className="flex-1 px-2 py-1 border border-[var(--input-border)] rounded-lg text-xs bg-[var(--input-bg)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:ring-1 focus:ring-emerald-500"
+                autoFocus
+                onKeyDown={(e) => { if (e.key === 'Enter') confirmSubmit(); if (e.key === 'Escape') cancelSubmit(); }}
+              />
+              <button
+                onClick={confirmSubmit}
+                className="px-2 py-1 bg-emerald-600 text-white rounded-lg text-xs font-medium hover:bg-emerald-700 active:scale-[0.97] transition-all"
+              >
+                {submitting === field ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
+              </button>
+              <button
+                onClick={cancelSubmit}
+                className="p-1 text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
             >
               <X className="w-3 h-3" />
             </button>
+            </div>
+            <p className="text-[9px] text-[var(--text-muted)] mt-0.5 pl-0.5">Add a label to help AI understand the content — or leave blank to submit without one</p>
           </div>
         )}
         {/* Existing submission tags */}
