@@ -189,7 +189,7 @@ export default function HomePage() {
   const [searchResults, setSearchResults] = useState<Patient[] | null>(null);
   const [searching, setSearching] = useState(false);
   const searchDebounce = useRef<NodeJS.Timeout | null>(null);
-  const [sortBy, setSortBy] = useState<'time' | 'name' | 'status'>('time');
+  const [sortBy, setSortBy] = useState<'time' | 'name' | 'status' | 'recent'>('time');
   const [viewMode, setViewMode] = useState<'list' | 'grid'>(() => {
     if (typeof window !== 'undefined') return (localStorage.getItem('ed-view-mode') as 'list' | 'grid') || 'list';
     return 'list';
@@ -598,6 +598,16 @@ export default function HomePage() {
         if (sa !== sb) return sa - sb;
         return parseTimeToMin(a.timestamp) - parseTimeToMin(b.timestamp);
       }
+      if (sortBy === 'recent') {
+        // Processed patients first, sorted by most recently generated (has output)
+        const aProcessed = a.status === 'processed' ? 1 : 0;
+        const bProcessed = b.status === 'processed' ? 1 : 0;
+        if (aProcessed !== bProcessed) return bProcessed - aProcessed;
+        // Among processed, reverse time order (most recent first)
+        if (aProcessed && bProcessed) return parseTimeToMin(b.timestamp) - parseTimeToMin(a.timestamp);
+        // Among non-processed, pending before new
+        return (STATUS_ORDER[a.status || 'new'] ?? 0) - (STATUS_ORDER[b.status || 'new'] ?? 0);
+      }
       if (isSearching) {
         const dateCompare = (b.sheetName || '').localeCompare(a.sheetName || '');
         if (dateCompare !== 0) return dateCompare;
@@ -729,19 +739,24 @@ export default function HomePage() {
     ));
 
     try {
-      await fetch(`/api/patients/${patient.rowIndex}`, {
+      const res = await fetch(`/api/patients/${patient.rowIndex}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           _billingItems: items,
+          _patientName: patient.name,
           ...(comments !== undefined ? { comments } : {}),
           _sheetName: patient.sheetName,
         }),
       });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        console.error('Billing save failed:', res.status, err);
+      }
       fetchPatients();
     } catch (error) {
       console.error('Failed to save billing:', error);
-      fetchPatients(); // Revert optimistic update on error
+      fetchPatients();
     }
   };
 
@@ -764,7 +779,7 @@ export default function HomePage() {
           await fetch(`/api/patients/${patient.rowIndex}`, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ ...fields, sheetName: patient.sheetName }),
+            body: JSON.stringify({ ...fields, _sheetName: patient.sheetName }),
           });
           fetchPatients();
         }}
@@ -1170,13 +1185,13 @@ export default function HomePage() {
                 )}
               </div>
               <button
-                onClick={() => setSortBy(prev => prev === 'time' ? 'name' : prev === 'name' ? 'status' : 'time')}
+                onClick={() => setSortBy(prev => prev === 'time' ? 'name' : prev === 'name' ? 'status' : prev === 'status' ? 'recent' : 'time')}
                 className="flex items-center gap-1 px-1.5 py-1 rounded-md text-[11px] font-medium transition-colors hover:bg-white/[0.07]"
                 style={{ color: 'var(--dash-text-muted)' }}
-                title={`Sort by ${sortBy === 'time' ? 'name' : sortBy === 'name' ? 'status' : 'time'}`}
+                title={`Sort by ${sortBy === 'time' ? 'name' : sortBy === 'name' ? 'status' : sortBy === 'status' ? 'recent' : 'time'}`}
               >
                 <ArrowUpDown className="w-3 h-3" />
-                <span className="hidden sm:inline">{sortBy === 'time' ? 'Time' : sortBy === 'name' ? 'A-Z' : 'Status'}</span>
+                <span className="hidden sm:inline">{sortBy === 'time' ? 'Time' : sortBy === 'name' ? 'A-Z' : sortBy === 'status' ? 'Status' : 'Recent'}</span>
               </button>
               <button
                 onClick={() => {
@@ -1530,7 +1545,7 @@ export default function HomePage() {
             ) : (
               <>
                 {sortBy !== 'time' ? (
-                  /* Name/Status sort: flat list, no status grouping */
+                  /* Non-time sort: flat list, no status grouping */
                   <section>
                     <div className={patientListClass}>
                       {sortedPatients.map((patient) =>
@@ -1606,7 +1621,7 @@ export default function HomePage() {
                 className="p-1.5 rounded-lg hover:bg-[var(--bg-tertiary)] transition-colors"
                 title="Open full page"
               >
-                <PanelRightOpen className="w-4 h-4 text-[var(--text-muted)]" />
+                <ChevronRight className="w-4 h-4 text-[var(--text-muted)]" />
               </button>
               <button
                 onClick={() => setSplitPatient(null)}
