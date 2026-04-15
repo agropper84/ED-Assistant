@@ -225,6 +225,7 @@ export function VoiceRecorder({
       mimeTypeRef.current = mimeType;
 
       onRecordingStart?.();
+      onProcessingRef.current?.(true); // Signal: live/interim text is being shown
       startKeepalive();
 
       // Start MediaRecorder (captures audio for medicalize or Deepgram cleanup)
@@ -282,6 +283,7 @@ export function VoiceRecorder({
       onProcessingRef.current?.(false); // Signal: refinement complete
     }
 
+    onProcessingRef.current?.(false); // Ensure processing always clears
     accumulatedTextRef.current = '';
     setRecState('idle');
   }, [cleanupResources, collectAudioBlob]);
@@ -344,6 +346,7 @@ export function VoiceRecorder({
       mimeTypeRef.current = mimeType;
 
       onRecordingStart?.();
+      onProcessingRef.current?.(true); // Signal: live/interim text
       startKeepalive();
 
       const recorder = new MediaRecorder(stream, { mimeType });

@@ -56,6 +56,14 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
   const [generating, setGenerating] = useState(false);
   const [userPhrases, setUserPhrases] = useState<string[]>([]);
   const [showLiveTranscript, setShowLiveTranscript] = useState(true);
+  const [refiningFields, setRefiningFields] = useState<Set<string>>(new Set());
+  const setFieldRefining = (field: string, refining: boolean) => {
+    setRefiningFields(prev => {
+      const next = new Set(prev);
+      if (refining) next.add(field); else next.delete(field);
+      return next;
+    });
+  };
   const [activeTab, setActiveTab] = useState<'clinical' | 'profile' | 'ddx'>('clinical');
   const [generatingProfile, setGeneratingProfile] = useState(false);
   // DDx tab state
@@ -664,8 +672,11 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
                 value={transcript}
                 onChange={(e) => setTranscript(e.target.value)}
                 placeholder="Audio transcript or dictation..."
-                className="w-full h-28 p-3 pr-16 border border-[var(--input-border)] rounded-xl text-sm resize-y focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)]"
+                className={`w-full h-28 p-3 pr-16 border border-[var(--input-border)] rounded-xl text-sm resize-y focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] placeholder:text-[var(--text-muted)] transition-colors duration-300 ${refiningFields.has('transcript') ? 'text-[var(--text-muted)] italic' : 'text-[var(--text-primary)]'}`}
               />
+              {refiningFields.has('transcript') && (
+                <div className="absolute bottom-2 left-3 text-[10px] text-blue-400 font-medium animate-pulse">Refining transcription...</div>
+              )}
               <div className="absolute top-1.5 right-1.5">
                 <VoiceRecorder
                   mode="encounter"
@@ -673,11 +684,13 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
                   onTranscript={(text) => {
                     const base = preRecordTranscript || transcript;
                     setTranscript(base ? `${base}\n\n${text}` : text);
+                    setFieldRefining('transcript', false);
                   }}
                   onRecordingStart={() => setPreRecordTranscript(transcript)}
                   onInterimTranscript={showLiveTranscript ? (text) => {
                     setTranscript(preRecordTranscript ? `${preRecordTranscript}\n\n${text}` : text);
                   } : undefined}
+                  onProcessingChange={(p) => setFieldRefining('transcript', p)}
                 />
               </div>
             </div>
@@ -709,19 +722,24 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
                 onChange={setEncounterNotes}
                 suggestions={allSuggestions}
                 placeholder="Physician notes, clinical observations, plan..."
-                textareaClassName="w-full h-28 p-3 pr-10 border border-[var(--input-border)] rounded-xl text-sm resize-y focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)]"
+                textareaClassName={`w-full h-28 p-3 pr-10 border border-[var(--input-border)] rounded-xl text-sm resize-y focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] placeholder:text-[var(--text-muted)] transition-colors duration-300 ${refiningFields.has('encounterNotes') ? 'text-[var(--text-muted)] italic' : 'text-[var(--text-primary)]'}`}
                 patientContext={patientContext}
               />
+              {refiningFields.has('encounterNotes') && (
+                <div className="absolute bottom-2 left-3 text-[10px] text-blue-400 font-medium animate-pulse z-10">Refining dictation...</div>
+              )}
               <div className="absolute top-1.5 right-1.5 z-10">
                 <VoiceRecorder
                   onTranscript={(text) => {
                     const base = preRecordEncounterNotes || encounterNotes;
                     setEncounterNotes(base ? `${base}\n${text}` : text);
+                    setFieldRefining('encounterNotes', false);
                   }}
                   onRecordingStart={() => setPreRecordEncounterNotes(encounterNotes)}
                   onInterimTranscript={(text) => {
                     setEncounterNotes(preRecordEncounterNotes ? `${preRecordEncounterNotes}\n${text}` : text);
                   }}
+                  onProcessingChange={(p) => setFieldRefining('encounterNotes', p)}
                 />
               </div>
             </div>
@@ -754,19 +772,24 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
                 onChange={setAdditional}
                 suggestions={allSuggestions}
                 placeholder="Exam findings, investigations, results, updates..."
-                textareaClassName="w-full h-24 p-3 pr-10 border border-[var(--input-border)] rounded-xl text-sm resize-y focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)]"
+                textareaClassName={`w-full h-24 p-3 pr-10 border border-[var(--input-border)] rounded-xl text-sm resize-y focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] placeholder:text-[var(--text-muted)] transition-colors duration-300 ${refiningFields.has('additional') ? 'text-[var(--text-muted)] italic' : 'text-[var(--text-primary)]'}`}
                 patientContext={patientContext}
               />
+              {refiningFields.has('additional') && (
+                <div className="absolute bottom-2 left-3 text-[10px] text-blue-400 font-medium animate-pulse z-10">Refining dictation...</div>
+              )}
               <div className="absolute top-1.5 right-1.5 z-10">
                 <VoiceRecorder
                   onTranscript={(text) => {
                     const base = preRecordAdditional || additional;
                     setAdditional(base ? `${base}\n${text}` : text);
+                    setFieldRefining('additional', false);
                   }}
                   onRecordingStart={() => setPreRecordAdditional(additional)}
                   onInterimTranscript={(text) => {
                     setAdditional(preRecordAdditional ? `${preRecordAdditional}\n${text}` : text);
                   }}
+                  onProcessingChange={(p) => setFieldRefining('additional', p)}
                 />
               </div>
             </div>
@@ -897,41 +920,14 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
         </div>
 
         {/* Footer */}
-        <div className="px-5 py-4 pb-safe border-t border-[var(--border)] bg-[var(--bg-tertiary)] sm:rounded-b-3xl">
-          <p className="text-[11px] text-[var(--text-muted)] text-center mb-2">
-            All content — both in text boxes and submitted entries — will be used to generate the note.
-          </p>
-          {/* Note style modifiers */}
-          <div className="flex items-center gap-2 mb-2">
-            <button
-              type="button"
-              onClick={() => setNoteStyle(noteStyle === 'comprehensive' ? 'standard' : 'comprehensive')}
-              className={`px-2.5 py-1 rounded-lg text-[11px] font-medium transition-colors ${
-                noteStyle === 'comprehensive'
-                  ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
-                  : 'bg-[var(--bg-tertiary)] text-[var(--text-muted)] hover:text-[var(--text-secondary)]'
-              }`}
-            >
-              Comprehensive
-            </button>
-            <button
-              type="button"
-              onClick={() => setShowCustomInstructions(!showCustomInstructions)}
-              className={`px-2.5 py-1 rounded-lg text-[11px] font-medium transition-colors ${
-                showCustomInstructions || customInstructions.trim()
-                  ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300'
-                  : 'bg-[var(--bg-tertiary)] text-[var(--text-muted)] hover:text-[var(--text-secondary)]'
-              }`}
-            >
-              Custom instructions{customInstructions.trim() ? ' ✓' : ''}
-            </button>
-          </div>
+        <div className="px-5 py-4 pb-safe border-t border-[var(--border)] bg-[var(--bg-tertiary)] sm:rounded-b-3xl space-y-3">
           {showCustomInstructions && (
             <textarea
               value={customInstructions}
               onChange={(e) => setCustomInstructions(e.target.value)}
-              placeholder="E.g., 'Focus on cardiac workup', 'Include social history details', 'Keep assessment brief'..."
-              className="w-full h-16 p-2 mb-2 border border-[var(--input-border)] rounded-lg text-xs resize-y bg-[var(--input-bg)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:ring-1 focus:ring-purple-500"
+              placeholder="E.g., 'Focus on cardiac workup', 'Keep assessment brief'..."
+              className="w-full h-14 p-2.5 border border-purple-300 dark:border-purple-700 rounded-lg text-xs resize-none bg-[var(--input-bg)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:ring-1 focus:ring-purple-500 focus:outline-none"
+              autoFocus
             />
           )}
           <div className="flex gap-2">
@@ -941,64 +937,89 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
                 onClose();
               }}
               disabled={saving || generating}
-              className="flex-1 py-3 min-h-[48px] bg-[var(--bg-primary)] border border-[var(--border)] text-[var(--text-primary)] rounded-xl font-medium disabled:opacity-40 flex items-center justify-center gap-2 hover:bg-[var(--bg-tertiary)] active:scale-[0.97] transition-all"
+              className="flex-1 py-3 min-h-[44px] border border-[var(--border)] text-[var(--text-primary)] rounded-xl text-sm font-medium disabled:opacity-40 flex items-center justify-center gap-2 hover:bg-[var(--bg-primary)] hover:border-[var(--text-muted)] active:scale-[0.97] transition-all"
             >
               {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
-              Save
+              {saving ? 'Saving...' : 'Save'}
             </button>
             {canGenerateNote && (
-              <button
-                onClick={async () => {
-                  setGenerating(true);
-                  try {
-                    // Save any new text box content first (won't overwrite submitted data)
-                    if (hasChanges) {
-                      const fields = buildFieldsToSave();
-                      if (Object.keys(fields).length > 0) {
-                        await fetch(`/api/patients/${patient.rowIndex}`, {
-                          method: 'PATCH',
-                          headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify({
-                            _sheetName: patient.sheetName,
-                            _patientName: patient.name,
-                            ...fields,
-                          }),
-                        });
+              <div className="flex-[2] flex flex-col gap-1">
+                <button
+                  onClick={async () => {
+                    setGenerating(true);
+                    try {
+                      if (hasChanges) {
+                        const fields = buildFieldsToSave();
+                        if (Object.keys(fields).length > 0) {
+                          await fetch(`/api/patients/${patient.rowIndex}`, {
+                            method: 'PATCH',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                              _sheetName: patient.sheetName,
+                              _patientName: patient.name,
+                              ...fields,
+                            }),
+                          });
+                        }
                       }
-                    }
-                    const res = await fetch('/api/process', {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({
-                        rowIndex: patient.rowIndex,
-                        sheetName: patient.sheetName,
-                        promptTemplates: getEffectivePromptTemplates(),
-                        noteStyle,
-                        ...(customInstructions.trim() ? { customInstructions: customInstructions.trim() } : {}),
-                      }),
-                    });
-                    if (res.ok) {
-                      // Auto-update medical profile in background
-                      fetch('/api/profile', {
+                      const res = await fetch('/api/process', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ rowIndex: patient.rowIndex, sheetName: patient.sheetName }),
-                      }).catch(() => {});
-                      onSaved();
-                      onClose();
+                        body: JSON.stringify({
+                          rowIndex: patient.rowIndex,
+                          sheetName: patient.sheetName,
+                          promptTemplates: getEffectivePromptTemplates(),
+                          noteStyle,
+                          ...(customInstructions.trim() ? { customInstructions: customInstructions.trim() } : {}),
+                        }),
+                      });
+                      if (res.ok) {
+                        fetch('/api/profile', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ rowIndex: patient.rowIndex, sheetName: patient.sheetName }),
+                        }).catch(() => {});
+                        onSaved();
+                        onClose();
+                      }
+                    } catch (error) {
+                      console.error('Failed to generate:', error);
+                    } finally {
+                      setGenerating(false);
                     }
-                  } catch (error) {
-                    console.error('Failed to generate:', error);
-                  } finally {
-                    setGenerating(false);
-                  }
-                }}
-                disabled={generating || saving}
-                className="flex-1 py-3 min-h-[48px] bg-emerald-600 dark:bg-emerald-500 text-white rounded-xl font-medium disabled:opacity-40 flex items-center justify-center gap-2 hover:bg-emerald-700 dark:hover:bg-emerald-600 active:scale-[0.97] transition-all"
-              >
-                {generating ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
-                {patient.hasOutput ? 'Regenerate Note' : 'Generate Note'}
-              </button>
+                  }}
+                  disabled={generating || saving}
+                  className="w-full py-3 min-h-[44px] bg-emerald-600 dark:bg-emerald-500 text-white rounded-xl text-sm font-medium disabled:opacity-40 flex items-center justify-center gap-2 hover:bg-emerald-700 dark:hover:bg-emerald-600 hover:shadow-lg hover:shadow-emerald-500/20 active:scale-[0.97] transition-all"
+                >
+                  {generating ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                  {generating ? 'Generating...' : patient.hasOutput ? 'Regenerate Note' : 'Generate Note'}
+                </button>
+                <div className="flex items-center justify-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => setNoteStyle(noteStyle === 'comprehensive' ? 'standard' : 'comprehensive')}
+                    className={`px-2 py-0.5 rounded text-[9px] font-medium transition-colors ${
+                      noteStyle === 'comprehensive'
+                        ? 'text-emerald-600 dark:text-emerald-400'
+                        : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)]'
+                    }`}
+                  >
+                    {noteStyle === 'comprehensive' ? 'Detailed' : 'Standard'}
+                  </button>
+                  <span className="text-[var(--text-muted)] text-[9px]">·</span>
+                  <button
+                    type="button"
+                    onClick={() => setShowCustomInstructions(!showCustomInstructions)}
+                    className={`px-2 py-0.5 rounded text-[9px] font-medium transition-colors ${
+                      showCustomInstructions || customInstructions.trim()
+                        ? 'text-purple-600 dark:text-purple-400'
+                        : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)]'
+                    }`}
+                  >
+                    Instructions{customInstructions.trim() ? ' ✓' : ''}
+                  </button>
+                </div>
+              </div>
             )}
           </div>
         </div>
