@@ -3,7 +3,7 @@
 import { useState, useRef, useCallback, memo } from 'react';
 import { createPortal } from 'react-dom';
 import { Patient } from '@/lib/google-sheets';
-import { Clock, User, FileText, Trash2, DollarSign, Stethoscope, Copy, Check, Brain, ListTree, BookOpen, Play, Loader2, X, MessageCircleQuestion, Merge, CalendarDays, GraduationCap, PanelRightOpen, Calculator, Bookmark, Heart, ChevronRight } from 'lucide-react';
+import { Clock, User, FileText, Trash2, DollarSign, Stethoscope, Copy, Check, Brain, ListTree, BookOpen, Play, Loader2, X, MessageCircleQuestion, Merge, CalendarDays, GraduationCap, ExternalLink, PanelRightOpen, Calculator, Bookmark, Heart, ChevronRight } from 'lucide-react';
 import { ProfileSummary } from '@/components/PatientProfile';
 import type { PatientProfile } from '@/app/api/profile/route';
 
@@ -192,6 +192,8 @@ export const PatientCard = memo(function PatientCard({ patient, onClick, onDelet
   };
 
   const [showDelete, setShowDelete] = useState(false);
+  const [editingRoom, setEditingRoom] = useState(false);
+  const [roomValue, setRoomValue] = useState(patient.comments || '');
 
   return (
     <div className="group/card relative" style={{ overflow: 'visible' }}>
@@ -239,10 +241,50 @@ export const PatientCard = memo(function PatientCard({ patient, onClick, onDelet
       {/* Status left edge bar */}
       <div className="patient-card-edge" />
 
+      {/* Room/location badge */}
+      {editingRoom ? (
+        <div className="flex-shrink-0 pl-2" onClick={(e) => e.stopPropagation()}>
+          <input
+            type="text"
+            value={roomValue}
+            onChange={(e) => setRoomValue(e.target.value)}
+            onBlur={() => {
+              setEditingRoom(false);
+              if (roomValue !== (patient.comments || '') && onUpdateFields) {
+                onUpdateFields({ comments: roomValue });
+              }
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') { (e.target as HTMLInputElement).blur(); }
+              if (e.key === 'Escape') { setRoomValue(patient.comments || ''); setEditingRoom(false); }
+            }}
+            placeholder="Rm"
+            autoFocus
+            className="w-10 px-1 py-0.5 text-center text-[10px] font-semibold rounded bg-[var(--input-bg)] border border-[var(--input-border)] text-[var(--text-primary)] focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none"
+          />
+        </div>
+      ) : (
+        <div
+          className="flex-shrink-0 pl-2 cursor-pointer group/room"
+          onClick={(e) => { e.stopPropagation(); setEditingRoom(true); }}
+          title={patient.comments ? 'Edit room' : 'Add room/location'}
+        >
+          {patient.comments ? (
+            <span className="inline-flex items-center justify-center min-w-[28px] px-1.5 py-0.5 rounded text-[10px] font-bold tracking-wide text-[var(--accent)] bg-[var(--accent-light)] border border-transparent hover:border-[var(--accent)] transition-colors">
+              {patient.comments}
+            </span>
+          ) : (
+            <span className="inline-flex items-center justify-center w-7 h-5 rounded text-[9px] text-[var(--text-muted)] opacity-0 group-hover/card:opacity-40 hover:!opacity-100 transition-opacity border border-dashed border-[var(--border)]">
+              +
+            </span>
+          )}
+        </div>
+      )}
+
       {/* Main content area */}
       <button
         onClick={onClick}
-        className="flex-1 min-w-0 text-left px-5 py-3"
+        className="flex-1 min-w-0 text-left px-3 py-3"
       >
         {/* Top row: Name + badges + inline info icons */}
         <div className="flex items-center gap-2.5 mb-0.5">
@@ -744,29 +786,43 @@ export const PatientCard = memo(function PatientCard({ patient, onClick, onDelet
           </button>
         )}
 
-        {/* Open full view */}
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onNavigate?.();
-          }}
-          className="p-1.5 rounded-lg transition-all opacity-0 group-hover/card:opacity-100 hover:bg-blue-50 dark:hover:bg-blue-900/30"
-          title="Open full view"
-        >
-          <PanelRightOpen className="w-4 h-4 text-blue-400 dark:text-blue-500 transition-colors hover:text-blue-600 dark:hover:text-blue-400" />
-        </button>
       </div>
 
-      {/* Right-edge split-view chevron */}
-      {onSplitView && (
+      {/* Right-edge view actions — full view (top) + split view (bottom) */}
+      {(onNavigate || onSplitView) && (
         <div
-          className="absolute right-0 top-0 bottom-0 w-6 flex items-center justify-center opacity-0 group-hover/card:opacity-100 transition-all duration-200 cursor-pointer z-20"
-          onClick={(e) => { e.stopPropagation(); onSplitView(); }}
-          title="Open split view"
+          className="absolute -right-px top-0 bottom-0 w-8 flex flex-col items-end justify-center gap-px opacity-0 group-hover/card:opacity-100 translate-x-1 group-hover/card:translate-x-0 transition-all duration-250 z-20"
         >
-          <div className="w-5 h-10 rounded-l-lg flex items-center justify-center bg-gradient-to-r from-blue-500/10 to-blue-500/25 dark:from-blue-400/10 dark:to-blue-400/20 hover:from-blue-500/20 hover:to-blue-500/40 dark:hover:from-blue-400/20 dark:hover:to-blue-400/35 transition-all duration-200 backdrop-blur-sm border-l border-y border-blue-300/30 dark:border-blue-500/20">
-            <ChevronRight className="w-3.5 h-3.5 text-blue-500 dark:text-blue-400" />
-          </div>
+          {onNavigate && (
+            <button
+              className="flex items-center justify-center w-7 flex-1 rounded-l-xl cursor-pointer transition-all duration-200"
+              style={{
+                background: 'linear-gradient(135deg, rgba(59,130,246,0.08), rgba(59,130,246,0.18))',
+                backdropFilter: 'blur(8px)',
+              }}
+              onClick={(e) => { e.stopPropagation(); onNavigate(); }}
+              title="Open full view"
+              onMouseEnter={(e) => { e.currentTarget.style.background = 'linear-gradient(135deg, rgba(59,130,246,0.15), rgba(59,130,246,0.3))'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = 'linear-gradient(135deg, rgba(59,130,246,0.08), rgba(59,130,246,0.18))'; }}
+            >
+              <ChevronRight className="w-3.5 h-3.5 text-blue-400" />
+            </button>
+          )}
+          {onSplitView && (
+            <button
+              className="flex items-center justify-center w-7 h-7 rounded-bl-xl cursor-pointer transition-all duration-200"
+              style={{
+                background: 'linear-gradient(135deg, rgba(59,130,246,0.05), rgba(59,130,246,0.12))',
+                backdropFilter: 'blur(8px)',
+              }}
+              onClick={(e) => { e.stopPropagation(); onSplitView(); }}
+              title="Open split view"
+              onMouseEnter={(e) => { e.currentTarget.style.background = 'linear-gradient(135deg, rgba(59,130,246,0.12), rgba(59,130,246,0.25))'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = 'linear-gradient(135deg, rgba(59,130,246,0.05), rgba(59,130,246,0.12))'; }}
+            >
+              <PanelRightOpen className="w-3 h-3 text-blue-400/70" />
+            </button>
+          )}
         </div>
       )}
 
