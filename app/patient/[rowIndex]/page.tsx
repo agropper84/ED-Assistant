@@ -393,33 +393,43 @@ export default function PatientPage() {
   }
 
   return (
-    <div className="min-h-screen pb-24">
+    <div className={isEmbed ? 'pb-8' : 'min-h-screen pb-24'}>
       {/* Header */}
-      <header className="dash-header px-4 py-4 sticky top-0 z-40">
-        <div className="flex items-center gap-3 max-w-2xl mx-auto">
-          {!isEmbed && (
+      {!isEmbed ? (
+        <header className="dash-header px-4 py-4 sticky top-0 z-40">
+          <div className="flex items-center gap-3 max-w-2xl mx-auto">
             <button
               onClick={() => router.push('/')}
               className="p-2 hover:bg-white/10 rounded-full -ml-2"
             >
               <ArrowLeft className="w-5 h-5" style={{ color: 'var(--dash-text-sub)' }} />
             </button>
-          )}
-          <div className="flex-1 min-w-0">
-            <h1 className="font-semibold truncate" style={{ color: 'var(--dash-text)' }}>
-              {patient.name || 'Unknown'}
-            </h1>
-            <p className="text-sm" style={{ color: 'var(--dash-text-muted)' }}>
-              {patient.age && `${patient.age} `}
-              {patient.gender && `${patient.gender} `}
-              {patient.timestamp && `• ${patient.timestamp}`}
-            </p>
+            <div className="flex-1 min-w-0">
+              <h1 className="font-semibold truncate" style={{ color: 'var(--dash-text)' }}>
+                {patient.name || 'Unknown'}
+              </h1>
+              <p className="text-sm" style={{ color: 'var(--dash-text-muted)' }}>
+                {patient.age && `${patient.age} `}
+                {patient.gender && `${patient.gender} `}
+                {patient.timestamp && `• ${patient.timestamp}`}
+              </p>
+            </div>
+          </div>
+        </header>
+      ) : (
+        /* Compact embed header — no gradient, minimal height */
+        <div className="px-3 py-2 border-b border-[var(--border)] bg-[var(--bg-secondary)] sticky top-0 z-40">
+          <div className="flex items-center gap-2 text-xs text-[var(--text-muted)]">
+            {patient.birthday && <span>DOB: {patient.birthday}</span>}
+            {patient.hcn && <><span className="opacity-30">|</span><span>HCN: {patient.hcn}</span></>}
+            {patient.mrn && <><span className="opacity-30">|</span><span>MRN: {patient.mrn}</span></>}
           </div>
         </div>
-      </header>
+      )}
 
-      <main className="max-w-2xl mx-auto px-[var(--page-px)] py-4 space-y-4 animate-fadeIn">
-        {/* Patient Info Card */}
+      <main className={isEmbed ? 'px-3 py-3 space-y-3' : 'max-w-2xl mx-auto px-[var(--page-px)] py-4 space-y-4 animate-fadeIn'}>
+        {/* Patient Info Card — hidden in embed (shown in compact header) */}
+        {!isEmbed && (
         <div className="bg-[var(--card-bg)] rounded-2xl border border-[var(--card-border)] p-5" style={{ boxShadow: 'var(--card-shadow)' }}>
           <div className="grid grid-cols-2 gap-3 text-sm">
             <div className="flex items-center gap-2">
@@ -446,8 +456,9 @@ export default function PatientPage() {
             )}
           </div>
         </div>
+        )}
 
-        {/* Patient Profile Card — replaces synopsis */}
+        {/* Patient Profile Card */}
         <PatientProfile
           profile={profileData}
           age={patient.age}
@@ -460,7 +471,7 @@ export default function PatientPage() {
         <button
           onClick={handleUpdateAnalysis}
           disabled={updatingAnalysis}
-          className="w-full py-3 border border-[var(--border)] text-[var(--text-secondary)] rounded-2xl font-medium flex items-center justify-center gap-2 hover:bg-[var(--bg-tertiary)] active:scale-[0.99] transition-all disabled:opacity-50"
+          className={`w-full border border-[var(--border)] text-[var(--text-secondary)] font-medium flex items-center justify-center gap-2 hover:bg-[var(--bg-tertiary)] active:scale-[0.99] transition-all disabled:opacity-50 ${isEmbed ? 'py-2 rounded-xl text-xs' : 'py-3 rounded-2xl'}`}
         >
           {updatingAnalysis ? (
             <>
@@ -483,13 +494,13 @@ export default function PatientPage() {
           </div>
         )}
 
-        {/* Tab Bar — always visible */}
-        <div className="flex gap-1 bg-[var(--bg-tertiary)] rounded-2xl p-1" style={{ boxShadow: 'var(--card-shadow)' }}>
+        {/* Tab Bar */}
+        <div className={`flex gap-1 bg-[var(--bg-tertiary)] p-1 ${isEmbed ? 'rounded-xl' : 'rounded-2xl'}`} style={{ boxShadow: 'var(--card-shadow)' }}>
           {(['encounter', 'ddx', 'referral', 'admission'] as const).map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              className={`flex-1 py-2.5 text-xs sm:text-sm font-medium rounded-xl transition-all ${
+              className={`flex-1 font-medium transition-all ${isEmbed ? 'py-1.5 text-[11px] rounded-lg' : 'py-2.5 text-xs sm:text-sm rounded-xl'} ${
                 activeTab === tab
                   ? 'bg-[var(--accent)] text-white shadow-sm'
                   : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
