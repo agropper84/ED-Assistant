@@ -1038,17 +1038,10 @@ export default function HomePage() {
                 style={{ background: 'linear-gradient(145deg, rgba(255,255,255,0.14) 0%, rgba(255,255,255,0.04) 100%)', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.1), 0 1px 3px rgba(0,0,0,0.1)' }}
                 title="Menu"
               >
-                <svg width="22" height="22" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  {/* Stethoscope bell — diaphragm ring */}
-                  <circle cx="16" cy="17" r="9" stroke="white" strokeWidth="2.5" fill="none" opacity="0.85" />
-                  {/* Inner ring */}
-                  <circle cx="16" cy="17" r="4.5" stroke="white" strokeWidth="1.5" fill="none" opacity="0.4" />
-                  {/* Tube going up */}
-                  <line x1="16" y1="8" x2="16" y2="3" stroke="white" strokeWidth="2.5" strokeLinecap="round" opacity="0.85" />
-                  {/* Sound waves — left */}
-                  <path d="M4 13 Q2 17 4 21" stroke="#4a9ead" strokeWidth="1.5" strokeLinecap="round" fill="none" opacity="0.6" />
-                  {/* Sound waves — right */}
-                  <path d="M28 13 Q30 17 28 21" stroke="#4a9ead" strokeWidth="1.5" strokeLinecap="round" fill="none" opacity="0.6" />
+                <svg width="20" height="20" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <rect x="13" y="6" width="6" height="20" rx="3" fill="white" opacity="0.9" />
+                  <rect x="6" y="13" width="20" height="6" rx="3" fill="white" opacity="0.9" />
+                  <circle cx="25" cy="25" r="2.5" fill="#4a9ead" opacity="0.8" />
                 </svg>
               </button>
               <h1 className="text-[17px] font-bold tracking-[-0.02em]" style={{ color: 'var(--dash-text)' }}>ER Dashboard</h1>

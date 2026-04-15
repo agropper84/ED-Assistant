@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
 import { X, Clipboard, Check, Loader2, Clock, Upload, Send, FileText, Trash2 } from 'lucide-react';
 import { ExamToggles } from '@/components/ExamToggles';
+import { generateId } from '@/lib/types-json';
 import { AutocompleteTextarea } from '@/components/AutocompleteTextarea';
 import { getMedicalSuggestions } from '@/lib/medical-suggestions';
 import { VoiceRecorder } from '@/components/VoiceRecorder';
@@ -87,10 +88,7 @@ const TIME_SLOTS = generateTimeSlots();
 export function ParseModal({ isOpen, onClose, onSave, onQuickAdd, patientRef: externalPatientRef }: ParseModalProps) {
   const [quickName, setQuickName] = useState('');
   const [quickSaving, setQuickSaving] = useState(false);
-  // Internal patient ref — set after first save, enables per-field submissions
-  const [internalPatientRef, setInternalPatientRef] = useState<{ rowIndex: number; sheetName: string } | null>(null);
-  const patientRef = externalPatientRef || internalPatientRef;
-  const [patientSaved, setPatientSaved] = useState(false);
+  const patientRef = externalPatientRef || null;
 
   // Per-field submissions
   const [submissions, setSubmissions] = useState<FieldSubmission[]>([]);
@@ -217,9 +215,18 @@ export function ParseModal({ isOpen, onClose, onSave, onQuickAdd, patientRef: ex
             <div className="flex items-center gap-1.5">
               <input type="text" value={submitTitle} onChange={(e) => setSubmitTitle(e.target.value)} placeholder="Label, e.g. HPI, Plan, Exam (optional)"
                 className="flex-1 px-2 py-1 border border-[var(--input-border)] rounded-lg text-xs bg-[var(--input-bg)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:ring-1 focus:ring-emerald-500"
-                autoFocus onKeyDown={(e) => { if (e.key === 'Enter') confirmFieldSubmit(); if (e.key === 'Escape') cancelFieldSubmit(); }} />
-              <button onClick={confirmFieldSubmit} className="px-2 py-1 bg-emerald-600 text-white rounded-lg text-xs font-medium hover:bg-emerald-700 active:scale-[0.97] transition-all">
-                {submittingField === field ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
+                autoFocus onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    if (patientRef) confirmFieldSubmit();
+                    else if (pendingSubmit) localSubmit(pendingSubmit.field, pendingSubmit.content, pendingSubmit.clearFn, submitTitle);
+                  }
+                  if (e.key === 'Escape') cancelFieldSubmit();
+                }} />
+              <button onClick={() => {
+                if (patientRef) confirmFieldSubmit();
+                else if (pendingSubmit) localSubmit(pendingSubmit.field, pendingSubmit.content, pendingSubmit.clearFn, submitTitle);
+              }} className="px-2 py-1 bg-emerald-600 text-white rounded-lg text-xs font-medium hover:bg-emerald-700 active:scale-[0.97] transition-all">
+                <Check className="w-3 h-3" />
               </button>
               <button onClick={cancelFieldSubmit} className="p-1 text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors">
                 <X className="w-3 h-3" />
@@ -255,27 +262,47 @@ export function ParseModal({ isOpen, onClose, onSave, onQuickAdd, patientRef: ex
     );
   };
 
+  // Local submit: stores content as a tag and clears the field (no server call needed for new patients)
+  const localSubmit = (field: string, content: string, clearFn: (v: string) => void, title: string) => {
+    const entry: FieldSubmission = {
+      id: generateId('sub'),
+      field,
+      content: content.trim(),
+      submittedAt: new Date().toISOString(),
+      ...(title.trim() ? { title: title.trim() } : {}),
+    };
+    setSubmissions(prev => [...prev, entry]);
+    clearFn('');
+    setSubmitTitle('');
+    setPendingSubmit(null);
+  };
+
   const SubmitButton = ({ field, content, clearFn }: { field: string; content: string; clearFn: (v: string) => void }) => {
-    if (!patientRef || !content.trim()) return null;
+    if (!content.trim()) return null;
     return (
       <button
         type="button"
-        onClick={() => startFieldSubmit(field, content, clearFn)}
-        disabled={submittingField !== null}
-        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-medium text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-900/20 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 transition-colors disabled:opacity-40"
+        onClick={() => {
+          if (patientRef) {
+            startFieldSubmit(field, content, clearFn);
+          } else {
+            // New patient — store locally, will be included in save
+            setPendingSubmit({ field, content, clearFn });
+            setSubmitTitle('');
+          }
+        }}
+        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-medium text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-900/20 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 transition-colors"
         title="Submit this section and clear"
       >
-        {submittingField === field ? <Loader2 className="w-2.5 h-2.5 animate-spin" /> : <Send className="w-2.5 h-2.5" />}
+        <Send className="w-2.5 h-2.5" />
         Submit
       </button>
     );
   };
 
-  // Reset internal state when modal closes
+  // Reset state when modal closes
   useEffect(() => {
     if (!isOpen) {
-      setInternalPatientRef(null);
-      setPatientSaved(false);
       setSubmissions([]);
       setPasteText('');
       setTriageVitals('');
@@ -350,33 +377,30 @@ export function ParseModal({ isOpen, onClose, onSave, onQuickAdd, patientRef: ex
     if (parsedData) {
       savePhrasesInBackground(encounterNotes, additional);
 
+      // Combine text box content with any locally-submitted entries
+      const combineWithSubmissions = (field: string, textBoxValue: string) => {
+        const fieldSubs = submissions.filter(s => s.field === field);
+        if (fieldSubs.length === 0) return textBoxValue;
+        const subContent = fieldSubs
+          .map(s => s.title ? `[${s.title.toUpperCase()}]\n${s.content}` : s.content)
+          .join('\n\n');
+        return textBoxValue.trim()
+          ? `${subContent}\n\n${textBoxValue.trim()}`
+          : subContent;
+      };
+
       const timestamp = encounterTime || getNearestSlot();
-      const result = await onSave({
+      await onSave({
         ...parsedData,
         timestamp,
-        triageVitals,
-        transcript,
-        encounterNotes,
-        additional,
-        pastDocs,
+        triageVitals: combineWithSubmissions('triageVitals', triageVitals),
+        transcript: combineWithSubmissions('transcript', transcript),
+        encounterNotes: combineWithSubmissions('encounterNotes', encounterNotes),
+        additional: combineWithSubmissions('additional', additional),
+        pastDocs: combineWithSubmissions('pastDocs', pastDocs),
         _generateNote: shouldGenerate ?? generateNote,
       });
-
-      if (result) {
-        // Patient created — store ref so submit buttons activate
-        setInternalPatientRef(result);
-        setPatientSaved(true);
-        // Clear text fields (content is now saved to the patient)
-        setTriageVitals('');
-        setTranscript('');
-        setEncounterNotes('');
-        setAdditional('');
-        setPastDocs('');
-        // Don't close — user can now submit additional content per-field
-      } else {
-        // Save failed — close
-        onClose();
-      }
+      onClose();
     }
   };
 
@@ -884,30 +908,6 @@ export function ParseModal({ isOpen, onClose, onSave, onQuickAdd, patientRef: ex
               <Check className="w-4 h-4" />
               Add All {daySheetPatients.length} Patients
             </button>
-          ) : patientSaved ? (
-            <div className="space-y-2">
-              <p className="text-[11px] text-[var(--text-muted)] text-center">
-                Patient saved. Use <strong>Submit</strong> on each section to add more content, or type directly into the text boxes.
-                Both submitted and saved content will be used when generating the note.
-              </p>
-              <div className="flex gap-2">
-                <button
-                  onClick={onClose}
-                  className="flex-1 py-3 min-h-[48px] bg-[var(--bg-primary)] border border-[var(--border)] text-[var(--text-primary)] rounded-xl font-medium flex items-center justify-center gap-2 hover:bg-[var(--bg-tertiary)] active:scale-[0.97] transition-all"
-                >
-                  Done
-                </button>
-                {(triageVitals.trim() || transcript.trim() || encounterNotes.trim() || additional.trim() || submissions.length > 0) && (
-                  <button
-                    onClick={() => handleSave(true)}
-                    disabled={!parsedData && !patientRef}
-                    className="flex-1 py-3 min-h-[48px] bg-emerald-600 dark:bg-emerald-500 text-white rounded-xl font-medium disabled:opacity-40 flex items-center justify-center gap-2 hover:bg-emerald-700 dark:hover:bg-emerald-600 active:scale-[0.97] transition-all"
-                  >
-                    Generate Note
-                  </button>
-                )}
-              </div>
-            </div>
           ) : (
             <div className="space-y-2">
               <p className="text-[11px] text-[var(--text-muted)] text-center">
