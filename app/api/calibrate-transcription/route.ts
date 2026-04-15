@@ -36,13 +36,16 @@ export const POST = withApiHandler({ rateLimit: { limit: 5, window: 60 } }, asyn
     try {
       const patients = await getPatients(ctx, sheetName);
       for (const p of patients) {
-        // For dictation mode: look at the transcript field (physician dictation)
-        // For encounter mode: look at encounterNotes field (encounter recording)
-        const field = mode === 'dictation' ? p.transcript : p.encounterNotes;
-        if (field && field.trim().length > 50) {
+        // Dictation mode → learn from encounterNotes column (physician dictation)
+        // Encounter mode → learn from transcript column (encounter recordings)
+        const text = (mode === 'dictation'
+          ? (p.encounterNotes || '')
+          : (p.transcript || '')
+        ).trim();
+        if (text.length > 50) {
           samples.push({
             date: sheetName,
-            text: field.trim().substring(0, 1000),
+            text: text.substring(0, 1000),
             patientContext: `${p.age || ''} ${p.gender || ''} — ${p.diagnosis || 'undifferentiated'}`.trim(),
           });
         }

@@ -65,9 +65,27 @@ export async function PATCH(
     }
 
     if (_billingItems) {
-      // Multi-row billing save
+      // Multi-row billing save to Google Sheets (handles continuation rows)
       await saveBillingRows(ctx.sheets, rowIndex, _billingItems, _sheetName || undefined);
-      // Also save non-billing fields (like comments)
+
+      // Sync billing fields to Drive JSON (if in dual/drive mode) without re-writing Sheets
+      const { serializeBillingItems } = await import('@/lib/billing');
+      const serialized = serializeBillingItems(_billingItems);
+      const billingFields: Record<string, string> = {
+        visitProcedure: serialized.visitProcedure,
+        procCode: serialized.procCode,
+        fee: serialized.fee,
+        unit: serialized.unit,
+        total: serialized.total,
+        ...fields,
+      };
+      if (ctx.mode !== 'sheets' && ctx.drive) {
+        // Update Drive JSON directly (Sheets already handled by saveBillingRows)
+        const dj = await import('@/lib/drive-json');
+        await dj.updatePatientInDrive(ctx.drive, _sheetName || '', rowIndex, billingFields as any);
+      }
+
+      // Save any non-billing fields (comments, etc.) to Sheets as well
       const nonBillingFields = { ...fields };
       delete nonBillingFields.visitProcedure;
       delete nonBillingFields.procCode;
@@ -75,7 +93,7 @@ export async function PATCH(
       delete nonBillingFields.unit;
       delete nonBillingFields.total;
       if (Object.keys(nonBillingFields).length > 0) {
-        await updatePatientFields(ctx, rowIndex, nonBillingFields, _sheetName || undefined);
+        await updatePatientFields(ctx, rowIndex, nonBillingFields, _sheetName || '');
       }
     } else {
       await updatePatientFields(ctx, rowIndex, fields, _sheetName || undefined);

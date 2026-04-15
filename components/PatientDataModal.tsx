@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { Patient } from '@/lib/google-sheets';
 import { getMedicalSuggestions } from '@/lib/medical-suggestions';
-import { X, Loader2, Save, ExternalLink, RefreshCw, Check, Heart, ArrowUpCircle, FileText, Trash2 } from 'lucide-react';
+import { X, Loader2, Save, ExternalLink, RefreshCw, Check, Heart, ArrowUpCircle, FileText, Trash2, ListTree } from 'lucide-react';
 import { PatientProfile } from '@/components/PatientProfile';
 import type { PatientProfile as ProfileData } from '@/app/api/profile/route';
 import { ExamToggles } from '@/components/ExamToggles';
@@ -65,6 +65,7 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
     });
   };
   const [activeTab, setActiveTab] = useState<'clinical' | 'profile' | 'ddx'>('clinical');
+  const [sidePanel, setSidePanel] = useState<'profile' | 'ddx' | null>(null);
   const [generatingProfile, setGeneratingProfile] = useState(false);
   // DDx tab state
   const [ddxData, setDdxData] = useState<{ keyQuestions: string; ddx: string; investigations: string } | null>(null);
@@ -125,7 +126,7 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
         if (fieldSetters[field]) fieldSetters[field]('');
         setSubmitted(field);
         onSaved();
-        if (activeTab === 'profile') {
+        if (sidePanel === 'profile') {
           setGeneratingProfile(true);
           fetch('/api/profile', {
             method: 'POST',
@@ -523,7 +524,91 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
 
   return (
     <div className="fixed inset-0 modal-overlay z-50 flex items-end sm:items-center justify-center">
-      <div className="bg-[var(--card-bg)] w-full sm:max-w-lg sm:rounded-3xl rounded-t-3xl max-h-[90vh] overflow-hidden flex flex-col animate-slideUp" style={{ boxShadow: 'var(--card-shadow-elevated)' }}>
+      <div className="relative w-full sm:max-w-lg animate-slideUp">
+      {/* Binder tabs — outside right edge, vertically centered on the modal */}
+      <div className="hidden sm:flex flex-col absolute -right-10 top-1/2 -translate-y-1/2 z-40">
+        {([
+          { id: 'profile' as const, icon: Heart, label: 'PMHx', color: 'blue', hasData: !!profileData, onClick: () => {
+            setSidePanel(sidePanel === 'profile' ? null : 'profile');
+            if (!profileData && !generatingProfile) handleGenerateProfile();
+          }},
+          { id: 'ddx' as const, icon: ListTree, label: 'DDx', color: 'violet', hasData: !!ddxData, onClick: () => {
+            setSidePanel(sidePanel === 'ddx' ? null : 'ddx');
+            if (!ddxData && !generatingDdx) handleGenerateDdx();
+          }},
+        ]).map((tab) => {
+          const isActive = sidePanel === tab.id;
+          const Icon = tab.icon;
+          return (
+            <button
+              key={tab.id}
+              onClick={tab.onClick}
+              className="relative group/tab outline-none"
+              title={tab.label}
+            >
+              <div
+                className={`
+                  w-10 py-4 flex flex-col items-center justify-center gap-1.5
+                  rounded-r-2xl border border-l-0
+                  transition-all duration-300 ease-out
+                  ${isActive
+                    ? `bg-[var(--card-bg)] border-[var(--border)] translate-x-0 ${tab.id === 'profile' ? 'text-blue-500 dark:text-blue-400' : 'text-violet-500 dark:text-violet-400'}`
+                    : 'bg-[var(--bg-secondary)] border-[var(--border)] -translate-x-1 text-[var(--text-muted)] hover:translate-x-0 hover:text-[var(--text-secondary)]'
+                  }
+                `}
+                style={{
+                  boxShadow: isActive
+                    ? '6px 2px 16px rgba(0,0,0,0.12), 0 0 0 0.5px rgba(255,255,255,0.05)'
+                    : '3px 1px 8px rgba(0,0,0,0.06)',
+                }}
+              >
+                <Icon className="w-4 h-4 transition-transform duration-300 group-hover/tab:scale-110" fill={isActive && tab.hasData ? 'currentColor' : 'none'} />
+                <span
+                  className="text-[7px] font-bold uppercase tracking-[0.08em] leading-none"
+                  style={{ writingMode: 'horizontal-tb' }}
+                >
+                  {tab.label}
+                </span>
+                {tab.hasData && !isActive && (
+                  <span className={`absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full animate-fadeIn ${tab.id === 'profile' ? 'bg-blue-400' : 'bg-violet-400'}`} />
+                )}
+              </div>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Mobile: compact icon tabs at top-right of modal */}
+      <div className="sm:hidden absolute right-3 top-3 z-40 flex gap-0.5">
+        {([
+          { id: 'profile' as const, icon: Heart, color: 'blue', onClick: () => {
+            setSidePanel(sidePanel === 'profile' ? null : 'profile');
+            if (!profileData && !generatingProfile) handleGenerateProfile();
+          }},
+          { id: 'ddx' as const, icon: ListTree, color: 'violet', onClick: () => {
+            setSidePanel(sidePanel === 'ddx' ? null : 'ddx');
+            if (!ddxData && !generatingDdx) handleGenerateDdx();
+          }},
+        ]).map((tab) => {
+          const Icon = tab.icon;
+          const isActive = sidePanel === tab.id;
+          return (
+            <button
+              key={tab.id}
+              onClick={tab.onClick}
+              className={`p-2 rounded-xl transition-all duration-200 ${
+                isActive
+                  ? `${tab.id === 'profile' ? 'bg-blue-500/15 text-blue-500' : 'bg-violet-500/15 text-violet-500'} scale-105`
+                  : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)] active:scale-95'
+              }`}
+            >
+              <Icon className="w-4 h-4" fill={isActive ? 'currentColor' : 'none'} />
+            </button>
+          );
+        })}
+      </div>
+
+      <div className="bg-[var(--card-bg)] w-full sm:rounded-3xl rounded-t-3xl max-h-[90vh] overflow-hidden flex flex-col" style={{ boxShadow: 'var(--card-shadow-elevated)' }}>
         {/* Header */}
         <div className="dash-header flex items-center gap-3 px-4 py-4 sm:rounded-t-3xl">
           <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-full flex-shrink-0" title="Close">
@@ -548,80 +633,14 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
           </button>
         </div>
 
-        {/* Tab bar — notebook/binder style */}
-        <div className="flex border-b border-[var(--border)] bg-[var(--bg-secondary)]">
-          <button
-            onClick={() => setActiveTab('clinical')}
-            className={`relative px-5 py-2.5 text-[13px] font-medium transition-colors ${
-              activeTab === 'clinical'
-                ? 'text-[var(--text-primary)] bg-[var(--card-bg)]'
-                : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)]'
-            }`}
-            style={activeTab === 'clinical' ? {
-              borderTopLeftRadius: '10px',
-              borderTopRightRadius: '10px',
-              borderTop: '2px solid var(--accent)',
-              borderLeft: '1px solid var(--border)',
-              borderRight: '1px solid var(--border)',
-              marginBottom: '-1px',
-            } : {}}
-          >
-            Clinical Info
-          </button>
-          <button
-            onClick={() => {
-              setActiveTab('profile');
-              if (!profileData && !generatingProfile) handleGenerateProfile();
-            }}
-            className={`relative px-5 py-2.5 text-[13px] font-medium transition-colors ${
-              activeTab === 'profile'
-                ? 'text-[var(--text-primary)] bg-[var(--card-bg)]'
-                : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)]'
-            }`}
-            style={activeTab === 'profile' ? {
-              borderTopLeftRadius: '10px',
-              borderTopRightRadius: '10px',
-              borderTop: '2px solid var(--accent)',
-              borderLeft: '1px solid var(--border)',
-              borderRight: '1px solid var(--border)',
-              marginBottom: '-1px',
-            } : {}}
-          >
-            Profile
-            {profileData && activeTab !== 'profile' && (
-              <span className="ml-1.5 w-1.5 h-1.5 bg-blue-400 rounded-full inline-block" />
-            )}
-          </button>
-          <button
-            onClick={() => {
-              setActiveTab('ddx');
-              if (!ddxData && !generatingDdx) handleGenerateDdx();
-            }}
-            className={`relative px-5 py-2.5 text-[13px] font-medium transition-colors ${
-              activeTab === 'ddx'
-                ? 'text-[var(--text-primary)] bg-[var(--card-bg)]'
-                : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)]'
-            }`}
-            style={activeTab === 'ddx' ? {
-              borderTopLeftRadius: '10px',
-              borderTopRightRadius: '10px',
-              borderTop: '2px solid var(--accent)',
-              borderLeft: '1px solid var(--border)',
-              borderRight: '1px solid var(--border)',
-              marginBottom: '-1px',
-            } : {}}
-          >
-            DDx
-            {ddxData && activeTab !== 'ddx' && (
-              <span className="ml-1.5 w-1.5 h-1.5 bg-violet-400 rounded-full inline-block" />
-            )}
-          </button>
-        </div>
+        {/* Thin separator */}
+        <div className="border-b border-[var(--border)]" />
 
-        {/* Tab content */}
-        <div className="flex-1 overflow-hidden flex flex-col">
-        {activeTab === 'clinical' ? (
-        <div className="flex-1 min-w-0 overflow-y-auto px-5 py-4 space-y-4">
+        {/* Content area with optional side panel */}
+        <div className="flex-1 overflow-hidden flex relative">
+
+        {/* Clinical info — always visible */}
+        <div className={`flex-1 min-w-0 overflow-y-auto px-5 py-4 space-y-4 transition-all duration-200 ${sidePanel ? 'pr-[52%] sm:pr-[45%]' : ''}`}>
           {/* Triage Notes */}
           <div>
             <label className="block text-xs font-semibold text-[var(--text-muted)] uppercase tracking-widest mb-1.5">
@@ -838,85 +857,80 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
           </div>
         </div>
 
-        ) : activeTab === 'profile' ? (
-        <div className="flex-1 overflow-y-auto px-5 py-4">
-          <PatientProfile
-            profile={profileData}
-            age={patient.age}
-            gender={patient.gender}
-            onGenerate={handleGenerateProfile}
-            generating={generatingProfile}
-          />
-        </div>
-        ) : activeTab === 'ddx' ? (
-        <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
-          {generatingDdx ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="w-6 h-6 animate-spin text-violet-500" />
-              <span className="ml-2 text-sm text-[var(--text-muted)]">Generating differential...</span>
-            </div>
-          ) : ddxData ? (
-            <>
-              {/* Key Clinical Questions */}
-              {ddxData.keyQuestions && (
-                <div className="border border-amber-200 dark:border-amber-800/40 rounded-xl p-4 bg-amber-50/50 dark:bg-amber-950/20">
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-amber-700 dark:text-amber-400 mb-2">
-                    Key Questions to Narrow DDx
-                  </h3>
-                  <div className="text-sm text-[var(--text-primary)] whitespace-pre-wrap leading-relaxed">
-                    {ddxData.keyQuestions}
-                  </div>
-                </div>
-              )}
-
-              {/* Differential Diagnosis */}
-              {ddxData.ddx && (
-                <div>
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-violet-600 dark:text-violet-400 mb-2">
-                    Differential Diagnosis
-                  </h3>
-                  <div className="text-sm text-[var(--text-primary)] whitespace-pre-wrap leading-relaxed border border-[var(--border)] rounded-xl p-4 bg-[var(--bg-secondary)]">
-                    {ddxData.ddx}
-                  </div>
-                </div>
-              )}
-
-              {/* Investigations */}
-              {ddxData.investigations && (
-                <div>
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-violet-600 dark:text-violet-400 mb-2">
-                    Recommended Investigations
-                  </h3>
-                  <div className="text-sm text-[var(--text-primary)] whitespace-pre-wrap leading-relaxed border border-[var(--border)] rounded-xl p-4 bg-[var(--bg-secondary)]">
-                    {ddxData.investigations}
-                  </div>
-                </div>
-              )}
-
-              {/* Refresh button */}
+        {/* Side panel overlay for Profile / DDx */}
+        {sidePanel && (
+          <div className="absolute right-0 top-0 bottom-0 w-[50%] sm:w-[43%] bg-[var(--card-bg)] border-l border-[var(--border)] overflow-y-auto animate-slideLeft z-20"
+            style={{ boxShadow: '-4px 0 16px rgba(0,0,0,0.08)' }}
+          >
+            <div className="sticky top-0 z-10 flex items-center justify-between px-4 py-2.5 border-b border-[var(--border)] bg-[var(--card-bg)]">
+              <span className="text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider">
+                {sidePanel === 'profile' ? 'Medical Profile' : 'Differential Diagnosis'}
+              </span>
               <button
-                onClick={handleGenerateDdx}
-                disabled={generatingDdx}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-violet-600 dark:text-violet-400 bg-violet-50 dark:bg-violet-900/20 rounded-lg hover:bg-violet-100 dark:hover:bg-violet-900/30 transition-colors"
+                onClick={() => setSidePanel(null)}
+                className="p-1 rounded hover:bg-[var(--bg-tertiary)] transition-colors"
               >
-                <RefreshCw className="w-3.5 h-3.5" />
-                Update with latest info
-              </button>
-            </>
-          ) : (
-            <div className="text-center py-12">
-              <p className="text-sm text-[var(--text-muted)] mb-3">Add clinical information first to generate a differential diagnosis.</p>
-              <button
-                onClick={handleGenerateDdx}
-                disabled={generatingDdx}
-                className="px-4 py-2 text-sm font-medium text-white bg-violet-600 rounded-lg hover:bg-violet-700 transition-colors"
-              >
-                Generate DDx
+                <X className="w-3.5 h-3.5 text-[var(--text-muted)]" />
               </button>
             </div>
-          )}
-        </div>
-        ) : null}
+            <div className="px-4 py-3">
+              {sidePanel === 'profile' ? (
+                <PatientProfile
+                  profile={profileData}
+                  age={patient.age}
+                  gender={patient.gender}
+                  onGenerate={handleGenerateProfile}
+                  generating={generatingProfile}
+                />
+              ) : (
+                <div className="space-y-3">
+                  {generatingDdx ? (
+                    <div className="flex items-center justify-center py-8">
+                      <Loader2 className="w-5 h-5 animate-spin text-violet-500" />
+                      <span className="ml-2 text-xs text-[var(--text-muted)]">Generating...</span>
+                    </div>
+                  ) : ddxData ? (
+                    <>
+                      {ddxData.keyQuestions && (
+                        <div className="border border-amber-200 dark:border-amber-800/40 rounded-lg p-3 bg-amber-50/50 dark:bg-amber-950/20">
+                          <h3 className="text-[10px] font-bold uppercase tracking-wider text-amber-700 dark:text-amber-400 mb-1.5">Key Questions</h3>
+                          <div className="text-xs text-[var(--text-primary)] whitespace-pre-wrap leading-relaxed">{ddxData.keyQuestions}</div>
+                        </div>
+                      )}
+                      {ddxData.ddx && (
+                        <div>
+                          <h3 className="text-[10px] font-bold uppercase tracking-wider text-violet-600 dark:text-violet-400 mb-1.5">Differential</h3>
+                          <div className="text-xs text-[var(--text-primary)] whitespace-pre-wrap leading-relaxed border border-[var(--border)] rounded-lg p-3 bg-[var(--bg-secondary)]">{ddxData.ddx}</div>
+                        </div>
+                      )}
+                      {ddxData.investigations && (
+                        <div>
+                          <h3 className="text-[10px] font-bold uppercase tracking-wider text-violet-600 dark:text-violet-400 mb-1.5">Investigations</h3>
+                          <div className="text-xs text-[var(--text-primary)] whitespace-pre-wrap leading-relaxed border border-[var(--border)] rounded-lg p-3 bg-[var(--bg-secondary)]">{ddxData.investigations}</div>
+                        </div>
+                      )}
+                      <button
+                        onClick={handleGenerateDdx}
+                        disabled={generatingDdx}
+                        className="flex items-center gap-1 px-2.5 py-1 text-[10px] font-medium text-violet-600 dark:text-violet-400 bg-violet-50 dark:bg-violet-900/20 rounded-md hover:bg-violet-100 dark:hover:bg-violet-900/30 transition-colors"
+                      >
+                        <RefreshCw className="w-3 h-3" />
+                        Update
+                      </button>
+                    </>
+                  ) : (
+                    <div className="text-center py-8">
+                      <p className="text-xs text-[var(--text-muted)] mb-2">Add clinical info to generate DDx.</p>
+                      <button onClick={handleGenerateDdx} disabled={generatingDdx} className="px-3 py-1.5 text-xs font-medium text-white bg-violet-600 rounded-lg hover:bg-violet-700 transition-colors">
+                        Generate DDx
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
         </div>
 
         {/* Footer */}
@@ -930,100 +944,91 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
               autoFocus
             />
           )}
-          <div className="flex gap-2">
+          <div className="flex gap-2 items-stretch">
             <button
               onClick={async () => {
                 if (hasChanges) await handleSave();
                 onClose();
               }}
               disabled={saving || generating}
-              className="flex-1 py-3 min-h-[44px] border border-[var(--border)] text-[var(--text-primary)] rounded-xl text-sm font-medium disabled:opacity-40 flex items-center justify-center gap-2 hover:bg-[var(--bg-primary)] hover:border-[var(--text-muted)] active:scale-[0.97] transition-all"
+              className="flex-1 border border-[var(--border)] text-[var(--text-primary)] rounded-xl text-sm font-medium disabled:opacity-40 flex items-center justify-center gap-2 hover:bg-[var(--bg-primary)] hover:border-[var(--text-muted)] active:scale-[0.97] transition-all"
             >
               {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
               {saving ? 'Saving...' : 'Save'}
             </button>
             {canGenerateNote && (
-              <div className="flex-[2] flex flex-col gap-1">
-                <button
-                  onClick={async () => {
-                    setGenerating(true);
-                    try {
-                      if (hasChanges) {
-                        const fields = buildFieldsToSave();
-                        if (Object.keys(fields).length > 0) {
-                          await fetch(`/api/patients/${patient.rowIndex}`, {
-                            method: 'PATCH',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                              _sheetName: patient.sheetName,
-                              _patientName: patient.name,
-                              ...fields,
-                            }),
-                          });
-                        }
+              <button
+                onClick={async () => {
+                  setGenerating(true);
+                  try {
+                    if (hasChanges) {
+                      const fields = buildFieldsToSave();
+                      if (Object.keys(fields).length > 0) {
+                        await fetch(`/api/patients/${patient.rowIndex}`, {
+                          method: 'PATCH',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({
+                            _sheetName: patient.sheetName,
+                            _patientName: patient.name,
+                            ...fields,
+                          }),
+                        });
                       }
-                      const res = await fetch('/api/process', {
+                    }
+                    const res = await fetch('/api/process', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        rowIndex: patient.rowIndex,
+                        sheetName: patient.sheetName,
+                        promptTemplates: getEffectivePromptTemplates(),
+                        noteStyle,
+                        ...(customInstructions.trim() ? { customInstructions: customInstructions.trim() } : {}),
+                      }),
+                    });
+                    if (res.ok) {
+                      fetch('/api/profile', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                          rowIndex: patient.rowIndex,
-                          sheetName: patient.sheetName,
-                          promptTemplates: getEffectivePromptTemplates(),
-                          noteStyle,
-                          ...(customInstructions.trim() ? { customInstructions: customInstructions.trim() } : {}),
-                        }),
-                      });
-                      if (res.ok) {
-                        fetch('/api/profile', {
-                          method: 'POST',
-                          headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify({ rowIndex: patient.rowIndex, sheetName: patient.sheetName }),
-                        }).catch(() => {});
-                        onSaved();
-                        onClose();
-                      }
-                    } catch (error) {
-                      console.error('Failed to generate:', error);
-                    } finally {
-                      setGenerating(false);
+                        body: JSON.stringify({ rowIndex: patient.rowIndex, sheetName: patient.sheetName }),
+                      }).catch(() => {});
+                      onSaved();
+                      onClose();
                     }
-                  }}
-                  disabled={generating || saving}
-                  className="w-full py-3 min-h-[44px] bg-emerald-600 dark:bg-emerald-500 text-white rounded-xl text-sm font-medium disabled:opacity-40 flex items-center justify-center gap-2 hover:bg-emerald-700 dark:hover:bg-emerald-600 hover:shadow-lg hover:shadow-emerald-500/20 active:scale-[0.97] transition-all"
-                >
+                  } catch (error) {
+                    console.error('Failed to generate:', error);
+                  } finally {
+                    setGenerating(false);
+                  }
+                }}
+                disabled={generating || saving}
+                className="flex-[2] py-3 bg-emerald-600 dark:bg-emerald-500 text-white rounded-xl font-medium disabled:opacity-40 flex flex-col items-center justify-center hover:bg-emerald-700 dark:hover:bg-emerald-600 hover:shadow-lg hover:shadow-emerald-500/20 active:scale-[0.97] transition-all"
+              >
+                <span className="flex items-center gap-2 text-sm">
                   {generating ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
                   {generating ? 'Generating...' : patient.hasOutput ? 'Regenerate Note' : 'Generate Note'}
-                </button>
-                <div className="flex items-center justify-center gap-1">
-                  <button
-                    type="button"
-                    onClick={() => setNoteStyle(noteStyle === 'comprehensive' ? 'standard' : 'comprehensive')}
-                    className={`px-2 py-0.5 rounded text-[9px] font-medium transition-colors ${
-                      noteStyle === 'comprehensive'
-                        ? 'text-emerald-600 dark:text-emerald-400'
-                        : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)]'
-                    }`}
+                </span>
+                <span className="flex items-center gap-2 mt-0.5">
+                  <span
+                    onClick={(e) => { e.stopPropagation(); setNoteStyle(noteStyle === 'comprehensive' ? 'standard' : 'comprehensive'); }}
+                    className={`text-[9px] font-medium ${noteStyle === 'comprehensive' ? 'text-white' : 'text-white/50'}`}
                   >
                     {noteStyle === 'comprehensive' ? 'Detailed' : 'Standard'}
-                  </button>
-                  <span className="text-[var(--text-muted)] text-[9px]">·</span>
-                  <button
-                    type="button"
-                    onClick={() => setShowCustomInstructions(!showCustomInstructions)}
-                    className={`px-2 py-0.5 rounded text-[9px] font-medium transition-colors ${
-                      showCustomInstructions || customInstructions.trim()
-                        ? 'text-purple-600 dark:text-purple-400'
-                        : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)]'
-                    }`}
+                  </span>
+                  <span className="text-white/30 text-[9px]">·</span>
+                  <span
+                    onClick={(e) => { e.stopPropagation(); setShowCustomInstructions(!showCustomInstructions); }}
+                    className={`text-[9px] font-medium ${showCustomInstructions || customInstructions.trim() ? 'text-white' : 'text-white/50'}`}
                   >
                     Instructions{customInstructions.trim() ? ' ✓' : ''}
-                  </button>
-                </div>
-              </div>
+                  </span>
+                </span>
+              </button>
             )}
           </div>
         </div>
-      </div>
+      </div>{/* end modal card */}
+      </div>{/* end relative wrapper */}
     </div>
   );
 }

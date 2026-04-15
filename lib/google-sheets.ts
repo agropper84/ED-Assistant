@@ -253,7 +253,59 @@ export async function getOrCreateDateSheet(ctx: SheetsContext, dateOrName?: Date
     (s: any) => s.properties.title === sheetName
   );
 
-  if (exists) return sheetName;
+  if (exists) {
+    // Billing sheet exists — but ensure clinical companion sheet also exists
+    const clinicalName = clinicalSheetName(sheetName);
+    const existsClinical = allSheets.some((s: any) => s.properties.title === clinicalName);
+    if (!existsClinical) {
+      try {
+        const clinicalRes = await sheets.spreadsheets.batchUpdate({
+          spreadsheetId,
+          requestBody: {
+            requests: [{
+              addSheet: {
+                properties: {
+                  title: clinicalName,
+                  gridProperties: { rowCount: 200, columnCount: 21 },
+                },
+              },
+            }],
+          },
+        });
+        const clinicalSheetId = clinicalRes.data.replies?.[0]?.addSheet?.properties?.sheetId;
+        const clinicalHeaders = [
+          'Patient Name', 'HCN',
+          'Triage & Vitals', 'Transcript', 'Encounter Notes', 'Additional Findings',
+          'Past Documentation', 'Differential Diagnosis', 'Investigations', 'HPI',
+          'Objective', 'Assessment & Plan', 'Referral',
+          'Synopsis', 'Management', 'Evidence',
+          'A&P Notes', 'Clinical Q&A', 'Education',
+          'Admission', 'Profile',
+        ];
+        await sheets.spreadsheets.values.update({
+          spreadsheetId,
+          range: `'${clinicalName}'!A7:U7`,
+          valueInputOption: 'RAW',
+          requestBody: { values: [clinicalHeaders] },
+        });
+        if (clinicalSheetId) {
+          await sheets.spreadsheets.batchUpdate({
+            spreadsheetId,
+            requestBody: {
+              requests: [
+                { repeatCell: { range: { sheetId: clinicalSheetId, startRowIndex: 6, endRowIndex: 7, startColumnIndex: 0, endColumnIndex: 21 }, cell: { userEnteredFormat: { textFormat: { bold: true }, backgroundColor: { red: 0.9, green: 0.92, blue: 0.98 } } }, fields: 'userEnteredFormat(textFormat,backgroundColor)' } },
+                { updateSheetProperties: { properties: { sheetId: clinicalSheetId, gridProperties: { frozenRowCount: 7 } }, fields: 'gridProperties.frozenRowCount' } },
+                { updateDimensionProperties: { range: { sheetId: clinicalSheetId, dimension: 'COLUMNS', startIndex: 2, endIndex: 13 }, properties: { pixelSize: 300 }, fields: 'pixelSize' } },
+              ],
+            },
+          });
+        }
+      } catch (e) {
+        console.warn('Failed to create clinical companion sheet:', (e as Error).message);
+      }
+    }
+    return sheetName;
+  }
 
   // Find the Template sheet ID
   const templateSheet = allSheets.find(
@@ -1037,44 +1089,62 @@ export async function updatePatientFields(
   sheetName?: string
 ): Promise<void> {
   const sheet = sheetName || getTodaySheetName();
-  const clinicalSheet = clinicalSheetName(sheet);
   const { sheets, spreadsheetId } = ctx;
 
-  const data: Array<{ range: string; values: string[][] }> = [];
+  // Build billing + legacy writes (main sheet — always exists)
+  const billingData: Array<{ range: string; values: string[][] }> = [];
+  const clinicalData: Array<{ range: string; values: string[][] }> = [];
 
-  // Split fields into billing and clinical
   for (const [field, value] of Object.entries(fields)) {
+    // Billing columns → main sheet
     if (BILLING_COLUMN_MAP[field]) {
-      data.push({ range: `'${sheet}'!${BILLING_COLUMN_MAP[field]}${rowIndex}`, values: [[value]] });
+      billingData.push({ range: `'${sheet}'!${BILLING_COLUMN_MAP[field]}${rowIndex}`, values: [[value]] });
     }
+    // Legacy columns → main sheet (backward compat, all fields in one sheet)
+    if (LEGACY_COLUMN_MAP[field]) {
+      billingData.push({ range: `'${sheet}'!${LEGACY_COLUMN_MAP[field]}${rowIndex}`, values: [[value]] });
+    }
+    // Clinical columns → companion sheet
     if (CLINICAL_COLUMN_MAP[field]) {
-      data.push({ range: `'${clinicalSheet}'!${CLINICAL_COLUMN_MAP[field]}${rowIndex}`, values: [[value]] });
+      clinicalData.push({ range: `'${clinicalSheetName(sheet)}'!${CLINICAL_COLUMN_MAP[field]}${rowIndex}`, values: [[value]] });
     }
-    // Also write name + HCN to clinical sheet identity columns
     if (field === 'name') {
-      data.push({ range: `'${clinicalSheet}'!A${rowIndex}`, values: [[value]] });
+      clinicalData.push({ range: `'${clinicalSheetName(sheet)}'!A${rowIndex}`, values: [[value]] });
     }
     if (field === 'hcn') {
-      data.push({ range: `'${clinicalSheet}'!B${rowIndex}`, values: [[value]] });
-    }
-    // Legacy: also write to old single-sheet format for backward compat
-    if (LEGACY_COLUMN_MAP[field]) {
-      data.push({ range: `'${sheet}'!${LEGACY_COLUMN_MAP[field]}${rowIndex}`, values: [[value]] });
+      clinicalData.push({ range: `'${clinicalSheetName(sheet)}'!B${rowIndex}`, values: [[value]] });
     }
   }
 
-  if (data.length === 0) return;
+  // Write billing + legacy to main sheet (this should always work)
+  if (billingData.length > 0) {
+    try {
+      // Ensure main sheet has enough columns for legacy fields
+      await ensureColumnCount(ctx, sheet, 36).catch(() => {});
+      await sheets.spreadsheets.values.batchUpdate({
+        spreadsheetId,
+        requestBody: { valueInputOption: 'USER_ENTERED', data: billingData },
+      });
+    } catch (e) {
+      console.error('Failed to write billing data to Sheets:', (e as Error).message);
+    }
+  }
 
-  // Ensure sheets have enough columns
-  await ensureColumnCount(ctx, clinicalSheet, 21).catch(() => {}); // A-U
-
-  await sheets.spreadsheets.values.batchUpdate({
-    spreadsheetId,
-    requestBody: {
-      valueInputOption: 'USER_ENTERED',
-      data,
-    },
-  });
+  // Write clinical data to companion sheet (may not exist yet — create if needed)
+  if (clinicalData.length > 0) {
+    try {
+      // Ensure clinical sheet exists by calling getOrCreateDateSheet
+      // (which creates the companion sheet if missing)
+      await getOrCreateDateSheet(ctx, sheet);
+      await ensureColumnCount(ctx, clinicalSheetName(sheet), 21).catch(() => {});
+      await sheets.spreadsheets.values.batchUpdate({
+        spreadsheetId,
+        requestBody: { valueInputOption: 'USER_ENTERED', data: clinicalData },
+      });
+    } catch (e) {
+      console.warn('Failed to write clinical data to companion sheet:', (e as Error).message);
+    }
+  }
 }
 
 /** Find the next empty row in a sheet (skips continuation rows) */

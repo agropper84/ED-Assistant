@@ -94,6 +94,7 @@ export function ParseModal({ isOpen, onClose, onSave, onQuickAdd, patientRef: ex
   const [noteStyle, setNoteStyle] = useState<'standard' | 'comprehensive'>('standard');
   const [customInstructions, setCustomInstructions] = useState('');
   const [showCustomInstructions, setShowCustomInstructions] = useState(false);
+  const [savingState, setSavingState] = useState<'idle' | 'saving' | 'generating'>('idle');
 
   // Per-field submissions
   const [submissions, setSubmissions] = useState<FieldSubmission[]>([]);
@@ -380,6 +381,7 @@ export function ParseModal({ isOpen, onClose, onSave, onQuickAdd, patientRef: ex
 
   const handleSave = async (shouldGenerate?: boolean) => {
     if (parsedData) {
+      setSavingState(shouldGenerate ? 'generating' : 'saving');
       savePhrasesInBackground(encounterNotes, additional);
 
       // Combine text box content with any locally-submitted entries
@@ -394,20 +396,24 @@ export function ParseModal({ isOpen, onClose, onSave, onQuickAdd, patientRef: ex
           : subContent;
       };
 
-      const timestamp = encounterTime || getNearestSlot();
-      await onSave({
-        ...parsedData,
-        timestamp,
-        triageVitals: combineWithSubmissions('triageVitals', triageVitals),
-        transcript: combineWithSubmissions('transcript', transcript),
-        encounterNotes: combineWithSubmissions('encounterNotes', encounterNotes),
-        additional: combineWithSubmissions('additional', additional),
-        pastDocs: combineWithSubmissions('pastDocs', pastDocs),
-        _generateNote: shouldGenerate ?? generateNote,
-        _noteStyle: noteStyle,
-        _customInstructions: customInstructions.trim() || undefined,
-      });
-      onClose();
+      try {
+        const timestamp = encounterTime || getNearestSlot();
+        await onSave({
+          ...parsedData,
+          timestamp,
+          triageVitals: combineWithSubmissions('triageVitals', triageVitals),
+          transcript: combineWithSubmissions('transcript', transcript),
+          encounterNotes: combineWithSubmissions('encounterNotes', encounterNotes),
+          additional: combineWithSubmissions('additional', additional),
+          pastDocs: combineWithSubmissions('pastDocs', pastDocs),
+          _generateNote: shouldGenerate ?? generateNote,
+          _noteStyle: noteStyle,
+          _customInstructions: customInstructions.trim() || undefined,
+        });
+        onClose();
+      } finally {
+        setSavingState('idle');
+      }
     }
   };
 
@@ -916,58 +922,53 @@ export function ParseModal({ isOpen, onClose, onSave, onQuickAdd, patientRef: ex
               Add All {daySheetPatients.length} Patients
             </button>
           ) : (
-            <div className="space-y-2">
-              <p className="text-[11px] text-[var(--text-muted)] text-center">
-                All content in text boxes and submitted entries will be used to generate the encounter note.
-              </p>
-              {/* Note style modifiers */}
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setNoteStyle(noteStyle === 'comprehensive' ? 'standard' : 'comprehensive')}
-                  className={`px-2.5 py-1 rounded-lg text-[11px] font-medium transition-colors ${
-                    noteStyle === 'comprehensive'
-                      ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
-                      : 'bg-[var(--bg-tertiary)] text-[var(--text-muted)] hover:text-[var(--text-secondary)]'
-                  }`}
-                >
-                  Comprehensive
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShowCustomInstructions(!showCustomInstructions)}
-                  className={`px-2.5 py-1 rounded-lg text-[11px] font-medium transition-colors ${
-                    showCustomInstructions || customInstructions.trim()
-                      ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300'
-                      : 'bg-[var(--bg-tertiary)] text-[var(--text-muted)] hover:text-[var(--text-secondary)]'
-                  }`}
-                >
-                  Custom instructions{customInstructions.trim() ? ' ✓' : ''}
-                </button>
-              </div>
+            <div className="space-y-3">
+              {/* Custom instructions — expandable */}
               {showCustomInstructions && (
                 <textarea
                   value={customInstructions}
                   onChange={(e) => setCustomInstructions(e.target.value)}
-                  placeholder="E.g., 'Focus on cardiac workup', 'Include social history details', 'Keep assessment brief'..."
-                  className="w-full h-16 p-2 border border-[var(--input-border)] rounded-lg text-xs resize-y bg-[var(--input-bg)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:ring-1 focus:ring-purple-500"
+                  placeholder="E.g., 'Focus on cardiac workup', 'Keep assessment brief'..."
+                  className="w-full h-14 p-2.5 border border-purple-300 dark:border-purple-700 rounded-lg text-xs resize-none bg-[var(--input-bg)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:ring-1 focus:ring-purple-500 focus:outline-none"
+                  autoFocus
                 />
               )}
-              <div className="flex gap-2">
+
+              {/* Buttons */}
+              <div className="flex gap-2 items-stretch">
                 <button
                   onClick={() => handleSave(false)}
-                  disabled={!parsedData}
-                  className="flex-1 py-3 min-h-[48px] bg-[var(--bg-primary)] border border-[var(--border)] text-[var(--text-primary)] rounded-xl font-medium disabled:opacity-40 flex items-center justify-center gap-2 hover:bg-[var(--bg-tertiary)] active:scale-[0.97] transition-all"
+                  disabled={!parsedData || savingState !== 'idle'}
+                  className="flex-1 border border-[var(--border)] text-[var(--text-primary)] rounded-xl text-sm font-medium disabled:opacity-40 flex items-center justify-center gap-2 hover:bg-[var(--bg-primary)] hover:border-[var(--text-muted)] active:scale-[0.97] transition-all"
                 >
-                  Save
+                  {savingState === 'saving' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                  {savingState === 'saving' ? 'Saving...' : 'Save'}
                 </button>
                 {(triageVitals.trim() || transcript.trim() || encounterNotes.trim() || additional.trim() || submissions.length > 0) && (
                   <button
                     onClick={() => handleSave(true)}
-                    disabled={!parsedData}
-                    className="flex-1 py-3 min-h-[48px] bg-emerald-600 dark:bg-emerald-500 text-white rounded-xl font-medium disabled:opacity-40 flex items-center justify-center gap-2 hover:bg-emerald-700 dark:hover:bg-emerald-600 active:scale-[0.97] transition-all"
+                    disabled={!parsedData || savingState !== 'idle'}
+                    className="flex-[2] py-3 bg-emerald-600 dark:bg-emerald-500 text-white rounded-xl font-medium disabled:opacity-40 flex flex-col items-center justify-center hover:bg-emerald-700 dark:hover:bg-emerald-600 hover:shadow-lg hover:shadow-emerald-500/20 active:scale-[0.97] transition-all"
                   >
-                    Generate Note
+                    <span className="flex items-center gap-2 text-sm">
+                      {savingState === 'generating' ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                      {savingState === 'generating' ? 'Generating...' : 'Generate Note'}
+                    </span>
+                    <span className="flex items-center gap-2 mt-0.5">
+                      <span
+                        onClick={(e) => { e.stopPropagation(); setNoteStyle(noteStyle === 'comprehensive' ? 'standard' : 'comprehensive'); }}
+                        className={`text-[9px] font-medium ${noteStyle === 'comprehensive' ? 'text-white' : 'text-white/50'}`}
+                      >
+                        {noteStyle === 'comprehensive' ? 'Detailed' : 'Standard'}
+                      </span>
+                      <span className="text-white/30 text-[9px]">·</span>
+                      <span
+                        onClick={(e) => { e.stopPropagation(); setShowCustomInstructions(!showCustomInstructions); }}
+                        className={`text-[9px] font-medium ${showCustomInstructions || customInstructions.trim() ? 'text-white' : 'text-white/50'}`}
+                      >
+                        Instructions{customInstructions.trim() ? ' ✓' : ''}
+                      </span>
+                    </span>
                   </button>
                 )}
               </div>

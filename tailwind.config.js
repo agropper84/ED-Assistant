@@ -47,6 +47,10 @@ module.exports = {
           '0%, 60%, 100%': { opacity: '0.3', transform: 'scale(0.8)' },
           '30%': { opacity: '1', transform: 'scale(1)' },
         },
+        slideLeft: {
+          from: { opacity: '0', transform: 'translateX(16px)' },
+          to: { opacity: '1', transform: 'translateX(0)' },
+        },
       },
       animation: {
         fadeIn: 'fadeIn 200ms ease-out',
@@ -54,6 +58,7 @@ module.exports = {
         scaleIn: 'scaleIn 200ms cubic-bezier(0.16, 1, 0.3, 1)',
         msgIn: 'msgIn 250ms cubic-bezier(0.16, 1, 0.3, 1)',
         msgSent: 'msgSent 200ms cubic-bezier(0.16, 1, 0.3, 1)',
+        slideLeft: 'slideLeft 200ms cubic-bezier(0.16, 1, 0.3, 1)',
       },
     },
   },
