@@ -440,6 +440,8 @@ export default function HomePage() {
             sheetName: savedSheet,
             settings: (() => { try { const s = localStorage.getItem('ed-app-settings'); return s ? JSON.parse(s) : undefined; } catch { return undefined; } })(),
             promptTemplates: getEffectivePromptTemplates(),
+            ...(data._noteStyle && data._noteStyle !== 'standard' ? { noteStyle: data._noteStyle } : {}),
+            ...(data._customInstructions ? { customInstructions: data._customInstructions } : {}),
           });
           const headers = { 'Content-Type': 'application/json' };
           fetch('/api/process', { method: 'POST', headers, body }).catch(() => {});

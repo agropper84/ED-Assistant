@@ -40,6 +40,8 @@ export interface ProcessOptions {
     temperature?: number;
   };
   promptTemplates?: PromptTemplates;
+  noteStyle?: 'standard' | 'comprehensive';
+  customInstructions?: string;
 }
 
 // --- Retry logic for overloaded/rate-limited errors ---
@@ -359,6 +361,21 @@ ${options?.customGuidance ? `\nPhysician's charting preferences:\n${options.cust
     ? 'Based on the available information and the modification instructions above, regenerate the ED documentation.'
     : 'Based on the available information, generate comprehensive ED documentation.';
 
+  // Note style modifiers
+  let styleInstruction = '';
+  if (options?.noteStyle === 'comprehensive') {
+    styleInstruction = `
+NOTE STYLE: COMPREHENSIVE
+Write a thorough, detailed note. Include all relevant clinical details, pertinent positives and negatives, complete differential reasoning, and detailed management rationale. Do not abbreviate or omit information. Err on the side of more detail.
+`;
+  }
+  if (options?.customInstructions) {
+    styleInstruction += `
+PHYSICIAN INSTRUCTIONS FOR THIS NOTE:
+${options.customInstructions}
+`;
+  }
+
   const pt = options?.promptTemplates ?? DEFAULT_PROMPT_TEMPLATES;
 
   return `You are an AI assistant helping an emergency department physician create encounter documentation.
@@ -370,7 +387,7 @@ PATIENT INFORMATION:
 - Date of Birth: ${patientData.birthday || 'Not provided'}
 
 ${dataSection}
-${modificationSection}${styleSection}---
+${modificationSection}${styleSection}${styleInstruction}---
 
 ${baseInstruction} You must provide ALL seven sections below.
 

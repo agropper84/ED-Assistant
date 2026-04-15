@@ -12,7 +12,7 @@ export const maxDuration = 60;
 export const POST = withApiHandler(
   { rateLimit: { limit: 10, window: 60 }, auditEvent: 'generate.process' },
   async (request: NextRequest) => {
-    const { rowIndex, sheetName, modifications, styleGuidance, settings, promptTemplates, stream: useStream } = await parseBody(request, processSchema);
+    const { rowIndex, sheetName, modifications, styleGuidance, settings, promptTemplates, stream: useStream, noteStyle, customInstructions } = await parseBody(request, processSchema);
     const ctx = await getDataContext();
 
     const patient = await getPatient(ctx, rowIndex, sheetName);
@@ -85,6 +85,8 @@ export const POST = withApiHandler(
       customGuidance,
       settings,
       promptTemplates: promptTemplates as unknown as PromptTemplates | undefined,
+      noteStyle: noteStyle as 'standard' | 'comprehensive' | undefined,
+      customInstructions,
     };
 
     // --- Streaming path ---

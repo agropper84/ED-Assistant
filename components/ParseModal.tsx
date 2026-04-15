@@ -42,6 +42,8 @@ export interface ParsedData {
   additional: string;
   pastDocs: string;
   _generateNote?: boolean;
+  _noteStyle?: 'standard' | 'comprehensive';
+  _customInstructions?: string;
 }
 
 /** Combine transcript + encounter notes into one string for storage */
@@ -89,6 +91,9 @@ export function ParseModal({ isOpen, onClose, onSave, onQuickAdd, patientRef: ex
   const [quickName, setQuickName] = useState('');
   const [quickSaving, setQuickSaving] = useState(false);
   const patientRef = externalPatientRef || null;
+  const [noteStyle, setNoteStyle] = useState<'standard' | 'comprehensive'>('standard');
+  const [customInstructions, setCustomInstructions] = useState('');
+  const [showCustomInstructions, setShowCustomInstructions] = useState(false);
 
   // Per-field submissions
   const [submissions, setSubmissions] = useState<FieldSubmission[]>([]);
@@ -399,6 +404,8 @@ export function ParseModal({ isOpen, onClose, onSave, onQuickAdd, patientRef: ex
         additional: combineWithSubmissions('additional', additional),
         pastDocs: combineWithSubmissions('pastDocs', pastDocs),
         _generateNote: shouldGenerate ?? generateNote,
+        _noteStyle: noteStyle,
+        _customInstructions: customInstructions.trim() || undefined,
       });
       onClose();
     }
@@ -913,6 +920,39 @@ export function ParseModal({ isOpen, onClose, onSave, onQuickAdd, patientRef: ex
               <p className="text-[11px] text-[var(--text-muted)] text-center">
                 All content in text boxes and submitted entries will be used to generate the encounter note.
               </p>
+              {/* Note style modifiers */}
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setNoteStyle(noteStyle === 'comprehensive' ? 'standard' : 'comprehensive')}
+                  className={`px-2.5 py-1 rounded-lg text-[11px] font-medium transition-colors ${
+                    noteStyle === 'comprehensive'
+                      ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
+                      : 'bg-[var(--bg-tertiary)] text-[var(--text-muted)] hover:text-[var(--text-secondary)]'
+                  }`}
+                >
+                  Comprehensive
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowCustomInstructions(!showCustomInstructions)}
+                  className={`px-2.5 py-1 rounded-lg text-[11px] font-medium transition-colors ${
+                    showCustomInstructions || customInstructions.trim()
+                      ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300'
+                      : 'bg-[var(--bg-tertiary)] text-[var(--text-muted)] hover:text-[var(--text-secondary)]'
+                  }`}
+                >
+                  Custom instructions{customInstructions.trim() ? ' ✓' : ''}
+                </button>
+              </div>
+              {showCustomInstructions && (
+                <textarea
+                  value={customInstructions}
+                  onChange={(e) => setCustomInstructions(e.target.value)}
+                  placeholder="E.g., 'Focus on cardiac workup', 'Include social history details', 'Keep assessment brief'..."
+                  className="w-full h-16 p-2 border border-[var(--input-border)] rounded-lg text-xs resize-y bg-[var(--input-bg)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:ring-1 focus:ring-purple-500"
+                />
+              )}
               <div className="flex gap-2">
                 <button
                   onClick={() => handleSave(false)}

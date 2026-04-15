@@ -17,6 +17,8 @@ export const processSchema = z.object({
   sheetName,
   modifications: z.string().optional(),
   styleGuidance: z.string().optional(),
+  noteStyle: z.enum(['standard', 'comprehensive']).optional(),
+  customInstructions: z.string().max(2000).optional(),
   settings: z.object({
     model: z.string().optional(),
     maxTokens: z.number().int().min(100).max(16384).optional(),
