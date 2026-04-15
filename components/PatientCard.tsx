@@ -193,7 +193,7 @@ export const PatientCard = memo(function PatientCard({ patient, onClick, onDelet
 
   const [showDelete, setShowDelete] = useState(false);
   const [editingRoom, setEditingRoom] = useState(false);
-  const [roomValue, setRoomValue] = useState(patient.comments || '');
+  const [roomValue, setRoomValue] = useState(patient.room || '');
 
   return (
     <div className="group/card relative" style={{ overflow: 'visible' }}>
@@ -250,13 +250,17 @@ export const PatientCard = memo(function PatientCard({ patient, onClick, onDelet
             onChange={(e) => setRoomValue(e.target.value)}
             onBlur={() => {
               setEditingRoom(false);
-              if (roomValue !== (patient.comments || '') && onUpdateFields) {
-                onUpdateFields({ comments: roomValue });
+              if (roomValue !== (patient.room || '') && onUpdateFields) {
+                onUpdateFields({ room: roomValue });
               }
             }}
             onKeyDown={(e) => {
               if (e.key === 'Enter') { (e.target as HTMLInputElement).blur(); }
-              if (e.key === 'Escape') { setRoomValue(patient.comments || ''); setEditingRoom(false); }
+              if (e.key === 'Escape') { setRoomValue(patient.room || ''); setEditingRoom(false); }
+              if (e.key === 'Backspace' && roomValue === '') {
+                setEditingRoom(false);
+                if (patient.room && onUpdateFields) onUpdateFields({ room: '' });
+              }
             }}
             placeholder="Rm"
             autoFocus
@@ -267,11 +271,25 @@ export const PatientCard = memo(function PatientCard({ patient, onClick, onDelet
         <div
           className="flex-shrink-0 pl-2 cursor-pointer group/room"
           onClick={(e) => { e.stopPropagation(); setEditingRoom(true); }}
-          title={patient.comments ? 'Edit room' : 'Add room/location'}
+          title={patient.room ? 'Edit room (right-click to clear)' : 'Add room/location'}
+          onContextMenu={(e) => {
+            if (patient.room && onUpdateFields) {
+              e.preventDefault();
+              e.stopPropagation();
+              onUpdateFields({ room: '' });
+            }
+          }}
         >
-          {patient.comments ? (
-            <span className="inline-flex items-center justify-center min-w-[28px] px-1.5 py-0.5 rounded text-[10px] font-bold tracking-wide text-[var(--accent)] bg-[var(--accent-light)] border border-transparent hover:border-[var(--accent)] transition-colors">
-              {patient.comments}
+          {patient.room ? (
+            <span className="inline-flex items-center gap-0.5 justify-center min-w-[28px] px-1.5 py-0.5 rounded text-[10px] font-bold tracking-wide text-[var(--accent)] bg-[var(--accent-light)] border border-transparent hover:border-[var(--accent)] transition-colors">
+              {patient.room}
+              <X
+                className="w-2.5 h-2.5 opacity-0 group-hover/room:opacity-60 hover:!opacity-100 cursor-pointer"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (onUpdateFields) onUpdateFields({ room: '' });
+                }}
+              />
             </span>
           ) : (
             <span className="inline-flex items-center justify-center w-7 h-5 rounded text-[9px] text-[var(--text-muted)] opacity-0 group-hover/card:opacity-40 hover:!opacity-100 transition-opacity border border-dashed border-[var(--border)]">

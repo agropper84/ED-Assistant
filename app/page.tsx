@@ -800,10 +800,14 @@ export default function HomePage() {
         onClick={() => handlePatientClick(patient)}
         onTimeChange={(time) => handleTimeChange(patient, time)}
         onUpdateFields={async (fields) => {
+          setPatients(prev => prev.map(p =>
+            p.rowIndex === patient.rowIndex && p.sheetName === patient.sheetName
+              ? { ...p, ...fields } : p
+          ));
           await fetch(`/api/patients/${patient.rowIndex}`, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ ...fields, _sheetName: patient.sheetName }),
+            body: JSON.stringify({ ...fields, _sheetName: patient.sheetName, _patientName: patient.name }),
           });
           fetchPatients();
         }}
@@ -907,10 +911,14 @@ export default function HomePage() {
             fetchPatients();
           }}
           onUpdateFields={async (fields) => {
+            setPatients(prev => prev.map(p =>
+              p.rowIndex === patient.rowIndex && p.sheetName === patient.sheetName
+                ? { ...p, ...fields } : p
+            ));
             await fetch(`/api/patients/${patient.rowIndex}`, {
               method: 'PATCH',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ ...fields, _sheetName: patient.sheetName }),
+              body: JSON.stringify({ ...fields, _sheetName: patient.sheetName, _patientName: patient.name }),
             });
             fetchPatients();
           }}

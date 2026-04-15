@@ -190,6 +190,7 @@ export interface Patient {
   encounterNotes: string;
   admission: string;
   profile: string;
+  room: string;
   // Computed
   hasOutput: boolean;
   status: 'new' | 'pending' | 'processed';
@@ -266,7 +267,7 @@ export async function getOrCreateDateSheet(ctx: SheetsContext, dateOrName?: Date
               addSheet: {
                 properties: {
                   title: clinicalName,
-                  gridProperties: { rowCount: 200, columnCount: 21 },
+                  gridProperties: { rowCount: 200, columnCount: 22 },
                 },
               },
             }],
@@ -280,11 +281,11 @@ export async function getOrCreateDateSheet(ctx: SheetsContext, dateOrName?: Date
           'Objective', 'Assessment & Plan', 'Referral',
           'Synopsis', 'Management', 'Evidence',
           'A&P Notes', 'Clinical Q&A', 'Education',
-          'Admission', 'Profile',
+          'Admission', 'Profile', 'Room',
         ];
         await sheets.spreadsheets.values.update({
           spreadsheetId,
-          range: `'${clinicalName}'!A7:U7`,
+          range: `'${clinicalName}'!A7:V7`,
           valueInputOption: 'RAW',
           requestBody: { values: [clinicalHeaders] },
         });
@@ -293,7 +294,7 @@ export async function getOrCreateDateSheet(ctx: SheetsContext, dateOrName?: Date
             spreadsheetId,
             requestBody: {
               requests: [
-                { repeatCell: { range: { sheetId: clinicalSheetId, startRowIndex: 6, endRowIndex: 7, startColumnIndex: 0, endColumnIndex: 21 }, cell: { userEnteredFormat: { textFormat: { bold: true }, backgroundColor: { red: 0.9, green: 0.92, blue: 0.98 } } }, fields: 'userEnteredFormat(textFormat,backgroundColor)' } },
+                { repeatCell: { range: { sheetId: clinicalSheetId, startRowIndex: 6, endRowIndex: 7, startColumnIndex: 0, endColumnIndex: 22 }, cell: { userEnteredFormat: { textFormat: { bold: true }, backgroundColor: { red: 0.9, green: 0.92, blue: 0.98 } } }, fields: 'userEnteredFormat(textFormat,backgroundColor)' } },
                 { updateSheetProperties: { properties: { sheetId: clinicalSheetId, gridProperties: { frozenRowCount: 7 } }, fields: 'gridProperties.frozenRowCount' } },
                 { updateDimensionProperties: { range: { sheetId: clinicalSheetId, dimension: 'COLUMNS', startIndex: 2, endIndex: 13 }, properties: { pixelSize: 300 }, fields: 'pixelSize' } },
               ],
@@ -449,7 +450,7 @@ export async function getOrCreateDateSheet(ctx: SheetsContext, dateOrName?: Date
             addSheet: {
               properties: {
                 title: clinicalName,
-                gridProperties: { rowCount: 200, columnCount: 21 },
+                gridProperties: { rowCount: 200, columnCount: 22 },
               },
             },
           }],
@@ -482,7 +483,7 @@ export async function getOrCreateDateSheet(ctx: SheetsContext, dateOrName?: Date
             requests: [
               {
                 repeatCell: {
-                  range: { sheetId: clinicalSheetId, startRowIndex: 6, endRowIndex: 7, startColumnIndex: 0, endColumnIndex: 21 },
+                  range: { sheetId: clinicalSheetId, startRowIndex: 6, endRowIndex: 7, startColumnIndex: 0, endColumnIndex: 22 },
                   cell: { userEnteredFormat: { textFormat: { bold: true }, backgroundColor: { red: 0.9, green: 0.92, blue: 0.98 } } },
                   fields: 'userEnteredFormat(textFormat,backgroundColor)',
                 },
@@ -1059,7 +1060,7 @@ const CLINICAL_COLUMN_MAP: Record<string, string> = {
   objective: 'K', assessmentPlan: 'L', referral: 'M',
   synopsis: 'N', management: 'O', evidence: 'P',
   apNotes: 'Q', clinicalQA: 'R', education: 'S',
-  admission: 'T', profile: 'U',
+  admission: 'T', profile: 'U', room: 'V',
 };
 
 // For backward compat: combined map for reading from old single-sheet format
@@ -1136,7 +1137,7 @@ export async function updatePatientFields(
       // Ensure clinical sheet exists by calling getOrCreateDateSheet
       // (which creates the companion sheet if missing)
       await getOrCreateDateSheet(ctx, sheet);
-      await ensureColumnCount(ctx, clinicalSheetName(sheet), 21).catch(() => {});
+      await ensureColumnCount(ctx, clinicalSheetName(sheet), 22).catch(() => {});
       await sheets.spreadsheets.values.batchUpdate({
         spreadsheetId,
         requestBody: { valueInputOption: 'USER_ENTERED', data: clinicalData },
@@ -1240,6 +1241,7 @@ function rowToPatient(row: string[], rowIndex: number, sheetName: string): Patie
     encounterNotes: getValue(COLUMNS.ENCOUNTER_NOTES),
     admission: getValue(COLUMNS.ADMISSION),
     profile: getValue(COLUMNS.PROFILE),
+    room: '', // Room is stored on clinical companion sheet / Drive only
     hasOutput: !!(hpi || assessmentPlan),
     status,
   };

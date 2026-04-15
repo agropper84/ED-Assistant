@@ -50,7 +50,7 @@ export async function POST(request: NextRequest) {
           'additional', 'pastDocs', 'ddx', 'investigations',
           'hpi', 'objective', 'assessmentPlan', 'referral',
           'synopsis', 'management', 'evidence',
-          'apNotes', 'clinicalQA', 'education', 'admission', 'profile',
+          'apNotes', 'clinicalQA', 'education', 'admission', 'profile', 'room',
         ];
 
         for (const key of fieldKeys) {

@@ -68,6 +68,7 @@ export interface PatientFields {
   encounterNotes: string;
   admission: string;
   profile: string;
+  room: string;
 }
 
 // --- Date Sheet File (one per date/shift, contains all patients for that date) ---
