@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDataContext } from '@/lib/data-layer';
-import { getOrCreateDateSheet, updatePatientFields, saveBillingRows } from '@/lib/google-sheets';
+import { getOrCreateDateSheet, updatePatientFields, saveBillingRows, getPatients as getSheetsPatients } from '@/lib/google-sheets';
 import { parseBillingItems } from '@/lib/billing';
 
 /**
  * POST /api/sync-to-sheets
- * One-time backfill: reads all patients from Drive JSON for the given
- * date sheet and writes them to Google Sheets (billing + clinical).
+ * Bidirectional sync for a date sheet:
+ *   1. Drive → Sheets: writes all patient data to Google Sheets
+ *   2. Sheets → Drive: backfills billing fields that exist in Sheets but not Drive
  *
  * Body: { sheetName: "Apr 15, 2026" }
  */
@@ -29,20 +30,18 @@ export async function POST(request: NextRequest) {
     // 1. Ensure the Sheets date tab (and clinical companion) exist
     await getOrCreateDateSheet(ctx.sheets, sheetName);
 
-    // 2. Read all patients from Drive
+    // 2. Read patients from both Drive and Sheets
     const dj = await import('@/lib/drive-json');
-    const patients = await dj.getPatientsFromDrive(ctx.drive, sheetName);
-
-    if (patients.length === 0) {
-      return NextResponse.json({ synced: 0, message: 'No patients found in Drive for this date' });
-    }
+    const drivePatients = await dj.getPatientsFromDrive(ctx.drive, sheetName);
+    const sheetsPatients = await getSheetsPatients(ctx.sheets, sheetName);
 
     let synced = 0;
+    let billingBackfilled = 0;
     const errors: string[] = [];
 
-    for (const patient of patients) {
+    // --- Phase 1: Drive → Sheets (push all patient data to Sheets) ---
+    for (const patient of drivePatients) {
       try {
-        // Build fields map from patient data (skip computed/empty fields)
         const fields: Record<string, string> = {};
         const fieldKeys = [
           'patientNum', 'timestamp', 'name', 'age', 'gender', 'birthday',
@@ -59,7 +58,7 @@ export async function POST(request: NextRequest) {
           if (val) fields[key] = val;
         }
 
-        // Write billing items via saveBillingRows if present
+        // Write billing items via saveBillingRows if present in Drive
         if (patient.visitProcedure || patient.procCode) {
           try {
             const billingItems = parseBillingItems(
@@ -72,7 +71,6 @@ export async function POST(request: NextRequest) {
               await saveBillingRows(ctx.sheets, patient.rowIndex, billingItems, sheetName);
             }
           } catch (e) {
-            // Fall back to flat field write for billing
             if (patient.visitProcedure) fields.visitProcedure = patient.visitProcedure;
             if (patient.procCode) fields.procCode = patient.procCode;
             if (patient.fee) fields.fee = patient.fee;
@@ -81,20 +79,53 @@ export async function POST(request: NextRequest) {
           }
         }
 
-        // Write all other fields to Sheets (billing + clinical sheets)
         if (Object.keys(fields).length > 0) {
           await updatePatientFields(ctx.sheets, patient.rowIndex, fields, sheetName);
         }
 
         synced++;
       } catch (e) {
-        errors.push(`Row ${patient.rowIndex} (${patient.name}): ${(e as Error).message}`);
+        errors.push(`Drive→Sheets row ${patient.rowIndex} (${patient.name}): ${(e as Error).message}`);
+      }
+    }
+
+    // --- Phase 2: Sheets → Drive (backfill billing data missing from Drive) ---
+    for (const sheetsPatient of sheetsPatients) {
+      // Only backfill if Sheets has billing but Drive doesn't
+      const sheetsBilling = sheetsPatient.procCode?.trim();
+      if (!sheetsBilling) continue;
+
+      const drivePatient = drivePatients.find(
+        p => p.rowIndex === sheetsPatient.rowIndex
+      );
+
+      const driveBilling = drivePatient?.procCode?.trim();
+      if (driveBilling) continue; // Drive already has billing — skip
+
+      try {
+        const billingFields: Record<string, string> = {};
+        if (sheetsPatient.visitProcedure) billingFields.visitProcedure = sheetsPatient.visitProcedure;
+        if (sheetsPatient.procCode) billingFields.procCode = sheetsPatient.procCode;
+        if (sheetsPatient.fee) billingFields.fee = sheetsPatient.fee;
+        if (sheetsPatient.unit) billingFields.unit = sheetsPatient.unit;
+        if (sheetsPatient.total) billingFields.total = sheetsPatient.total;
+        if (sheetsPatient.diagnosis) billingFields.diagnosis = sheetsPatient.diagnosis;
+        if (sheetsPatient.icd9) billingFields.icd9 = sheetsPatient.icd9;
+        if (sheetsPatient.icd10) billingFields.icd10 = sheetsPatient.icd10;
+
+        if (Object.keys(billingFields).length > 0) {
+          await dj.updatePatientInDrive(ctx.drive, sheetName, sheetsPatient.rowIndex, billingFields as any);
+          billingBackfilled++;
+        }
+      } catch (e) {
+        errors.push(`Sheets→Drive billing row ${sheetsPatient.rowIndex} (${sheetsPatient.name}): ${(e as Error).message}`);
       }
     }
 
     return NextResponse.json({
       synced,
-      total: patients.length,
+      billingBackfilled,
+      total: drivePatients.length,
       errors: errors.length > 0 ? errors : undefined,
     });
   } catch (error: any) {
