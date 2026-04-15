@@ -57,6 +57,15 @@ export function VoiceRecorder({
   const toggleModeRef = useRef(false);       // true when in click-to-stop non-medicalize mode
   const mimeTypeRef = useRef('');
   const accumulatedTextRef = useRef('');
+  const stoppingRef = useRef(false);
+
+  // Periodic refinement refs
+  const refineTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const refinedTextRef = useRef('');          // Deepgram-refined text accumulated so far
+  const segmentStartRef = useRef(0);          // When current segment started
+  const refineCountRef = useRef(0);           // Number of segments refined
+  const pauseTimerRef = useRef<NodeJS.Timeout | null>(null); // Detects speech pause
+  const lastSpeechRef = useRef(0);            // Timestamp of last speech event
 
   const [isHolding, setIsHolding] = useState(false);
   const isHoldingRef = useRef(false);
@@ -95,6 +104,7 @@ export function VoiceRecorder({
       if (streamRef.current) streamRef.current.getTracks().forEach(t => t.stop());
       if (recognitionRef.current) { try { recognitionRef.current.abort(); } catch {} }
       if (holdTimerRef.current) clearTimeout(holdTimerRef.current);
+      if (refineTimerRef.current) clearInterval(refineTimerRef.current);
       if (keepaliveAudioRef.current) { keepaliveAudioRef.current.pause(); keepaliveAudioRef.current = null; }
     };
   }, []);
@@ -172,13 +182,42 @@ export function VoiceRecorder({
         if (isHoldingRef.current) return;
 
         let interim = '';
+        let hasNewFinal = false;
         for (let i = event.resultIndex; i < event.results.length; i++) {
-          if (event.results[i].isFinal) { finalTranscript += event.results[i][0].transcript + ' '; }
+          if (event.results[i].isFinal) { finalTranscript += event.results[i][0].transcript + ' '; hasNewFinal = true; }
           else { interim += event.results[i][0].transcript; }
         }
         const full = convertSpokenPunctuation((finalTranscript + interim).trim());
         accumulatedTextRef.current = full;
-        onInterimRef.current?.(full);
+        lastSpeechRef.current = Date.now();
+
+        // If we have refined text from Deepgram, show refined + any new unrefined tail
+        if (refinedTextRef.current && full.length > refinedTextRef.current.length) {
+          onInterimRef.current?.(refinedTextRef.current + ' ' + full.slice(refinedTextRef.current.length).trim());
+          onProcessingRef.current?.(true); // new unrefined text → grey
+        } else if (refinedTextRef.current) {
+          onInterimRef.current?.(refinedTextRef.current);
+        } else {
+          onInterimRef.current?.(full);
+          // Show as grey while interim results are coming in
+          if (!hasNewFinal || interim) {
+            onProcessingRef.current?.(true);
+          }
+        }
+
+        // Pause detection: after 1.5s of no new speech, mark text as settled
+        if (pauseTimerRef.current) clearTimeout(pauseTimerRef.current);
+        if (hasNewFinal && !interim) {
+          // Final result with no pending interim — text is settled now
+          onProcessingRef.current?.(false);
+        } else {
+          pauseTimerRef.current = setTimeout(() => {
+            // 1.5s silence — treat current text as final/settled
+            if (stateRef.current === 'recording' && !stoppingRef.current) {
+              onProcessingRef.current?.(false);
+            }
+          }, 1500);
+        }
       };
       recognition.onerror = () => {};
       recognition.onend = () => {
@@ -193,9 +232,12 @@ export function VoiceRecorder({
 
   // --- Clean up mic/audio resources ---
   const cleanupResources = useCallback(() => {
+    stoppingRef.current = true;
     stopAudioLevelViz();
     stopKeepalive();
     stopWebSpeech();
+    if (refineTimerRef.current) { clearInterval(refineTimerRef.current); refineTimerRef.current = null; }
+    if (pauseTimerRef.current) { clearTimeout(pauseTimerRef.current); pauseTimerRef.current = null; }
     if (audioContextRef.current) { try { audioContextRef.current.close(); } catch {} audioContextRef.current = null; }
     analyserRef.current = null;
     streamRef.current?.getTracks().forEach(t => t.stop());
@@ -212,10 +254,62 @@ export function VoiceRecorder({
     });
   }, []);
 
+  // --- Flush current audio segment to Deepgram for refinement ---
+  const flushSegmentForRefinement = useCallback(async () => {
+    if (stoppingRef.current) return;
+    const recorder = mediaRecorderRef.current;
+    const stream = streamRef.current;
+    if (!recorder || recorder.state !== 'recording' || !stream) return;
+    if (Date.now() - segmentStartRef.current < 2000) return; // too short
+
+    // Stop current recorder and collect blob
+    const blob = await new Promise<Blob>((resolve) => {
+      recorder.onstop = () => resolve(new Blob(chunksRef.current, { type: mimeTypeRef.current }));
+      recorder.stop();
+    });
+
+    // Start a new segment immediately (mic stream is still open)
+    if (!stoppingRef.current && stream.active) {
+      const newRecorder = new MediaRecorder(stream, { mimeType: mimeTypeRef.current });
+      mediaRecorderRef.current = newRecorder;
+      chunksRef.current = [];
+      newRecorder.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data); };
+      newRecorder.start();
+      segmentStartRef.current = Date.now();
+    }
+
+    // Send blob for Deepgram transcription in background
+    if (blob.size > 2000) {
+      try {
+        const speechEngine = getSpeechAPI();
+        const useExternal = speechEngine === 'deepgram' || speechEngine === 'wispr';
+        if (!useExternal) return; // only refine if Deepgram/Wispr available
+
+        const formData = new FormData();
+        formData.append('audio', blob, `segment.${getFileExtension(mimeTypeRef.current)}`);
+        formData.append('mode', 'dictation');
+        const res = await fetch(getTranscribeEndpoint(speechEngine), { method: 'POST', body: formData });
+        if (res.ok && !stoppingRef.current) {
+          const { text } = await res.json();
+          if (text?.trim()) {
+            refinedTextRef.current = refinedTextRef.current
+              ? `${refinedTextRef.current} ${text.trim()}`
+              : text.trim();
+            refineCountRef.current++;
+            // Replace Web Speech text with refined text
+            onInterimRef.current?.(refinedTextRef.current);
+            onProcessingRef.current?.(false); // text is now refined (not grey)
+          }
+        }
+      } catch {}
+    }
+  }, []);
+
   // =================================================================
   // DICTATION MODE: Start recording (mic + MediaRecorder + Web Speech)
   // Web Speech starts immediately for instant text, but its output is
   // suppressed if the user holds past 500ms (medicalize mode).
+  // Periodic refinement: every 8s, flush audio to Deepgram for cleanup.
   // =================================================================
   const startDictationRecording = useCallback(async () => {
     try {
@@ -225,21 +319,31 @@ export function VoiceRecorder({
       mimeTypeRef.current = mimeType;
 
       onRecordingStart?.();
-      onProcessingRef.current?.(true); // Signal: live/interim text is being shown
+      onProcessingRef.current?.(true); // Signal: live/interim text is being shown (grey)
       startKeepalive();
+      stoppingRef.current = false;
 
-      // Start MediaRecorder (captures audio for medicalize or Deepgram cleanup)
+      // Start MediaRecorder (captures audio for refinement segments)
       const recorder = new MediaRecorder(stream, { mimeType });
       mediaRecorderRef.current = recorder;
       chunksRef.current = [];
       recorder.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data); };
       recorder.start();
+      segmentStartRef.current = Date.now();
 
       accumulatedTextRef.current = '';
+      refinedTextRef.current = '';
+      refineCountRef.current = 0;
       setRecState('recording');
 
       // Start Web Speech for instant text (output suppressed during hold via isHoldingRef)
       startWebSpeech();
+
+      // Periodic refinement: flush audio segment every 8 seconds
+      if (refineTimerRef.current) clearInterval(refineTimerRef.current);
+      refineTimerRef.current = setInterval(() => {
+        if (!stoppingRef.current) flushSegmentForRefinement();
+      }, 8000);
 
       // Audio level visualization
       try {
@@ -255,38 +359,59 @@ export function VoiceRecorder({
     } catch {
       setRecState('error');
     }
-  }, [onRecordingStart, startKeepalive, startWebSpeech, startAudioLevelViz]);
+  }, [onRecordingStart, startKeepalive, startWebSpeech, startAudioLevelViz, flushSegmentForRefinement]);
 
   // --- Stop non-medicalize (toggle mode) ---
   const stopNonMedicalize = useCallback(async () => {
-    cleanupResources();
+    // Stop refinement timer first
+    if (refineTimerRef.current) { clearInterval(refineTimerRef.current); refineTimerRef.current = null; }
 
     const speechEngine = getSpeechAPI();
     const useDeepgramCleanup = speechEngine === 'deepgram' || speechEngine === 'wispr';
-    const webSpeechText = accumulatedTextRef.current || '';
 
-    const blob = await collectAudioBlob();
+    // Collect final audio segment before cleanup
+    const recorder = mediaRecorderRef.current;
+    let finalBlob: Blob | null = null;
+    if (recorder && recorder.state === 'recording') {
+      finalBlob = await new Promise<Blob>((resolve) => {
+        recorder.onstop = () => resolve(new Blob(chunksRef.current, { type: mimeTypeRef.current }));
+        recorder.stop();
+      });
+    }
 
-    if (useDeepgramCleanup && blob && blob.size > 2000 && webSpeechText.length > 5) {
+    cleanupResources();
+
+    // Refine the final segment
+    if (useDeepgramCleanup && finalBlob && finalBlob.size > 2000) {
       setRecState('transcribing');
-      onProcessingRef.current?.(true); // Signal: text is being refined
+      onProcessingRef.current?.(true);
       try {
         const formData = new FormData();
-        formData.append('audio', blob, `recording.${getFileExtension(mimeTypeRef.current)}`);
+        formData.append('audio', finalBlob, `segment.${getFileExtension(mimeTypeRef.current)}`);
         formData.append('mode', 'dictation');
         const res = await fetch(getTranscribeEndpoint(speechEngine), { method: 'POST', body: formData });
         if (res.ok) {
           const { text } = await res.json();
-          if (text?.trim() && text.trim().length > 5) onInterimRef.current?.(text.trim());
+          if (text?.trim()) {
+            refinedTextRef.current = refinedTextRef.current
+              ? `${refinedTextRef.current} ${text.trim()}`
+              : text.trim();
+          }
         }
       } catch {}
-      onProcessingRef.current?.(false); // Signal: refinement complete
     }
 
-    onProcessingRef.current?.(false); // Ensure processing always clears
+    // Show fully refined text if we have it, otherwise keep Web Speech text
+    if (refinedTextRef.current) {
+      onInterimRef.current?.(refinedTextRef.current);
+    }
+
+    onProcessingRef.current?.(false);
     accumulatedTextRef.current = '';
+    refinedTextRef.current = '';
+    refineCountRef.current = 0;
     setRecState('idle');
-  }, [cleanupResources, collectAudioBlob]);
+  }, [cleanupResources]);
 
   // --- Stop medicalize (hold release) → single-shot transcribe + medicalize ---
   const stopMedicalizeHold = useCallback(async () => {
