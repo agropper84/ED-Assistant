@@ -56,8 +56,11 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
   const [generating, setGenerating] = useState(false);
   const [userPhrases, setUserPhrases] = useState<string[]>([]);
   const [showLiveTranscript, setShowLiveTranscript] = useState(true);
-  const [activeTab, setActiveTab] = useState<'clinical' | 'profile'>('clinical');
+  const [activeTab, setActiveTab] = useState<'clinical' | 'profile' | 'ddx'>('clinical');
   const [generatingProfile, setGeneratingProfile] = useState(false);
+  // DDx tab state
+  const [ddxData, setDdxData] = useState<{ keyQuestions: string; ddx: string; investigations: string } | null>(null);
+  const [generatingDdx, setGeneratingDdx] = useState(false);
   const [profileData, setProfileData] = useState<ProfileData | null>(null);
   const hasChangesRef = useRef(false);
   const [submitting, setSubmitting] = useState<string | null>(null);
@@ -280,8 +283,10 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
       setPendingSubmit(null);
       setSubmitTitle('');
       setProfileData(null);
+      setDdxData(null);
       setActiveTab('clinical');
       setGeneratingProfile(false);
+      setGeneratingDdx(false);
 
       // Fetch submissions, then populate text boxes only for fields WITHOUT submissions
       fetch(`/api/patients/${patient.rowIndex}/submit?sheet=${encodeURIComponent(patient.sheetName)}`)
@@ -340,6 +345,13 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
     }
   }, [patient?.profile]);
 
+  // Load existing DDx data from patient
+  useEffect(() => {
+    if (patient?.ddx || patient?.investigations) {
+      setDdxData(prev => prev || { keyQuestions: '', ddx: patient.ddx || '', investigations: patient.investigations || '' });
+    }
+  }, [patient?.ddx, patient?.investigations]);
+
   const handleGenerateProfile = async () => {
     if (!patient) return;
     setGeneratingProfile(true);
@@ -372,6 +384,57 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
       console.error('Failed to generate profile:', error);
     } finally {
       setGeneratingProfile(false);
+    }
+  };
+
+  const handleGenerateDdx = async () => {
+    if (!patient) return;
+    setGeneratingDdx(true);
+    try {
+      // Save current data first
+      if (hasChangesRef.current) {
+        const fields = buildFieldsToSave();
+        if (Object.keys(fields).length > 0) {
+          await fetch(`/api/patients/${patient.rowIndex}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ _sheetName: patient.sheetName, _patientName: patient.name, ...fields }),
+          });
+        }
+      }
+      const res = await fetch('/api/analysis', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rowIndex: patient.rowIndex, sheetName: patient.sheetName, section: 'ddx-investigations' }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        // Also generate key clinical questions
+        const qRes = await fetch('/api/clinical-question', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            rowIndex: patient.rowIndex,
+            sheetName: patient.sheetName,
+            question: 'Based on the current differential diagnosis and available clinical information, list the 5-8 most important history questions I should ask this patient to narrow the differential. Format as a numbered list. For each question, briefly note which diagnoses it helps differentiate.',
+          }),
+        });
+        let keyQuestions = '';
+        if (qRes.ok) {
+          const qData = await qRes.json();
+          keyQuestions = qData.answer || '';
+        }
+        setDdxData({
+          keyQuestions,
+          ddx: data.ddx || patient.ddx || '',
+          investigations: data.investigations || patient.investigations || '',
+        });
+        onSaved();
+      }
+    } catch (error) {
+      console.error('Failed to generate DDx:', error);
+    } finally {
+      setGeneratingDdx(false);
     }
   };
 
@@ -519,6 +582,30 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
             Profile
             {profileData && activeTab !== 'profile' && (
               <span className="ml-1.5 w-1.5 h-1.5 bg-blue-400 rounded-full inline-block" />
+            )}
+          </button>
+          <button
+            onClick={() => {
+              setActiveTab('ddx');
+              if (!ddxData && !generatingDdx) handleGenerateDdx();
+            }}
+            className={`relative px-5 py-2.5 text-[13px] font-medium transition-colors ${
+              activeTab === 'ddx'
+                ? 'text-[var(--text-primary)] bg-[var(--card-bg)]'
+                : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)]'
+            }`}
+            style={activeTab === 'ddx' ? {
+              borderTopLeftRadius: '10px',
+              borderTopRightRadius: '10px',
+              borderTop: '2px solid var(--accent)',
+              borderLeft: '1px solid var(--border)',
+              borderRight: '1px solid var(--border)',
+              marginBottom: '-1px',
+            } : {}}
+          >
+            DDx
+            {ddxData && activeTab !== 'ddx' && (
+              <span className="ml-1.5 w-1.5 h-1.5 bg-violet-400 rounded-full inline-block" />
             )}
           </button>
         </div>
@@ -728,7 +815,7 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
           </div>
         </div>
 
-        ) : (
+        ) : activeTab === 'profile' ? (
         <div className="flex-1 overflow-y-auto px-5 py-4">
           <PatientProfile
             profile={profileData}
@@ -738,7 +825,75 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
             generating={generatingProfile}
           />
         </div>
-        )}
+        ) : activeTab === 'ddx' ? (
+        <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
+          {generatingDdx ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="w-6 h-6 animate-spin text-violet-500" />
+              <span className="ml-2 text-sm text-[var(--text-muted)]">Generating differential...</span>
+            </div>
+          ) : ddxData ? (
+            <>
+              {/* Key Clinical Questions */}
+              {ddxData.keyQuestions && (
+                <div className="border border-amber-200 dark:border-amber-800/40 rounded-xl p-4 bg-amber-50/50 dark:bg-amber-950/20">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-amber-700 dark:text-amber-400 mb-2">
+                    Key Questions to Narrow DDx
+                  </h3>
+                  <div className="text-sm text-[var(--text-primary)] whitespace-pre-wrap leading-relaxed">
+                    {ddxData.keyQuestions}
+                  </div>
+                </div>
+              )}
+
+              {/* Differential Diagnosis */}
+              {ddxData.ddx && (
+                <div>
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-violet-600 dark:text-violet-400 mb-2">
+                    Differential Diagnosis
+                  </h3>
+                  <div className="text-sm text-[var(--text-primary)] whitespace-pre-wrap leading-relaxed border border-[var(--border)] rounded-xl p-4 bg-[var(--bg-secondary)]">
+                    {ddxData.ddx}
+                  </div>
+                </div>
+              )}
+
+              {/* Investigations */}
+              {ddxData.investigations && (
+                <div>
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-violet-600 dark:text-violet-400 mb-2">
+                    Recommended Investigations
+                  </h3>
+                  <div className="text-sm text-[var(--text-primary)] whitespace-pre-wrap leading-relaxed border border-[var(--border)] rounded-xl p-4 bg-[var(--bg-secondary)]">
+                    {ddxData.investigations}
+                  </div>
+                </div>
+              )}
+
+              {/* Refresh button */}
+              <button
+                onClick={handleGenerateDdx}
+                disabled={generatingDdx}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-violet-600 dark:text-violet-400 bg-violet-50 dark:bg-violet-900/20 rounded-lg hover:bg-violet-100 dark:hover:bg-violet-900/30 transition-colors"
+              >
+                <RefreshCw className="w-3.5 h-3.5" />
+                Update with latest info
+              </button>
+            </>
+          ) : (
+            <div className="text-center py-12">
+              <p className="text-sm text-[var(--text-muted)] mb-3">Add clinical information first to generate a differential diagnosis.</p>
+              <button
+                onClick={handleGenerateDdx}
+                disabled={generatingDdx}
+                className="px-4 py-2 text-sm font-medium text-white bg-violet-600 rounded-lg hover:bg-violet-700 transition-colors"
+              >
+                Generate DDx
+              </button>
+            </div>
+          )}
+        </div>
+        ) : null}
         </div>
 
         {/* Footer */}
