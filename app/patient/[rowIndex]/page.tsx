@@ -31,6 +31,7 @@ export default function PatientPage() {
   const searchParams = useSearchParams();
   const rowIndex = params.rowIndex as string;
   const sheetName = searchParams.get('sheet') || undefined;
+  const isEmbed = searchParams.get('embed') === '1';
 
   const [patient, setPatient] = useState<Patient | null>(null);
   const [loading, setLoading] = useState(true);
@@ -396,12 +397,14 @@ export default function PatientPage() {
       {/* Header */}
       <header className="dash-header px-4 py-4 sticky top-0 z-40">
         <div className="flex items-center gap-3 max-w-2xl mx-auto">
-          <button
-            onClick={() => router.push('/')}
-            className="p-2 hover:bg-white/10 rounded-full -ml-2"
-          >
-            <ArrowLeft className="w-5 h-5" style={{ color: 'var(--dash-text-sub)' }} />
-          </button>
+          {!isEmbed && (
+            <button
+              onClick={() => router.push('/')}
+              className="p-2 hover:bg-white/10 rounded-full -ml-2"
+            >
+              <ArrowLeft className="w-5 h-5" style={{ color: 'var(--dash-text-sub)' }} />
+            </button>
+          )}
           <div className="flex-1 min-w-0">
             <h1 className="font-semibold truncate" style={{ color: 'var(--dash-text)' }}>
               {patient.name || 'Unknown'}
