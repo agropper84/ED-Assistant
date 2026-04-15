@@ -12,7 +12,7 @@ const CSP_DIRECTIVES = [
   "font-src 'self' https://fonts.gstatic.com",
   "img-src 'self' data: blob: https:",
   "connect-src 'self' https://api.anthropic.com https://api.openai.com https://api.deepgram.com https://sheets.googleapis.com https://www.googleapis.com https://accounts.google.com",
-  "frame-ancestors 'none'",
+  "frame-ancestors 'self'",
   "base-uri 'self'",
   "form-action 'self'",
 ].join('; ');
@@ -20,7 +20,7 @@ const CSP_DIRECTIVES = [
 function addSecurityHeaders(response: NextResponse): NextResponse {
   response.headers.set('Content-Security-Policy', CSP_DIRECTIVES);
   response.headers.set('X-Content-Type-Options', 'nosniff');
-  response.headers.set('X-Frame-Options', 'DENY');
+  response.headers.set('X-Frame-Options', 'SAMEORIGIN');
   response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
   response.headers.set('Permissions-Policy', 'camera=(), microphone=(self), geolocation=()');
   return response;
