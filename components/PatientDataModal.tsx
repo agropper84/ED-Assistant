@@ -53,7 +53,7 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
   const [generating, setGenerating] = useState(false);
   const [userPhrases, setUserPhrases] = useState<string[]>([]);
   const [showLiveTranscript, setShowLiveTranscript] = useState(true);
-  const [showProfile, setShowProfile] = useState(false);
+  const [activeTab, setActiveTab] = useState<'clinical' | 'profile'>('clinical');
   const [generatingProfile, setGeneratingProfile] = useState(false);
   const [profileData, setProfileData] = useState<ProfileData | null>(null);
   const hasChangesRef = useRef(false);
@@ -111,7 +111,7 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
         if (fieldSetters[field]) fieldSetters[field]('');
         setSubmitted(field);
         onSaved();
-        if (showProfile) {
+        if (activeTab === 'profile') {
           setGeneratingProfile(true);
           fetch('/api/profile', {
             method: 'POST',
@@ -277,7 +277,7 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
       setPendingSubmit(null);
       setSubmitTitle('');
       setProfileData(null);
-      setShowProfile(false);
+      setActiveTab('clinical');
       setGeneratingProfile(false);
 
       // Fetch submissions, then populate text boxes only for fields WITHOUT submissions
@@ -449,7 +449,7 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
 
   return (
     <div className="fixed inset-0 modal-overlay z-50 flex items-end sm:items-center justify-center">
-      <div className="bg-[var(--card-bg)] w-full sm:rounded-3xl rounded-t-3xl max-h-[90vh] overflow-hidden flex flex-col animate-slideUp" style={{ maxWidth: showProfile ? '48rem' : '32rem', transition: 'max-width 500ms cubic-bezier(0.4, 0, 0.2, 1)', boxShadow: 'var(--card-shadow-elevated)' }}>
+      <div className="bg-[var(--card-bg)] w-full sm:max-w-lg sm:rounded-3xl rounded-t-3xl max-h-[90vh] overflow-hidden flex flex-col animate-slideUp" style={{ boxShadow: 'var(--card-shadow-elevated)' }}>
         {/* Header */}
         <div className="dash-header flex items-center gap-3 px-4 py-4 sm:rounded-t-3xl">
           <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-full flex-shrink-0" title="Close">
@@ -465,31 +465,64 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
               {patient.timestamp && ` • ${patient.timestamp}`}
             </p>
           </div>
-          <div className="flex items-center gap-1 flex-shrink-0">
-            {/* Mobile-only profile toggle */}
-            <button
-              onClick={() => {
-                const opening = !showProfile;
-                setShowProfile(opening);
-                if (opening && !profileData && !generatingProfile) handleGenerateProfile();
-              }}
-              className={`sm:hidden p-2 rounded-full transition-all ${showProfile ? 'bg-blue-500/20' : 'hover:bg-white/10'}`}
-              title={showProfile ? 'Hide profile' : 'Show profile'}
-            >
-              <Heart className="w-4 h-4" fill={profileData ? 'currentColor' : 'none'} style={{ color: profileData ? '#93c5fd' : 'var(--dash-text-sub)' }} />
-            </button>
-            <button
-              onClick={onNavigate}
-              className="p-2 hover:bg-white/10 rounded-full"
-              title="Open full detail"
-            >
-              <ExternalLink className="w-5 h-5" style={{ color: 'var(--dash-text-sub)' }} />
-            </button>
-          </div>
+          <button
+            onClick={onNavigate}
+            className="p-2 hover:bg-white/10 rounded-full flex-shrink-0"
+            title="Open full detail"
+          >
+            <ExternalLink className="w-5 h-5" style={{ color: 'var(--dash-text-sub)' }} />
+          </button>
         </div>
 
-        {/* Content */}
-        <div className="flex-1 overflow-hidden flex flex-col sm:flex-row">
+        {/* Tab bar — notebook/binder style */}
+        <div className="flex border-b border-[var(--border)] bg-[var(--bg-secondary)]">
+          <button
+            onClick={() => setActiveTab('clinical')}
+            className={`relative px-5 py-2.5 text-[13px] font-medium transition-colors ${
+              activeTab === 'clinical'
+                ? 'text-[var(--text-primary)] bg-[var(--card-bg)]'
+                : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)]'
+            }`}
+            style={activeTab === 'clinical' ? {
+              borderTopLeftRadius: '10px',
+              borderTopRightRadius: '10px',
+              borderTop: '2px solid var(--accent)',
+              borderLeft: '1px solid var(--border)',
+              borderRight: '1px solid var(--border)',
+              marginBottom: '-1px',
+            } : {}}
+          >
+            Clinical Info
+          </button>
+          <button
+            onClick={() => {
+              setActiveTab('profile');
+              if (!profileData && !generatingProfile) handleGenerateProfile();
+            }}
+            className={`relative px-5 py-2.5 text-[13px] font-medium transition-colors ${
+              activeTab === 'profile'
+                ? 'text-[var(--text-primary)] bg-[var(--card-bg)]'
+                : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)]'
+            }`}
+            style={activeTab === 'profile' ? {
+              borderTopLeftRadius: '10px',
+              borderTopRightRadius: '10px',
+              borderTop: '2px solid var(--accent)',
+              borderLeft: '1px solid var(--border)',
+              borderRight: '1px solid var(--border)',
+              marginBottom: '-1px',
+            } : {}}
+          >
+            Profile
+            {profileData && activeTab !== 'profile' && (
+              <span className="ml-1.5 w-1.5 h-1.5 bg-blue-400 rounded-full inline-block" />
+            )}
+          </button>
+        </div>
+
+        {/* Tab content */}
+        <div className="flex-1 overflow-hidden flex flex-col">
+        {activeTab === 'clinical' ? (
         <div className="flex-1 min-w-0 overflow-y-auto px-5 py-4 space-y-4">
           {/* Triage Notes */}
           <div>
@@ -692,67 +725,17 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
           </div>
         </div>
 
-        {/* Profile panel — slides in/out */}
-        <div
-          className="flex-shrink-0 overflow-hidden"
-          style={{
-            width: showProfile ? 'calc(50% - 8px)' : '0',
-            transition: 'width 500ms cubic-bezier(0.4, 0, 0.2, 1)',
-          }}
-        >
-          <div className="h-full overflow-y-auto px-4 py-4 border-l border-[var(--border)]" style={{ minWidth: '250px' }}>
-            <PatientProfile
-              profile={profileData}
-              age={patient.age}
-              gender={patient.gender}
-              onGenerate={handleGenerateProfile}
-              generating={generatingProfile}
-            />
-          </div>
-        </div>
-
-        {/* Right edge — profile toggle (desktop), always far-right */}
-        <div
-          className="hidden sm:flex flex-shrink-0 items-stretch cursor-pointer relative group/edge"
-          style={{ width: '5px', transition: 'width 600ms cubic-bezier(0.23, 1, 0.32, 1)' }}
-          onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.width = '14px'; }}
-          onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.width = '5px'; }}
-          onClick={() => {
-            const opening = !showProfile;
-            setShowProfile(opening);
-            if (opening && !profileData && !generatingProfile) handleGenerateProfile();
-          }}
-          title={showProfile ? 'Hide profile' : 'Show profile'}
-        >
-          {/* Idle line — subtle, theme-matched */}
-          <div
-            className="absolute left-1/2 -translate-x-1/2 rounded-full pointer-events-none group-hover/edge:opacity-0"
-            style={{
-              top: '15%', bottom: '15%', width: '1px',
-              background: 'linear-gradient(to bottom, transparent, var(--edge-idle) 20%, var(--edge-idle) 80%, transparent)',
-              opacity: 1,
-              transition: 'opacity 500ms ease',
-            }}
-          />
-          {/* Hover glow fill */}
-          <div
-            className="absolute inset-0 rounded-full opacity-0 group-hover/edge:opacity-100 pointer-events-none"
-            style={{
-              top: '8%', bottom: '8%',
-              background: 'linear-gradient(to bottom, transparent, var(--edge-glow) 20%, var(--edge-glow) 50%, var(--edge-glow) 80%, transparent)',
-              transition: 'opacity 600ms cubic-bezier(0.23, 1, 0.32, 1)',
-            }}
-          />
-          {/* Hover center line */}
-          <div
-            className="absolute left-1/2 -translate-x-1/2 rounded-full opacity-0 group-hover/edge:opacity-100 pointer-events-none"
-            style={{
-              top: '10%', bottom: '10%', width: '1.5px',
-              background: 'linear-gradient(to bottom, transparent, var(--edge-line) 20%, var(--edge-line) 50%, var(--edge-line) 80%, transparent)',
-              transition: 'opacity 600ms cubic-bezier(0.23, 1, 0.32, 1)',
-            }}
+        ) : (
+        <div className="flex-1 overflow-y-auto px-5 py-4">
+          <PatientProfile
+            profile={profileData}
+            age={patient.age}
+            gender={patient.gender}
+            onGenerate={handleGenerateProfile}
+            generating={generatingProfile}
           />
         </div>
+        )}
         </div>
 
         {/* Footer */}
