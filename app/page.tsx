@@ -542,6 +542,30 @@ export default function HomePage() {
     changeDate(new Date());
   };
 
+  // Temporary: sync Drive → Sheets for current date
+  const [syncing, setSyncing] = useState(false);
+  const handleSyncToSheets = async () => {
+    if (syncing) return;
+    setSyncing(true);
+    try {
+      const res = await fetch('/api/sync-to-sheets', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sheetName }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        alert(`Synced ${data.synced}/${data.total} patients to Sheets${data.errors ? `\n\nErrors:\n${data.errors.join('\n')}` : ''}`);
+      } else {
+        alert(`Sync failed: ${data.error || 'Unknown error'}`);
+      }
+    } catch (e) {
+      alert(`Sync failed: ${(e as Error).message}`);
+    } finally {
+      setSyncing(false);
+    }
+  };
+
   // Away screen effects moved to AwayScreen component
 
   // Close dropdown menus on outside click
@@ -1126,6 +1150,16 @@ export default function HomePage() {
                   Today
                 </button>
               )}
+              {/* Temporary: Sync Drive → Sheets */}
+              <button
+                onClick={handleSyncToSheets}
+                disabled={syncing}
+                title="Sync patients to Google Sheets"
+                className="p-1 hover:bg-white/[0.07] rounded-full transition-colors disabled:opacity-50 ml-1"
+                style={{ color: 'var(--dash-text-sub)' }}
+              >
+                {syncing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
+              </button>
               <button
                 onClick={goToNextDay}
                 disabled={isToday}
