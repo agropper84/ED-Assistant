@@ -319,7 +319,8 @@ export function VoiceRecorder({
       mimeTypeRef.current = mimeType;
 
       onRecordingStart?.();
-      onProcessingRef.current?.(true); // Signal: live/interim text is being shown (grey)
+      // Don't signal processing here — let Web Speech onresult handle it
+      // (medicalize mode suppresses onresult, so text arrives already refined)
       startKeepalive();
       stoppingRef.current = false;
 
@@ -457,6 +458,7 @@ export function VoiceRecorder({
       } catch {}
     }
 
+    onProcessingRef.current?.(false); // Medicalized text is already refined — never grey
     setRecState('idle');
   }, [cleanupResources, collectAudioBlob]);
 
