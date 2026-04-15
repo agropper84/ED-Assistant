@@ -298,17 +298,36 @@ export default function HomePage() {
     fetchPatients();
   }, [sheetName]);
 
-  // Re-fetch when window regains focus (e.g. returning from patient detail page)
+  // Re-fetch when window/tab regains focus (works across devices)
   useEffect(() => {
     const handleFocus = () => {
-      // Only re-fetch if at least 3 seconds since last fetch (avoid rapid re-fetches)
       if (Date.now() - lastFetchRef.current > 3000) {
         fetchPatients();
       }
     };
+    const handleVisibility = () => {
+      if (!document.hidden && Date.now() - lastFetchRef.current > 3000) {
+        fetchPatients();
+      }
+    };
     window.addEventListener('focus', handleFocus);
-    return () => window.removeEventListener('focus', handleFocus);
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
   }, [sheetName]);
+
+  // Background polling — keeps all devices in sync (every 30s)
+  useEffect(() => {
+    const interval = setInterval(() => {
+      // Only poll if tab is visible and not actively loading
+      if (!document.hidden && !loading && Date.now() - lastFetchRef.current > 10000) {
+        fetchPatients();
+      }
+    }, 30000);
+    return () => clearInterval(interval);
+  }, [sheetName, loading]);
 
   // Debounced cross-sheet search
   useEffect(() => {
