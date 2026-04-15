@@ -197,11 +197,11 @@ export const PatientCard = memo(function PatientCard({ patient, onClick, onDelet
 
   return (
     <div className="group/card relative" style={{ overflow: 'visible' }}>
-      {/* Delete zone — left hover area + button in one container */}
+      {/* Delete zone — narrow left edge hover area */}
       {onDelete && (
         <div
           className="absolute left-0 top-0 bottom-0 z-[36] flex items-center"
-          style={{ width: showDelete ? '36px' : '48px' }}
+          style={{ width: showDelete ? '36px' : '12px' }}
           onMouseEnter={() => setShowDelete(true)}
           onMouseLeave={() => setShowDelete(false)}
         >
