@@ -37,7 +37,7 @@ import {
   Calendar, Settings, CheckSquare, Square, Play, Clock, EyeOff, Eye,
   Search, ArrowUpDown, X, LogOut, Upload, Monitor, RotateCcw, Sparkles,
   ChevronDown, SlidersHorizontal, FileSpreadsheet, Bookmark, Wind, Menu,
-  LayoutGrid, LayoutList, Activity
+  LayoutGrid, LayoutList, Activity, PanelRightOpen
 } from 'lucide-react';
 import { AwayScreen } from '@/components/AwayScreen';
 import { useDraggableFab } from '@/hooks/useDraggableFab';
@@ -73,6 +73,7 @@ export default function HomePage() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [pinnedRowIndex, setPinnedRowIndex] = useState<number | null>(null);
+  const [splitPatient, setSplitPatient] = useState<Patient | null>(null);
   const [showParseModal, setShowParseModal] = useState(false);
   const [currentDate, setCurrentDate] = useState(() => {
     if (typeof window !== 'undefined') {
@@ -798,6 +799,7 @@ export default function HomePage() {
           onBillingToggle={isVchMode ? undefined : () => toggleBilling(patient.rowIndex)}
           billingCodes={isVchMode ? undefined : codes}
           onNavigate={() => router.push(`/patient/${patient.rowIndex}?sheet=${encodeURIComponent(patient.sheetName)}`)}
+          onSplitView={() => setSplitPatient(patient)}
           onProcess={async () => {
             let settings: any;
             try { const s = localStorage.getItem('ed-app-settings'); if (s) settings = JSON.parse(s); } catch {}
@@ -1419,8 +1421,9 @@ export default function HomePage() {
         </div>
       )}
 
-      {/* Content */}
-      <main className="max-w-2xl mx-auto px-[var(--page-px)] py-4">
+      {/* Content — split screen when patient detail is open */}
+      <div className={`flex ${splitPatient ? 'gap-0' : ''}`} style={{ transition: 'all 300ms ease' }}>
+      <main className={`mx-auto px-[var(--page-px)] py-4 transition-all duration-300 ${splitPatient ? 'w-[45%] max-w-none flex-shrink-0' : 'max-w-2xl w-full'}`}>
         {loading ? (
           <div className="flex items-center justify-center py-12">
             <Loader2 className="w-8 h-8 animate-spin text-blue-600 dark:text-blue-400" />
@@ -1585,6 +1588,43 @@ export default function HomePage() {
         )}
 
       </main>
+
+      {/* Split-view patient detail panel */}
+      {splitPatient && (
+        <div className="flex-1 min-w-0 border-l border-[var(--border)] overflow-y-auto" style={{ height: 'calc(100vh - 120px)', position: 'sticky', top: '120px' }}>
+          <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--border)] bg-[var(--bg-secondary)]">
+            <div>
+              <h2 className="text-sm font-semibold text-[var(--text-primary)]">{splitPatient.name || 'Patient'}</h2>
+              <p className="text-xs text-[var(--text-muted)]">
+                {splitPatient.age && `${splitPatient.age}`}{splitPatient.gender && ` ${splitPatient.gender}`}
+                {splitPatient.diagnosis && ` — ${splitPatient.diagnosis}`}
+              </p>
+            </div>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => router.push(`/patient/${splitPatient.rowIndex}?sheet=${encodeURIComponent(splitPatient.sheetName)}`)}
+                className="p-1.5 rounded-lg hover:bg-[var(--bg-tertiary)] transition-colors"
+                title="Open full page"
+              >
+                <PanelRightOpen className="w-4 h-4 text-[var(--text-muted)]" />
+              </button>
+              <button
+                onClick={() => setSplitPatient(null)}
+                className="p-1.5 rounded-lg hover:bg-[var(--bg-tertiary)] transition-colors"
+                title="Close"
+              >
+                <X className="w-4 h-4 text-[var(--text-muted)]" />
+              </button>
+            </div>
+          </div>
+          <iframe
+            src={`/patient/${splitPatient.rowIndex}?sheet=${encodeURIComponent(splitPatient.sheetName)}&embed=1`}
+            className="w-full border-0"
+            style={{ height: 'calc(100vh - 170px)' }}
+          />
+        </div>
+      )}
+      </div>
 
       {/* FAB - Add Patient (draggable) */}
       <div

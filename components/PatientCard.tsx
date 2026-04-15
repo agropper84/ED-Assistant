@@ -3,7 +3,7 @@
 import { useState, useRef, useCallback, memo } from 'react';
 import { createPortal } from 'react-dom';
 import { Patient } from '@/lib/google-sheets';
-import { Clock, User, FileText, Trash2, DollarSign, Stethoscope, Copy, Check, Brain, ListTree, BookOpen, Play, Loader2, X, MessageCircleQuestion, Merge, CalendarDays, GraduationCap, ExternalLink, Calculator, Bookmark, Heart } from 'lucide-react';
+import { Clock, User, FileText, Trash2, DollarSign, Stethoscope, Copy, Check, Brain, ListTree, BookOpen, Play, Loader2, X, MessageCircleQuestion, Merge, CalendarDays, GraduationCap, PanelRightOpen, Calculator, Bookmark, Heart, ChevronRight } from 'lucide-react';
 import { ProfileSummary } from '@/components/PatientProfile';
 import type { PatientProfile } from '@/app/api/profile/route';
 
@@ -16,6 +16,7 @@ interface PatientCardProps {
   onBillingToggle?: () => void;
   billingCodes?: string;
   onNavigate?: () => void;
+  onSplitView?: () => void;
   onProcess?: () => Promise<void>;
   onGenerateAnalysis?: () => Promise<void>;
   onGenerateSynopsis?: () => Promise<void>;
@@ -98,7 +99,7 @@ function IconTooltip({ anchorRef, visible, children }: { anchorRef: React.RefObj
   );
 }
 
-export const PatientCard = memo(function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChange, onBillingToggle, billingCodes, onNavigate, onProcess, onGenerateAnalysis, onGenerateSynopsis, onGenerateManagement, onGenerateEvidence, onGenerateDdxInvestigations, onGenerateManagementEvidence, onUpdateFields, onClinicalChat, onMerge, onDateChange, onGenerateEducation, showEducation, showIconsAlways, onCalculator, onSaveResource, savedResourceKey, onGenerateProfile }: PatientCardProps) {
+export const PatientCard = memo(function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChange, onBillingToggle, billingCodes, onNavigate, onSplitView, onProcess, onGenerateAnalysis, onGenerateSynopsis, onGenerateManagement, onGenerateEvidence, onGenerateDdxInvestigations, onGenerateManagementEvidence, onUpdateFields, onClinicalChat, onMerge, onDateChange, onGenerateEducation, showEducation, showIconsAlways, onCalculator, onSaveResource, savedResourceKey, onGenerateProfile }: PatientCardProps) {
   const [editingTime, setEditingTime] = useState(false);
   const [timeValue, setTimeValue] = useState(patient.timestamp || '');
   const [noteCopied, setNoteCopied] = useState(false);
@@ -752,9 +753,22 @@ export const PatientCard = memo(function PatientCard({ patient, onClick, onDelet
           className="p-1.5 rounded-lg transition-all opacity-0 group-hover/card:opacity-100 hover:bg-blue-50 dark:hover:bg-blue-900/30"
           title="Open full view"
         >
-          <ExternalLink className="w-4 h-4 text-blue-400 dark:text-blue-500 transition-colors hover:text-blue-600 dark:hover:text-blue-400" />
+          <PanelRightOpen className="w-4 h-4 text-blue-400 dark:text-blue-500 transition-colors hover:text-blue-600 dark:hover:text-blue-400" />
         </button>
       </div>
+
+      {/* Right-edge split-view chevron */}
+      {onSplitView && (
+        <div
+          className="absolute right-0 top-0 bottom-0 w-6 flex items-center justify-center opacity-0 group-hover/card:opacity-100 transition-all duration-200 cursor-pointer z-20"
+          onClick={(e) => { e.stopPropagation(); onSplitView(); }}
+          title="Open split view"
+        >
+          <div className="w-5 h-10 rounded-l-lg flex items-center justify-center bg-gradient-to-r from-blue-500/10 to-blue-500/25 dark:from-blue-400/10 dark:to-blue-400/20 hover:from-blue-500/20 hover:to-blue-500/40 dark:hover:from-blue-400/20 dark:hover:to-blue-400/35 transition-all duration-200 backdrop-blur-sm border-l border-y border-blue-300/30 dark:border-blue-500/20">
+            <ChevronRight className="w-3.5 h-3.5 text-blue-500 dark:text-blue-400" />
+          </div>
+        </div>
+      )}
 
       {/* Inline demographics editor */}
       {editingDemo && (
