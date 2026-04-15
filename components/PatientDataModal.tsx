@@ -266,7 +266,7 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
       // NEW patient or modal just opened
       currentPatientRef.current = patientKey;
 
-      // Clear everything first
+      // Clear everything — including profile state
       setTranscript('');
       setEncounterNotes('');
       setTriageVitals('');
@@ -276,6 +276,9 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
       setHoveredSub(null);
       setPendingSubmit(null);
       setSubmitTitle('');
+      setProfileData(null);
+      setShowProfile(false);
+      setGeneratingProfile(false);
 
       // Fetch submissions, then populate text boxes only for fields WITHOUT submissions
       fetch(`/api/patients/${patient.rowIndex}/submit?sheet=${encodeURIComponent(patient.sheetName)}`)
