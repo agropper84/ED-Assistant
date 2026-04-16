@@ -838,7 +838,7 @@ export const PatientCard = memo(function PatientCard({ patient, onClick, onDelet
       {onNavigate && (
         <button
           onClick={(e) => { e.stopPropagation(); onNavigate(); }}
-          className="group/full flex-shrink-0 self-center mr-4 opacity-0 group-hover/card:opacity-100 transition-all duration-200 active:scale-90"
+          className="group/full flex-shrink-0 self-center mr-1.5 opacity-0 group-hover/card:opacity-100 transition-all duration-200 active:scale-90"
           title="Open full view"
         >
           <svg width="15" height="15" viewBox="0 0 15 15" fill="none" className="text-[var(--text-muted)] group-hover/full:text-blue-400 transition-colors duration-200">
