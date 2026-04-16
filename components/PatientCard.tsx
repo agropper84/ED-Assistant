@@ -836,18 +836,16 @@ export const PatientCard = memo(function PatientCard({ patient, onClick, onDelet
 
       {/* View actions — right edge, vertically centered */}
       {(onNavigate || onSplitView) && (
-        <div className="flex-shrink-0 self-stretch flex flex-col items-center justify-center gap-0 pl-0 pr-2 opacity-0 group-hover/card:opacity-100 transition-all duration-200">
+        <div className="flex-shrink-0 flex items-center gap-1 pr-2 opacity-0 group-hover/card:opacity-100 transition-all duration-200">
           {/* Full view — maximize icon */}
           {onNavigate && (
             <button
               onClick={(e) => { e.stopPropagation(); onNavigate(); }}
-              className="group/full p-1 rounded transition-all duration-150 hover:bg-white/[0.06] active:scale-90"
+              className="group/full rounded transition-all duration-150 hover:bg-white/[0.06] active:scale-90"
               title="Open full view"
             >
               <svg width="13" height="13" viewBox="0 0 13 13" fill="none" className="text-[var(--text-muted)] group-hover/full:text-blue-400 transition-colors duration-200">
-                {/* Rounded rect frame */}
                 <rect x="1" y="1" width="11" height="11" rx="2" stroke="currentColor" strokeWidth="1.2" fill="none" />
-                {/* Arrow pointing top-right — "open outward" */}
                 <path d="M5.5 7.5L9 4M9 4H6.5M9 4V6.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"
                   className="transition-transform duration-200 origin-[9px_4px] group-hover/full:scale-110" />
               </svg>
@@ -857,16 +855,13 @@ export const PatientCard = memo(function PatientCard({ patient, onClick, onDelet
           {onSplitView && (
             <button
               onClick={(e) => { e.stopPropagation(); onSplitView(); }}
-              className="group/split p-1 rounded transition-all duration-150 hover:bg-white/[0.06] active:scale-90"
+              className="group/split rounded transition-all duration-150 hover:bg-white/[0.06] active:scale-90"
               title="Open side-by-side"
             >
               <svg width="13" height="13" viewBox="0 0 13 13" fill="none" className="text-[var(--text-muted)] group-hover/split:text-indigo-400 transition-colors duration-200">
-                {/* Left panel — always visible */}
                 <rect x="1" y="1" width="5" height="11" rx="1.5" stroke="currentColor" strokeWidth="1.2" fill="none" />
-                {/* Right panel — slides in from right */}
                 <rect x="7" y="1" width="5" height="11" rx="1.5" stroke="currentColor" strokeWidth="1.2" fill="none"
                   className="transition-all duration-250 ease-out translate-x-[3px] opacity-0 group-hover/split:translate-x-0 group-hover/split:opacity-100" />
-                {/* Placeholder line in left panel — visible at rest to suggest content */}
                 <line x1="2.5" y1="6.5" x2="4.5" y2="6.5" stroke="currentColor" strokeWidth="0.8" strokeLinecap="round" className="opacity-40" />
               </svg>
             </button>
