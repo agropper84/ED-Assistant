@@ -836,7 +836,7 @@ export const PatientCard = memo(function PatientCard({ patient, onClick, onDelet
 
       {/* View actions — right edge, vertically centered */}
       {(onNavigate || onSplitView) && (
-        <div className="flex-shrink-0 self-stretch flex flex-col items-center justify-center gap-1 pl-0.5 pr-3 opacity-0 group-hover/card:opacity-100 transition-all duration-200">
+        <div className="flex-shrink-0 self-stretch flex flex-col items-center justify-center gap-0 pl-0 pr-2 opacity-0 group-hover/card:opacity-100 transition-all duration-200">
           {/* Full view — maximize icon */}
           {onNavigate && (
             <button
