@@ -1110,23 +1110,37 @@ export default function HomePage() {
                 title="Menu"
               >
                 <svg width="24" height="24" viewBox="0 0 32 32" fill="none">
-                  {/* Connecting lines — center to each node */}
-                  <line x1="16" y1="16" x2="16" y2="7" stroke="rgba(180,200,230,0.5)" strokeWidth="1.5" />
-                  <line x1="16" y1="16" x2="16" y2="25" stroke="rgba(180,200,230,0.5)" strokeWidth="1.5" />
-                  <line x1="16" y1="16" x2="7" y2="16" stroke="rgba(180,200,230,0.5)" strokeWidth="1.5" />
-                  <line x1="16" y1="16" x2="25" y2="16" stroke="rgba(180,200,230,0.5)" strokeWidth="1.5" />
-                  {/* Center node */}
-                  <circle cx="16" cy="16" r="3" fill="rgba(147,197,253,0.9)" />
-                  <circle cx="16" cy="16" r="1.2" fill="rgba(30,58,108,0.6)" />
-                  {/* Cross nodes */}
-                  <circle cx="16" cy="7" r="2.8" fill="rgba(200,215,240,0.85)" />
-                  <circle cx="16" cy="7" r="1" fill="rgba(100,140,200,0.5)" />
-                  <circle cx="16" cy="25" r="2.8" fill="rgba(200,215,240,0.85)" />
-                  <circle cx="16" cy="25" r="1" fill="rgba(100,140,200,0.5)" />
-                  <circle cx="7" cy="16" r="2.8" fill="rgba(200,215,240,0.85)" />
-                  <circle cx="7" cy="16" r="1" fill="rgba(100,140,200,0.5)" />
-                  <circle cx="25" cy="16" r="2.8" fill="rgba(200,215,240,0.85)" />
-                  <circle cx="25" cy="16" r="1" fill="rgba(100,140,200,0.5)" />
+                  <defs>
+                    <radialGradient id="node-center" cx="0.4" cy="0.35" r="0.6">
+                      <stop offset="0" stopColor="rgba(186,216,255,1)" />
+                      <stop offset="1" stopColor="rgba(96,165,250,0.85)" />
+                    </radialGradient>
+                    <radialGradient id="node-outer" cx="0.4" cy="0.35" r="0.6">
+                      <stop offset="0" stopColor="rgba(210,225,248,0.95)" />
+                      <stop offset="1" stopColor="rgba(148,180,230,0.75)" />
+                    </radialGradient>
+                    <filter id="node-glow">
+                      <feGaussianBlur stdDeviation="1.2" result="blur" />
+                      <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
+                    </filter>
+                  </defs>
+                  {/* Connecting lines — tapered feel via gradient opacity */}
+                  <line x1="16" y1="12.5" x2="16" y2="7.8" stroke="rgba(148,180,230,0.35)" strokeWidth="1.3" strokeLinecap="round" />
+                  <line x1="16" y1="19.5" x2="16" y2="24.2" stroke="rgba(148,180,230,0.35)" strokeWidth="1.3" strokeLinecap="round" />
+                  <line x1="12.5" y1="16" x2="7.8" y2="16" stroke="rgba(148,180,230,0.35)" strokeWidth="1.3" strokeLinecap="round" />
+                  <line x1="19.5" y1="16" x2="24.2" y2="16" stroke="rgba(148,180,230,0.35)" strokeWidth="1.3" strokeLinecap="round" />
+                  {/* Center node — larger, prominent */}
+                  <circle cx="16" cy="16" r="3.5" fill="url(#node-center)" filter="url(#node-glow)" />
+                  <circle cx="15.2" cy="15.2" r="1" fill="rgba(255,255,255,0.4)" />
+                  {/* Outer nodes — slightly smaller */}
+                  <circle cx="16" cy="6.5" r="2.5" fill="url(#node-outer)" />
+                  <circle cx="15.5" cy="5.9" r="0.7" fill="rgba(255,255,255,0.35)" />
+                  <circle cx="16" cy="25.5" r="2.5" fill="url(#node-outer)" />
+                  <circle cx="15.5" cy="24.9" r="0.7" fill="rgba(255,255,255,0.35)" />
+                  <circle cx="6.5" cy="16" r="2.5" fill="url(#node-outer)" />
+                  <circle cx="5.9" cy="15.5" r="0.7" fill="rgba(255,255,255,0.35)" />
+                  <circle cx="25.5" cy="16" r="2.5" fill="url(#node-outer)" />
+                  <circle cx="24.9" cy="15.5" r="0.7" fill="rgba(255,255,255,0.35)" />
                 </svg>
               </button>
               <h1 className="text-[17px] font-bold tracking-[-0.02em]" style={{ color: 'var(--dash-text)' }}>ER Dashboard</h1>
