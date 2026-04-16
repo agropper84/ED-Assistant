@@ -290,7 +290,7 @@ button, .btn {
 .split-view-zone {
   position: absolute;
   right: 0; top: 0; bottom: 0;
-  width: 24px;
+  width: 32px;
   z-index: 4;
   cursor: pointer;
 }
@@ -300,16 +300,16 @@ button, .btn {
   width: 0;
   border-radius: 0 16px 16px 0;
   opacity: 0;
-  transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1),
-              opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+              opacity 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 .split-view-zone:hover .patient-card-edge-right {
-  width: 10px;
-  opacity: 0.5;
+  width: 28px;
+  opacity: 1;
 }
-.patient-card[data-status="new"] .patient-card-edge-right       { background: var(--status-new-border); }
-.patient-card[data-status="pending"] .patient-card-edge-right   { background: var(--status-pending-border); }
-.patient-card[data-status="processed"] .patient-card-edge-right { background: var(--status-processed-border); }
+.patient-card[data-status="new"] .patient-card-edge-right       { background: linear-gradient(to right, transparent, var(--status-new-border)); }
+.patient-card[data-status="pending"] .patient-card-edge-right   { background: linear-gradient(to right, transparent, var(--status-pending-border)); }
+.patient-card[data-status="processed"] .patient-card-edge-right { background: linear-gradient(to right, transparent, var(--status-processed-border)); }
 
 /* ── Status color wash (::after) ── */
 .patient-card::after {
