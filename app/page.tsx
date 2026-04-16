@@ -1102,14 +1102,25 @@ export default function HomePage() {
             <div className="flex items-center gap-2.5 min-w-0">
               <button
                 onClick={() => setSidebarOpen(true)}
-                className="w-9 h-9 rounded-[12px] flex items-center justify-center flex-shrink-0 overflow-hidden transition-all duration-200 hover:scale-105 active:scale-95"
-                style={{ background: 'linear-gradient(145deg, rgba(255,255,255,0.14) 0%, rgba(255,255,255,0.04) 100%)', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.1), 0 1px 3px rgba(0,0,0,0.1)' }}
+                className="w-11 h-11 rounded-[14px] flex items-center justify-center flex-shrink-0 overflow-hidden transition-all duration-250 hover:scale-[1.06] active:scale-[0.94]"
+                style={{
+                  background: 'linear-gradient(160deg, rgba(148,163,184,0.18) 0%, rgba(100,116,139,0.12) 100%)',
+                  boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.1), 0 1px 4px rgba(0,0,0,0.12), 0 0 0 1px rgba(148,163,184,0.15)',
+                }}
                 title="Menu"
               >
-                <svg width="20" height="20" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <rect x="13" y="6" width="6" height="20" rx="3" fill="white" opacity="0.9" />
-                  <rect x="6" y="13" width="20" height="6" rx="3" fill="white" opacity="0.9" />
-                  <circle cx="25" cy="25" r="2.5" fill="#4a9ead" opacity="0.8" />
+                <svg width="24" height="24" viewBox="0 0 32 32" fill="none">
+                  {/* Cross pattern: pink vertical + white horizontal */}
+                  {/* Top */}
+                  <circle cx="16" cy="7.5" r="4" fill="rgba(219,112,147,0.9)" />
+                  {/* Bottom */}
+                  <circle cx="16" cy="24.5" r="4" fill="rgba(219,112,147,0.9)" />
+                  {/* Center */}
+                  <circle cx="16" cy="16" r="4" fill="rgba(219,112,147,0.9)" />
+                  {/* Left */}
+                  <circle cx="7.5" cy="16" r="4" fill="rgba(255,255,255,0.92)" />
+                  {/* Right */}
+                  <circle cx="24.5" cy="16" r="4" fill="rgba(255,255,255,0.92)" />
                 </svg>
               </button>
               <h1 className="text-[17px] font-bold tracking-[-0.02em]" style={{ color: 'var(--dash-text)' }}>ER Dashboard</h1>
