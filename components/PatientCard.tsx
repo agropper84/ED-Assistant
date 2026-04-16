@@ -843,31 +843,24 @@ export const PatientCard = memo(function PatientCard({ patient, onClick, onDelet
           </button>
         )}
 
-        {/* Split view — custom icon: two panels with divider */}
-        {onSplitView && (
-          <button
-            onClick={(e) => { e.stopPropagation(); onSplitView(); }}
-            className="group/split p-1.5 rounded-lg transition-all duration-200 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 active:scale-90"
-            title="Open side-by-side"
-          >
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="text-[var(--text-muted)] group-hover/card:text-indigo-500 dark:group-hover/card:text-indigo-400 transition-colors">
-              {/* Left panel */}
-              <rect x="1" y="2" width="6" height="12" rx="1.5" stroke="currentColor" strokeWidth="1.3" fill="none" />
-              {/* Right panel — slides in on hover */}
-              <rect
-                x="9" y="2" width="6" height="12" rx="1.5" stroke="currentColor" strokeWidth="1.3" fill="none"
-                className="transition-transform duration-300 origin-left group-hover/split:translate-x-0 translate-x-[2px] opacity-50 group-hover/split:opacity-100"
-              />
-              {/* Arrow indicating slide-in */}
-              <path
-                d="M12 8L10 6.5V9.5L12 8Z"
-                fill="currentColor"
-                className="transition-all duration-300 opacity-0 group-hover/split:opacity-70"
-              />
-            </svg>
-          </button>
-        )}
       </div>
+
+      {/* Split view — right edge strip, full card height */}
+      {onSplitView && (
+        <button
+          onClick={(e) => { e.stopPropagation(); onSplitView(); }}
+          className="group/split absolute right-0 top-0 bottom-0 w-5 z-20 flex items-center justify-center rounded-r-2xl cursor-pointer opacity-0 group-hover/card:opacity-100 transition-all duration-250"
+          style={{ background: 'linear-gradient(to right, transparent, rgba(99,102,241,0.06))' }}
+          title="Open side-by-side"
+        >
+          {/* Vertical divider line */}
+          <div className="absolute left-0 top-3 bottom-3 w-px bg-indigo-400/30 group-hover/split:bg-indigo-400/60 transition-colors duration-200" />
+          {/* Arrow that appears on hover */}
+          <svg width="10" height="20" viewBox="0 0 10 20" fill="none" className="text-indigo-400/40 group-hover/split:text-indigo-500 dark:group-hover/split:text-indigo-400 transition-all duration-200 translate-x-0 group-hover/split:translate-x-[2px]">
+            <path d="M3 4L7 10L3 16" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </button>
+      )}
 
       {/* Demographics editor — portal so it isn't clipped by card width */}
       {editingDemo && typeof document !== 'undefined' && createPortal(
