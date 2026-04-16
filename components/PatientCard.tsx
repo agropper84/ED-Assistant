@@ -103,6 +103,7 @@ export const PatientCard = memo(function PatientCard({ patient, onClick, onDelet
   const [editingTime, setEditingTime] = useState(false);
   const [timeValue, setTimeValue] = useState(patient.timestamp || '');
   const [noteCopied, setNoteCopied] = useState(false);
+  const [copiedIcon, setCopiedIcon] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [generatingIcon, setGeneratingIcon] = useState<'synopsis' | 'management' | 'evidence' | 'education' | null>(null);
   const [showProfilePopover, setShowProfilePopover] = useState(false);
@@ -383,12 +384,27 @@ export const PatientCard = memo(function PatientCard({ patient, onClick, onDelet
                 <div className="relative flex-shrink-0">
                   <span
                     ref={tooltipRefs.note}
-                    onClick={(e) => { e.stopPropagation(); onNavigate(); }}
+                    onClick={async (e) => {
+                      e.stopPropagation();
+                      if (e.metaKey || e.ctrlKey) {
+                        onNavigate();
+                      } else {
+                        const fullNote = [
+                          patient.hpi && `HPI:\n${patient.hpi}`,
+                          patient.objective && `OBJECTIVE:\n${patient.objective}`,
+                          patient.assessmentPlan && `ASSESSMENT & PLAN:\n${patient.assessmentPlan}`,
+                        ].filter(Boolean).join('\n\n');
+                        await navigator.clipboard.writeText(fullNote);
+                        setCopiedIcon('note');
+                        setTimeout(() => setCopiedIcon(null), 1500);
+                      }
+                    }}
                     onMouseEnter={() => showTooltip('note')}
                     onMouseLeave={hideTooltip}
                     className="p-0.5 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 rounded transition-colors cursor-pointer inline-flex"
+                    title="Click to copy · ⌘+click to view"
                   >
-                    <FileText className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                    {copiedIcon === 'note' ? <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" /> : <FileText className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />}
                   </span>
                   <IconTooltip anchorRef={tooltipRefs.note} visible={activeTooltip === 'note'}>
                     <div onMouseEnter={keepTooltip} onMouseLeave={hideTooltip}>
@@ -430,17 +446,26 @@ export const PatientCard = memo(function PatientCard({ patient, onClick, onDelet
                   ref={tooltipRefs.synopsis}
                   onMouseEnter={() => patient.synopsis && showTooltip('synopsis')}
                   onMouseLeave={hideTooltip}
-                  onClick={(e) => {
+                  onClick={async (e) => {
                     e.stopPropagation();
-                    if (!patient.synopsis && (onGenerateSynopsis || onGenerateAnalysis) && !generatingIcon) {
+                    const gen = onGenerateSynopsis || onGenerateAnalysis;
+                    if (!patient.synopsis && gen && !generatingIcon) {
                       setGeneratingIcon('synopsis');
-                      (onGenerateSynopsis || onGenerateAnalysis)!().finally(() => setGeneratingIcon(null));
-                    } else if (patient.synopsis && onNavigate) { onNavigate(); }
+                      gen().finally(() => setGeneratingIcon(null));
+                    } else if (patient.synopsis) {
+                      if (e.metaKey || e.ctrlKey) {
+                        if (gen && !generatingIcon) { setGeneratingIcon('synopsis'); gen().finally(() => setGeneratingIcon(null)); }
+                      } else {
+                        await navigator.clipboard.writeText(patient.synopsis);
+                        setCopiedIcon('synopsis');
+                        setTimeout(() => setCopiedIcon(null), 1500);
+                      }
+                    }
                   }}
                   className={`p-0.5 rounded transition-colors inline-flex ${patient.synopsis || onGenerateSynopsis || onGenerateAnalysis ? 'hover:bg-blue-50 dark:hover:bg-blue-900/30 cursor-pointer' : ''}`}
-                  title={patient.synopsis ? '' : 'Generate synopsis & analysis'}
+                  title={patient.synopsis ? 'Click to copy · ⌘+click to regenerate' : 'Generate synopsis'}
                 >
-                  {generatingIcon === 'synopsis' ? <Loader2 className="w-4 h-4 text-blue-400 animate-spin" /> : <Brain className={`w-3.5 h-3.5 ${patient.synopsis ? 'text-blue-600 dark:text-blue-400' : EMPTY}`} />}
+                  {generatingIcon === 'synopsis' ? <Loader2 className="w-4 h-4 text-blue-400 animate-spin" /> : copiedIcon === 'synopsis' ? <Check className={`w-3.5 h-3.5 text-blue-600 dark:text-blue-400`} /> : <Brain className={`w-3.5 h-3.5 ${patient.synopsis ? 'text-blue-600 dark:text-blue-400' : EMPTY}`} />}
                 </span>
                 {patient.synopsis && (
                   <IconTooltip anchorRef={tooltipRefs.synopsis} visible={activeTooltip === 'synopsis'}>
@@ -458,18 +483,28 @@ export const PatientCard = memo(function PatientCard({ patient, onClick, onDelet
                   ref={tooltipRefs.ddx}
                   onMouseEnter={() => (patient.ddx || patient.investigations) && showTooltip('ddx')}
                   onMouseLeave={hideTooltip}
-                  onClick={(e) => {
+                  onClick={async (e) => {
                     e.stopPropagation();
+                    const hasDdx = patient.ddx || patient.investigations;
                     const gen = onGenerateDdxInvestigations || onGenerateAnalysis;
-                    if (!patient.ddx && !patient.investigations && gen && !generatingIcon) {
+                    if (!hasDdx && gen && !generatingIcon) {
                       setGeneratingIcon('management');
                       gen().finally(() => setGeneratingIcon(null));
-                    } else if ((patient.ddx || patient.investigations) && onNavigate) { onNavigate(); }
+                    } else if (hasDdx) {
+                      if (e.metaKey || e.ctrlKey) {
+                        if (gen && !generatingIcon) { setGeneratingIcon('management'); gen().finally(() => setGeneratingIcon(null)); }
+                      } else {
+                        const text = [patient.ddx && `DDx:\n${patient.ddx}`, patient.investigations && `Investigations:\n${patient.investigations}`].filter(Boolean).join('\n\n');
+                        await navigator.clipboard.writeText(text);
+                        setCopiedIcon('ddx');
+                        setTimeout(() => setCopiedIcon(null), 1500);
+                      }
+                    }
                   }}
                   className={`p-0.5 rounded transition-colors inline-flex ${patient.ddx || patient.investigations || onGenerateDdxInvestigations || onGenerateAnalysis ? 'hover:bg-violet-50 dark:hover:bg-violet-900/30 cursor-pointer' : ''}`}
-                  title={patient.ddx || patient.investigations ? '' : 'Generate DDx & investigations'}
+                  title={patient.ddx || patient.investigations ? 'Click to copy · ⌘+click to regenerate' : 'Generate DDx & investigations'}
                 >
-                  {generatingIcon === 'management' ? <Loader2 className="w-4 h-4 text-violet-400 animate-spin" /> : <ListTree className={`w-3.5 h-3.5 ${patient.ddx || patient.investigations ? 'text-violet-600 dark:text-violet-400' : EMPTY}`} />}
+                  {generatingIcon === 'management' ? <Loader2 className="w-4 h-4 text-violet-400 animate-spin" /> : copiedIcon === 'ddx' ? <Check className="w-3.5 h-3.5 text-violet-600 dark:text-violet-400" /> : <ListTree className={`w-3.5 h-3.5 ${patient.ddx || patient.investigations ? 'text-violet-600 dark:text-violet-400' : EMPTY}`} />}
                 </span>
                 {(patient.ddx || patient.investigations) && (
                   <IconTooltip anchorRef={tooltipRefs.ddx} visible={activeTooltip === 'ddx'}>
@@ -497,18 +532,28 @@ export const PatientCard = memo(function PatientCard({ patient, onClick, onDelet
                   ref={tooltipRefs.evidence}
                   onMouseEnter={() => (patient.management || patient.evidence) && showTooltip('evidence')}
                   onMouseLeave={hideTooltip}
-                  onClick={(e) => {
+                  onClick={async (e) => {
                     e.stopPropagation();
+                    const hasContent = patient.management || patient.evidence;
                     const gen = onGenerateManagementEvidence || onGenerateEvidence || onGenerateAnalysis;
-                    if (!patient.management && !patient.evidence && gen && !generatingIcon) {
+                    if (!hasContent && gen && !generatingIcon) {
                       setGeneratingIcon('evidence');
                       gen().finally(() => setGeneratingIcon(null));
-                    } else if ((patient.management || patient.evidence) && onNavigate) { onNavigate(); }
+                    } else if (hasContent) {
+                      if (e.metaKey || e.ctrlKey) {
+                        if (gen && !generatingIcon) { setGeneratingIcon('evidence'); gen().finally(() => setGeneratingIcon(null)); }
+                      } else {
+                        const text = [patient.management && `Management:\n${patient.management}`, patient.evidence && `Evidence:\n${patient.evidence}`].filter(Boolean).join('\n\n');
+                        await navigator.clipboard.writeText(text);
+                        setCopiedIcon('evidence');
+                        setTimeout(() => setCopiedIcon(null), 1500);
+                      }
+                    }
                   }}
                   className={`p-0.5 rounded transition-colors inline-flex ${patient.management || patient.evidence || onGenerateManagementEvidence || onGenerateEvidence || onGenerateAnalysis ? 'hover:bg-amber-50 dark:hover:bg-amber-900/30 cursor-pointer' : ''}`}
-                  title={patient.management || patient.evidence ? '' : 'Generate management & evidence'}
+                  title={patient.management || patient.evidence ? 'Click to copy · ⌘+click to regenerate' : 'Generate management & evidence'}
                 >
-                  {generatingIcon === 'evidence' ? <Loader2 className="w-4 h-4 text-amber-400 animate-spin" /> : <BookOpen className={`w-3.5 h-3.5 ${patient.management || patient.evidence ? 'text-amber-600 dark:text-amber-400' : EMPTY}`} />}
+                  {generatingIcon === 'evidence' ? <Loader2 className="w-4 h-4 text-amber-400 animate-spin" /> : copiedIcon === 'evidence' ? <Check className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" /> : <BookOpen className={`w-3.5 h-3.5 ${patient.management || patient.evidence ? 'text-amber-600 dark:text-amber-400' : EMPTY}`} />}
                 </span>
                 {(patient.management || patient.evidence) && (
                   <IconTooltip anchorRef={tooltipRefs.evidence} visible={activeTooltip === 'evidence'}>
@@ -544,17 +589,25 @@ export const PatientCard = memo(function PatientCard({ patient, onClick, onDelet
                     ref={tooltipRefs.education}
                     onMouseEnter={() => patient.education && showTooltip('education')}
                     onMouseLeave={hideTooltip}
-                    onClick={(e) => {
+                    onClick={async (e) => {
                       e.stopPropagation();
                       if (!patient.education && onGenerateEducation && !generatingIcon) {
                         setGeneratingIcon('education');
                         onGenerateEducation().finally(() => setGeneratingIcon(null));
-                      } else if (patient.education && onNavigate) { onNavigate(); }
+                      } else if (patient.education) {
+                        if (e.metaKey || e.ctrlKey) {
+                          if (onGenerateEducation && !generatingIcon) { setGeneratingIcon('education'); onGenerateEducation().finally(() => setGeneratingIcon(null)); }
+                        } else {
+                          await navigator.clipboard.writeText(patient.education);
+                          setCopiedIcon('education');
+                          setTimeout(() => setCopiedIcon(null), 1500);
+                        }
+                      }
                     }}
                     className={`p-0.5 rounded transition-colors inline-flex ${patient.education || onGenerateEducation ? 'hover:bg-emerald-50 dark:hover:bg-emerald-900/30 cursor-pointer' : ''}`}
-                    title={patient.education ? '' : 'Generate learning resources'}
+                    title={patient.education ? 'Click to copy · ⌘+click to regenerate' : 'Generate learning resources'}
                   >
-                    {generatingIcon === 'education' ? <Loader2 className="w-4 h-4 text-emerald-400 animate-spin" /> : <GraduationCap className={`w-3.5 h-3.5 ${patient.education ? 'text-emerald-600 dark:text-emerald-400' : EMPTY}`} />}
+                    {generatingIcon === 'education' ? <Loader2 className="w-4 h-4 text-emerald-400 animate-spin" /> : copiedIcon === 'education' ? <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" /> : <GraduationCap className={`w-3.5 h-3.5 ${patient.education ? 'text-emerald-600 dark:text-emerald-400' : EMPTY}`} />}
                   </span>
                   {patient.education && (
                     <IconTooltip anchorRef={tooltipRefs.education} visible={activeTooltip === 'education'}>
