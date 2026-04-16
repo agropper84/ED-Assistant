@@ -854,11 +854,11 @@ export const PatientCard = memo(function PatientCard({ patient, onClick, onDelet
       {/* Split view — right edge bar, only appears on hover over the right edge zone */}
       {onSplitView && (
         <div
-          className="absolute right-0 top-0 bottom-0 w-6 z-[4] cursor-pointer group/splitbar"
+          className="split-view-zone"
           onClick={(e) => { e.stopPropagation(); onSplitView(); }}
           title="Open side-by-side"
         >
-          <div className="patient-card-edge-right group-hover/splitbar:w-[12px] group-hover/splitbar:opacity-100" />
+          <div className="patient-card-edge-right" />
         </div>
       )}
 
