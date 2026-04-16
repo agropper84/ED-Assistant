@@ -77,15 +77,13 @@ export async function getPatients(ctx: DataContext, sheetName: string): Promise<
     return gs.getPatients(ctx.sheets, sheetName);
   }
 
+  // Drive is the sole source of truth — no Sheets fallback
   try {
     const dj = await import('./drive-json');
-    const drivePatients = await dj.getPatientsFromDrive(ctx.drive, sheetName);
-    if (drivePatients.length > 0) return drivePatients;
-  } catch {}
-
-  // Fallback to Sheets if Drive returns empty or fails
-  const gs = await import('./google-sheets');
-  return gs.getPatients(ctx.sheets, sheetName);
+    return await dj.getPatientsFromDrive(ctx.drive, sheetName);
+  } catch {
+    return [];
+  }
 }
 
 // ============================================================
@@ -98,16 +96,12 @@ export async function getPatient(ctx: DataContext, rowIndex: number, sheetName: 
     return gs.getPatient(ctx.sheets, rowIndex, sheetName);
   }
 
+  // Drive is the sole source of truth — no Sheets fallback
   try {
     const dj = await import('./drive-json');
-    const drivePatient = await dj.getPatientFromDrive(ctx.drive, rowIndex, sheetName);
-    if (drivePatient) return drivePatient;
-  } catch {}
-
-  // Fallback to Sheets if Drive returns null or fails
-  {
-    const gs = await import('./google-sheets');
-    return gs.getPatient(ctx.sheets, rowIndex, sheetName);
+    return await dj.getPatientFromDrive(ctx.drive, rowIndex, sheetName);
+  } catch {
+    return null;
   }
 }
 
