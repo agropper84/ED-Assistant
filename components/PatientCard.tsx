@@ -834,39 +834,30 @@ export const PatientCard = memo(function PatientCard({ patient, onClick, onDelet
 
       </div>
 
-      {/* View actions — right edge, vertically centered */}
-      {(onNavigate || onSplitView) && (
-        <div className="flex-shrink-0 flex items-center gap-2 mr-3 opacity-0 group-hover/card:opacity-100 transition-all duration-200">
-          {/* Full view — maximize icon */}
-          {onNavigate && (
-            <button
-              onClick={(e) => { e.stopPropagation(); onNavigate(); }}
-              className="group/full rounded transition-all duration-150 active:scale-90"
-              title="Open full view"
-            >
-              <svg width="13" height="13" viewBox="0 0 13 13" fill="none" className="text-[var(--text-muted)] group-hover/full:text-blue-400 transition-colors duration-200">
-                <rect x="1" y="1" width="11" height="11" rx="2" stroke="currentColor" strokeWidth="1.2" fill="none" />
-                <path d="M5.5 7.5L9 4M9 4H6.5M9 4V6.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"
-                  className="transition-transform duration-200 origin-[9px_4px] group-hover/full:scale-110" />
-              </svg>
-            </button>
-          )}
-          {/* Split view — two panels */}
-          {onSplitView && (
-            <button
-              onClick={(e) => { e.stopPropagation(); onSplitView(); }}
-              className="group/split rounded transition-all duration-150 active:scale-90"
-              title="Open side-by-side"
-            >
-              <svg width="13" height="13" viewBox="0 0 13 13" fill="none" className="text-[var(--text-muted)] group-hover/split:text-indigo-400 transition-colors duration-200">
-                <rect x="1" y="1" width="5" height="11" rx="1.5" stroke="currentColor" strokeWidth="1.2" fill="none" />
-                <rect x="7" y="1" width="5" height="11" rx="1.5" stroke="currentColor" strokeWidth="1.2" fill="none"
-                  className="transition-all duration-250 ease-out translate-x-[3px] opacity-0 group-hover/split:translate-x-0 group-hover/split:opacity-100" />
-                <line x1="2.5" y1="6.5" x2="4.5" y2="6.5" stroke="currentColor" strokeWidth="0.8" strokeLinecap="round" className="opacity-40" />
-              </svg>
-            </button>
-          )}
+      {/* Full view icon */}
+      {onNavigate && (
+        <div className="flex-shrink-0 flex items-center mr-3 opacity-0 group-hover/card:opacity-100 transition-all duration-200">
+          <button
+            onClick={(e) => { e.stopPropagation(); onNavigate(); }}
+            className="group/full rounded transition-all duration-150 active:scale-90"
+            title="Open full view"
+          >
+            <svg width="13" height="13" viewBox="0 0 13 13" fill="none" className="text-[var(--text-muted)] group-hover/full:text-blue-400 transition-colors duration-200">
+              <rect x="1" y="1" width="11" height="11" rx="2" stroke="currentColor" strokeWidth="1.2" fill="none" />
+              <path d="M5.5 7.5L9 4M9 4H6.5M9 4V6.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"
+                className="transition-transform duration-200 origin-[9px_4px] group-hover/full:scale-110" />
+            </svg>
+          </button>
         </div>
+      )}
+
+      {/* Split view — right edge bar (mirrors the left status bar) */}
+      {onSplitView && (
+        <div
+          onClick={(e) => { e.stopPropagation(); onSplitView(); }}
+          className="patient-card-edge-right cursor-pointer"
+          title="Open side-by-side"
+        />
       )}
 
       {/* Demographics editor — portal so it isn't clipped by card width */}
