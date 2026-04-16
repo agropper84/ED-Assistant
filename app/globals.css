@@ -300,16 +300,19 @@ button, .btn {
   width: 0;
   border-radius: 0 16px 16px 0;
   opacity: 0;
-  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-              opacity 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: width 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+              opacity 0.3s cubic-bezier(0.22, 1, 0.36, 1);
 }
 .split-view-zone:hover .patient-card-edge-right {
-  width: 28px;
+  width: 32px;
   opacity: 1;
 }
-.patient-card[data-status="new"] .patient-card-edge-right       { background: linear-gradient(to right, transparent, var(--status-new-border)); }
-.patient-card[data-status="pending"] .patient-card-edge-right   { background: linear-gradient(to right, transparent, var(--status-pending-border)); }
-.patient-card[data-status="processed"] .patient-card-edge-right { background: linear-gradient(to right, transparent, var(--status-processed-border)); }
+:root .patient-card[data-status="new"] .patient-card-edge-right       { background: linear-gradient(to right, transparent 0%, rgba(34,197,94,0.06) 40%, rgba(34,197,94,0.18) 100%); }
+:root .patient-card[data-status="pending"] .patient-card-edge-right   { background: linear-gradient(to right, transparent 0%, rgba(245,158,11,0.06) 40%, rgba(245,158,11,0.18) 100%); }
+:root .patient-card[data-status="processed"] .patient-card-edge-right { background: linear-gradient(to right, transparent 0%, rgba(59,130,246,0.06) 40%, rgba(59,130,246,0.18) 100%); }
+.dark .patient-card[data-status="new"] .patient-card-edge-right       { background: linear-gradient(to right, transparent 0%, rgba(74,222,128,0.04) 30%, rgba(74,222,128,0.15) 100%); }
+.dark .patient-card[data-status="pending"] .patient-card-edge-right   { background: linear-gradient(to right, transparent 0%, rgba(251,191,36,0.04) 30%, rgba(251,191,36,0.15) 100%); }
+.dark .patient-card[data-status="processed"] .patient-card-edge-right { background: linear-gradient(to right, transparent 0%, rgba(96,165,250,0.04) 30%, rgba(96,165,250,0.15) 100%); }
 
 /* ── Status color wash (::after) ── */
 .patient-card::after {
