@@ -836,12 +836,12 @@ export const PatientCard = memo(function PatientCard({ patient, onClick, onDelet
 
       {/* View actions — right edge, vertically centered */}
       {(onNavigate || onSplitView) && (
-        <div className="flex-shrink-0 flex items-center gap-1 pr-2 opacity-0 group-hover/card:opacity-100 transition-all duration-200">
+        <div className="flex-shrink-0 flex items-center justify-center gap-1.5 px-2 opacity-0 group-hover/card:opacity-100 transition-all duration-200">
           {/* Full view — maximize icon */}
           {onNavigate && (
             <button
               onClick={(e) => { e.stopPropagation(); onNavigate(); }}
-              className="group/full rounded transition-all duration-150 hover:bg-white/[0.06] active:scale-90"
+              className="group/full rounded transition-all duration-150 active:scale-90"
               title="Open full view"
             >
               <svg width="13" height="13" viewBox="0 0 13 13" fill="none" className="text-[var(--text-muted)] group-hover/full:text-blue-400 transition-colors duration-200">
@@ -855,7 +855,7 @@ export const PatientCard = memo(function PatientCard({ patient, onClick, onDelet
           {onSplitView && (
             <button
               onClick={(e) => { e.stopPropagation(); onSplitView(); }}
-              className="group/split rounded transition-all duration-150 hover:bg-white/[0.06] active:scale-90"
+              className="group/split rounded transition-all duration-150 active:scale-90"
               title="Open side-by-side"
             >
               <svg width="13" height="13" viewBox="0 0 13 13" fill="none" className="text-[var(--text-muted)] group-hover/split:text-indigo-400 transition-colors duration-200">
