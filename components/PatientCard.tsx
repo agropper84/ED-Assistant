@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom';
 import { Patient } from '@/lib/google-sheets';
 import { Clock, User, FileText, Trash2, DollarSign, Stethoscope, Copy, Check, Brain, ListTree, BookOpen, Play, Loader2, X, MessageCircleQuestion, Merge, CalendarDays, GraduationCap, Bookmark, Heart } from 'lucide-react';
 import { ProfileSummary } from '@/components/PatientProfile';
+import { QuickRecordButton } from '@/components/QuickRecordButton';
 import type { PatientProfile } from '@/app/api/profile/route';
 
 interface PatientCardProps {
@@ -34,6 +35,7 @@ interface PatientCardProps {
   onGenerateProfile?: () => Promise<void>;
   onSaveResource?: (resource: { type: 'evidence' | 'education'; content: string; patientName: string; diagnosis: string }) => void;
   savedResourceKey?: (type: 'evidence' | 'education') => boolean;
+  onQuickRecordComplete?: () => void;
 }
 
 /** Convert a full name to initials, e.g. "John Smith" → "J.S." */
@@ -98,7 +100,7 @@ function IconTooltip({ anchorRef, visible, children }: { anchorRef: React.RefObj
   );
 }
 
-export const PatientCard = memo(function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChange, onBillingToggle, billingCodes, onNavigate, onSplitView, onProcess, onGenerateAnalysis, onGenerateSynopsis, onGenerateManagement, onGenerateEvidence, onGenerateDdxInvestigations, onGenerateManagementEvidence, onUpdateFields, onClinicalChat, onMerge, onDateChange, onGenerateEducation, showEducation, showIconsAlways, onSaveResource, savedResourceKey, onGenerateProfile }: PatientCardProps) {
+export const PatientCard = memo(function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChange, onBillingToggle, billingCodes, onNavigate, onSplitView, onProcess, onGenerateAnalysis, onGenerateSynopsis, onGenerateManagement, onGenerateEvidence, onGenerateDdxInvestigations, onGenerateManagementEvidence, onUpdateFields, onClinicalChat, onMerge, onDateChange, onGenerateEducation, showEducation, showIconsAlways, onSaveResource, savedResourceKey, onGenerateProfile, onQuickRecordComplete }: PatientCardProps) {
   const [editingTime, setEditingTime] = useState(false);
   const [timeValue, setTimeValue] = useState(patient.timestamp || '');
   const [noteCopied, setNoteCopied] = useState(false);
@@ -194,6 +196,7 @@ export const PatientCard = memo(function PatientCard({ patient, onClick, onDelet
   const [showDelete, setShowDelete] = useState(false);
   const [editingRoom, setEditingRoom] = useState(false);
   const [roomValue, setRoomValue] = useState(patient.room || '');
+  const [quickRecording, setQuickRecording] = useState(false);
 
   return (
     <div className="group/card relative" style={{ overflow: 'visible' }}>
@@ -765,6 +768,17 @@ export const PatientCard = memo(function PatientCard({ patient, onClick, onDelet
           ) : null}
         </div>
       </button>
+
+      {/* Quick record mic — between content and action buttons */}
+      {onQuickRecordComplete && (
+        <div className={`flex-shrink-0 self-center transition-all duration-200 ${quickRecording ? 'opacity-100' : 'opacity-0 group-hover/card:opacity-100'}`}>
+          <QuickRecordButton
+            patient={{ rowIndex: patient.rowIndex, sheetName: patient.sheetName, name: patient.name }}
+            onRecordingComplete={onQuickRecordComplete}
+            onRecordingStateChange={setQuickRecording}
+          />
+        </div>
+      )}
 
       {/* Right section: action buttons — all on hover */}
       <div className="flex items-center gap-1.5 pr-1.5 flex-shrink-0 self-center opacity-0 group-hover/card:opacity-100 transition-all duration-200">
