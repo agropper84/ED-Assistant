@@ -1109,25 +1109,24 @@ export default function HomePage() {
                 }}
                 title="Menu"
               >
-                <svg width="26" height="26" viewBox="0 0 32 32" fill="none">
-                  <defs>
-                    <linearGradient id="cross-grad" x1="0" y1="0" x2="1" y2="1">
-                      <stop offset="0" stopColor="rgba(147,197,253,0.95)" />
-                      <stop offset="1" stopColor="rgba(96,165,250,0.85)" />
-                    </linearGradient>
-                  </defs>
-                  {/* Medical cross — soft rounded */}
-                  <rect x="12.5" y="6" width="7" height="20" rx="2" fill="url(#cross-grad)" />
-                  <rect x="6" y="12.5" width="20" height="7" rx="2" fill="url(#cross-grad)" />
-                  {/* Pulse line across center — the "dashboard" */}
-                  <polyline
-                    points="8,16 12,16 13.5,12.5 16,20 18.5,13 20,16 24,16"
-                    fill="none"
-                    stroke="rgba(15,23,42,0.7)"
-                    strokeWidth="1.4"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
+                <svg width="24" height="24" viewBox="0 0 32 32" fill="none">
+                  {/* Connecting lines — center to each node */}
+                  <line x1="16" y1="16" x2="16" y2="7" stroke="rgba(180,200,230,0.5)" strokeWidth="1.5" />
+                  <line x1="16" y1="16" x2="16" y2="25" stroke="rgba(180,200,230,0.5)" strokeWidth="1.5" />
+                  <line x1="16" y1="16" x2="7" y2="16" stroke="rgba(180,200,230,0.5)" strokeWidth="1.5" />
+                  <line x1="16" y1="16" x2="25" y2="16" stroke="rgba(180,200,230,0.5)" strokeWidth="1.5" />
+                  {/* Center node */}
+                  <circle cx="16" cy="16" r="3" fill="rgba(147,197,253,0.9)" />
+                  <circle cx="16" cy="16" r="1.2" fill="rgba(30,58,108,0.6)" />
+                  {/* Cross nodes */}
+                  <circle cx="16" cy="7" r="2.8" fill="rgba(200,215,240,0.85)" />
+                  <circle cx="16" cy="7" r="1" fill="rgba(100,140,200,0.5)" />
+                  <circle cx="16" cy="25" r="2.8" fill="rgba(200,215,240,0.85)" />
+                  <circle cx="16" cy="25" r="1" fill="rgba(100,140,200,0.5)" />
+                  <circle cx="7" cy="16" r="2.8" fill="rgba(200,215,240,0.85)" />
+                  <circle cx="7" cy="16" r="1" fill="rgba(100,140,200,0.5)" />
+                  <circle cx="25" cy="16" r="2.8" fill="rgba(200,215,240,0.85)" />
+                  <circle cx="25" cy="16" r="1" fill="rgba(100,140,200,0.5)" />
                 </svg>
               </button>
               <h1 className="text-[17px] font-bold tracking-[-0.02em]" style={{ color: 'var(--dash-text)' }}>ER Dashboard</h1>
