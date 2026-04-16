@@ -3,7 +3,7 @@
 import { useState, useRef, useCallback, memo } from 'react';
 import { createPortal } from 'react-dom';
 import { Patient } from '@/lib/google-sheets';
-import { Clock, User, FileText, Trash2, DollarSign, Stethoscope, Copy, Check, Brain, ListTree, BookOpen, Play, Loader2, X, MessageCircleQuestion, Merge, CalendarDays, GraduationCap, ExternalLink, PanelRightOpen, Bookmark, Heart } from 'lucide-react';
+import { Clock, User, FileText, Trash2, DollarSign, Stethoscope, Copy, Check, Brain, ListTree, BookOpen, Play, Loader2, X, MessageCircleQuestion, Merge, CalendarDays, GraduationCap, ExternalLink, Bookmark, Heart } from 'lucide-react';
 import { ProfileSummary } from '@/components/PatientProfile';
 import type { PatientProfile } from '@/app/api/profile/route';
 
@@ -766,9 +766,45 @@ export const PatientCard = memo(function PatientCard({ patient, onClick, onDelet
         </div>
       </button>
 
-      {/* Right section: billing + action buttons */}
-      <div className="flex items-center gap-1 pr-2 flex-shrink-0 self-center">
-        {/* Billing codes — always visible when present */}
+      {/* Right section: action buttons — all on hover */}
+      <div className="flex items-center gap-0.5 pr-2 flex-shrink-0 self-center opacity-0 group-hover/card:opacity-100 transition-all duration-200">
+        {/* Inline time editor */}
+        {editingTime && (
+          <div className="flex items-center gap-1 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+            <input
+              type="time"
+              value={timeValue}
+              onChange={(e) => setTimeValue(e.target.value)}
+              onBlur={handleTimeSave}
+              onKeyDown={(e) => { if (e.key === 'Enter') handleTimeSave(); }}
+              autoFocus
+              className="w-24 p-1 border border-[var(--input-border)] rounded text-sm text-center focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)]"
+            />
+          </div>
+        )}
+
+        {/* Process — play button for pending patients */}
+        {patient.status === 'pending' && onProcess && (
+          <button
+            onClick={async (e) => {
+              e.stopPropagation();
+              if (isProcessing) return;
+              setIsProcessing(true);
+              try { await onProcess(); } finally { setIsProcessing(false); }
+            }}
+            disabled={isProcessing}
+            className="p-1.5 hover:bg-amber-50 dark:hover:bg-amber-900/30 rounded-lg transition-colors"
+            title="Create Encounter Note"
+          >
+            {isProcessing ? (
+              <Loader2 className="w-4 h-4 text-amber-500 animate-spin" />
+            ) : (
+              <Play className="w-4 h-4 text-amber-500 dark:text-amber-400" />
+            )}
+          </button>
+        )}
+
+        {/* Billing */}
         {onBillingToggle && (
           <button
             onClick={(e) => { e.stopPropagation(); onBillingToggle(); }}
@@ -785,75 +821,52 @@ export const PatientCard = memo(function PatientCard({ patient, onClick, onDelet
           </button>
         )}
 
-        {/* Hover-reveal action group */}
-        <div className="flex items-center gap-0.5 opacity-0 group-hover/card:opacity-100 transition-all duration-200">
-          {/* Inline time editor */}
-          {editingTime && (
-            <div className="flex items-center gap-1 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
-              <input
-                type="time"
-                value={timeValue}
-                onChange={(e) => setTimeValue(e.target.value)}
-                onBlur={handleTimeSave}
-                onKeyDown={(e) => { if (e.key === 'Enter') handleTimeSave(); }}
-                autoFocus
-                className="w-24 p-1 border border-[var(--input-border)] rounded text-sm text-center focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)]"
+        {/* Merge — blue */}
+        {onMerge && patient.name?.startsWith('New Encounter') && (
+          <button
+            onClick={(e) => { e.stopPropagation(); onMerge(); }}
+            className="p-1.5 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg transition-colors"
+            title="Assign to existing patient"
+          >
+            <Merge className="w-4 h-4 text-[var(--text-muted)] hover:text-blue-500 dark:hover:text-blue-400 transition-colors" />
+          </button>
+        )}
+
+        {/* Full view */}
+        {onNavigate && (
+          <button
+            onClick={(e) => { e.stopPropagation(); onNavigate(); }}
+            className="p-1.5 rounded-lg transition-all duration-200 hover:bg-blue-50 dark:hover:bg-blue-900/30 active:scale-90"
+            title="Open full view"
+          >
+            <ExternalLink className="w-3.5 h-3.5 text-[var(--text-muted)] group-hover/card:text-blue-500 dark:group-hover/card:text-blue-400 transition-colors" />
+          </button>
+        )}
+
+        {/* Split view — custom icon: two panels with divider */}
+        {onSplitView && (
+          <button
+            onClick={(e) => { e.stopPropagation(); onSplitView(); }}
+            className="group/split p-1.5 rounded-lg transition-all duration-200 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 active:scale-90"
+            title="Open side-by-side"
+          >
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="text-[var(--text-muted)] group-hover/card:text-indigo-500 dark:group-hover/card:text-indigo-400 transition-colors">
+              {/* Left panel */}
+              <rect x="1" y="2" width="6" height="12" rx="1.5" stroke="currentColor" strokeWidth="1.3" fill="none" />
+              {/* Right panel — slides in on hover */}
+              <rect
+                x="9" y="2" width="6" height="12" rx="1.5" stroke="currentColor" strokeWidth="1.3" fill="none"
+                className="transition-transform duration-300 origin-left group-hover/split:translate-x-0 translate-x-[2px] opacity-50 group-hover/split:opacity-100"
               />
-            </div>
-          )}
-
-          {/* Process — play button for pending patients */}
-          {patient.status === 'pending' && onProcess && (
-            <button
-              onClick={async (e) => {
-                e.stopPropagation();
-                if (isProcessing) return;
-                setIsProcessing(true);
-                try { await onProcess(); } finally { setIsProcessing(false); }
-              }}
-              disabled={isProcessing}
-              className="p-1.5 hover:bg-amber-50 dark:hover:bg-amber-900/30 rounded-lg transition-colors"
-              title="Create Encounter Note"
-            >
-              {isProcessing ? (
-                <Loader2 className="w-4 h-4 text-amber-500 animate-spin" />
-              ) : (
-                <Play className="w-4 h-4 text-amber-500 dark:text-amber-400" />
-              )}
-            </button>
-          )}
-
-          {/* Merge — blue */}
-          {onMerge && patient.name?.startsWith('New Encounter') && (
-            <button
-              onClick={(e) => { e.stopPropagation(); onMerge(); }}
-              className="p-1.5 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg transition-colors"
-              title="Assign to existing patient"
-            >
-              <Merge className="w-4 h-4 text-[var(--text-muted)] hover:text-blue-500 dark:hover:text-blue-400 transition-colors" />
-            </button>
-          )}
-
-          {/* View actions — full view + split view */}
-          {onNavigate && (
-            <button
-              onClick={(e) => { e.stopPropagation(); onNavigate(); }}
-              className="p-1.5 rounded-lg transition-all duration-200 hover:bg-blue-50 dark:hover:bg-blue-900/30 active:scale-90"
-              title="Open full view"
-            >
-              <ExternalLink className="w-3.5 h-3.5 text-[var(--text-muted)] group-hover/card:text-blue-500 dark:group-hover/card:text-blue-400 transition-colors" />
-            </button>
-          )}
-          {onSplitView && (
-            <button
-              onClick={(e) => { e.stopPropagation(); onSplitView(); }}
-              className="p-1.5 rounded-lg transition-all duration-200 hover:bg-blue-50 dark:hover:bg-blue-900/30 active:scale-90"
-              title="Open split view"
-            >
-              <PanelRightOpen className="w-3.5 h-3.5 text-[var(--text-muted)] group-hover/card:text-blue-400 dark:group-hover/card:text-blue-400/70 transition-colors" />
-            </button>
-          )}
-        </div>
+              {/* Arrow indicating slide-in */}
+              <path
+                d="M12 8L10 6.5V9.5L12 8Z"
+                fill="currentColor"
+                className="transition-all duration-300 opacity-0 group-hover/split:opacity-70"
+              />
+            </svg>
+          </button>
+        )}
       </div>
 
       {/* Demographics editor — portal so it isn't clipped by card width */}
