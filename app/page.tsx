@@ -15,7 +15,6 @@ import { ParseModal } from '@/components/ParseModal';
 import { PatientDataModal } from '@/components/PatientDataModal';
 import { BatchTranscribeModal } from '@/components/BatchTranscribeModal';
 import { ClinicalChatModal } from '@/components/ClinicalChatModal';
-import { CalculatorModal } from '@/components/CalculatorModal';
 import { MergeModal } from '@/components/MergeModal';
 import { PendingAudioBanner } from '@/components/PendingAudioBanner';
 import { SavedResourcesModal, addSavedResource, getSavedResources } from '@/components/SavedResourcesModal';
@@ -130,7 +129,7 @@ export default function HomePage() {
 
   // Clinical chat
   const [chatPatient, setChatPatient] = useState<Patient | null>(null);
-  const [calcPatient, setCalcPatient] = useState<Patient | null>(null);
+  const [chatInitialTab, setChatInitialTab] = useState<'qa' | 'calculator'>('qa');
   const [mergeSource, setMergeSource] = useState<Patient | null>(null);
 
   // VCH sheet generation
@@ -922,8 +921,7 @@ export default function HomePage() {
             });
             fetchPatients();
           }}
-          onClinicalChat={() => setChatPatient(patient)}
-          onCalculator={() => setCalcPatient(patient)}
+          onClinicalChat={() => { setChatInitialTab('qa'); setChatPatient(patient); }}
           onMerge={() => setMergeSource(patient)}
           onDateChange={(newSheet) => handleDateChange(patient, newSheet)}
           showEducation={getEducationConfig().enabled}
@@ -1762,22 +1760,14 @@ export default function HomePage() {
         initialTranscript={sharedTranscript}
       />
 
-      {/* Clinical Chat Modal */}
+      {/* Clinical Chat + Calculator Modal */}
       {chatPatient && (
         <ClinicalChatModal
           isOpen={!!chatPatient}
-          onClose={() => setChatPatient(null)}
+          onClose={() => { setChatPatient(null); setChatInitialTab('qa'); }}
           patient={chatPatient}
           onUpdate={() => fetchPatients()}
-        />
-      )}
-
-      {/* Calculator Modal */}
-      {calcPatient && (
-        <CalculatorModal
-          isOpen={!!calcPatient}
-          onClose={() => setCalcPatient(null)}
-          patient={calcPatient}
+          initialTab={chatInitialTab}
         />
       )}
 

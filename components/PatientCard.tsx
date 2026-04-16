@@ -3,7 +3,7 @@
 import { useState, useRef, useCallback, memo } from 'react';
 import { createPortal } from 'react-dom';
 import { Patient } from '@/lib/google-sheets';
-import { Clock, User, FileText, Trash2, DollarSign, Stethoscope, Copy, Check, Brain, ListTree, BookOpen, Play, Loader2, X, MessageCircleQuestion, Merge, CalendarDays, GraduationCap, ExternalLink, PanelRightOpen, Calculator, Bookmark, Heart, ChevronRight } from 'lucide-react';
+import { Clock, User, FileText, Trash2, DollarSign, Stethoscope, Copy, Check, Brain, ListTree, BookOpen, Play, Loader2, X, MessageCircleQuestion, Merge, CalendarDays, GraduationCap, ExternalLink, PanelRightOpen, Bookmark, Heart, ChevronRight } from 'lucide-react';
 import { ProfileSummary } from '@/components/PatientProfile';
 import type { PatientProfile } from '@/app/api/profile/route';
 
@@ -32,7 +32,6 @@ interface PatientCardProps {
   showEducation?: boolean;
   showIconsAlways?: boolean;
   onGenerateProfile?: () => Promise<void>;
-  onCalculator?: () => void;
   onSaveResource?: (resource: { type: 'evidence' | 'education'; content: string; patientName: string; diagnosis: string }) => void;
   savedResourceKey?: (type: 'evidence' | 'education') => boolean;
 }
@@ -99,7 +98,7 @@ function IconTooltip({ anchorRef, visible, children }: { anchorRef: React.RefObj
   );
 }
 
-export const PatientCard = memo(function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChange, onBillingToggle, billingCodes, onNavigate, onSplitView, onProcess, onGenerateAnalysis, onGenerateSynopsis, onGenerateManagement, onGenerateEvidence, onGenerateDdxInvestigations, onGenerateManagementEvidence, onUpdateFields, onClinicalChat, onMerge, onDateChange, onGenerateEducation, showEducation, showIconsAlways, onCalculator, onSaveResource, savedResourceKey, onGenerateProfile }: PatientCardProps) {
+export const PatientCard = memo(function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChange, onBillingToggle, billingCodes, onNavigate, onSplitView, onProcess, onGenerateAnalysis, onGenerateSynopsis, onGenerateManagement, onGenerateEvidence, onGenerateDdxInvestigations, onGenerateManagementEvidence, onUpdateFields, onClinicalChat, onMerge, onDateChange, onGenerateEducation, showEducation, showIconsAlways, onSaveResource, savedResourceKey, onGenerateProfile }: PatientCardProps) {
   const [editingTime, setEditingTime] = useState(false);
   const [timeValue, setTimeValue] = useState(patient.timestamp || '');
   const [noteCopied, setNoteCopied] = useState(false);
@@ -843,19 +842,6 @@ export const PatientCard = memo(function PatientCard({ patient, onClick, onDelet
           </button>
         )}
 
-        {/* Calculator */}
-        {onCalculator && (
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onCalculator();
-            }}
-            className="p-1.5 hover:bg-orange-50 dark:hover:bg-orange-900/30 rounded-lg transition-colors"
-            title="Calculator"
-          >
-            <Calculator className={`w-4 h-4 ${(patient as any).hasCalcHistory ? 'text-orange-500 dark:text-orange-400' : EMPTY} transition-colors`} />
-          </button>
-        )}
 
       </div>
 
