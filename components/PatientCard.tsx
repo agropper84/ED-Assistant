@@ -3,7 +3,7 @@
 import { useState, useRef, useCallback, memo } from 'react';
 import { createPortal } from 'react-dom';
 import { Patient } from '@/lib/google-sheets';
-import { Clock, User, FileText, Trash2, DollarSign, Stethoscope, Copy, Check, Brain, ListTree, BookOpen, Play, Loader2, X, MessageCircleQuestion, Merge, CalendarDays, GraduationCap, ExternalLink, Bookmark, Heart } from 'lucide-react';
+import { Clock, User, FileText, Trash2, DollarSign, Stethoscope, Copy, Check, Brain, ListTree, BookOpen, Play, Loader2, X, MessageCircleQuestion, Merge, CalendarDays, GraduationCap, Bookmark, Heart } from 'lucide-react';
 import { ProfileSummary } from '@/components/PatientProfile';
 import type { PatientProfile } from '@/app/api/profile/route';
 
@@ -832,14 +832,29 @@ export const PatientCard = memo(function PatientCard({ patient, onClick, onDelet
           </button>
         )}
 
-        {/* Full view */}
+        {/* Full view — panel with expand arrows */}
         {onNavigate && (
           <button
             onClick={(e) => { e.stopPropagation(); onNavigate(); }}
-            className="p-1.5 rounded-lg transition-all duration-200 hover:bg-blue-50 dark:hover:bg-blue-900/30 active:scale-90"
+            className="group/full p-1.5 rounded-lg transition-all duration-200 active:scale-90"
             title="Open full view"
           >
-            <ExternalLink className="w-3.5 h-3.5 text-[var(--text-muted)] group-hover/card:text-blue-500 dark:group-hover/card:text-blue-400 transition-colors" />
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="text-[var(--text-muted)] group-hover/full:text-blue-500 dark:group-hover/full:text-blue-400 transition-colors duration-200">
+              {/* Panel outline */}
+              <rect x="2.5" y="2" width="11" height="12" rx="1.5" stroke="currentColor" strokeWidth="1.3" fill="none" />
+              {/* Top-left expand arrow */}
+              <path d="M5 5L2.5 2.5M2.5 2.5L2.5 4.5M2.5 2.5L4.5 2.5" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" strokeLinejoin="round"
+                className="transition-all duration-300 opacity-0 group-hover/full:opacity-80 translate-x-[1px] translate-y-[1px] group-hover/full:translate-x-0 group-hover/full:translate-y-0" />
+              {/* Top-right expand arrow */}
+              <path d="M11 5L13.5 2.5M13.5 2.5L13.5 4.5M13.5 2.5L11.5 2.5" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" strokeLinejoin="round"
+                className="transition-all duration-300 opacity-0 group-hover/full:opacity-80 -translate-x-[1px] translate-y-[1px] group-hover/full:translate-x-0 group-hover/full:translate-y-0" />
+              {/* Bottom-left expand arrow */}
+              <path d="M5 11L2.5 13.5M2.5 13.5L2.5 11.5M2.5 13.5L4.5 13.5" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" strokeLinejoin="round"
+                className="transition-all duration-300 opacity-0 group-hover/full:opacity-80 translate-x-[1px] -translate-y-[1px] group-hover/full:translate-x-0 group-hover/full:translate-y-0" />
+              {/* Bottom-right expand arrow */}
+              <path d="M11 11L13.5 13.5M13.5 13.5L13.5 11.5M13.5 13.5L11.5 13.5" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" strokeLinejoin="round"
+                className="transition-all duration-300 opacity-0 group-hover/full:opacity-80 -translate-x-[1px] -translate-y-[1px] group-hover/full:translate-x-0 group-hover/full:translate-y-0" />
+            </svg>
           </button>
         )}
       </div>
