@@ -1109,18 +1109,25 @@ export default function HomePage() {
                 }}
                 title="Menu"
               >
-                <svg width="24" height="24" viewBox="0 0 32 32" fill="none">
-                  {/* Cross pattern: pink vertical + white horizontal */}
-                  {/* Top */}
-                  <circle cx="16" cy="7.5" r="4" fill="rgba(219,112,147,0.9)" />
-                  {/* Bottom */}
-                  <circle cx="16" cy="24.5" r="4" fill="rgba(219,112,147,0.9)" />
-                  {/* Center */}
-                  <circle cx="16" cy="16" r="4" fill="rgba(219,112,147,0.9)" />
-                  {/* Left */}
-                  <circle cx="7.5" cy="16" r="4" fill="rgba(255,255,255,0.92)" />
-                  {/* Right */}
-                  <circle cx="24.5" cy="16" r="4" fill="rgba(255,255,255,0.92)" />
+                <svg width="26" height="26" viewBox="0 0 32 32" fill="none">
+                  <defs>
+                    <linearGradient id="cross-grad" x1="0" y1="0" x2="1" y2="1">
+                      <stop offset="0" stopColor="rgba(147,197,253,0.95)" />
+                      <stop offset="1" stopColor="rgba(96,165,250,0.85)" />
+                    </linearGradient>
+                  </defs>
+                  {/* Medical cross — soft rounded */}
+                  <rect x="12.5" y="6" width="7" height="20" rx="2" fill="url(#cross-grad)" />
+                  <rect x="6" y="12.5" width="20" height="7" rx="2" fill="url(#cross-grad)" />
+                  {/* Pulse line across center — the "dashboard" */}
+                  <polyline
+                    points="8,16 12,16 13.5,12.5 16,20 18.5,13 20,16 24,16"
+                    fill="none"
+                    stroke="rgba(15,23,42,0.7)"
+                    strokeWidth="1.4"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
                 </svg>
               </button>
               <h1 className="text-[17px] font-bold tracking-[-0.02em]" style={{ color: 'var(--dash-text)' }}>ER Dashboard</h1>
