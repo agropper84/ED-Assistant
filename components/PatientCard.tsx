@@ -844,109 +844,117 @@ export const PatientCard = memo(function PatientCard({ patient, onClick, onDelet
         </div>
       )}
 
-      {/* Inline demographics editor */}
-      {editingDemo && (
-        <div
-          className="absolute left-0 right-0 top-0 z-40 bg-[var(--card-bg)] border border-[var(--card-border)] rounded-2xl p-4 shadow-xl animate-scaleIn"
-          onClick={(e) => e.stopPropagation()}
-          style={{ boxShadow: 'var(--card-shadow)' }}
-        >
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-sm font-semibold text-[var(--text-primary)]">Edit Patient Info</span>
-            <button
-              onClick={() => setEditingDemo(false)}
-              className="p-1 hover:bg-[var(--bg-tertiary)] rounded-full transition-colors"
-            >
-              <X className="w-4 h-4 text-[var(--text-muted)]" />
-            </button>
-          </div>
-          <div className="space-y-2">
-            <input
-              type="text"
-              value={editName}
-              onChange={(e) => setEditName(e.target.value)}
-              placeholder="Patient name"
-              autoFocus
-              className="w-full p-2 border border-[var(--input-border)] rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)]"
-            />
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={editAge}
-                onChange={(e) => setEditAge(e.target.value)}
-                placeholder="Age"
-                className="w-20 p-2 border border-[var(--input-border)] rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)]"
-              />
-              <select
-                value={editGender}
-                onChange={(e) => setEditGender(e.target.value)}
-                className="flex-1 p-2 border border-[var(--input-border)] rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)]"
-              >
-                <option value="">Gender</option>
-                <option value="M">Male</option>
-                <option value="F">Female</option>
-                <option value="Other">Other</option>
-              </select>
-              <input
-                type="text"
-                value={editBirthday}
-                onChange={(e) => setEditBirthday(e.target.value)}
-                placeholder="DOB"
-                className="w-28 p-2 border border-[var(--input-border)] rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)]"
-              />
-            </div>
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={editHcn}
-                onChange={(e) => setEditHcn(e.target.value)}
-                placeholder="HCN"
-                className="flex-1 p-2 border border-[var(--input-border)] rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)]"
-              />
-              <input
-                type="text"
-                value={editMrn}
-                onChange={(e) => setEditMrn(e.target.value)}
-                placeholder="MRN"
-                className="flex-1 p-2 border border-[var(--input-border)] rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)]"
-              />
-            </div>
-            <div className="flex gap-2 pt-1">
-              <button
-                onClick={async () => {
-                  if (!onUpdateFields) return;
-                  setSavingDemo(true);
-                  try {
-                    await onUpdateFields({
-                      name: editName.trim(),
-                      age: editAge.trim(),
-                      gender: editGender,
-                      birthday: editBirthday.trim(),
-                      hcn: editHcn.trim(),
-                      mrn: editMrn.trim(),
-                    });
-                    setEditingDemo(false);
-                  } catch (err) {
-                    console.error('Failed to update patient info:', err);
-                  } finally {
-                    setSavingDemo(false);
-                  }
-                }}
-                disabled={savingDemo}
-                className="px-3 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-medium disabled:opacity-50 flex items-center gap-1.5"
-              >
-                {savingDemo && <Loader2 className="w-3 h-3 animate-spin" />}
-                Save
-              </button>
+      {/* Demographics editor — portal so it isn't clipped by card width */}
+      {editingDemo && typeof document !== 'undefined' && createPortal(
+        <>
+          <div className="fixed inset-0 z-[199] bg-black/30" onClick={() => setEditingDemo(false)} />
+          <div
+            className="fixed z-[200] w-80 bg-[var(--card-bg)] border border-[var(--card-border)] rounded-2xl p-4 shadow-2xl animate-scaleIn"
+            style={{
+              top: '50%', left: '50%',
+              transform: 'translate(-50%, -50%)',
+              boxShadow: 'var(--card-shadow), 0 25px 50px -12px rgba(0,0,0,0.4)',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-sm font-semibold text-[var(--text-primary)]">Edit Patient Info</span>
               <button
                 onClick={() => setEditingDemo(false)}
-                className="px-3 py-1.5 bg-[var(--bg-tertiary)] text-[var(--text-secondary)] rounded-lg text-xs font-medium"
+                className="p-1 hover:bg-[var(--bg-tertiary)] rounded-full transition-colors"
               >
-                Cancel
+                <X className="w-4 h-4 text-[var(--text-muted)]" />
               </button>
             </div>
+            <div className="space-y-2">
+              <input
+                type="text"
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                placeholder="Patient name"
+                autoFocus
+                className="w-full p-2 border border-[var(--input-border)] rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)]"
+              />
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={editAge}
+                  onChange={(e) => setEditAge(e.target.value)}
+                  placeholder="Age"
+                  className="w-16 p-2 border border-[var(--input-border)] rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)]"
+                />
+                <select
+                  value={editGender}
+                  onChange={(e) => setEditGender(e.target.value)}
+                  className="w-24 p-2 border border-[var(--input-border)] rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)]"
+                >
+                  <option value="">Gender</option>
+                  <option value="M">Male</option>
+                  <option value="F">Female</option>
+                  <option value="Other">Other</option>
+                </select>
+                <input
+                  type="text"
+                  value={editBirthday}
+                  onChange={(e) => setEditBirthday(e.target.value)}
+                  placeholder="DOB"
+                  className="flex-1 p-2 border border-[var(--input-border)] rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)]"
+                />
+              </div>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={editHcn}
+                  onChange={(e) => setEditHcn(e.target.value)}
+                  placeholder="HCN"
+                  className="flex-1 p-2 border border-[var(--input-border)] rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)]"
+                />
+                <input
+                  type="text"
+                  value={editMrn}
+                  onChange={(e) => setEditMrn(e.target.value)}
+                  placeholder="MRN"
+                  className="flex-1 p-2 border border-[var(--input-border)] rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)]"
+                />
+              </div>
+              <div className="flex gap-2 pt-1">
+                <button
+                  onClick={async () => {
+                    if (!onUpdateFields) return;
+                    setSavingDemo(true);
+                    try {
+                      await onUpdateFields({
+                        name: editName.trim(),
+                        age: editAge.trim(),
+                        gender: editGender,
+                        birthday: editBirthday.trim(),
+                        hcn: editHcn.trim(),
+                        mrn: editMrn.trim(),
+                      });
+                      setEditingDemo(false);
+                    } catch (err) {
+                      console.error('Failed to update patient info:', err);
+                    } finally {
+                      setSavingDemo(false);
+                    }
+                  }}
+                  disabled={savingDemo}
+                  className="px-3 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-medium disabled:opacity-50 flex items-center gap-1.5"
+                >
+                  {savingDemo && <Loader2 className="w-3 h-3 animate-spin" />}
+                  Save
+                </button>
+                <button
+                  onClick={() => setEditingDemo(false)}
+                  className="px-3 py-1.5 bg-[var(--bg-tertiary)] text-[var(--text-secondary)] rounded-lg text-xs font-medium"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
           </div>
-        </div>
+        </>,
+        document.body
       )}
       </div>{/* end patient-card */}
     </div>
