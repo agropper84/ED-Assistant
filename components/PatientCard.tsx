@@ -834,21 +834,23 @@ export const PatientCard = memo(function PatientCard({ patient, onClick, onDelet
 
       </div>
 
-      {/* Full view icon */}
+      {/* Full view icon — right side, before the split-view edge zone */}
       {onNavigate && (
-        <div className="flex-shrink-0 flex items-center mr-3 opacity-0 group-hover/card:opacity-100 transition-all duration-200">
-          <button
-            onClick={(e) => { e.stopPropagation(); onNavigate(); }}
-            className="group/full rounded transition-all duration-150 active:scale-90"
-            title="Open full view"
-          >
-            <svg width="13" height="13" viewBox="0 0 13 13" fill="none" className="text-[var(--text-muted)] group-hover/full:text-blue-400 transition-colors duration-200">
-              <rect x="1" y="1" width="11" height="11" rx="2" stroke="currentColor" strokeWidth="1.2" fill="none" />
-              <path d="M5.5 7.5L9 4M9 4H6.5M9 4V6.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"
-                className="transition-transform duration-200 origin-[9px_4px] group-hover/full:scale-110" />
-            </svg>
-          </button>
-        </div>
+        <button
+          onClick={(e) => { e.stopPropagation(); onNavigate(); }}
+          className="group/full flex-shrink-0 self-center mr-4 opacity-0 group-hover/card:opacity-100 transition-all duration-200 active:scale-90"
+          title="Open full view"
+        >
+          <svg width="15" height="15" viewBox="0 0 15 15" fill="none" className="text-[var(--text-muted)] group-hover/full:text-blue-400 transition-colors duration-200">
+            {/* Page with folded corner */}
+            <path d="M3 1.5h6.5L12.5 4.5V13a1 1 0 01-1 1H3a1 1 0 01-1-1V2.5a1 1 0 011-1z" stroke="currentColor" strokeWidth="1.2" fill="none" />
+            <path d="M9.5 1.5V4a.5.5 0 00.5.5h2.5" stroke="currentColor" strokeWidth="1.2" fill="none"
+              className="transition-opacity duration-200 opacity-60 group-hover/full:opacity-100" />
+            {/* Arrow expanding outward on hover */}
+            <path d="M5.5 9L8.5 6M8.5 6H6.5M8.5 6V8" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" strokeLinejoin="round"
+              className="transition-transform duration-250 ease-out origin-[8.5px_6px] group-hover/full:translate-x-[1px] group-hover/full:-translate-y-[1px]" />
+          </svg>
+        </button>
       )}
 
       {/* Split view — right edge bar, only appears on hover over the right edge zone */}
