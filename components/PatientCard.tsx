@@ -832,49 +832,46 @@ export const PatientCard = memo(function PatientCard({ patient, onClick, onDelet
           </button>
         )}
 
-        {/* Full view — small panel grows into full-width panel */}
-        {onNavigate && (
-          <button
-            onClick={(e) => { e.stopPropagation(); onNavigate(); }}
-            className="group/full p-1.5 rounded-lg transition-all duration-200 active:scale-90"
-            title="Open full view"
-          >
-            <svg width="18" height="16" viewBox="0 0 18 16" fill="none" className="text-[var(--text-muted)] group-hover/full:text-blue-500 dark:group-hover/full:text-blue-400 transition-colors duration-200 overflow-visible">
-              {/* Small centered panel — default state */}
-              <rect x="4" y="3" width="10" height="10" rx="1.5" stroke="currentColor" strokeWidth="1.2" fill="none"
-                className="transition-all duration-300 ease-out group-hover/full:opacity-0" />
-              {/* Expanded full panel — appears on hover */}
-              <rect x="1" y="1" width="16" height="14" rx="2" stroke="currentColor" strokeWidth="1.2" fill="none"
-                className="transition-all duration-300 ease-out opacity-0 group-hover/full:opacity-100 scale-[0.7] group-hover/full:scale-100 origin-center" />
-              {/* Content lines inside — appear on hover to show it's a page */}
-              <line x1="4" y1="5" x2="10" y2="5" stroke="currentColor" strokeWidth="1" strokeLinecap="round"
-                className="transition-all duration-300 delay-100 opacity-0 group-hover/full:opacity-50" />
-              <line x1="4" y1="7.5" x2="14" y2="7.5" stroke="currentColor" strokeWidth="1" strokeLinecap="round"
-                className="transition-all duration-300 delay-150 opacity-0 group-hover/full:opacity-50" />
-              <line x1="4" y1="10" x2="12" y2="10" stroke="currentColor" strokeWidth="1" strokeLinecap="round"
-                className="transition-all duration-300 delay-200 opacity-0 group-hover/full:opacity-50" />
-            </svg>
-          </button>
-        )}
       </div>
 
-      {/* Split view — full-height strip flush to right edge */}
-      {onSplitView && (
-        <button
-          onClick={(e) => { e.stopPropagation(); onSplitView(); }}
-          className="group/split flex-shrink-0 self-stretch w-7 flex items-center justify-center rounded-r-2xl cursor-pointer opacity-0 group-hover/card:opacity-100 transition-all duration-200"
-          title="Open side-by-side"
-        >
-          <svg width="18" height="24" viewBox="0 0 18 24" fill="none" className="text-[var(--text-muted)] group-hover/split:text-indigo-500 dark:group-hover/split:text-indigo-400 transition-colors duration-200">
-            {/* Left panel — always visible */}
-            <rect x="1" y="3" width="7" height="18" rx="1.5" stroke="currentColor" strokeWidth="1.2" fill="none" />
-            {/* Right panel — slides in from right on hover */}
-            <rect
-              x="10" y="3" width="7" height="18" rx="1.5" stroke="currentColor" strokeWidth="1.2" fill="none"
-              className="transition-all duration-300 ease-out translate-x-[4px] opacity-0 group-hover/split:translate-x-0 group-hover/split:opacity-100"
-            />
-          </svg>
-        </button>
+      {/* View actions — right edge, vertically centered */}
+      {(onNavigate || onSplitView) && (
+        <div className="flex-shrink-0 self-stretch flex flex-col items-center justify-center gap-1 pl-0.5 pr-3 opacity-0 group-hover/card:opacity-100 transition-all duration-200">
+          {/* Full view — maximize icon */}
+          {onNavigate && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onNavigate(); }}
+              className="group/full p-1 rounded transition-all duration-150 hover:bg-white/[0.06] active:scale-90"
+              title="Open full view"
+            >
+              <svg width="13" height="13" viewBox="0 0 13 13" fill="none" className="text-[var(--text-muted)] group-hover/full:text-blue-400 transition-colors duration-200">
+                {/* Rounded rect frame */}
+                <rect x="1" y="1" width="11" height="11" rx="2" stroke="currentColor" strokeWidth="1.2" fill="none" />
+                {/* Arrow pointing top-right — "open outward" */}
+                <path d="M5.5 7.5L9 4M9 4H6.5M9 4V6.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"
+                  className="transition-transform duration-200 origin-[9px_4px] group-hover/full:scale-110" />
+              </svg>
+            </button>
+          )}
+          {/* Split view — two panels */}
+          {onSplitView && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onSplitView(); }}
+              className="group/split p-1 rounded transition-all duration-150 hover:bg-white/[0.06] active:scale-90"
+              title="Open side-by-side"
+            >
+              <svg width="13" height="13" viewBox="0 0 13 13" fill="none" className="text-[var(--text-muted)] group-hover/split:text-indigo-400 transition-colors duration-200">
+                {/* Left panel — always visible */}
+                <rect x="1" y="1" width="5" height="11" rx="1.5" stroke="currentColor" strokeWidth="1.2" fill="none" />
+                {/* Right panel — slides in from right */}
+                <rect x="7" y="1" width="5" height="11" rx="1.5" stroke="currentColor" strokeWidth="1.2" fill="none"
+                  className="transition-all duration-250 ease-out translate-x-[3px] opacity-0 group-hover/split:translate-x-0 group-hover/split:opacity-100" />
+                {/* Placeholder line in left panel — visible at rest to suggest content */}
+                <line x1="2.5" y1="6.5" x2="4.5" y2="6.5" stroke="currentColor" strokeWidth="0.8" strokeLinecap="round" className="opacity-40" />
+              </svg>
+            </button>
+          )}
+        </div>
       )}
 
       {/* Demographics editor — portal so it isn't clipped by card width */}
