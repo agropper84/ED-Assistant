@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { processEncounter, streamProcessEncounter, parseClaudeResponse, ProcessedNote } from '@/lib/claude';
 import { getDataContext, getPatient, updatePatientFields } from '@/lib/data-layer';
-import { saveBillingRows, getStyleGuideFromSheet, upsertDiagnosisCode } from '@/lib/google-sheets';
-import { getAutoBilling, BillingItem } from '@/lib/billing';
+import { saveBillingRows, getStyleGuideFromSheet, upsertDiagnosisCode, getBillingConfig } from '@/lib/google-sheets';
+import { getSmartBilling, serializeBillingItems } from '@/lib/billing';
 import { withApiHandler, parseBody } from '@/lib/api-handler';
 import { processSchema } from '@/lib/schemas';
 import type { PromptTemplates } from '@/lib/settings';
@@ -155,27 +155,45 @@ export const POST = withApiHandler(
       }).catch(err => console.error('Failed to upsert diagnosis code:', err));
     }
 
-    // Auto-assign billing if not already set
+    // Auto-assign smart billing (Yukon only) if not already set
     if (!modifications && !patient.procCode) {
-      const timestamp = patient.timestamp || '';
-      let isWeekend = false;
-      if (sheetName) {
-        try {
-          const d = new Date(sheetName);
-          if (!isNaN(d.getTime())) {
-            const day = d.getDay();
-            isWeekend = day === 0 || day === 6;
+      try {
+        const billingConfig = await getBillingConfig(ctx.sheets);
+        const region = billingConfig.billingRegion || 'yukon';
+
+        if (region === 'yukon') {
+          const timestamp = patient.timestamp || '';
+          let isWeekend = false;
+          if (sheetName) {
+            try {
+              const d = new Date(sheetName);
+              if (!isNaN(d.getTime())) {
+                isWeekend = d.getDay() === 0 || d.getDay() === 6;
+              }
+            } catch {}
           }
-        } catch {}
+
+          const billingItems = getSmartBilling(result, timestamp, isWeekend);
+
+          // Save to Sheets (fire-and-forget mirror)
+          await saveBillingRows(ctx.sheets, rowIndex, billingItems, sheetName);
+
+          // Save to Drive JSON (primary — same path as manual billing via PATCH)
+          if (ctx.mode !== 'sheets' && ctx.drive) {
+            const serialized = serializeBillingItems(billingItems);
+            const dj = await import('@/lib/drive-json');
+            await dj.updatePatientInDrive(ctx.drive, sheetName, rowIndex, {
+              visitProcedure: serialized.visitProcedure,
+              procCode: serialized.procCode,
+              fee: serialized.fee,
+              unit: serialized.unit,
+              total: serialized.total,
+            } as any);
+          }
+        }
+      } catch (e) {
+        console.error('Auto-billing failed:', e);
       }
-
-      const autoItems = getAutoBilling(timestamp, isWeekend);
-      const billingItems: BillingItem[] = [
-        ...autoItems,
-        { code: '1100', description: 'ED Visit', fee: '50.90', unit: '1', category: 'visitType' },
-      ];
-
-      await saveBillingRows(ctx.sheets, rowIndex, billingItems, sheetName);
     }
 
     return NextResponse.json({ success: true, result });

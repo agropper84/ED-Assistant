@@ -406,6 +406,69 @@ export function getAutoBilling(timestamp: string, isWeekend: boolean): BillingIt
   return items;
 }
 
+/** Body systems for complexity scoring */
+const BODY_SYSTEMS: { name: string; keywords: RegExp }[] = [
+  { name: 'cardiovascular', keywords: /\b(heart|cardiac|chest\s*pain|cardio|murmur|jugular|jvp|pedal\s*edema|s1|s2|rhythm|pulse|cap\s*refill|peripheral\s*pulses)\b/i },
+  { name: 'respiratory', keywords: /\b(lung|breath|respiratory|wheez|crackle|rhonchi|air\s*entry|percussion|chest\s*(?:clear|auscult)|spo2|oxygen\s*sat|tachypne)\b/i },
+  { name: 'neurological', keywords: /\b(neuro|cranial\s*nerve|cn\s*[ivx]|motor|sensory|reflex|gait|cerebell|orient|gcs|glasgow|pupil|nystagmus|babinski|romberg|mental\s*status)\b/i },
+  { name: 'gastrointestinal', keywords: /\b(abdom|bowel|liver|spleen|tender|guarding|rebound|hepato|periton|rectal|nausea|vomit|diarr|gi\s*bleed|melena|hematemesis)\b/i },
+  { name: 'musculoskeletal', keywords: /\b(msk|musculoskeletal|joint|range\s*of\s*motion|rom|fracture|deformity|swelling|tenderness|crepitus|neurovascular|splint)\b/i },
+  { name: 'psychiatric', keywords: /\b(psych|mood|affect|suicid|ideation|hallucin|delusion|anxiet|depress|thought\s*(?:content|process)|insight|judgment|si\/hi)\b/i },
+  { name: 'skin', keywords: /\b(skin|rash|lesion|wound|laceration|erythema|cellulitis|abscess|ecchymos|petechiae|dermato|integument)\b/i },
+  { name: 'ent', keywords: /\b(ear|nose|throat|ent|tympan|pharyn|tonsil|neck|lymph|thyroid|oral\s*mucosa|tm\b|nasal)\b/i },
+  { name: 'genitourinary', keywords: /\b(genito|urin|bladder|kidney|renal|flank|cva\s*tender|suprapubic|vaginal|penile|scrotal|testicular)\b/i },
+  { name: 'eyes', keywords: /\b(eye|visual|acuity|pupil|conjunctiv|sclera|fundoscop|extraocular|eom|fluorescein)\b/i },
+];
+
+/** Procedure keyword → billing code mapping */
+const PROCEDURE_KEYWORDS: { keywords: RegExp; code: string; description: string; fee: string }[] = [
+  { keywords: /\b(ecg|ekg|electrocardiogram|12[- ]?lead)\b/i, code: '0117', description: 'ECG', fee: '6.50' },
+  { keywords: /\b(pocus|point[- ]?of[- ]?care\s*ultrasound|bedside\s*ultrasound)\b/i, code: '0089', description: 'POCUS', fee: '31.10' },
+  { keywords: /\b(lacerat|sutur(?:e[ds]?|ing)|repair(?:ed)?\s*(?:wound|lac))\b/i, code: '7030', description: 'Minor lac / FB', fee: '99.20' },
+  { keywords: /\b(abscess|incision\s*(?:and|&)\s*drainage|i\s*(?:&|and)\s*d)\b/i, code: '7026', description: 'Superficial abscess', fee: '50.00' },
+  { keywords: /\b(lumbar\s*puncture|\blp\b|spinal\s*tap)\b/i, code: '0750', description: 'Lumbar Puncture', fee: '59.60' },
+  { keywords: /\b(thoracentesis|pleural\s*tap)\b/i, code: '0751', description: 'Thoracentesis', fee: '59.60' },
+  { keywords: /\b(paracentesis|ascitic\s*tap)\b/i, code: '0752', description: 'Paracentesis', fee: '59.60' },
+  { keywords: /\b(joint\s*aspiration|arthrocentesis)\b/i, code: '0753', description: 'Joint aspiration', fee: '59.60' },
+  { keywords: /\b(splint|cast|immobili[sz])\b/i, code: '5581', description: 'Short arm / thumb spica', fee: '45.20' },
+];
+
+/**
+ * Smart billing: analyze the generated note to determine appropriate Yukon billing codes.
+ * Returns draft billing items that the user can review and revise.
+ */
+export function getSmartBilling(
+  result: { objective: string; assessmentPlan: string; hpi: string; diagnosis: string },
+  timestamp: string,
+  isWeekend: boolean,
+): BillingItem[] {
+  const items: BillingItem[] = [];
+  const noteText = `${result.objective}\n${result.assessmentPlan}\n${result.hpi}`;
+
+  // 1. Visit type: count body systems examined in the objective
+  const systemsFound = BODY_SYSTEMS.filter(s => s.keywords.test(result.objective)).length;
+  if (systemsFound >= 4) {
+    items.push({ code: '1101', description: 'Complete examination', fee: '111.50', unit: '1', category: 'visitType' });
+  } else {
+    items.push({ code: '1100', description: 'ED Visit', fee: '50.90', unit: '1', category: 'visitType' });
+  }
+
+  // 2. Time premiums
+  const timePremiums = getAutoBilling(timestamp, isWeekend);
+  items.push(...timePremiums);
+
+  // 3. Procedure/ECG detection
+  const addedCodes = new Set<string>();
+  for (const proc of PROCEDURE_KEYWORDS) {
+    if (proc.keywords.test(noteText) && !addedCodes.has(proc.code)) {
+      addedCodes.add(proc.code);
+      items.push({ code: proc.code, description: proc.description, fee: proc.fee, unit: '1', category: 'additional' });
+    }
+  }
+
+  return items;
+}
+
 /** Serialize billing items into newline-separated sheet columns */
 export function serializeBillingItems(items: BillingItem[]): {
   visitProcedure: string;
