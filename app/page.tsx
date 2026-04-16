@@ -1614,9 +1614,9 @@ export default function HomePage() {
                     </div>
                   </section>
                 ) : (
-                  /* Time sort: all patients in one list, ordered by status (pending → new → processed) */
+                  /* Time sort: chronological order regardless of status */
                   <div className={patientListClass}>
-                    {[...pendingPatients, ...newPatients, ...processedPatients].map((patient) =>
+                    {sortedPatients.map((patient) =>
                       batchMode && patient.status === 'pending' ? (
                         <div key={patient.rowIndex} className="flex items-start gap-2">
                           <button
