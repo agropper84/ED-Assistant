@@ -767,7 +767,7 @@ export const PatientCard = memo(function PatientCard({ patient, onClick, onDelet
       </button>
 
       {/* Right section: action buttons — all on hover */}
-      <div className="flex items-center gap-0.5 pr-1 flex-shrink-0 self-center opacity-0 group-hover/card:opacity-100 transition-all duration-200">
+      <div className="flex items-center gap-1.5 pr-1.5 flex-shrink-0 self-center opacity-0 group-hover/card:opacity-100 transition-all duration-200">
         {/* Inline time editor */}
         {editingTime && (
           <div className="flex items-center gap-1 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
@@ -832,28 +832,27 @@ export const PatientCard = memo(function PatientCard({ patient, onClick, onDelet
           </button>
         )}
 
-        {/* Full view — panel with expand arrows */}
+        {/* Full view — small panel grows into full-width panel */}
         {onNavigate && (
           <button
             onClick={(e) => { e.stopPropagation(); onNavigate(); }}
             className="group/full p-1.5 rounded-lg transition-all duration-200 active:scale-90"
             title="Open full view"
           >
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="text-[var(--text-muted)] group-hover/full:text-blue-500 dark:group-hover/full:text-blue-400 transition-colors duration-200">
-              {/* Panel outline */}
-              <rect x="2.5" y="2" width="11" height="12" rx="1.5" stroke="currentColor" strokeWidth="1.3" fill="none" />
-              {/* Top-left expand arrow */}
-              <path d="M5 5L2.5 2.5M2.5 2.5L2.5 4.5M2.5 2.5L4.5 2.5" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" strokeLinejoin="round"
-                className="transition-all duration-300 opacity-0 group-hover/full:opacity-80 translate-x-[1px] translate-y-[1px] group-hover/full:translate-x-0 group-hover/full:translate-y-0" />
-              {/* Top-right expand arrow */}
-              <path d="M11 5L13.5 2.5M13.5 2.5L13.5 4.5M13.5 2.5L11.5 2.5" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" strokeLinejoin="round"
-                className="transition-all duration-300 opacity-0 group-hover/full:opacity-80 -translate-x-[1px] translate-y-[1px] group-hover/full:translate-x-0 group-hover/full:translate-y-0" />
-              {/* Bottom-left expand arrow */}
-              <path d="M5 11L2.5 13.5M2.5 13.5L2.5 11.5M2.5 13.5L4.5 13.5" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" strokeLinejoin="round"
-                className="transition-all duration-300 opacity-0 group-hover/full:opacity-80 translate-x-[1px] -translate-y-[1px] group-hover/full:translate-x-0 group-hover/full:translate-y-0" />
-              {/* Bottom-right expand arrow */}
-              <path d="M11 11L13.5 13.5M13.5 13.5L13.5 11.5M13.5 13.5L11.5 13.5" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" strokeLinejoin="round"
-                className="transition-all duration-300 opacity-0 group-hover/full:opacity-80 -translate-x-[1px] -translate-y-[1px] group-hover/full:translate-x-0 group-hover/full:translate-y-0" />
+            <svg width="18" height="16" viewBox="0 0 18 16" fill="none" className="text-[var(--text-muted)] group-hover/full:text-blue-500 dark:group-hover/full:text-blue-400 transition-colors duration-200 overflow-visible">
+              {/* Small centered panel — default state */}
+              <rect x="4" y="3" width="10" height="10" rx="1.5" stroke="currentColor" strokeWidth="1.2" fill="none"
+                className="transition-all duration-300 ease-out group-hover/full:opacity-0" />
+              {/* Expanded full panel — appears on hover */}
+              <rect x="1" y="1" width="16" height="14" rx="2" stroke="currentColor" strokeWidth="1.2" fill="none"
+                className="transition-all duration-300 ease-out opacity-0 group-hover/full:opacity-100 scale-[0.7] group-hover/full:scale-100 origin-center" />
+              {/* Content lines inside — appear on hover to show it's a page */}
+              <line x1="4" y1="5" x2="10" y2="5" stroke="currentColor" strokeWidth="1" strokeLinecap="round"
+                className="transition-all duration-300 delay-100 opacity-0 group-hover/full:opacity-50" />
+              <line x1="4" y1="7.5" x2="14" y2="7.5" stroke="currentColor" strokeWidth="1" strokeLinecap="round"
+                className="transition-all duration-300 delay-150 opacity-0 group-hover/full:opacity-50" />
+              <line x1="4" y1="10" x2="12" y2="10" stroke="currentColor" strokeWidth="1" strokeLinecap="round"
+                className="transition-all duration-300 delay-200 opacity-0 group-hover/full:opacity-50" />
             </svg>
           </button>
         )}
