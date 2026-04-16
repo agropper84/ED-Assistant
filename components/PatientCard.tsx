@@ -767,7 +767,7 @@ export const PatientCard = memo(function PatientCard({ patient, onClick, onDelet
       </button>
 
       {/* Right section: action buttons — all on hover */}
-      <div className="flex items-center gap-0.5 pr-2 flex-shrink-0 self-center opacity-0 group-hover/card:opacity-100 transition-all duration-200">
+      <div className="flex items-center gap-0.5 pr-1 flex-shrink-0 self-center opacity-0 group-hover/card:opacity-100 transition-all duration-200">
         {/* Inline time editor */}
         {editingTime && (
           <div className="flex items-center gap-1 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
@@ -842,23 +842,22 @@ export const PatientCard = memo(function PatientCard({ patient, onClick, onDelet
             <ExternalLink className="w-3.5 h-3.5 text-[var(--text-muted)] group-hover/card:text-blue-500 dark:group-hover/card:text-blue-400 transition-colors" />
           </button>
         )}
-
       </div>
 
-      {/* Split view — two-panel icon at right edge */}
+      {/* Split view — full-height strip flush to right edge */}
       {onSplitView && (
         <button
           onClick={(e) => { e.stopPropagation(); onSplitView(); }}
-          className="group/split absolute right-2 top-1/2 -translate-y-1/2 z-20 p-1 rounded-lg cursor-pointer opacity-0 group-hover/card:opacity-100 transition-all duration-200 hover:bg-indigo-50/50 dark:hover:bg-indigo-900/20 active:scale-90"
+          className="group/split flex-shrink-0 self-stretch w-7 flex items-center justify-center rounded-r-2xl cursor-pointer opacity-0 group-hover/card:opacity-100 transition-all duration-200"
           title="Open side-by-side"
         >
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="text-[var(--text-muted)] group-hover/split:text-indigo-500 dark:group-hover/split:text-indigo-400 transition-colors duration-200">
-            {/* Left panel */}
-            <rect x="1" y="2" width="6" height="12" rx="1.5" stroke="currentColor" strokeWidth="1.3" fill="none" />
+          <svg width="18" height="24" viewBox="0 0 18 24" fill="none" className="text-[var(--text-muted)] group-hover/split:text-indigo-500 dark:group-hover/split:text-indigo-400 transition-colors duration-200">
+            {/* Left panel — always visible */}
+            <rect x="1" y="3" width="7" height="18" rx="1.5" stroke="currentColor" strokeWidth="1.2" fill="none" />
             {/* Right panel — slides in from right on hover */}
             <rect
-              x="9" y="2" width="6" height="12" rx="1.5" stroke="currentColor" strokeWidth="1.3" fill="none"
-              className="transition-all duration-300 translate-x-[3px] opacity-0 group-hover/split:translate-x-0 group-hover/split:opacity-100"
+              x="10" y="3" width="7" height="18" rx="1.5" stroke="currentColor" strokeWidth="1.2" fill="none"
+              className="transition-all duration-300 ease-out translate-x-[4px] opacity-0 group-hover/split:translate-x-0 group-hover/split:opacity-100"
             />
           </svg>
         </button>
