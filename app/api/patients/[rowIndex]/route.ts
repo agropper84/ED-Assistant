@@ -65,7 +65,6 @@ export async function PATCH(
     }
 
     if (_billingItems) {
-      // 1. Write billing to Drive JSON first (primary source of truth)
       const { serializeBillingItems } = await import('@/lib/billing');
       const serialized = serializeBillingItems(_billingItems);
       const billingFields: Record<string, string> = {
@@ -76,14 +75,15 @@ export async function PATCH(
         total: serialized.total,
         ...fields,
       };
+
+      // 1. Write to Drive JSON (card display)
       if (ctx.mode !== 'sheets' && ctx.drive) {
         const dj = await import('@/lib/drive-json');
         await dj.updatePatientInDrive(ctx.drive, _sheetName || '', rowIndex, billingFields as any);
       }
 
-      // 2. Mirror to Google Sheets (fire-and-forget — never blocks the response)
-      saveBillingRows(ctx.sheets, rowIndex, _billingItems, _sheetName || undefined)
-        .catch(e => console.warn('Sheets billing mirror failed:', e?.message));
+      // 2. Write to Google Sheets (billing submission — must succeed)
+      await saveBillingRows(ctx.sheets, rowIndex, _billingItems, _sheetName || undefined);
 
       // 3. Save any non-billing fields (comments, etc.)
       const nonBillingFields = { ...fields };

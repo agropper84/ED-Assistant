@@ -183,7 +183,7 @@ export const POST = withApiHandler(
 
           const billingItems = getSmartBilling(result, timestamp, isWeekend, noteStyle === 'complete-exam');
 
-          // 1. Write to Drive JSON first (primary source of truth)
+          // 1. Write to Drive JSON (card display)
           if (ctx.mode !== 'sheets' && ctx.drive) {
             const serialized = serializeBillingItems(billingItems);
             const dj = await import('@/lib/drive-json');
@@ -196,9 +196,8 @@ export const POST = withApiHandler(
             } as any);
           }
 
-          // 2. Mirror to Sheets (fire-and-forget — never blocks)
-          saveBillingRows(ctx.sheets, rowIndex, billingItems, sheetName)
-            .catch(e => console.warn('Sheets billing mirror failed:', e?.message));
+          // 2. Write to Google Sheets (billing submission — must succeed)
+          await saveBillingRows(ctx.sheets, rowIndex, billingItems, sheetName);
         }
       } catch (e) {
         console.error('Auto-billing failed:', e);
