@@ -43,6 +43,7 @@ export interface ProcessOptions {
   noteStyle?: 'standard' | 'comprehensive' | 'complete-exam';
   noteStyleInstructions?: string;
   customInstructions?: string;
+  coreOnly?: boolean;
 }
 
 // --- Retry logic for overloaded/rate-limited errors ---
@@ -393,13 +394,13 @@ PATIENT INFORMATION:
 ${dataSection}
 ${modificationSection}${styleSection}${styleInstruction}---
 
-${baseInstruction} You must provide ALL seven sections below.
+${baseInstruction} You must provide ALL sections below.
 
 IMPORTANT RULES:
 ${pt.generalRules}
 
 Respond in EXACTLY this format with these exact headers:
-
+${options?.coreOnly ? '' : `
 ===DDX===
 [${pt.ddx}]
 
@@ -411,7 +412,7 @@ Respond in EXACTLY this format with these exact headers:
 
 ===EVIDENCE===
 [${pt.evidence}]
-
+`}
 ===HPI===
 [${pt.hpi}${(() => {
     const ex = options?.styleExamples?.hpi;

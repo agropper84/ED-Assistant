@@ -77,6 +77,10 @@ export const POST = withApiHandler(
       pastDocs: patient.pastDocs,
     };
 
+    // Core-only mode: skip DDX/investigations/management/evidence to save cost
+    // Only generate those when explicitly requested via individual icon buttons
+    const coreOnly = !modifications;
+
     const processOptions = {
       modifications,
       existingOutput,
@@ -88,6 +92,7 @@ export const POST = withApiHandler(
       noteStyle: noteStyle as 'standard' | 'comprehensive' | 'complete-exam' | undefined,
       noteStyleInstructions,
       customInstructions,
+      coreOnly,
     };
 
     // --- Streaming path ---
@@ -134,16 +139,18 @@ export const POST = withApiHandler(
     const result = await processEncounter(patientData, processOptions);
 
     const fieldsToUpdate: Record<string, string> = {
-      ddx: result.ddx,
-      investigations: result.investigations,
-      management: result.management,
-      evidence: result.evidence,
       hpi: result.hpi,
       objective: result.objective,
       assessmentPlan: result.assessmentPlan,
       diagnosis: result.diagnosis,
       icd9: result.icd9,
       icd10: result.icd10,
+      ...(coreOnly ? {} : {
+        ddx: result.ddx,
+        investigations: result.investigations,
+        management: result.management,
+        evidence: result.evidence,
+      }),
     };
 
     await updatePatientFields(ctx, rowIndex, fieldsToUpdate, sheetName);
