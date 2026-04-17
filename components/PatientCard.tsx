@@ -314,7 +314,7 @@ export const PatientCard = memo(function PatientCard({ patient, onClick, onDelet
           {isPinned && onUnpin && (
             <span
               onClick={(e) => { e.stopPropagation(); e.preventDefault(); onUnpin(); }}
-              className="flex-shrink-0 text-[var(--text-muted)] hover:text-[var(--accent)] cursor-pointer transition-colors"
+              className="flex-shrink-0 text-red-400 hover:text-red-500 cursor-pointer transition-colors"
               title="Unpin — return to sort order"
             >
               <Pin className="w-3 h-3" style={{ transform: 'rotate(45deg)' }} />
