@@ -65,10 +65,7 @@ export async function PATCH(
     }
 
     if (_billingItems) {
-      // Multi-row billing save to Google Sheets (handles continuation rows)
-      await saveBillingRows(ctx.sheets, rowIndex, _billingItems, _sheetName || undefined);
-
-      // Sync billing fields to Drive JSON (if in dual/drive mode) without re-writing Sheets
+      // 1. Write billing to Drive JSON first (primary source of truth)
       const { serializeBillingItems } = await import('@/lib/billing');
       const serialized = serializeBillingItems(_billingItems);
       const billingFields: Record<string, string> = {
@@ -80,12 +77,15 @@ export async function PATCH(
         ...fields,
       };
       if (ctx.mode !== 'sheets' && ctx.drive) {
-        // Update Drive JSON directly (Sheets already handled by saveBillingRows)
         const dj = await import('@/lib/drive-json');
         await dj.updatePatientInDrive(ctx.drive, _sheetName || '', rowIndex, billingFields as any);
       }
 
-      // Save any non-billing fields (comments, etc.) to Sheets as well
+      // 2. Mirror to Google Sheets (fire-and-forget — never blocks the response)
+      saveBillingRows(ctx.sheets, rowIndex, _billingItems, _sheetName || undefined)
+        .catch(e => console.warn('Sheets billing mirror failed:', e?.message));
+
+      // 3. Save any non-billing fields (comments, etc.)
       const nonBillingFields = { ...fields };
       delete nonBillingFields.visitProcedure;
       delete nonBillingFields.procCode;
