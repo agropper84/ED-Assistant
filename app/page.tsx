@@ -1760,6 +1760,7 @@ export default function HomePage() {
         isOpen={!!dataModalPatient}
         onClose={() => setDataModalPatient(null)}
         onSaved={() => fetchPatients()}
+        onGenerated={() => { if (dataModalPatient) setPinnedRowIndex(dataModalPatient.rowIndex); fetchPatients(); }}
         onNavigate={() => dataModalPatient && navigateToPatient(dataModalPatient)}
         onRegenerate={() => fetchPatients()}
       />

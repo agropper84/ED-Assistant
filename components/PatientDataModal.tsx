@@ -38,9 +38,10 @@ interface PatientDataModalProps {
   onSaved: () => void;
   onNavigate: () => void;
   onRegenerate?: () => void;
+  onGenerated?: () => void;
 }
 
-export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate, onRegenerate }: PatientDataModalProps) {
+export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate, onRegenerate, onGenerated }: PatientDataModalProps) {
   const [noteStyle, setNoteStyle] = useState<'standard' | 'comprehensive' | 'complete-exam'>('standard');
   const [customInstructions, setCustomInstructions] = useState('');
   const [showCustomInstructions, setShowCustomInstructions] = useState(false);
@@ -56,7 +57,7 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
   const [generating, setGenerating] = useState(false);
   const [userPhrases, setUserPhrases] = useState<string[]>([]);
   const [showLiveTranscript, setShowLiveTranscript] = useState(true);
-  const [micSensitivity, setMicSensitivity] = useState(2);
+  const [micSensitivity, setMicSensitivity] = useState(3); // default high for encounters
   const [refiningFields, setRefiningFields] = useState<Set<string>>(new Set());
   const setFieldRefining = (field: string, refining: boolean) => {
     setRefiningFields(prev => {
@@ -526,13 +527,8 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
   return (
     <div className="fixed inset-0 modal-overlay z-50 flex items-end sm:items-center justify-center">
       <div className="relative w-full sm:max-w-lg animate-slideUp">
-      {/*
-        Folder tabs — sit outside the right edge of the modal card.
-        Each tab is a rounded rectangle that protrudes to the right.
-        The active tab visually connects to the card (no left border, same bg).
-        Positioned to straddle the card's right edge.
-      */}
-      <div className="hidden sm:flex flex-col absolute z-50" style={{ right: '-28px', top: '56px' }}>
+      {/* Tabs anchored to the modal's right edge, protruding outward */}
+      <div className="hidden sm:flex flex-col absolute z-50 right-0 translate-x-full" style={{ top: '56px' }}>
         {/* PMHx tab */}
         <button
           onClick={() => {
@@ -735,7 +731,7 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
                     value={micSensitivity}
                     onChange={(e) => setMicSensitivity(parseInt(e.target.value))}
                     className="w-12 h-1 accent-blue-500 cursor-pointer"
-                    title={micSensitivity === 1 ? 'Low — close speaker' : micSensitivity === 2 ? 'Medium — balanced' : 'High — room-wide'}
+                    title={micSensitivity === 1 ? 'Low — filtered, close speaker only' : micSensitivity === 2 ? 'Medium — balanced pickup' : 'High — raw audio, captures all voices in room'}
                   />
                   <span className="text-[9px] text-[var(--text-muted)] w-5">{micSensitivity === 1 ? 'Lo' : micSensitivity === 2 ? 'Mid' : 'Hi'}</span>
                 </div>
@@ -749,10 +745,14 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
                   <span className="text-[10px] text-[var(--text-muted)]">Live text</span>
                 </label>
               </div>
+              {/* iOS positioning tip */}
+              {typeof navigator !== 'undefined' && /iPad|iPhone|iPod/.test(navigator.userAgent) && micSensitivity >= 2 && (
+                <p className="text-[9px] text-amber-500/70 mt-0.5">Tip: Position device between you and the patient for best pickup</p>
+              )}
             </div>
             <SubmissionTags field="transcript" />
             <div className="relative">
-              {transcript && /^(Speaker \d|Dr:|Pt:|Family:)/m.test(transcript) && !refiningFields.has('transcript') ? (
+              {transcript && /^(Speaker \d|Dr[.:]|Pt[.:]|Patient:|Family:|Physician:|Doctor:)/im.test(transcript) && !refiningFields.has('transcript') ? (
                 <div
                   className="w-full h-28 p-3 pr-16 border border-[var(--input-border)] rounded-xl text-sm overflow-y-auto bg-[var(--input-bg)] cursor-text"
                   onClick={(e) => {
@@ -761,8 +761,8 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
                   }}
                 >
                   {transcript.split('\n').map((line, i) => {
-                    const isDr = /^(Speaker 1:|Dr:)/i.test(line);
-                    const isPt = /^(Speaker 2:|Pt:|Family:)/i.test(line);
+                    const isDr = /^(Speaker 1:|Dr[.:]|Physician:|Doctor:)/i.test(line);
+                    const isPt = /^(Speaker [2-9]:|Pt[.:]|Patient:|Family:)/i.test(line);
                     return (
                       <div key={i} className={`leading-relaxed ${isDr ? 'text-blue-400' : isPt ? 'text-amber-400' : 'text-[var(--text-primary)]'}`}>
                         {line || '\u00A0'}
@@ -776,14 +776,14 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
                 onChange={(e) => setTranscript(e.target.value)}
                 onBlur={(e) => {
                   const prev = e.currentTarget.previousElementSibling as HTMLElement;
-                  if (prev && /^(Speaker \d|Dr:|Pt:|Family:)/m.test(transcript)) {
+                  if (prev && /^(Speaker \d|Dr[.:]|Pt[.:]|Patient:|Family:|Physician:|Doctor:)/im.test(transcript)) {
                     prev.style.display = 'block';
                     e.currentTarget.style.display = 'none';
                   }
                 }}
                 placeholder="Audio transcript or dictation..."
                 className={`w-full h-28 p-3 pr-16 border border-[var(--input-border)] rounded-xl text-sm resize-y focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] placeholder:text-[var(--text-muted)] transition-colors duration-300 ${refiningFields.has('transcript') ? 'text-[var(--text-muted)] italic' : 'text-[var(--text-primary)]'}`}
-                style={transcript && /^(Speaker \d|Dr:|Pt:|Family:)/m.test(transcript) && !refiningFields.has('transcript') ? { display: 'none' } : undefined}
+                style={transcript && /^(Speaker \d|Dr[.:]|Pt[.:]|Patient:|Family:|Physician:|Doctor:)/im.test(transcript) && !refiningFields.has('transcript') ? { display: 'none' } : undefined}
               />
               {refiningFields.has('transcript') && (
                 <div className="absolute bottom-2 left-3 text-[10px] text-blue-400 font-medium animate-pulse">Refining transcription...</div>
@@ -794,13 +794,14 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
                   showUpload
                   sensitivity={micSensitivity}
                   onTranscript={(text) => {
-                    const base = preRecordTranscript || transcript;
+                    const base = preRecordTranscript || '';
                     setTranscript(base ? `${base}\n\n${text}` : text);
                     setFieldRefining('transcript', false);
                   }}
                   onRecordingStart={() => setPreRecordTranscript(transcript)}
                   onInterimTranscript={showLiveTranscript ? (text) => {
-                    setTranscript(preRecordTranscript ? `${preRecordTranscript}\n\n${text}` : text);
+                    const base = preRecordTranscript || '';
+                    setTranscript(base ? `${base}\n\n${text}` : text);
                   } : undefined}
                   onProcessingChange={(p) => setFieldRefining('transcript', p)}
                 />
@@ -1086,7 +1087,7 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ rowIndex: patient.rowIndex, sheetName: patient.sheetName }),
                       }).catch(() => {});
-                      onSaved();
+                      (onGenerated || onSaved)();
                       onClose();
                     }
                   } catch (error) {
