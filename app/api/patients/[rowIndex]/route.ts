@@ -65,27 +65,10 @@ export async function PATCH(
     }
 
     if (_billingItems) {
-      const { serializeBillingItems } = await import('@/lib/billing');
-      const serialized = serializeBillingItems(_billingItems);
-      const billingFields: Record<string, string> = {
-        visitProcedure: serialized.visitProcedure,
-        procCode: serialized.procCode,
-        fee: serialized.fee,
-        unit: serialized.unit,
-        total: serialized.total,
-        ...fields,
-      };
-
-      // 1. Write to Drive JSON (card display)
-      if (ctx.mode !== 'sheets' && ctx.drive) {
-        const dj = await import('@/lib/drive-json');
-        await dj.updatePatientInDrive(ctx.drive, _sheetName || '', rowIndex, billingFields as any);
-      }
-
-      // 2. Write to Google Sheets (billing submission — must succeed)
+      // Billing is Sheets-only (no Drive JSON) — Sheets is the source of truth for billing
       await saveBillingRows(ctx.sheets, rowIndex, _billingItems, _sheetName || undefined);
 
-      // 3. Save any non-billing fields (comments, etc.)
+      // Save any non-billing fields (comments, etc.)
       const nonBillingFields = { ...fields };
       delete nonBillingFields.visitProcedure;
       delete nonBillingFields.procCode;

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { processEncounter, streamProcessEncounter, parseClaudeResponse, ProcessedNote } from '@/lib/claude';
 import { getDataContext, getPatient, updatePatientFields } from '@/lib/data-layer';
 import { saveBillingRows, getStyleGuideFromSheet, upsertDiagnosisCode, getBillingConfig } from '@/lib/google-sheets';
-import { getSmartBilling, serializeBillingItems } from '@/lib/billing';
+import { getSmartBilling } from '@/lib/billing';
 import { withApiHandler, parseBody } from '@/lib/api-handler';
 import { processSchema } from '@/lib/schemas';
 import type { PromptTemplates } from '@/lib/settings';
@@ -183,20 +183,7 @@ export const POST = withApiHandler(
 
           const billingItems = getSmartBilling(result, timestamp, isWeekend, noteStyle === 'complete-exam');
 
-          // 1. Write to Drive JSON (card display)
-          if (ctx.mode !== 'sheets' && ctx.drive) {
-            const serialized = serializeBillingItems(billingItems);
-            const dj = await import('@/lib/drive-json');
-            await dj.updatePatientInDrive(ctx.drive, sheetName, rowIndex, {
-              visitProcedure: serialized.visitProcedure,
-              procCode: serialized.procCode,
-              fee: serialized.fee,
-              unit: serialized.unit,
-              total: serialized.total,
-            } as any);
-          }
-
-          // 2. Write to Google Sheets (billing submission — must succeed)
+          // Billing is Sheets-only — Sheets is the source of truth for billing
           await saveBillingRows(ctx.sheets, rowIndex, billingItems, sheetName);
         }
       } catch (e) {

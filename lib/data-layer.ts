@@ -77,10 +77,29 @@ export async function getPatients(ctx: DataContext, sheetName: string): Promise<
     return gs.getPatients(ctx.sheets, sheetName);
   }
 
-  // Drive is the sole source of truth — no Sheets fallback
+  // Drive for clinical data, Sheets for billing
   try {
     const dj = await import('./drive-json');
-    return await dj.getPatientsFromDrive(ctx.drive, sheetName);
+    const patients = await dj.getPatientsFromDrive(ctx.drive, sheetName);
+
+    // Overlay billing from Sheets (source of truth for billing)
+    try {
+      const gs = await import('./google-sheets');
+      const sheetsPatients = await gs.getPatients(ctx.sheets, sheetName);
+      const billingMap = new Map(sheetsPatients.map(p => [p.rowIndex, p]));
+      for (const patient of patients) {
+        const sp = billingMap.get(patient.rowIndex);
+        if (sp) {
+          patient.visitProcedure = sp.visitProcedure || '';
+          patient.procCode = sp.procCode || '';
+          patient.fee = sp.fee || '';
+          patient.unit = sp.unit || '';
+          patient.total = sp.total || '';
+        }
+      }
+    } catch {}
+
+    return patients;
   } catch {
     return [];
   }
@@ -96,10 +115,26 @@ export async function getPatient(ctx: DataContext, rowIndex: number, sheetName: 
     return gs.getPatient(ctx.sheets, rowIndex, sheetName);
   }
 
-  // Drive is the sole source of truth — no Sheets fallback
+  // Drive for clinical data, Sheets for billing
   try {
     const dj = await import('./drive-json');
-    return await dj.getPatientFromDrive(ctx.drive, rowIndex, sheetName);
+    const patient = await dj.getPatientFromDrive(ctx.drive, rowIndex, sheetName);
+    if (!patient) return null;
+
+    // Overlay billing from Sheets (source of truth for billing)
+    try {
+      const gs = await import('./google-sheets');
+      const sp = await gs.getPatient(ctx.sheets, rowIndex, sheetName);
+      if (sp) {
+        patient.visitProcedure = sp.visitProcedure || '';
+        patient.procCode = sp.procCode || '';
+        patient.fee = sp.fee || '';
+        patient.unit = sp.unit || '';
+        patient.total = sp.total || '';
+      }
+    } catch {}
+
+    return patient;
   } catch {
     return null;
   }
