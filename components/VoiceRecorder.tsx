@@ -11,52 +11,70 @@ function getTranscribeEndpoint(api: TranscribeAPI | string): string {
 }
 
 function convertSpokenPunctuation(text: string): string {
-  return text
-    .replace(/(?<!\bmenstrual)\s*\b(?:period|full stop)\b(?!\s+of)\s*/gi, '. ')
-    .replace(/\s*\bcomma\b\s*/gi, ', ')
-    .replace(/\s*\b(?:question mark)\b\s*/gi, '? ')
-    .replace(/\s*\b(?:exclamation (?:mark|point))\b\s*/gi, '! ')
-    .replace(/\s*\bcolon\b\s*/gi, ': ')
-    .replace(/\s*\bsemicolon\b\s*/gi, '; ')
-    .replace(/\s*\b(?:dash|hyphen)\b\s*/gi, ' — ')
-    .replace(/\s*\b(?:new line|newline|next line)\b\s*/gi, '\n')
-    .replace(/\s*\b(?:new paragraph|next paragraph)\b\s*/gi, '\n\n')
-    .replace(/([.!?]\s+)([a-z])/g, (_, punct, letter) => punct + letter.toUpperCase())
-    .replace(/ {2,}/g, ' ')
-    .trim();
+  let t = text;
+
+  // Step 1: Strip commas/periods between adjacent punctuation commands
+  // iOS Web Speech inserts commas/periods during pauses and auto-punctuates
+  t = t.replace(/\b(period|full stop|question mark|exclamation (?:mark|point))[.,;,\s]+(?=new (?:line|paragraph)|next (?:line|paragraph)|line break|paragraph break)/gi, '$1 ');
+
+  // Step 2a: Compound patterns — word form (sentence-ender + line break)
+  t = t.replace(/\s*(?<!\bmenstrual )\b(?:period|full stop)\b(?!\s+of)\s*\b(?:new paragraph|next paragraph|paragraph break)\b\s*/gi, '.\n\n');
+  t = t.replace(/\s*(?<!\bmenstrual )\b(?:period|full stop)\b(?!\s+of)\s*\b(?:new line|newline|next line|line break)\b\s*/gi, '.\n');
+  t = t.replace(/\s*\b(?:question mark)\b\s*\b(?:new paragraph|next paragraph|paragraph break)\b\s*/gi, '?\n\n');
+  t = t.replace(/\s*\b(?:question mark)\b\s*\b(?:new line|newline|next line|line break)\b\s*/gi, '?\n');
+
+  // Step 2b: Already-punctuated form — iOS converts "period" to "." automatically
+  t = t.replace(/([.!?])\s*\b(?:new paragraph|next paragraph|paragraph break)\b[.!?]?\s*/gi, '$1\n\n');
+  t = t.replace(/([.!?])\s*\b(?:new line|newline|next line|line break)\b[.!?]?\s*/gi, '$1\n');
+
+  // Step 3: Individual punctuation commands
+  t = t.replace(/\s*(?<!\bmenstrual )\b(?:period|full stop)\b(?!\s+of)\s*/gi, '. ');
+  t = t.replace(/\s*\b(?:question mark)\b\s*/gi, '? ');
+  t = t.replace(/\s*\b(?:exclamation (?:mark|point))\b\s*/gi, '! ');
+  t = t.replace(/\s*\b(?:ellipsis|dot dot dot)\b\s*/gi, '... ');
+  t = t.replace(/\s*\bcomma\b\s*/gi, ', ');
+  t = t.replace(/\s*\bcolon\b\s*/gi, ': ');
+  t = t.replace(/\s*\bsemicolon\b\s*/gi, '; ');
+  t = t.replace(/\s*\b(?:dash|em dash|long dash)\b\s*/gi, ' — ');
+  t = t.replace(/\s*\b(?:hyphen|short dash)\b\s*/gi, '-');
+  t = t.replace(/\s*\b(?:forward slash|slash)\b\s*/gi, '/');
+  t = t.replace(/\s*\b(?:open paren(?:thesis)?|left paren(?:thesis)?)\b\s*/gi, ' (');
+  t = t.replace(/\s*\b(?:close paren(?:thesis)?|right paren(?:thesis)?|end paren(?:thesis)?)\b\s*/gi, ') ');
+  t = t.replace(/\s*\b(?:new paragraph|next paragraph|paragraph break)\b\s*/gi, '\n\n');
+  t = t.replace(/\s*\b(?:new line|newline|next line|line break)\b\s*/gi, '\n');
+  t = t.replace(/\s*\b(?:bullet point|bullet)\b\s*/gi, '\n• ');
+  t = t.replace(/\s*\b(?:number sign|hashtag|pound sign)\b\s*/gi, '#');
+  t = t.replace(/\s*\b(?:percent sign|percent)\b(?!\s*(?:of|or|and|is|was|were|are|in|at|from))\s*/gi, '% ');
+  t = t.replace(/\s*\b(?:degree|degrees)\b\s*/gi, '° ');
+
+  // Step 4: Cleanup
+  t = t.replace(/,\s*([.!?;:\n])/g, '$1');
+  t = t.replace(/([.!?]\s+)([a-z])/g, (_, p, l) => p + l.toUpperCase());
+  t = t.replace(/(\n\s*)([a-z])/g, (_, n, l) => n + l.toUpperCase());
+  t = t.replace(/ {2,}/g, ' ');
+  return t.trim();
 }
 
 type RecorderState = 'idle' | 'recording' | 'transcribing' | 'error';
 
 /** Build audio constraints based on mode and sensitivity.
- *
- * ENCOUNTER MODE: Must capture TWO speakers at different distances.
- * - Echo cancellation MUST be OFF — it's designed for calls (removes "other party" audio
- *   from speakers). In face-to-face encounters, it treats the patient's voice as echo
- *   and actively suppresses it. This is the #1 cause of missing patient speech.
- * - Noise suppression should be OFF at high sensitivity to capture quiet patient.
- * - Auto gain control OFF at high sensitivity — AGC optimizes for the dominant (close)
- *   speaker and can compress the quieter patient voice further.
- *
- * DICTATION MODE: Single close speaker — optimize for clarity.
- */
+ * Encounter mode uses a DynamicsCompressor+Gain chain (built separately) to
+ * boost quiet patient speech. Echo cancellation ON with the gain chain works
+ * well — the gain compensates for any AEC attenuation. */
 function buildAudioConstraints(mode: string, sensitivity: number): MediaTrackConstraints {
   const isEncounter = mode === 'encounter';
 
   if (isEncounter) {
-    // Encounter: capture everything in the room.
-    // Use 'exact' for echo cancellation — iOS Safari ignores 'ideal: false'
-    // and applies its own AEC which suppresses the patient's voice.
     return {
       sampleRate: { ideal: 48000 },
       channelCount: { ideal: 1 },
-      echoCancellation: false,                        // MUST be off — suppresses patient voice
-      noiseSuppression: sensitivity <= 1 ? true : false, // only on at Lo
-      autoGainControl: sensitivity <= 1 ? true : false,  // only on at Lo
+      autoGainControl: true,
+      noiseSuppression: sensitivity <= 1,
+      echoCancellation: sensitivity <= 2, // ON at Lo/Mid, OFF at Hi for max raw pickup
     };
   }
 
-  // Dictation: single speaker, optimize for clarity
+  // Dictation: single speaker
   return {
     sampleRate: { ideal: 48000 },
     channelCount: { ideal: 1 },
@@ -66,21 +84,62 @@ function buildAudioConstraints(mode: string, sensitivity: number): MediaTrackCon
   };
 }
 
+/** Sensitivity → audio processing settings for the compressor/gain chain.
+ * Higher sensitivity = more aggressive compression + higher gain to pick up quiet speakers. */
+function sensitivitySettings(sensitivity: number): { gain: number; threshold: number; ratio: number; knee: number; release: number } {
+  if (sensitivity <= 1) return { gain: 1.0, threshold: -40, ratio: 8, knee: 40, release: 0.25 };   // Lo: light
+  if (sensitivity === 2) return { gain: 2.0, threshold: -50, ratio: 12, knee: 40, release: 0.25 };  // Mid: moderate
+  if (sensitivity === 3) return { gain: 3.5, threshold: -55, ratio: 16, knee: 30, release: 0.2 };   // Hi: aggressive
+  return { gain: 5.0, threshold: -60, ratio: 20, knee: 25, release: 0.15 };                          // Max (4+): pocket-mode level
+}
+
+/** Create a gain-boosted audio stream for recording.
+ * DynamicsCompressor amplifies quiet speech (patient at distance) while
+ * preventing loud speech (physician close to mic) from clipping. */
+function createBoostedStream(stream: MediaStream, sensitivity: number): { boostedStream: MediaStream; ctx: AudioContext } {
+  const settings = sensitivitySettings(sensitivity);
+  const ctx = new AudioContext({ sampleRate: 48000 });
+  const source = ctx.createMediaStreamSource(stream);
+
+  const compressor = ctx.createDynamicsCompressor();
+  compressor.threshold.value = settings.threshold;
+  compressor.knee.value = settings.knee;
+  compressor.ratio.value = settings.ratio;
+  compressor.attack.value = 0;        // Instant attack — no quiet speech lost
+  compressor.release.value = settings.release;
+
+  const gain = ctx.createGain();
+  gain.gain.value = settings.gain;
+
+  source.connect(compressor);
+  compressor.connect(gain);
+
+  const dest = ctx.createMediaStreamDestination();
+  gain.connect(dest);
+
+  return { boostedStream: dest.stream, ctx };
+}
+
 interface VoiceRecorderProps {
   onTranscript: (text: string) => void;
   onInterimTranscript?: (text: string) => void;
   onRecordingStart?: () => void;
+  onRecordingStop?: () => void;
   /** Called with true when raw STT text is shown (being refined), false when final text arrives */
   onProcessingChange?: (processing: boolean) => void;
+  /** Called with audio data during recording for external visualization.
+   * level: 0-1 overall volume. lowFreq/highFreq: 0-1 energy in low/high bands.
+   * speakerHint: 'near' (loud, likely physician) | 'far' (quiet, likely patient) | 'silent' */
+  onAudioLevel?: (data: { level: number; lowFreq: number; highFreq: number; speakerHint: 'near' | 'far' | 'silent' }) => void;
   disabled?: boolean;
   mode?: 'encounter' | 'dictation';
   showUpload?: boolean;
-  /** Mic sensitivity: 1=low (close speaker), 2=medium (default), 3=high (room-wide) */
+  /** Mic sensitivity: 1=low (close speaker), 2=medium (default), 3=high (room-wide), 4=max */
   sensitivity?: number;
 }
 
 export function VoiceRecorder({
-  onTranscript, onInterimTranscript, onRecordingStart, onProcessingChange,
+  onTranscript, onInterimTranscript, onRecordingStart, onRecordingStop, onProcessingChange, onAudioLevel,
   disabled, mode = 'dictation', showUpload, sensitivity = 2,
 }: VoiceRecorderProps) {
   const [state, setState] = useState<RecorderState>('idle');
@@ -93,6 +152,7 @@ export function VoiceRecorder({
   const recognitionRef = useRef<any>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
+  const boostCtxRef = useRef<AudioContext | null>(null); // Encounter gain-boost AudioContext
   const pressActiveRef = useRef(false);      // true from pointerDown to pointerUp
   const toggleModeRef = useRef(false);       // true when in click-to-stop non-medicalize mode
   const mimeTypeRef = useRef('');
@@ -106,6 +166,11 @@ export function VoiceRecorder({
   const refineCountRef = useRef(0);           // Number of segments refined
   const pauseTimerRef = useRef<NodeJS.Timeout | null>(null); // Detects speech pause
   const lastSpeechRef = useRef(0);            // Timestamp of last speech event
+
+  // Deepgram WebSocket streaming refs
+  const dgSocketRef = useRef<WebSocket | null>(null);
+  const dgProcessorRef = useRef<ScriptProcessorNode | null>(null);
+  const dgContextRef = useRef<AudioContext | null>(null);
 
   const [isHolding, setIsHolding] = useState(false);
   const isHoldingRef = useRef(false);
@@ -127,6 +192,10 @@ export function VoiceRecorder({
   onTranscriptRef.current = onTranscript;
   const onProcessingRef = useRef(onProcessingChange);
   onProcessingRef.current = onProcessingChange;
+  const onAudioLevelRef = useRef(onAudioLevel);
+  onAudioLevelRef.current = onAudioLevel;
+  const onRecordingStopRef = useRef(onRecordingStop);
+  onRecordingStopRef.current = onRecordingStop;
 
   const useStreaming = mode === 'dictation' && !!onInterimTranscript;
 
@@ -145,6 +214,9 @@ export function VoiceRecorder({
       if (recognitionRef.current) { try { recognitionRef.current.abort(); } catch {} }
       if (holdTimerRef.current) clearTimeout(holdTimerRef.current);
       if (refineTimerRef.current) clearInterval(refineTimerRef.current);
+      if (dgSocketRef.current) { try { dgSocketRef.current.close(); } catch {} }
+      if (dgProcessorRef.current) { try { dgProcessorRef.current.disconnect(); } catch {} }
+      if (dgContextRef.current) { try { dgContextRef.current.close(); } catch {} }
       if (keepaliveAudioRef.current) { keepaliveAudioRef.current.pause(); keepaliveAudioRef.current = null; }
     };
   }, []);
@@ -182,14 +254,50 @@ export function VoiceRecorder({
 
   const getFileExtension = (mime: string): string => mime.includes('mp4') ? 'mp4' : 'webm';
 
-  // --- Audio level viz ---
+  // --- Audio level viz with frequency analysis for speaker detection ---
   const startAudioLevelViz = useCallback((analyser: AnalyserNode) => {
-    const dataArray = new Float32Array(analyser.fftSize);
+    const timeData = new Float32Array(analyser.fftSize);
+    const freqData = new Uint8Array(analyser.frequencyBinCount);
+    // Track baseline volume to distinguish near/far speakers
+    let baselineLevel = 0;
+    let sampleCount = 0;
+
     const tick = () => {
-      analyser.getFloatTimeDomainData(dataArray);
+      // Time domain for overall level
+      analyser.getFloatTimeDomainData(timeData);
       let sum = 0;
-      for (let i = 0; i < dataArray.length; i++) sum += dataArray[i] * dataArray[i];
-      setAudioLevel(Math.min(1, Math.sqrt(sum / dataArray.length) / 0.12));
+      for (let i = 0; i < timeData.length; i++) sum += timeData[i] * timeData[i];
+      const level = Math.min(1, Math.sqrt(sum / timeData.length) / 0.12);
+      setAudioLevel(level);
+
+      // Frequency domain for speaker characteristics
+      analyser.getByteFrequencyData(freqData);
+      const binCount = freqData.length;
+      const lowEnd = Math.floor(binCount * 0.15);  // ~0-750Hz (fundamental voice range)
+      const midStart = Math.floor(binCount * 0.15);
+      const midEnd = Math.floor(binCount * 0.4);    // ~750-2000Hz (voice formants)
+      const highStart = Math.floor(binCount * 0.4);
+      const highEnd = Math.floor(binCount * 0.7);   // ~2000-3500Hz (sibilants, clarity)
+
+      let lowSum = 0, highSum = 0;
+      for (let i = 0; i < lowEnd; i++) lowSum += freqData[i];
+      for (let i = highStart; i < highEnd; i++) highSum += freqData[i];
+      const lowFreq = Math.min(1, (lowSum / lowEnd) / 128);
+      const highFreq = Math.min(1, (highSum / (highEnd - highStart)) / 128);
+
+      // Update running baseline (smoothed average of speech levels)
+      if (level > 0.05) {
+        sampleCount++;
+        baselineLevel = baselineLevel + (level - baselineLevel) / Math.min(sampleCount, 50);
+      }
+
+      // Speaker hint based on volume relative to baseline
+      let speakerHint: 'near' | 'far' | 'silent' = 'silent';
+      if (level > 0.05) {
+        speakerHint = level > baselineLevel * 0.8 ? 'near' : 'far';
+      }
+
+      onAudioLevelRef.current?.({ level, lowFreq, highFreq, speakerHint });
       animFrameRef.current = requestAnimationFrame(tick);
     };
     animFrameRef.current = requestAnimationFrame(tick);
@@ -204,6 +312,121 @@ export function VoiceRecorder({
   const stopWebSpeech = useCallback(() => {
     if (recognitionRef.current) { try { recognitionRef.current.abort(); } catch {} recognitionRef.current = null; }
   }, []);
+
+  // --- Stop Deepgram WebSocket streaming ---
+  const stopDeepgramStream = useCallback(() => {
+    if (dgProcessorRef.current) { try { dgProcessorRef.current.disconnect(); } catch {} dgProcessorRef.current = null; }
+    if (dgContextRef.current) { try { dgContextRef.current.close(); } catch {} dgContextRef.current = null; }
+    if (dgSocketRef.current) {
+      try {
+        if (dgSocketRef.current.readyState === WebSocket.OPEN) {
+          dgSocketRef.current.send(JSON.stringify({ type: 'CloseStream' }));
+        }
+        dgSocketRef.current.close();
+      } catch {}
+      dgSocketRef.current = null;
+    }
+  }, []);
+
+  // --- Start Deepgram WebSocket streaming for real-time live text ---
+  const startDeepgramStream = useCallback(async (audioStream: MediaStream, isEncounterMode: boolean) => {
+    try {
+      // Get API key from server
+      const tokenRes = await fetch('/api/deepgram-token');
+      if (!tokenRes.ok) return false;
+      const { key } = await tokenRes.json();
+      if (!key) return false;
+
+      // Build WebSocket URL with params
+      const params = new URLSearchParams({
+        model: 'nova-3-medical',
+        language: 'en',
+        smart_format: 'true',
+        punctuate: 'true',
+        interim_results: 'true',
+        filler_words: 'false',
+        vad_events: 'true',
+        encoding: 'linear16',
+        sample_rate: '16000',
+        channels: '1',
+      });
+      if (isEncounterMode) {
+        params.set('diarize', 'true');
+      }
+
+      const ws = new WebSocket(`wss://api.deepgram.com/v1/listen?${params.toString()}`, ['token', key]);
+      dgSocketRef.current = ws;
+
+      let finalTranscript = '';
+
+      ws.onmessage = (event) => {
+        if (isHoldingRef.current) return; // suppress during medicalize hold
+
+        try {
+          const data = JSON.parse(event.data);
+          if (data.type === 'Results' && data.channel?.alternatives?.[0]) {
+            const alt = data.channel.alternatives[0];
+            const text = alt.transcript || '';
+            const isFinal = data.is_final;
+
+            if (isFinal && text) {
+              finalTranscript += (finalTranscript ? ' ' : '') + text;
+              // Convert spoken punctuation commands ("period" → ".", "comma" → ",", etc.)
+              const converted = convertSpokenPunctuation(finalTranscript);
+              accumulatedTextRef.current = converted;
+              onInterimRef.current?.(converted);
+              onProcessingRef.current?.(false);
+            } else if (text) {
+              // Interim result — show converted final + raw interim tail
+              const convertedFinal = finalTranscript ? convertSpokenPunctuation(finalTranscript) : '';
+              const display = convertedFinal ? `${convertedFinal} ${text}` : text;
+              accumulatedTextRef.current = display;
+              onInterimRef.current?.(display);
+              onProcessingRef.current?.(true);
+            }
+          }
+        } catch {}
+      };
+
+      ws.onerror = () => {};
+      ws.onclose = () => { dgSocketRef.current = null; };
+
+      // Wait for connection
+      await new Promise<void>((resolve, reject) => {
+        ws.onopen = () => resolve();
+        const timeout = setTimeout(() => reject(new Error('WS timeout')), 5000);
+        const origClose = ws.onclose;
+        ws.onclose = (e) => { clearTimeout(timeout); reject(new Error('WS closed')); if (origClose) (origClose as any)(e); };
+      });
+
+      // Create AudioContext to convert mic stream to 16-bit PCM for Deepgram
+      const ctx = new AudioContext({ sampleRate: 16000 });
+      dgContextRef.current = ctx;
+      const source = ctx.createMediaStreamSource(audioStream);
+      const processor = ctx.createScriptProcessor(4096, 1, 1);
+      dgProcessorRef.current = processor;
+
+      processor.onaudioprocess = (e) => {
+        if (ws.readyState !== WebSocket.OPEN) return;
+        // Convert Float32 to Int16 PCM
+        const float32 = e.inputBuffer.getChannelData(0);
+        const int16 = new Int16Array(float32.length);
+        for (let i = 0; i < float32.length; i++) {
+          const s = Math.max(-1, Math.min(1, float32[i]));
+          int16[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+        }
+        ws.send(int16.buffer);
+      };
+
+      source.connect(processor);
+      processor.connect(ctx.destination); // required for processing to run
+
+      return true;
+    } catch {
+      stopDeepgramStream();
+      return false;
+    }
+  }, [stopDeepgramStream]);
 
   // --- Start Web Speech (suppresses output when isHoldingRef is true) ---
   const startWebSpeech = useCallback(() => {
@@ -276,9 +499,11 @@ export function VoiceRecorder({
     stopAudioLevelViz();
     stopKeepalive();
     stopWebSpeech();
+    stopDeepgramStream();
     if (refineTimerRef.current) { clearInterval(refineTimerRef.current); refineTimerRef.current = null; }
     if (pauseTimerRef.current) { clearTimeout(pauseTimerRef.current); pauseTimerRef.current = null; }
     if (audioContextRef.current) { try { audioContextRef.current.close(); } catch {} audioContextRef.current = null; }
+    if (boostCtxRef.current) { try { boostCtxRef.current.close(); } catch {} boostCtxRef.current = null; }
     analyserRef.current = null;
     streamRef.current?.getTracks().forEach(t => t.stop());
     streamRef.current = null;
@@ -329,6 +554,7 @@ export function VoiceRecorder({
         const formData = new FormData();
         formData.append('audio', blob, `segment.${getFileExtension(mimeTypeRef.current)}`);
         formData.append('mode', 'dictation');
+        formData.append('skipMedicalize', 'true'); // Non-medicalize: verbatim STT only
         // Pass previous text as context so STT can resolve mid-sentence boundaries
         if (refinedTextRef.current) {
           formData.append('context', refinedTextRef.current.split(/\s+/).slice(-50).join(' '));
@@ -342,8 +568,13 @@ export function VoiceRecorder({
               : text.trim();
             refineCountRef.current++;
             if (!stoppingRef.current) {
-              onInterimRef.current?.(refinedTextRef.current);
-              onProcessingRef.current?.(false);
+              // Only update display if refined text is at least as long as Web Speech
+              // Prevents replacing good content with truncated STT
+              const wsLen = accumulatedTextRef.current?.length || 0;
+              if (refinedTextRef.current.length >= wsLen * 0.6) {
+                onInterimRef.current?.(refinedTextRef.current);
+                onProcessingRef.current?.(false);
+              }
             }
           }
         }
@@ -359,23 +590,25 @@ export function VoiceRecorder({
   // =================================================================
   const startDictationRecording = useCallback(async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: buildAudioConstraints(mode, sensitivity) });
-      streamRef.current = stream;
+      const rawStream = await navigator.mediaDevices.getUserMedia({ audio: buildAudioConstraints(mode, sensitivity) });
+      streamRef.current = rawStream;
       const mimeType = getMimeType();
       mimeTypeRef.current = mimeType;
 
       onRecordingStart?.();
-      // Don't signal processing here — let Web Speech onresult handle it
-      // (medicalize mode suppresses onresult, so text arrives already refined)
       startKeepalive();
       stoppingRef.current = false;
 
-      // Start MediaRecorder (captures audio for refinement segments)
-      const recorder = new MediaRecorder(stream, { mimeType });
+      // Gain-boost dictation audio (sensitivity controls compression + gain level)
+      const { boostedStream, ctx: boostCtx } = createBoostedStream(rawStream, 2);
+      boostCtxRef.current = boostCtx;
+
+      // Record from boosted stream for better Deepgram recognition
+      const recorder = new MediaRecorder(boostedStream, { mimeType });
       mediaRecorderRef.current = recorder;
       chunksRef.current = [];
       recorder.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data); };
-      recorder.start();
+      recorder.start(3000); // 3s timeslice for near-real-time Deepgram live text
       segmentStartRef.current = Date.now();
 
       accumulatedTextRef.current = '';
@@ -383,17 +616,22 @@ export function VoiceRecorder({
       refineCountRef.current = 0;
       setRecState('recording');
 
-      // Start Web Speech for instant text (output suppressed during hold via isHoldingRef)
-      startWebSpeech();
-
-      // NOTE: Refinement timer is NOT started here — it's started in handlePointerUp
-      // only when entering non-medicalize toggle mode. Hold-to-medicalize does NOT
-      // use periodic refinement (single-shot on release instead).
+      // Try Deepgram WebSocket streaming for real-time live text (~300ms latency)
+      // Falls back to Web Speech + periodic REST refinement if WS fails
+      const dgSuccess = await startDeepgramStream(rawStream, false);
+      if (!dgSuccess) {
+        // Fallback: Web Speech for instant text + periodic Deepgram REST refinement
+        startWebSpeech();
+        if (refineTimerRef.current) clearInterval(refineTimerRef.current);
+        refineTimerRef.current = setInterval(() => {
+          if (!stoppingRef.current && !isHoldingRef.current) flushSegmentForRefinement();
+        }, 3000);
+      }
 
       // Audio level visualization
       try {
         const vizCtx = new AudioContext();
-        const vizSource = vizCtx.createMediaStreamSource(stream);
+        const vizSource = vizCtx.createMediaStreamSource(rawStream);
         const vizAnalyser = vizCtx.createAnalyser();
         vizAnalyser.fftSize = 2048;
         vizSource.connect(vizAnalyser);
@@ -404,7 +642,7 @@ export function VoiceRecorder({
     } catch {
       setRecState('error');
     }
-  }, [onRecordingStart, startKeepalive, startWebSpeech, startAudioLevelViz, flushSegmentForRefinement]);
+  }, [onRecordingStart, startKeepalive, startWebSpeech, startDeepgramStream, startAudioLevelViz, flushSegmentForRefinement]);
 
   // --- Stop non-medicalize (toggle mode) ---
   const stopNonMedicalize = useCallback(async () => {
@@ -426,7 +664,7 @@ export function VoiceRecorder({
 
     cleanupResources();
 
-    // STT-refine the final audio segment (no medicalize yet)
+    // STT-refine the final audio segment — verbatim only, no AI medicalize
     if (useDeepgramCleanup && finalBlob && finalBlob.size > 2000) {
       setRecState('transcribing');
       onProcessingRef.current?.(true);
@@ -434,6 +672,7 @@ export function VoiceRecorder({
         const formData = new FormData();
         formData.append('audio', finalBlob, `segment.${getFileExtension(mimeTypeRef.current)}`);
         formData.append('mode', 'dictation');
+        formData.append('skipMedicalize', 'true'); // Non-medicalize: verbatim STT only
         const res = await fetch(getTranscribeEndpoint(transcribeEngine), { method: 'POST', body: formData });
         if (res.ok) {
           const { text } = await res.json();
@@ -446,11 +685,17 @@ export function VoiceRecorder({
       } catch {}
     }
 
-    // Non-medicalize: no AI rewriting. Deepgram STT is the final output (verbatim dictation).
-    // Show final text
-    if (refinedTextRef.current) {
-      onInterimRef.current?.(refinedTextRef.current);
+    // Non-medicalize: the best text is already displayed via onInterimTranscript
+    // (either from Deepgram WS or Web Speech during recording).
+    // Just ensure the final text stays visible — don't clear it.
+    const dgWsText = accumulatedTextRef.current?.trim() || '';
+    const refined = refinedTextRef.current?.trim() || '';
+
+    // If we have refined text from REST segments that's better, update display
+    if (refined && refined.length > dgWsText.length * 0.9) {
+      onInterimRef.current?.(refined);
     }
+    // Otherwise the Deepgram WS / Web Speech text already in the field is the final output
 
     onProcessingRef.current?.(false);
     accumulatedTextRef.current = '';
@@ -512,16 +757,22 @@ export function VoiceRecorder({
   // =================================================================
   const startEncounterRecording = useCallback(async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: buildAudioConstraints(mode, sensitivity) });
-      streamRef.current = stream;
+      const rawStream = await navigator.mediaDevices.getUserMedia({ audio: buildAudioConstraints(mode, sensitivity) });
+      streamRef.current = rawStream;
       const mimeType = getMimeType();
       mimeTypeRef.current = mimeType;
 
       onRecordingStart?.();
-      onProcessingRef.current?.(true); // Signal: live/interim text
+      onProcessingRef.current?.(true);
       startKeepalive();
 
-      const recorder = new MediaRecorder(stream, { mimeType });
+      // Create gain-boosted stream for encounter recording.
+      // Sensitivity controls compression aggressiveness + gain level.
+      const { boostedStream, ctx: boostCtx } = createBoostedStream(rawStream, sensitivity);
+      boostCtxRef.current = boostCtx;
+
+      // Record from the BOOSTED stream, not the raw mic
+      const recorder = new MediaRecorder(boostedStream, { mimeType });
       mediaRecorderRef.current = recorder;
       chunksRef.current = [];
       recorder.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data); };
@@ -529,76 +780,80 @@ export function VoiceRecorder({
       recorder.onstop = async () => {
         stopAudioLevelViz(); stopKeepalive(); stopWebSpeech();
         if (audioContextRef.current) { try { audioContextRef.current.close(); } catch {} audioContextRef.current = null; }
+        if (boostCtxRef.current) { try { boostCtxRef.current.close(); } catch {} boostCtxRef.current = null; }
         analyserRef.current = null;
-        stream.getTracks().forEach(t => t.stop());
+        rawStream.getTracks().forEach(t => t.stop());
         streamRef.current = null;
 
-        const blob = new Blob(chunksRef.current, { type: mimeType });
-        if (blob.size === 0) { setRecState('idle'); return; }
+        const allChunks = chunksRef.current;
+        if (allChunks.length === 0) { setRecState('idle'); return; }
 
         setRecState('transcribing');
-        onProcessingRef.current?.(true); // Signal: refining transcript
-        try {
-          const formData = new FormData();
-          formData.append('audio', blob, `recording.${getFileExtension(mimeType)}`);
-          formData.append('mode', mode);
-          // Pass Web Speech text as context for better Deepgram/Whisper accuracy
-          if (accumulatedTextRef.current) {
-            formData.append('context', accumulatedTextRef.current.split(/\s+/).slice(-50).join(' '));
-          }
+        onProcessingRef.current?.(true);
 
+        try {
           const webEngine = getTranscribeWebAPI();
           const useExternalSTT = webEngine === 'deepgram' || webEngine === 'wispr';
-          const res = await fetch(getTranscribeEndpoint(webEngine), { method: 'POST', body: formData });
 
-          if (useExternalSTT && res.ok) {
-            const { text: dgText } = await res.json();
-            if (dgText?.trim()) {
-              // Medicalize the Deepgram result for medical cleanup + speaker labeling
-              try {
-                const medRes = await fetch('/api/medicalize', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ text: dgText.trim(), mode }),
-                });
-                if (medRes.ok) {
-                  const { text } = await medRes.json();
-                  onTranscript((text?.trim()) || dgText.trim());
-                } else {
-                  onTranscript(dgText.trim());
-                }
-              } catch {
-                onTranscript(dgText.trim());
-              }
-            } else {
-              // Deepgram returned empty — fall back to Web Speech text
-              if (accumulatedTextRef.current?.trim()) {
-                onTranscript(accumulatedTextRef.current.trim());
-              }
-            }
-          } else if (res.ok) {
-            const { text } = await res.json();
-            if (text?.trim()) onTranscript(text.trim());
-          } else {
-            // API call failed — fall back to Web Speech text
-            if (accumulatedTextRef.current?.trim()) {
-              onTranscript(accumulatedTextRef.current.trim());
-            }
+          // Split audio into ~5-minute segments for reliable processing.
+          // Each chunk is ~10 seconds (from timeslice). Group into segments of 30 chunks.
+          const CHUNKS_PER_SEGMENT = 30;
+          const segments: Blob[] = [];
+          for (let i = 0; i < allChunks.length; i += CHUNKS_PER_SEGMENT) {
+            segments.push(new Blob(allChunks.slice(i, i + CHUNKS_PER_SEGMENT), { type: mimeType }));
           }
+
+          // Process segments — in parallel for speed, concatenate results in order
+          const segmentResults = await Promise.all(
+            segments.map(async (segBlob, idx) => {
+              if (segBlob.size < 1000) return ''; // skip tiny segments
+              const formData = new FormData();
+              formData.append('audio', segBlob, `segment-${idx}.${getFileExtension(mimeType)}`);
+              formData.append('mode', mode);
+              formData.append('skipMedicalize', 'true'); // Raw STT only — no AI rewriting
+              try {
+                const res = await fetch(getTranscribeEndpoint(webEngine), { method: 'POST', body: formData });
+                if (res.ok) {
+                  const { text } = await res.json();
+                  return text?.trim() || '';
+                }
+              } catch {}
+              return '';
+            })
+          );
+
+          const combinedText = segmentResults.filter(Boolean).join('\n');
+
+          if (combinedText.trim()) {
+            // Store raw Deepgram/Whisper transcript directly — no AI medicalize
+            onTranscript(combinedText.trim());
+          } else if (accumulatedTextRef.current?.trim()) {
+            // All segments empty — fall back to Web Speech text
+            onTranscript(accumulatedTextRef.current.trim());
+          }
+
           onProcessingRef.current?.(false);
         } catch (err: any) {
           onProcessingRef.current?.(false);
+          // Fall back to Web Speech on any error
+          if (accumulatedTextRef.current?.trim()) {
+            onTranscript(accumulatedTextRef.current.trim());
+          }
           console.error('Transcription error:', err);
         }
+        onAudioLevelRef.current?.({ level: 0, lowFreq: 0, highFreq: 0, speakerHint: 'silent' });
+        onRecordingStopRef.current?.();
         setRecState('idle');
       };
 
-      recorder.start();
+      // 10-second timeslice: gives Deepgram meaningful audio context per chunk
+      // (1-second chunks were too small for reliable STT)
+      recorder.start(10000);
       setRecState('recording');
 
       try {
         const vizCtx = new AudioContext();
-        const vizSource = vizCtx.createMediaStreamSource(stream);
+        const vizSource = vizCtx.createMediaStreamSource(rawStream);
         const vizAnalyser = vizCtx.createAnalyser();
         vizAnalyser.fftSize = 2048;
         vizSource.connect(vizAnalyser);
@@ -607,35 +862,42 @@ export function VoiceRecorder({
         startAudioLevelViz(vizAnalyser);
       } catch {}
 
-      // Web Speech for live text
-      const SpeechRecognitionAPI = typeof window !== 'undefined'
-        ? (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
-        : null;
-      if (SpeechRecognitionAPI && onInterimTranscript) {
-        try {
-          const recognition = new SpeechRecognitionAPI();
-          recognition.continuous = true; recognition.interimResults = true; recognition.lang = 'en-US';
-          let finalTranscript = '';
-          recognition.onresult = (event: any) => {
-            let interim = '';
-            for (let i = event.resultIndex; i < event.results.length; i++) {
-              if (event.results[i].isFinal) { finalTranscript += event.results[i][0].transcript + ' '; }
-              else { interim += event.results[i][0].transcript; }
-            }
-            const full = (finalTranscript + interim).trim();
-            accumulatedTextRef.current = full;
-            onInterimTranscript(full);
-          };
-          recognition.onerror = () => {};
-          recognition.onend = () => { if (mediaRecorderRef.current?.state === 'recording') { try { recognition.start(); } catch {} } };
-          recognition.start();
-          recognitionRef.current = recognition;
-        } catch {}
+      // Deepgram WebSocket streaming for live text (~300ms latency, medical model)
+      // Falls back to Web Speech if Deepgram WS fails
+      if (onInterimTranscript) {
+        const dgOk = await startDeepgramStream(rawStream, true);
+        if (!dgOk) {
+          // Fallback: Web Speech
+          const SpeechRecognitionAPI = typeof window !== 'undefined'
+            ? (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
+            : null;
+          if (SpeechRecognitionAPI) {
+            try {
+              const recognition = new SpeechRecognitionAPI();
+              recognition.continuous = true; recognition.interimResults = true; recognition.lang = 'en-US';
+              let finalTranscript = '';
+              recognition.onresult = (event: any) => {
+                let interim = '';
+                for (let i = event.resultIndex; i < event.results.length; i++) {
+                  if (event.results[i].isFinal) { finalTranscript += event.results[i][0].transcript + ' '; }
+                  else { interim += event.results[i][0].transcript; }
+                }
+                const full = (finalTranscript + interim).trim();
+                accumulatedTextRef.current = full;
+                onInterimTranscript(full);
+              };
+              recognition.onerror = () => {};
+              recognition.onend = () => { if (mediaRecorderRef.current?.state === 'recording') { try { recognition.start(); } catch {} } };
+              recognition.start();
+              recognitionRef.current = recognition;
+            } catch {}
+          }
+        }
       }
     } catch {
       setRecState('error');
     }
-  }, [onTranscript, onInterimTranscript, onRecordingStart, mode, startKeepalive, stopKeepalive, startAudioLevelViz, stopAudioLevelViz, stopWebSpeech]);
+  }, [onTranscript, onInterimTranscript, onRecordingStart, mode, startKeepalive, stopKeepalive, startAudioLevelViz, stopAudioLevelViz, stopWebSpeech, startDeepgramStream]);
 
   // =================================================================
   // POINTER HANDLERS
@@ -708,15 +970,9 @@ export function VoiceRecorder({
       stopMedicalizeHold();
     } else {
       // Short tap → non-medicalize toggle mode
-      // Web Speech is already running and showing text.
+      // Deepgram live text already running (started in startDictationRecording).
       // Recording continues — user clicks again to stop.
       toggleModeRef.current = true;
-
-      // Start periodic Deepgram STT refinement (only for non-medicalize mode)
-      if (refineTimerRef.current) clearInterval(refineTimerRef.current);
-      refineTimerRef.current = setInterval(() => {
-        if (!stoppingRef.current) flushSegmentForRefinement();
-      }, 8000);
     }
   }, [mode, stopMedicalizeHold, flushSegmentForRefinement]);
 

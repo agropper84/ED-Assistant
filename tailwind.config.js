@@ -51,6 +51,10 @@ module.exports = {
           from: { opacity: '0', transform: 'translateX(16px)' },
           to: { opacity: '1', transform: 'translateX(0)' },
         },
+        sidePanelIn: {
+          from: { opacity: '0', width: '0px' },
+          to: { opacity: '1', width: '280px' },
+        },
       },
       animation: {
         fadeIn: 'fadeIn 200ms ease-out',
@@ -59,6 +63,7 @@ module.exports = {
         msgIn: 'msgIn 250ms cubic-bezier(0.16, 1, 0.3, 1)',
         msgSent: 'msgSent 200ms cubic-bezier(0.16, 1, 0.3, 1)',
         slideLeft: 'slideLeft 200ms cubic-bezier(0.16, 1, 0.3, 1)',
+        sidePanelIn: 'sidePanelIn 350ms cubic-bezier(0.4, 0, 0.2, 1) forwards',
       },
     },
   },

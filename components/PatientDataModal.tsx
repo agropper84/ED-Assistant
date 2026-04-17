@@ -58,6 +58,9 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
   const [userPhrases, setUserPhrases] = useState<string[]>([]);
   const [showLiveTranscript, setShowLiveTranscript] = useState(true);
   const [micSensitivity, setMicSensitivity] = useState(3); // default high for encounters
+  const [isRecordingEncounter, setIsRecordingEncounter] = useState(false);
+  const [audioData, setAudioData] = useState({ level: 0, lowFreq: 0, highFreq: 0, speakerHint: 'silent' as 'near' | 'far' | 'silent' });
+  const waveHistoryRef = useRef<Array<{ level: number; speaker: 'near' | 'far' | 'silent' }>>([]);
   const [refiningFields, setRefiningFields] = useState<Set<string>>(new Set());
   const setFieldRefining = (field: string, refining: boolean) => {
     setRefiningFields(prev => {
@@ -526,7 +529,7 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
 
   return (
     <div className="fixed inset-0 modal-overlay z-50 flex items-end sm:items-center justify-center">
-      <div className="relative w-full sm:max-w-lg animate-slideUp">
+      <div className={`relative w-full animate-slideUp transition-all duration-400 ease-[cubic-bezier(0.4,0,0.2,1)] ${sidePanel ? 'sm:max-w-[780px]' : 'sm:max-w-lg'}`}>
       {/* Tabs anchored to the modal's right edge, protruding outward */}
       <div className="hidden sm:flex flex-col absolute z-50 right-0 translate-x-full" style={{ top: '56px' }}>
         {/* PMHx tab */}
@@ -685,7 +688,7 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
         <div className="flex-1 overflow-hidden flex relative">
 
         {/* Clinical info — always visible */}
-        <div className={`flex-1 min-w-0 overflow-y-auto px-5 py-4 space-y-4 transition-all duration-200 ${sidePanel ? 'pr-[52%] sm:pr-[45%]' : ''}`}>
+        <div className="flex-1 min-w-0 overflow-y-auto px-5 py-4 space-y-4 transition-all duration-300">
           {/* Triage Notes */}
           <div>
             <label className="block text-xs font-semibold text-[var(--text-muted)] uppercase tracking-widest mb-1.5">
@@ -726,14 +729,14 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
                   <input
                     type="range"
                     min="1"
-                    max="3"
+                    max="4"
                     step="1"
                     value={micSensitivity}
                     onChange={(e) => setMicSensitivity(parseInt(e.target.value))}
-                    className="w-12 h-1 accent-blue-500 cursor-pointer"
-                    title={micSensitivity === 1 ? 'Low — filtered, close speaker only' : micSensitivity === 2 ? 'Medium — balanced pickup' : 'High — raw audio, captures all voices in room'}
+                    className="w-20 h-1.5 accent-blue-500 cursor-pointer"
+                    title={micSensitivity === 1 ? 'Low — close speaker' : micSensitivity === 2 ? 'Medium — balanced' : micSensitivity === 3 ? 'High — room-wide' : 'Max — maximum pickup'}
                   />
-                  <span className="text-[9px] text-[var(--text-muted)] w-5">{micSensitivity === 1 ? 'Lo' : micSensitivity === 2 ? 'Mid' : 'Hi'}</span>
+                  <span className="text-[9px] text-[var(--text-muted)] w-7 text-center font-medium">{micSensitivity === 1 ? 'Lo' : micSensitivity === 2 ? 'Mid' : micSensitivity === 3 ? 'Hi' : 'Max'}</span>
                 </div>
                 <label className="flex items-center gap-1.5 cursor-pointer select-none">
                   <input
@@ -745,8 +748,8 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
                   <span className="text-[10px] text-[var(--text-muted)]">Live text</span>
                 </label>
               </div>
-              {/* iOS positioning tip */}
-              {typeof navigator !== 'undefined' && /iPad|iPhone|iPod/.test(navigator.userAgent) && micSensitivity >= 2 && (
+              {/* iOS positioning tip — removed */}
+              {false && (
                 <p className="text-[9px] text-amber-500/70 mt-0.5">Tip: Position device between you and the patient for best pickup</p>
               )}
             </div>
@@ -771,6 +774,34 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
                   })}
                 </div>
               ) : null}
+              {/* Recording waveform — speaker-aware colors, shown when live text OFF */}
+              {isRecordingEncounter && !showLiveTranscript && (
+                <div className="w-full h-28 border border-blue-400/20 rounded-xl bg-[var(--input-bg)] flex flex-col items-center justify-center relative overflow-hidden">
+                  <div className="flex items-end justify-center gap-[2px] h-16 px-4">
+                    {Array.from({ length: 64 }).map((_, i) => {
+                      const sample = waveHistoryRef.current[i];
+                      const level = sample?.level || 0;
+                      const speaker = sample?.speaker || 'silent';
+                      const h = Math.max(2, level * 56);
+                      const color = speaker === 'near'
+                        ? `rgba(96, 165, 250, ${0.4 + level * 0.6})`
+                        : speaker === 'far'
+                        ? `rgba(251, 191, 36, ${0.4 + level * 0.6})`
+                        : 'rgba(148, 163, 184, 0.12)';
+                      return (
+                        <div key={i} className="rounded-full" style={{ width: '2px', height: `${h}px`, backgroundColor: color, transition: 'height 80ms ease-out' }} />
+                      );
+                    })}
+                  </div>
+                  <div className="flex items-center gap-4 mt-2">
+                    <span className="text-[9px] text-blue-400/70 font-medium tracking-wide">Recording encounter</span>
+                    <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-1"><div className="w-1.5 h-1.5 rounded-full bg-blue-400" /><span className="text-[8px] text-[var(--text-muted)]">Dr</span></div>
+                      <div className="flex items-center gap-1"><div className="w-1.5 h-1.5 rounded-full bg-amber-400" /><span className="text-[8px] text-[var(--text-muted)]">Pt</span></div>
+                    </div>
+                  </div>
+                </div>
+              )}
               <textarea
                 value={transcript}
                 onChange={(e) => setTranscript(e.target.value)}
@@ -783,7 +814,7 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
                 }}
                 placeholder="Audio transcript or dictation..."
                 className={`w-full h-28 p-3 pr-16 border border-[var(--input-border)] rounded-xl text-sm resize-y focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] placeholder:text-[var(--text-muted)] transition-colors duration-300 ${refiningFields.has('transcript') ? 'text-[var(--text-muted)] italic' : 'text-[var(--text-primary)]'}`}
-                style={transcript && /^(Speaker \d|Dr[.:]|Pt[.:]|Patient:|Family:|Physician:|Doctor:)/im.test(transcript) && !refiningFields.has('transcript') ? { display: 'none' } : undefined}
+                style={(isRecordingEncounter && !showLiveTranscript) || (transcript && /^(Speaker \d|Dr[.:]|Pt[.:]|Patient:|Family:|Physician:|Doctor:)/im.test(transcript) && !refiningFields.has('transcript')) ? { display: 'none' } : undefined}
               />
               {refiningFields.has('transcript') && (
                 <div className="absolute bottom-2 left-3 text-[10px] text-blue-400 font-medium animate-pulse">Refining transcription...</div>
@@ -798,12 +829,18 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
                     setTranscript(base ? `${base}\n\n${text}` : text);
                     setFieldRefining('transcript', false);
                   }}
-                  onRecordingStart={() => setPreRecordTranscript(transcript)}
+                  onRecordingStart={() => { setPreRecordTranscript(transcript); setIsRecordingEncounter(true); waveHistoryRef.current = []; }}
+                  onRecordingStop={() => { setIsRecordingEncounter(false); setAudioData({ level: 0, lowFreq: 0, highFreq: 0, speakerHint: 'silent' }); }}
                   onInterimTranscript={showLiveTranscript ? (text) => {
                     const base = preRecordTranscript || '';
                     setTranscript(base ? `${base}\n\n${text}` : text);
                   } : undefined}
                   onProcessingChange={(p) => setFieldRefining('transcript', p)}
+                  onAudioLevel={!showLiveTranscript ? (data) => {
+                    setAudioData(data);
+                    // Build scrolling wave history (last 64 samples)
+                    waveHistoryRef.current = [...waveHistoryRef.current.slice(-63), { level: data.level, speaker: data.speakerHint }];
+                  } : undefined}
                 />
               </div>
             </div>
@@ -951,11 +988,9 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
           </div>
         </div>
 
-        {/* Side panel overlay for Profile / DDx */}
+        {/* Side panel — slides in as a sibling flex panel */}
         {sidePanel && (
-          <div className="absolute right-0 top-0 bottom-0 w-[50%] sm:w-[43%] bg-[var(--card-bg)] border-l border-[var(--border)] overflow-y-auto animate-slideLeft z-20"
-            style={{ boxShadow: '-4px 0 16px rgba(0,0,0,0.08)' }}
-          >
+          <div className="w-[280px] flex-shrink-0 border-l border-[var(--border)] overflow-y-auto animate-sidePanelIn">
             <div className="sticky top-0 z-10 flex items-center justify-between px-4 py-2.5 border-b border-[var(--border)] bg-[var(--card-bg)]">
               <span className="text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider">
                 {sidePanel === 'profile' ? 'Medical Profile' : 'Differential Diagnosis'}
