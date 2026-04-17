@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { X, Loader2, Send } from 'lucide-react';
+import { getSettings } from '@/lib/settings';
 
 interface ReferralModalProps {
   isOpen: boolean;
@@ -46,6 +47,7 @@ export function ReferralModal({ isOpen, onClose, rowIndex, sheetName, onGenerate
           specialty: specialty.trim(),
           urgency,
           reason: reason.trim(),
+          customInstructions: getSettings().referralInstructions || undefined,
         }),
       });
 

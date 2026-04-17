@@ -10,6 +10,8 @@ export interface AppSettings {
   noteStyleStandard: string;
   noteStyleDetailed: string;
   noteStyleCompleteExam: string;
+  referralInstructions: string;
+  admissionInstructions: string;
 }
 
 export const DEFAULT_NOTE_STYLE_STANDARD = 'Write a concise, focused note. Include only clinically relevant findings. Use brief, direct language. Omit normal findings unless pertinent to the differential.';
@@ -32,6 +34,27 @@ For each system, document specific findings — do not simply write "normal". Us
 The HPI should be detailed with pertinent positives and negatives for the differential.
 The Assessment & Plan should include comprehensive reasoning and detailed management.`;
 
+export const DEFAULT_REFERRAL_INSTRUCTIONS = `Write a professional, concise referral letter to the specified specialty. Include:
+1. Patient demographics and reason for referral
+2. Brief clinical summary from the encounter
+3. Relevant findings and investigations
+4. Specific question or request for the consultant
+5. Urgency context
+
+Use professional medical language. Be concise but thorough.`;
+
+export const DEFAULT_ADMISSION_INSTRUCTIONS = `Write a comprehensive admission note. Include:
+1. Identifying information and reason for admission
+2. History of presenting illness (from encounter HPI)
+3. Past medical/surgical history (if available)
+4. Medications and allergies (if available)
+5. Physical examination findings
+6. Investigations and results
+7. Assessment with differential diagnosis
+8. Admission plan — orders, monitoring, consultations, disposition
+
+Use professional medical language. Be thorough and structured.`;
+
 export const DEFAULT_SETTINGS: AppSettings = {
   model: 'claude-sonnet-4-20250514',
   maxTokens: 4096,
@@ -44,6 +67,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
   noteStyleStandard: DEFAULT_NOTE_STYLE_STANDARD,
   noteStyleDetailed: DEFAULT_NOTE_STYLE_DETAILED,
   noteStyleCompleteExam: DEFAULT_NOTE_STYLE_COMPLETE_EXAM,
+  referralInstructions: DEFAULT_REFERRAL_INSTRUCTIONS,
+  admissionInstructions: DEFAULT_ADMISSION_INSTRUCTIONS,
 };
 
 const STORAGE_KEY = 'ed-app-settings';

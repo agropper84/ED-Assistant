@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { X, Loader2, FilePlus } from 'lucide-react';
+import { getSettings } from '@/lib/settings';
 
 interface AdmissionModalProps {
   isOpen: boolean;
@@ -46,6 +47,7 @@ export function AdmissionModal({ isOpen, onClose, rowIndex, sheetName, onGenerat
           service: service.trim(),
           acuity,
           reason: reason.trim(),
+          customInstructions: getSettings().admissionInstructions || undefined,
         }),
       });
 

@@ -493,6 +493,7 @@ export async function generateReferral(
   encounterNote: ProcessedNote,
   referralInfo: { specialty: string; urgency: string; reason: string },
   referralExamples?: string[],
+  customInstructions?: string,
 ): Promise<string> {
   let styleBlock = '';
   if (referralExamples && referralExamples.length > 0) {
@@ -525,14 +526,14 @@ REFERRAL DETAILS:
 - Urgency: ${referralInfo.urgency}
 - Reason: ${referralInfo.reason}
 ${styleBlock}
-Write a professional, concise referral letter to the specified specialty. Include:
+${customInstructions || `Write a professional, concise referral letter to the specified specialty. Include:
 1. Patient demographics and reason for referral
 2. Brief clinical summary from the encounter
 3. Relevant findings and investigations
 4. Specific question or request for the consultant
 5. Urgency context
 
-Use professional medical language. Be concise but thorough.`;
+Use professional medical language. Be concise but thorough.`}`;
 
   return callWithPHIProtection(prompt, patientData);
 }
@@ -542,6 +543,7 @@ export async function generateAdmission(
   encounterNote: ProcessedNote,
   admissionInfo: { service: string; reason: string; acuity: string },
   admissionExamples?: string[],
+  customInstructions?: string,
 ): Promise<string> {
   let styleBlock = '';
   if (admissionExamples && admissionExamples.length > 0) {
@@ -577,7 +579,7 @@ ADMISSION DETAILS:
 - Reason for Admission: ${admissionInfo.reason}
 - Acuity: ${admissionInfo.acuity}
 ${styleBlock}
-Write a comprehensive admission note. Include:
+${customInstructions || `Write a comprehensive admission note. Include:
 1. Identifying information and reason for admission
 2. History of presenting illness (from encounter HPI)
 3. Past medical/surgical history (if available)
@@ -587,7 +589,7 @@ Write a comprehensive admission note. Include:
 7. Assessment with differential diagnosis
 8. Admission plan — orders, monitoring, consultations, disposition
 
-Use professional medical language. Be thorough and structured.`;
+Use professional medical language. Be thorough and structured.`}`;
 
   return callWithPHIProtection(prompt, patientData);
 }

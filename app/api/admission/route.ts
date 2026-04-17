@@ -10,7 +10,7 @@ export const maxDuration = 60;
 export const POST = withApiHandler(
   { rateLimit: { limit: 10, window: 60 }, auditEvent: 'generate.admission' },
   async (request: NextRequest) => {
-    const { rowIndex, sheetName, service, reason, acuity } = await parseBody(request, admissionSchema);
+    const { rowIndex, sheetName, service, reason, acuity, customInstructions } = await parseBody(request, admissionSchema);
     const ctx = await getDataContext();
 
     const patient = await getPatient(ctx, rowIndex, sheetName);
@@ -56,6 +56,7 @@ export const POST = withApiHandler(
           return (guide.examples as any).admission || [];
         } catch { return []; }
       })(),
+      customInstructions,
     );
 
     await updatePatientFields(ctx, rowIndex, { admission: admissionText }, sheetName);

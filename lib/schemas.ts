@@ -79,6 +79,7 @@ export const referralSchema = z.object({
   specialty: z.string().min(1).max(200),
   urgency: z.string().min(1).max(100),
   reason: z.string().min(1).max(2000),
+  customInstructions: z.string().max(5000).optional(),
 });
 
 // --- /api/admission ---
@@ -89,6 +90,7 @@ export const admissionSchema = z.object({
   service: z.string().min(1).max(200),
   reason: z.string().min(1).max(2000),
   acuity: z.string().min(1).max(100),
+  customInstructions: z.string().max(5000).optional(),
 });
 
 // --- /api/synopsis ---

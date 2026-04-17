@@ -10,7 +10,7 @@ export const maxDuration = 60;
 export const POST = withApiHandler(
   { rateLimit: { limit: 10, window: 60 }, auditEvent: 'generate.referral' },
   async (request: NextRequest) => {
-    const { rowIndex, sheetName, specialty, urgency, reason } = await parseBody(request, referralSchema);
+    const { rowIndex, sheetName, specialty, urgency, reason, customInstructions } = await parseBody(request, referralSchema);
     const ctx = await getDataContext();
 
     const patient = await getPatient(ctx, rowIndex, sheetName);
@@ -56,6 +56,7 @@ export const POST = withApiHandler(
           return (guide.examples as any).referral || [];
         } catch { return []; }
       })(),
+      customInstructions,
     );
 
     await updatePatientFields(ctx, rowIndex, { referral: referralText }, sheetName);

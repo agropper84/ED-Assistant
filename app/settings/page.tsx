@@ -14,7 +14,7 @@ import {
   clearLocalStyleGuide,
 } from '@/lib/style-guide';
 import {
-  getSettings, saveSettings, AppSettings, DEFAULT_SETTINGS, DEFAULT_NOTE_STYLE_STANDARD, DEFAULT_NOTE_STYLE_DETAILED, DEFAULT_NOTE_STYLE_COMPLETE_EXAM,
+  getSettings, saveSettings, AppSettings, DEFAULT_SETTINGS, DEFAULT_NOTE_STYLE_STANDARD, DEFAULT_NOTE_STYLE_DETAILED, DEFAULT_NOTE_STYLE_COMPLETE_EXAM, DEFAULT_REFERRAL_INSTRUCTIONS, DEFAULT_ADMISSION_INSTRUCTIONS,
   PromptTemplates, DEFAULT_PROMPT_TEMPLATES, getPromptTemplates, savePromptTemplates,
   ParseRules, DEFAULT_PARSE_RULES, getParseRules, saveParseRules,
   EncounterType, DEFAULT_ENCOUNTER_TYPES, getEncounterTypes, saveEncounterTypes,
@@ -1494,6 +1494,44 @@ export default function SettingsPage() {
                 <textarea
                   value={settings.noteStyleCompleteExam || DEFAULT_NOTE_STYLE_COMPLETE_EXAM}
                   onChange={(e) => handleSettingChange('noteStyleCompleteExam', e.target.value)}
+                  className="w-full h-32 p-2.5 border border-[var(--input-border)] rounded-lg text-xs resize-y bg-[var(--input-bg)] text-[var(--text-primary)] focus:ring-1 focus:ring-blue-500 focus:outline-none"
+                />
+              </div>
+            </div>
+
+            {/* Referral & Admission Instructions */}
+            <div className="bg-[var(--card-bg)] rounded-2xl border border-[var(--card-border)] p-5 space-y-4" style={{ boxShadow: 'var(--card-shadow)' }}>
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="font-semibold text-[var(--text-primary)]">Referral & Admission Templates</h3>
+                  <p className="text-xs text-[var(--text-muted)] mt-0.5">Customize the instructions AI uses when generating referral letters and admission notes.</p>
+                </div>
+                <button
+                  onClick={() => {
+                    handleSettingChange('referralInstructions', DEFAULT_REFERRAL_INSTRUCTIONS);
+                    handleSettingChange('admissionInstructions', DEFAULT_ADMISSION_INSTRUCTIONS);
+                  }}
+                  className="flex items-center gap-1 px-2 py-1 text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] rounded-lg text-xs transition-colors"
+                >
+                  <RotateCcw className="w-3 h-3" />
+                  Reset
+                </button>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">Referral Letter</label>
+                <textarea
+                  value={settings.referralInstructions || DEFAULT_REFERRAL_INSTRUCTIONS}
+                  onChange={(e) => handleSettingChange('referralInstructions', e.target.value)}
+                  className="w-full h-28 p-2.5 border border-[var(--input-border)] rounded-lg text-xs resize-y bg-[var(--input-bg)] text-[var(--text-primary)] focus:ring-1 focus:ring-blue-500 focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">Admission Note</label>
+                <textarea
+                  value={settings.admissionInstructions || DEFAULT_ADMISSION_INSTRUCTIONS}
+                  onChange={(e) => handleSettingChange('admissionInstructions', e.target.value)}
                   className="w-full h-32 p-2.5 border border-[var(--input-border)] rounded-lg text-xs resize-y bg-[var(--input-bg)] text-[var(--text-primary)] focus:ring-1 focus:ring-blue-500 focus:outline-none"
                 />
               </div>
