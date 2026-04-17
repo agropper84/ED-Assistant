@@ -77,7 +77,8 @@ export async function getPatients(ctx: DataContext, sheetName: string): Promise<
     return gs.getPatients(ctx.sheets, sheetName);
   }
 
-  // Drive for clinical data, Sheets for billing
+  // Drive for clinical data, Sheets for billing (matched by name, not rowIndex,
+  // because billing continuation rows shift Sheets row positions)
   try {
     const dj = await import('./drive-json');
     const patients = await dj.getPatientsFromDrive(ctx.drive, sheetName);
@@ -86,15 +87,21 @@ export async function getPatients(ctx: DataContext, sheetName: string): Promise<
     try {
       const gs = await import('./google-sheets');
       const sheetsPatients = await gs.getPatients(ctx.sheets, sheetName);
-      const billingMap = new Map(sheetsPatients.map(p => [p.rowIndex, p]));
+      // Match by patient name since rowIndex diverges when continuation rows exist
+      const billingByName = new Map<string, typeof sheetsPatients[0]>();
+      for (const sp of sheetsPatients) {
+        if (sp.name) billingByName.set(sp.name, sp);
+      }
       for (const patient of patients) {
-        const sp = billingMap.get(patient.rowIndex);
+        const sp = patient.name ? billingByName.get(patient.name) : null;
         if (sp) {
           patient.visitProcedure = sp.visitProcedure || '';
           patient.procCode = sp.procCode || '';
           patient.fee = sp.fee || '';
           patient.unit = sp.unit || '';
           patient.total = sp.total || '';
+          // Update rowIndex to match Sheets (so billing writes go to the right row)
+          patient.rowIndex = sp.rowIndex;
         }
       }
     } catch {}
@@ -121,16 +128,18 @@ export async function getPatient(ctx: DataContext, rowIndex: number, sheetName: 
     const patient = await dj.getPatientFromDrive(ctx.drive, rowIndex, sheetName);
     if (!patient) return null;
 
-    // Overlay billing from Sheets (source of truth for billing)
+    // Overlay billing from Sheets — find by name since rowIndex may have shifted
     try {
       const gs = await import('./google-sheets');
-      const sp = await gs.getPatient(ctx.sheets, rowIndex, sheetName);
+      const sheetsPatients = await gs.getPatients(ctx.sheets, patient.sheetName);
+      const sp = sheetsPatients.find(p => p.name === patient.name);
       if (sp) {
         patient.visitProcedure = sp.visitProcedure || '';
         patient.procCode = sp.procCode || '';
         patient.fee = sp.fee || '';
         patient.unit = sp.unit || '';
         patient.total = sp.total || '';
+        patient.rowIndex = sp.rowIndex;
       }
     } catch {}
 
