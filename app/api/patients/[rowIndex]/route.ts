@@ -45,12 +45,23 @@ export async function PATCH(
     const { _sheetName, _billingItems, _upsertDiagnosis, _moveToSheet, _patientName, ...fields } = body;
 
     // Verify patient exists and matches expected identity before any write
-    if (_sheetName) {
+    if (_sheetName && !_billingItems) {
+      // For non-billing writes, verify via data layer (Drive + Sheets)
       const existingPatient = await getPatient(ctx, rowIndex, _sheetName);
       if (!existingPatient) {
         return NextResponse.json({ error: 'Patient not found at this row' }, { status: 404 });
       }
       if (_patientName && existingPatient.name && existingPatient.name !== _patientName) {
+        return NextResponse.json(
+          { error: 'Patient identity mismatch — please close and reopen the chart.' },
+          { status: 409 }
+        );
+      }
+    } else if (_sheetName && _billingItems && _patientName) {
+      // For billing writes, verify directly against Sheets (billing uses Sheets rowIndex)
+      const gs = await import('@/lib/google-sheets');
+      const sheetsPatient = await gs.getPatient(ctx.sheets, rowIndex, _sheetName);
+      if (sheetsPatient && sheetsPatient.name !== _patientName) {
         return NextResponse.json(
           { error: 'Patient identity mismatch — please close and reopen the chart.' },
           { status: 409 }
@@ -65,7 +76,7 @@ export async function PATCH(
     }
 
     if (_billingItems) {
-      // Billing is Sheets-only (no Drive JSON) — Sheets is the source of truth for billing
+      // Billing is Sheets-only — use the rowIndex directly (already synced to Sheets position)
       await saveBillingRows(ctx.sheets, rowIndex, _billingItems, _sheetName || undefined);
 
       // Save any non-billing fields (comments, etc.)
