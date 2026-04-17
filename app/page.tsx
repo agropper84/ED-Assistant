@@ -459,7 +459,7 @@ export default function HomePage() {
             sheetName: savedSheet,
             settings: (() => { try { const s = localStorage.getItem('ed-app-settings'); return s ? JSON.parse(s) : undefined; } catch { return undefined; } })(),
             promptTemplates: getEffectivePromptTemplates(),
-            ...(data._noteStyle && data._noteStyle !== 'standard' ? { noteStyle: data._noteStyle } : {}),
+            ...(data._noteStyle && data._noteStyle !== 'standard' ? { noteStyle: data._noteStyle, noteStyleInstructions: data._noteStyle === 'comprehensive' ? getSettings().noteStyleDetailed : getSettings().noteStyleCompleteExam } : {}),
             ...(data._customInstructions ? { customInstructions: data._customInstructions } : {}),
           });
           const headers = { 'Content-Type': 'application/json' };
@@ -1103,45 +1103,26 @@ export default function HomePage() {
             <div className="flex items-center gap-2.5 min-w-0">
               <button
                 onClick={() => setSidebarOpen(true)}
-                className="w-11 h-11 rounded-[14px] flex items-center justify-center flex-shrink-0 overflow-hidden transition-all duration-250 hover:scale-[1.06] active:scale-[0.94]"
+                className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 transition-all duration-300 hover:scale-[1.05] active:scale-[0.94]"
                 style={{
-                  background: 'linear-gradient(160deg, rgba(148,163,184,0.18) 0%, rgba(100,116,139,0.12) 100%)',
-                  boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.1), 0 1px 4px rgba(0,0,0,0.12), 0 0 0 1px rgba(148,163,184,0.15)',
+                  background: 'rgba(255,255,255,0.05)',
+                  boxShadow: '0 0 0 1px rgba(255,255,255,0.07)',
                 }}
                 title="Menu"
               >
-                <svg width="24" height="24" viewBox="0 0 32 32" fill="none">
-                  <defs>
-                    <radialGradient id="node-center" cx="0.4" cy="0.35" r="0.6">
-                      <stop offset="0" stopColor="rgba(186,216,255,1)" />
-                      <stop offset="1" stopColor="rgba(96,165,250,0.85)" />
-                    </radialGradient>
-                    <radialGradient id="node-outer" cx="0.4" cy="0.35" r="0.6">
-                      <stop offset="0" stopColor="rgba(210,225,248,0.95)" />
-                      <stop offset="1" stopColor="rgba(148,180,230,0.75)" />
-                    </radialGradient>
-                    <filter id="node-glow">
-                      <feGaussianBlur stdDeviation="1.2" result="blur" />
-                      <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
-                    </filter>
-                  </defs>
-                  {/* Connecting lines — tapered feel via gradient opacity */}
-                  <line x1="16" y1="12.5" x2="16" y2="7.8" stroke="rgba(148,180,230,0.35)" strokeWidth="1.3" strokeLinecap="round" />
-                  <line x1="16" y1="19.5" x2="16" y2="24.2" stroke="rgba(148,180,230,0.35)" strokeWidth="1.3" strokeLinecap="round" />
-                  <line x1="12.5" y1="16" x2="7.8" y2="16" stroke="rgba(148,180,230,0.35)" strokeWidth="1.3" strokeLinecap="round" />
-                  <line x1="19.5" y1="16" x2="24.2" y2="16" stroke="rgba(148,180,230,0.35)" strokeWidth="1.3" strokeLinecap="round" />
-                  {/* Center node — larger, prominent */}
-                  <circle cx="16" cy="16" r="3.5" fill="url(#node-center)" filter="url(#node-glow)" />
-                  <circle cx="15.2" cy="15.2" r="1" fill="rgba(255,255,255,0.4)" />
-                  {/* Outer nodes — slightly smaller */}
-                  <circle cx="16" cy="6.5" r="2.5" fill="url(#node-outer)" />
-                  <circle cx="15.5" cy="5.9" r="0.7" fill="rgba(255,255,255,0.35)" />
-                  <circle cx="16" cy="25.5" r="2.5" fill="url(#node-outer)" />
-                  <circle cx="15.5" cy="24.9" r="0.7" fill="rgba(255,255,255,0.35)" />
-                  <circle cx="6.5" cy="16" r="2.5" fill="url(#node-outer)" />
-                  <circle cx="5.9" cy="15.5" r="0.7" fill="rgba(255,255,255,0.35)" />
-                  <circle cx="25.5" cy="16" r="2.5" fill="url(#node-outer)" />
-                  <circle cx="24.9" cy="15.5" r="0.7" fill="rgba(255,255,255,0.35)" />
+                <svg width="24" height="24" viewBox="0 0 36 36" fill="none">
+                  {/* Rounded cross shape — the ER */}
+                  <rect x="13" y="4" width="10" height="28" rx="3" fill="rgba(200,215,240,0.12)" />
+                  <rect x="4" y="13" width="28" height="10" rx="3" fill="rgba(200,215,240,0.12)" />
+                  {/* EKG pulse — the Dashboard / monitoring */}
+                  <polyline
+                    points="5,18 11,18 13.5,12 16,24 18.5,10 21,22 23,18 31,18"
+                    fill="none"
+                    stroke="rgba(200,220,255,0.85)"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
                 </svg>
               </button>
               <h1 className="text-[17px] font-bold tracking-[-0.02em]" style={{ color: 'var(--dash-text)' }}>ER Dashboard</h1>

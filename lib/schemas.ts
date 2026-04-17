@@ -18,6 +18,7 @@ export const processSchema = z.object({
   modifications: z.string().optional(),
   styleGuidance: z.string().optional(),
   noteStyle: z.enum(['standard', 'comprehensive', 'complete-exam']).optional(),
+  noteStyleInstructions: z.string().max(5000).optional(),
   customInstructions: z.string().max(2000).optional(),
   settings: z.object({
     model: z.string().optional(),

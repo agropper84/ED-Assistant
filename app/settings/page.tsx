@@ -14,7 +14,7 @@ import {
   clearLocalStyleGuide,
 } from '@/lib/style-guide';
 import {
-  getSettings, saveSettings, AppSettings, DEFAULT_SETTINGS,
+  getSettings, saveSettings, AppSettings, DEFAULT_SETTINGS, DEFAULT_NOTE_STYLE_STANDARD, DEFAULT_NOTE_STYLE_DETAILED, DEFAULT_NOTE_STYLE_COMPLETE_EXAM,
   PromptTemplates, DEFAULT_PROMPT_TEMPLATES, getPromptTemplates, savePromptTemplates,
   ParseRules, DEFAULT_PARSE_RULES, getParseRules, saveParseRules,
   EncounterType, DEFAULT_ENCOUNTER_TYPES, getEncounterTypes, saveEncounterTypes,
@@ -1451,6 +1451,54 @@ export default function SettingsPage() {
         {/* Prompts Tab */}
         {activeTab === 'prompts' && (
           <>
+            {/* Note Style Instructions */}
+            <div className="bg-[var(--card-bg)] rounded-2xl border border-[var(--card-border)] p-5 space-y-4" style={{ boxShadow: 'var(--card-shadow)' }}>
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="font-semibold text-[var(--text-primary)]">Note Style Instructions</h3>
+                  <p className="text-xs text-[var(--text-muted)] mt-0.5">Customize how AI generates notes for each style. These are the instructions shown under the Generate Note button.</p>
+                </div>
+                <button
+                  onClick={() => {
+                    handleSettingChange('noteStyleStandard', DEFAULT_NOTE_STYLE_STANDARD);
+                    handleSettingChange('noteStyleDetailed', DEFAULT_NOTE_STYLE_DETAILED);
+                    handleSettingChange('noteStyleCompleteExam', DEFAULT_NOTE_STYLE_COMPLETE_EXAM);
+                  }}
+                  className="flex items-center gap-1 px-2 py-1 text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] rounded-lg text-xs transition-colors"
+                >
+                  <RotateCcw className="w-3 h-3" />
+                  Reset All
+                </button>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">Standard</label>
+                <textarea
+                  value={settings.noteStyleStandard || DEFAULT_NOTE_STYLE_STANDARD}
+                  onChange={(e) => handleSettingChange('noteStyleStandard', e.target.value)}
+                  className="w-full h-20 p-2.5 border border-[var(--input-border)] rounded-lg text-xs resize-y bg-[var(--input-bg)] text-[var(--text-primary)] focus:ring-1 focus:ring-blue-500 focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">Detailed</label>
+                <textarea
+                  value={settings.noteStyleDetailed || DEFAULT_NOTE_STYLE_DETAILED}
+                  onChange={(e) => handleSettingChange('noteStyleDetailed', e.target.value)}
+                  className="w-full h-20 p-2.5 border border-[var(--input-border)] rounded-lg text-xs resize-y bg-[var(--input-bg)] text-[var(--text-primary)] focus:ring-1 focus:ring-blue-500 focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">Complete Exam</label>
+                <textarea
+                  value={settings.noteStyleCompleteExam || DEFAULT_NOTE_STYLE_COMPLETE_EXAM}
+                  onChange={(e) => handleSettingChange('noteStyleCompleteExam', e.target.value)}
+                  className="w-full h-32 p-2.5 border border-[var(--input-border)] rounded-lg text-xs resize-y bg-[var(--input-bg)] text-[var(--text-primary)] focus:ring-1 focus:ring-blue-500 focus:outline-none"
+                />
+              </div>
+            </div>
+
             {/* Encounter Types */}
             <div className="bg-[var(--card-bg)] rounded-2xl border border-[var(--card-border)] p-5 space-y-3" style={{ boxShadow: 'var(--card-shadow)' }}>
               <div className="flex items-center justify-between">

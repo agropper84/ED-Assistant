@@ -7,7 +7,30 @@ export interface AppSettings {
   vchSiteFacility: string;
   vchPracNumber: string;
   vchPractitionerName: string;
+  noteStyleStandard: string;
+  noteStyleDetailed: string;
+  noteStyleCompleteExam: string;
 }
+
+export const DEFAULT_NOTE_STYLE_STANDARD = 'Write a concise, focused note. Include only clinically relevant findings. Use brief, direct language. Omit normal findings unless pertinent to the differential.';
+
+export const DEFAULT_NOTE_STYLE_DETAILED = 'Write a thorough, detailed note. Include all relevant clinical details, pertinent positives and negatives, complete differential reasoning, and detailed management rationale. Do not abbreviate or omit information. Err on the side of more detail.';
+
+export const DEFAULT_NOTE_STYLE_COMPLETE_EXAM = `Write a comprehensive note documenting a COMPLETE multi-system examination. The objective/physical exam MUST include findings for ALL of the following systems, even if normal (document pertinent negatives):
+1. General appearance / vitals
+2. HEENT (head, eyes, ears, nose, throat)
+3. Neck (lymphadenopathy, thyroid, JVP, meningismus)
+4. Cardiovascular (heart sounds, rhythm, murmurs, peripheral pulses)
+5. Respiratory (breath sounds, work of breathing, percussion)
+6. Abdomen (inspection, palpation, bowel sounds, tenderness)
+7. Musculoskeletal (relevant examination, range of motion)
+8. Neurological (mental status, cranial nerves, motor, sensory, reflexes, gait)
+9. Skin/integumentary (rashes, wounds, color, turgor)
+10. Psychiatric (mood, affect, thought process, insight/judgment)
+
+For each system, document specific findings — do not simply write "normal". Use clinical language.
+The HPI should be detailed with pertinent positives and negatives for the differential.
+The Assessment & Plan should include comprehensive reasoning and detailed management.`;
 
 export const DEFAULT_SETTINGS: AppSettings = {
   model: 'claude-sonnet-4-20250514',
@@ -18,6 +41,9 @@ export const DEFAULT_SETTINGS: AppSettings = {
   vchSiteFacility: '',
   vchPracNumber: '',
   vchPractitionerName: '',
+  noteStyleStandard: DEFAULT_NOTE_STYLE_STANDARD,
+  noteStyleDetailed: DEFAULT_NOTE_STYLE_DETAILED,
+  noteStyleCompleteExam: DEFAULT_NOTE_STYLE_COMPLETE_EXAM,
 };
 
 const STORAGE_KEY = 'ed-app-settings';

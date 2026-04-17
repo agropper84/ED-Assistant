@@ -182,6 +182,7 @@ export function ParseModal({ isOpen, onClose, onSave, onQuickAdd, patientRef: ex
   const [daySheetLoading, setDaySheetLoading] = useState(false);
   const [daySheetError, setDaySheetError] = useState('');
   const [showLiveTranscript, setShowLiveTranscript] = useState(true);
+  const [micSensitivity, setMicSensitivity] = useState(2); // 1=low, 2=medium, 3=high
   const daySheetInputRef = useRef<HTMLInputElement>(null);
   const timeScrollRef = useRef<HTMLDivElement>(null);
 
@@ -746,22 +747,73 @@ export function ParseModal({ isOpen, onClose, onSave, onQuickAdd, patientRef: ex
               <label className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-widest">
                 Transcript
               </label>
-              <label className="flex items-center gap-1.5 cursor-pointer select-none">
-                <input
-                  type="checkbox"
-                  checked={showLiveTranscript}
-                  onChange={(e) => setShowLiveTranscript(e.target.checked)}
-                  className="w-3 h-3 rounded text-blue-600 focus:ring-blue-500 accent-blue-600"
-                />
-                <span className="text-[10px] text-[var(--text-muted)]">Live text</span>
-              </label>
+              <div className="flex items-center gap-3">
+                {/* Sensitivity */}
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[9px] text-[var(--text-muted)]">Mic</span>
+                  <input
+                    type="range"
+                    min="1"
+                    max="3"
+                    step="1"
+                    value={micSensitivity}
+                    onChange={(e) => setMicSensitivity(parseInt(e.target.value))}
+                    className="w-12 h-1 accent-blue-500 cursor-pointer"
+                    title={micSensitivity === 1 ? 'Low — close speaker' : micSensitivity === 2 ? 'Medium — balanced' : 'High — room-wide'}
+                  />
+                  <span className="text-[9px] text-[var(--text-muted)] w-5">{micSensitivity === 1 ? 'Lo' : micSensitivity === 2 ? 'Mid' : 'Hi'}</span>
+                </div>
+                {/* Live text */}
+                <label className="flex items-center gap-1.5 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={showLiveTranscript}
+                    onChange={(e) => setShowLiveTranscript(e.target.checked)}
+                    className="w-3 h-3 rounded text-blue-600 focus:ring-blue-500 accent-blue-600"
+                  />
+                  <span className="text-[10px] text-[var(--text-muted)]">Live text</span>
+                </label>
+              </div>
             </div>
             <div className="relative">
+              {/* Speaker-colored display when transcript has speaker labels and not editing */}
+              {transcript && /^(Speaker \d|Dr:|Pt:|Family:)/m.test(transcript) && !refiningFields.has('transcript') ? (
+                <div
+                  className="w-full h-28 p-3 pr-16 border border-[var(--input-border)] rounded-xl text-sm overflow-y-auto bg-[var(--input-bg)] cursor-text"
+                  onClick={(e) => {
+                    // Switch to textarea on click
+                    const el = e.currentTarget;
+                    const ta = el.nextElementSibling as HTMLTextAreaElement;
+                    if (ta) { el.style.display = 'none'; ta.style.display = 'block'; ta.focus(); }
+                  }}
+                >
+                  {transcript.split('\n').map((line, i) => {
+                    const isDr = /^(Speaker 1:|Dr:)/i.test(line);
+                    const isPt = /^(Speaker 2:|Pt:|Family:)/i.test(line);
+                    return (
+                      <div key={i} className={`leading-relaxed ${
+                        isDr ? 'text-blue-400' : isPt ? 'text-amber-400' : 'text-[var(--text-primary)]'
+                      }`}>
+                        {line || '\u00A0'}
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : null}
               <textarea
                 value={transcript}
                 onChange={(e) => setTranscript(e.target.value)}
+                onBlur={(e) => {
+                  // Show colored display again if applicable
+                  const prev = e.currentTarget.previousElementSibling as HTMLElement;
+                  if (prev && /^(Speaker \d|Dr:|Pt:|Family:)/m.test(transcript)) {
+                    prev.style.display = 'block';
+                    e.currentTarget.style.display = 'none';
+                  }
+                }}
                 placeholder="Audio transcript or dictation..."
                 className={`w-full h-28 p-3 pr-16 border border-[var(--input-border)] rounded-xl text-sm resize-y focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] placeholder:text-[var(--text-muted)] transition-colors duration-300 ${refiningFields.has('transcript') ? 'text-[var(--text-muted)] italic' : 'text-[var(--text-primary)]'}`}
+                style={transcript && /^(Speaker \d|Dr:|Pt:|Family:)/m.test(transcript) && !refiningFields.has('transcript') ? { display: 'none' } : undefined}
               />
               {refiningFields.has('transcript') && (
                 <div className="absolute bottom-2 left-3 text-[10px] text-blue-400 font-medium animate-pulse">Refining transcription...</div>
@@ -770,6 +822,7 @@ export function ParseModal({ isOpen, onClose, onSave, onQuickAdd, patientRef: ex
                 <VoiceRecorder
                   mode="encounter"
                   showUpload
+                  sensitivity={micSensitivity}
                   onTranscript={(text) => {
                     const base = preRecordTranscript || transcript;
                     setTranscript(base ? `${base}\n\n${text}` : text);
