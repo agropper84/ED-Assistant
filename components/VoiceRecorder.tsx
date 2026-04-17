@@ -28,6 +28,44 @@ function convertSpokenPunctuation(text: string): string {
 
 type RecorderState = 'idle' | 'recording' | 'transcribing' | 'error';
 
+/** Build audio constraints based on mode and sensitivity.
+ *
+ * ENCOUNTER MODE: Must capture TWO speakers at different distances.
+ * - Echo cancellation MUST be OFF — it's designed for calls (removes "other party" audio
+ *   from speakers). In face-to-face encounters, it treats the patient's voice as echo
+ *   and actively suppresses it. This is the #1 cause of missing patient speech.
+ * - Noise suppression should be OFF at high sensitivity to capture quiet patient.
+ * - Auto gain control OFF at high sensitivity — AGC optimizes for the dominant (close)
+ *   speaker and can compress the quieter patient voice further.
+ *
+ * DICTATION MODE: Single close speaker — optimize for clarity.
+ */
+function buildAudioConstraints(mode: string, sensitivity: number): MediaTrackConstraints {
+  const isEncounter = mode === 'encounter';
+
+  if (isEncounter) {
+    // Encounter: capture everything in the room.
+    // Use 'exact' for echo cancellation — iOS Safari ignores 'ideal: false'
+    // and applies its own AEC which suppresses the patient's voice.
+    return {
+      sampleRate: { ideal: 48000 },
+      channelCount: { ideal: 1 },
+      echoCancellation: false,                        // MUST be off — suppresses patient voice
+      noiseSuppression: sensitivity <= 1 ? true : false, // only on at Lo
+      autoGainControl: sensitivity <= 1 ? true : false,  // only on at Lo
+    };
+  }
+
+  // Dictation: single speaker, optimize for clarity
+  return {
+    sampleRate: { ideal: 48000 },
+    channelCount: { ideal: 1 },
+    echoCancellation: false,
+    noiseSuppression: sensitivity <= 2,
+    autoGainControl: sensitivity <= 2,
+  };
+}
+
 interface VoiceRecorderProps {
   onTranscript: (text: string) => void;
   onInterimTranscript?: (text: string) => void;
@@ -37,11 +75,13 @@ interface VoiceRecorderProps {
   disabled?: boolean;
   mode?: 'encounter' | 'dictation';
   showUpload?: boolean;
+  /** Mic sensitivity: 1=low (close speaker), 2=medium (default), 3=high (room-wide) */
+  sensitivity?: number;
 }
 
 export function VoiceRecorder({
   onTranscript, onInterimTranscript, onRecordingStart, onProcessingChange,
-  disabled, mode = 'dictation', showUpload,
+  disabled, mode = 'dictation', showUpload, sensitivity = 2,
 }: VoiceRecorderProps) {
   const [state, setState] = useState<RecorderState>('idle');
   const stateRef = useRef<RecorderState>('idle');
@@ -278,17 +318,22 @@ export function VoiceRecorder({
       segmentStartRef.current = Date.now();
     }
 
-    // Send blob for Deepgram transcription in background
+    // Send blob for Deepgram/Wispr STT refinement only (no medicalize on segments —
+    // fragments are too short for Claude to process accurately. Medicalize runs once on final stop.)
     if (blob.size > 2000) {
       try {
-        const speechEngine = getSpeechAPI();
-        const useExternal = speechEngine === 'deepgram' || speechEngine === 'wispr';
-        if (!useExternal) return; // only refine if Deepgram/Wispr available
+        const transcribeEngine = getTranscribeAPI();
+        const useExternal = transcribeEngine === 'deepgram' || transcribeEngine === 'wispr';
+        if (!useExternal) return;
 
         const formData = new FormData();
         formData.append('audio', blob, `segment.${getFileExtension(mimeTypeRef.current)}`);
         formData.append('mode', 'dictation');
-        const res = await fetch(getTranscribeEndpoint(speechEngine), { method: 'POST', body: formData });
+        // Pass previous text as context so STT can resolve mid-sentence boundaries
+        if (refinedTextRef.current) {
+          formData.append('context', refinedTextRef.current.split(/\s+/).slice(-50).join(' '));
+        }
+        const res = await fetch(getTranscribeEndpoint(transcribeEngine), { method: 'POST', body: formData });
         if (res.ok && !stoppingRef.current) {
           const { text } = await res.json();
           if (text?.trim()) {
@@ -296,9 +341,10 @@ export function VoiceRecorder({
               ? `${refinedTextRef.current} ${text.trim()}`
               : text.trim();
             refineCountRef.current++;
-            // Replace Web Speech text with refined text
-            onInterimRef.current?.(refinedTextRef.current);
-            onProcessingRef.current?.(false); // text is now refined (not grey)
+            if (!stoppingRef.current) {
+              onInterimRef.current?.(refinedTextRef.current);
+              onProcessingRef.current?.(false);
+            }
           }
         }
       } catch {}
@@ -313,7 +359,7 @@ export function VoiceRecorder({
   // =================================================================
   const startDictationRecording = useCallback(async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: buildAudioConstraints(mode, sensitivity) });
       streamRef.current = stream;
       const mimeType = getMimeType();
       mimeTypeRef.current = mimeType;
@@ -340,11 +386,9 @@ export function VoiceRecorder({
       // Start Web Speech for instant text (output suppressed during hold via isHoldingRef)
       startWebSpeech();
 
-      // Periodic refinement: flush audio segment every 8 seconds
-      if (refineTimerRef.current) clearInterval(refineTimerRef.current);
-      refineTimerRef.current = setInterval(() => {
-        if (!stoppingRef.current) flushSegmentForRefinement();
-      }, 8000);
+      // NOTE: Refinement timer is NOT started here — it's started in handlePointerUp
+      // only when entering non-medicalize toggle mode. Hold-to-medicalize does NOT
+      // use periodic refinement (single-shot on release instead).
 
       // Audio level visualization
       try {
@@ -367,8 +411,8 @@ export function VoiceRecorder({
     // Stop refinement timer first
     if (refineTimerRef.current) { clearInterval(refineTimerRef.current); refineTimerRef.current = null; }
 
-    const speechEngine = getSpeechAPI();
-    const useDeepgramCleanup = speechEngine === 'deepgram' || speechEngine === 'wispr';
+    const transcribeEngine = getTranscribeAPI();
+    const useDeepgramCleanup = transcribeEngine === 'deepgram' || transcribeEngine === 'wispr';
 
     // Collect final audio segment before cleanup
     const recorder = mediaRecorderRef.current;
@@ -382,7 +426,7 @@ export function VoiceRecorder({
 
     cleanupResources();
 
-    // Refine the final segment
+    // STT-refine the final audio segment (no medicalize yet)
     if (useDeepgramCleanup && finalBlob && finalBlob.size > 2000) {
       setRecState('transcribing');
       onProcessingRef.current?.(true);
@@ -390,7 +434,7 @@ export function VoiceRecorder({
         const formData = new FormData();
         formData.append('audio', finalBlob, `segment.${getFileExtension(mimeTypeRef.current)}`);
         formData.append('mode', 'dictation');
-        const res = await fetch(getTranscribeEndpoint(speechEngine), { method: 'POST', body: formData });
+        const res = await fetch(getTranscribeEndpoint(transcribeEngine), { method: 'POST', body: formData });
         if (res.ok) {
           const { text } = await res.json();
           if (text?.trim()) {
@@ -402,7 +446,8 @@ export function VoiceRecorder({
       } catch {}
     }
 
-    // Show fully refined text if we have it, otherwise keep Web Speech text
+    // Non-medicalize: no AI rewriting. Deepgram STT is the final output (verbatim dictation).
+    // Show final text
     if (refinedTextRef.current) {
       onInterimRef.current?.(refinedTextRef.current);
     }
@@ -438,7 +483,7 @@ export function VoiceRecorder({
               const medRes = await fetch('/api/medicalize', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ text: sttText.trim() }),
+                body: JSON.stringify({ text: sttText.trim(), mode: 'dictation' }),
               });
               if (medRes.ok) {
                 const { text: medText } = await medRes.json();
@@ -467,7 +512,7 @@ export function VoiceRecorder({
   // =================================================================
   const startEncounterRecording = useCallback(async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: buildAudioConstraints(mode, sensitivity) });
       streamRef.current = stream;
       const mimeType = getMimeType();
       mimeTypeRef.current = mimeType;
@@ -497,6 +542,10 @@ export function VoiceRecorder({
           const formData = new FormData();
           formData.append('audio', blob, `recording.${getFileExtension(mimeType)}`);
           formData.append('mode', mode);
+          // Pass Web Speech text as context for better Deepgram/Whisper accuracy
+          if (accumulatedTextRef.current) {
+            formData.append('context', accumulatedTextRef.current.split(/\s+/).slice(-50).join(' '));
+          }
 
           const webEngine = getTranscribeWebAPI();
           const useExternalSTT = webEngine === 'deepgram' || webEngine === 'wispr';
@@ -505,23 +554,38 @@ export function VoiceRecorder({
           if (useExternalSTT && res.ok) {
             const { text: dgText } = await res.json();
             if (dgText?.trim()) {
-              const medRes = await fetch('/api/medicalize', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ text: dgText.trim() }),
-              });
-              if (medRes.ok) {
-                const { text } = await medRes.json();
-                if (text?.trim()) onTranscript(text.trim());
-              } else {
+              // Medicalize the Deepgram result for medical cleanup + speaker labeling
+              try {
+                const medRes = await fetch('/api/medicalize', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ text: dgText.trim(), mode }),
+                });
+                if (medRes.ok) {
+                  const { text } = await medRes.json();
+                  onTranscript((text?.trim()) || dgText.trim());
+                } else {
+                  onTranscript(dgText.trim());
+                }
+              } catch {
                 onTranscript(dgText.trim());
+              }
+            } else {
+              // Deepgram returned empty — fall back to Web Speech text
+              if (accumulatedTextRef.current?.trim()) {
+                onTranscript(accumulatedTextRef.current.trim());
               }
             }
           } else if (res.ok) {
             const { text } = await res.json();
             if (text?.trim()) onTranscript(text.trim());
+          } else {
+            // API call failed — fall back to Web Speech text
+            if (accumulatedTextRef.current?.trim()) {
+              onTranscript(accumulatedTextRef.current.trim());
+            }
           }
-          onProcessingRef.current?.(false); // Signal: refinement done
+          onProcessingRef.current?.(false);
         } catch (err: any) {
           onProcessingRef.current?.(false);
           console.error('Transcription error:', err);
@@ -558,7 +622,9 @@ export function VoiceRecorder({
               if (event.results[i].isFinal) { finalTranscript += event.results[i][0].transcript + ' '; }
               else { interim += event.results[i][0].transcript; }
             }
-            onInterimTranscript((finalTranscript + interim).trim());
+            const full = (finalTranscript + interim).trim();
+            accumulatedTextRef.current = full;
+            onInterimTranscript(full);
           };
           recognition.onerror = () => {};
           recognition.onend = () => { if (mediaRecorderRef.current?.state === 'recording') { try { recognition.start(); } catch {} } };
@@ -645,8 +711,14 @@ export function VoiceRecorder({
       // Web Speech is already running and showing text.
       // Recording continues — user clicks again to stop.
       toggleModeRef.current = true;
+
+      // Start periodic Deepgram STT refinement (only for non-medicalize mode)
+      if (refineTimerRef.current) clearInterval(refineTimerRef.current);
+      refineTimerRef.current = setInterval(() => {
+        if (!stoppingRef.current) flushSegmentForRefinement();
+      }, 8000);
     }
-  }, [mode, stopMedicalizeHold]);
+  }, [mode, stopMedicalizeHold, flushSegmentForRefinement]);
 
   // --- File upload ---
   const handleFileUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
