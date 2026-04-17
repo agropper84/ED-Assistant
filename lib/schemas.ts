@@ -17,7 +17,7 @@ export const processSchema = z.object({
   sheetName,
   modifications: z.string().optional(),
   styleGuidance: z.string().optional(),
-  noteStyle: z.enum(['standard', 'comprehensive']).optional(),
+  noteStyle: z.enum(['standard', 'comprehensive', 'complete-exam']).optional(),
   customInstructions: z.string().max(2000).optional(),
   settings: z.object({
     model: z.string().optional(),
@@ -67,6 +67,7 @@ export const editTextSchema = z.object({
 export const medicalizeSchema = z.object({
   text: z.string().max(20000),
   context: z.string().max(10000).optional(),
+  mode: z.enum(['dictation', 'encounter']).optional(),
 });
 
 // --- /api/referral ---

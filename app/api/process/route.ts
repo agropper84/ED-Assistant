@@ -173,7 +173,7 @@ export const POST = withApiHandler(
             } catch {}
           }
 
-          const billingItems = getSmartBilling(result, timestamp, isWeekend);
+          const billingItems = getSmartBilling(result, timestamp, isWeekend, noteStyle === 'complete-exam');
 
           // Save to Sheets (fire-and-forget mirror)
           await saveBillingRows(ctx.sheets, rowIndex, billingItems, sheetName);

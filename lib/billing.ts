@@ -441,16 +441,21 @@ export function getSmartBilling(
   result: { objective: string; assessmentPlan: string; hpi: string; diagnosis: string },
   timestamp: string,
   isWeekend: boolean,
+  forceCompleteExam?: boolean,
 ): BillingItem[] {
   const items: BillingItem[] = [];
   const noteText = `${result.objective}\n${result.assessmentPlan}\n${result.hpi}`;
 
-  // 1. Visit type: count body systems examined in the objective
-  const systemsFound = BODY_SYSTEMS.filter(s => s.keywords.test(result.objective)).length;
-  if (systemsFound >= 4) {
+  // 1. Visit type: complete exam if forced or ≥4 body systems examined
+  if (forceCompleteExam) {
     items.push({ code: '1101', description: 'Complete examination', fee: '111.50', unit: '1', category: 'visitType' });
   } else {
-    items.push({ code: '1100', description: 'ED Visit', fee: '50.90', unit: '1', category: 'visitType' });
+    const systemsFound = BODY_SYSTEMS.filter(s => s.keywords.test(result.objective)).length;
+    if (systemsFound >= 4) {
+      items.push({ code: '1101', description: 'Complete examination', fee: '111.50', unit: '1', category: 'visitType' });
+    } else {
+      items.push({ code: '1100', description: 'ED Visit', fee: '50.90', unit: '1', category: 'visitType' });
+    }
   }
 
   // 2. Time premiums

@@ -40,7 +40,7 @@ export interface ProcessOptions {
     temperature?: number;
   };
   promptTemplates?: PromptTemplates;
-  noteStyle?: 'standard' | 'comprehensive';
+  noteStyle?: 'standard' | 'comprehensive' | 'complete-exam';
   customInstructions?: string;
 }
 
@@ -365,8 +365,28 @@ ${options?.customGuidance ? `\nPhysician's charting preferences:\n${options.cust
   let styleInstruction = '';
   if (options?.noteStyle === 'comprehensive') {
     styleInstruction = `
-NOTE STYLE: COMPREHENSIVE
+NOTE STYLE: DETAILED
 Write a thorough, detailed note. Include all relevant clinical details, pertinent positives and negatives, complete differential reasoning, and detailed management rationale. Do not abbreviate or omit information. Err on the side of more detail.
+`;
+  } else if (options?.noteStyle === 'complete-exam') {
+    styleInstruction = `
+NOTE STYLE: COMPLETE EXAMINATION
+Write a comprehensive note that documents a COMPLETE multi-system examination. The objective/physical exam section MUST include findings for ALL of the following systems, even if normal (document pertinent negatives):
+1. General appearance / vitals
+2. HEENT (head, eyes, ears, nose, throat)
+3. Neck (lymphadenopathy, thyroid, JVP, meningismus)
+4. Cardiovascular (heart sounds, rhythm, murmurs, peripheral pulses)
+5. Respiratory (breath sounds, work of breathing, percussion)
+6. Abdomen (inspection, palpation, bowel sounds, tenderness)
+7. Musculoskeletal (relevant examination, range of motion)
+8. Neurological (mental status, cranial nerves, motor, sensory, reflexes, gait)
+9. Skin/integumentary (rashes, wounds, color, turgor)
+10. Psychiatric (mood, affect, thought process, insight/judgment)
+
+For each system, document specific findings — do not simply write "normal" or "unremarkable". Use clinical language (e.g., "Regular rate and rhythm, no murmurs, rubs, or gallops" rather than "heart normal").
+
+The HPI should be detailed with a thorough history including pertinent positives and negatives for the differential.
+The Assessment & Plan should include comprehensive reasoning and detailed management.
 `;
   }
   if (options?.customInstructions) {

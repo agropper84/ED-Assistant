@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect, useMemo } from 'react';
-import { X, Clipboard, Check, Loader2, Clock, Upload, Send, FileText, Trash2 } from 'lucide-react';
+import { X, Clipboard, Check, Loader2, Clock, Upload, Send, FileText, Trash2, ChevronDown } from 'lucide-react';
 import { ExamToggles } from '@/components/ExamToggles';
 import { generateId } from '@/lib/types-json';
 import { AutocompleteTextarea } from '@/components/AutocompleteTextarea';
@@ -42,7 +42,7 @@ export interface ParsedData {
   additional: string;
   pastDocs: string;
   _generateNote?: boolean;
-  _noteStyle?: 'standard' | 'comprehensive';
+  _noteStyle?: 'standard' | 'comprehensive' | 'complete-exam';
   _customInstructions?: string;
 }
 
@@ -91,10 +91,11 @@ export function ParseModal({ isOpen, onClose, onSave, onQuickAdd, patientRef: ex
   const [quickName, setQuickName] = useState('');
   const [quickSaving, setQuickSaving] = useState(false);
   const patientRef = externalPatientRef || null;
-  const [noteStyle, setNoteStyle] = useState<'standard' | 'comprehensive'>('standard');
+  const [noteStyle, setNoteStyle] = useState<'standard' | 'comprehensive' | 'complete-exam'>('standard');
   const [customInstructions, setCustomInstructions] = useState('');
   const [showCustomInstructions, setShowCustomInstructions] = useState(false);
   const [savingState, setSavingState] = useState<'idle' | 'saving' | 'generating'>('idle');
+  const [showMoreFields, setShowMoreFields] = useState(false);
 
   // Per-field submissions
   const [submissions, setSubmissions] = useState<FieldSubmission[]>([]);
@@ -726,19 +727,15 @@ export function ParseModal({ isOpen, onClose, onSave, onQuickAdd, patientRef: ex
             </div>
           </div>
 
-          {/* Triage Notes */}
+          {/* Presenting Issue */}
           <div>
-            <div className="flex items-center justify-between mb-1.5">
-              <label className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-widest">
-                Triage Notes & Vitals
-              </label>
-              <SubmitButton field="triageVitals" content={triageVitals} clearFn={setTriageVitals} />
-            </div>
-            <SubmissionTags field="triageVitals" />
+            <label className="block text-xs font-semibold text-[var(--text-muted)] uppercase tracking-widest mb-1.5">
+              Presenting Issue
+            </label>
             <textarea
               value={triageVitals}
               onChange={(e) => setTriageVitals(e.target.value)}
-              placeholder="Chief complaint, vitals, triage assessment..."
+              placeholder="Triage notes, vitals, summary of presenting complaint (or leave blank)"
               className="w-full h-20 p-3 border border-[var(--input-border)] rounded-xl text-sm resize-y focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)]"
             />
           </div>
@@ -746,12 +743,9 @@ export function ParseModal({ isOpen, onClose, onSave, onQuickAdd, patientRef: ex
           {/* Transcript */}
           <div>
             <div className="flex items-center justify-between mb-1.5">
-              <div className="flex items-center gap-2">
-                <label className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-widest">
-                  Transcript
-                </label>
-                <SubmitButton field="transcript" content={transcript} clearFn={setTranscript} />
-              </div>
+              <label className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-widest">
+                Transcript
+              </label>
               <label className="flex items-center gap-1.5 cursor-pointer select-none">
                 <input
                   type="checkbox"
@@ -762,7 +756,6 @@ export function ParseModal({ isOpen, onClose, onSave, onQuickAdd, patientRef: ex
                 <span className="text-[10px] text-[var(--text-muted)]">Live text</span>
               </label>
             </div>
-            <SubmissionTags field="transcript" />
             <div className="relative">
               <textarea
                 value={transcript}
@@ -794,13 +787,9 @@ export function ParseModal({ isOpen, onClose, onSave, onQuickAdd, patientRef: ex
 
           {/* Encounter Notes */}
           <div>
-            <div className="flex items-center justify-between mb-1.5">
-              <label className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-widest">
-                Encounter Notes
-              </label>
-              <SubmitButton field="encounterNotes" content={encounterNotes} clearFn={setEncounterNotes} />
-            </div>
-            <SubmissionTags field="encounterNotes" />
+            <label className="block text-xs font-semibold text-[var(--text-muted)] uppercase tracking-widest mb-1.5">
+              Encounter Notes
+            </label>
             <div className="relative">
               <AutocompleteTextarea
                 value={encounterNotes}
@@ -831,62 +820,71 @@ export function ParseModal({ isOpen, onClose, onSave, onQuickAdd, patientRef: ex
             </div>
           </div>
 
-          {/* Additional Findings with Exam Toggles */}
-          <div>
-            <div className="flex items-center justify-between mb-1.5">
-              <label className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-widest">
-                Additional Findings / Exam
-              </label>
-              <SubmitButton field="additional" content={additional} clearFn={setAdditional} />
-            </div>
-            <SubmissionTags field="additional" />
-            <ExamToggles value={additional} onChange={setAdditional} />
-            <div className="relative">
-              <AutocompleteTextarea
-                value={additional}
-                onChange={setAdditional}
-                suggestions={allSuggestions}
-                placeholder="Exam findings, investigations, results, updates..."
-                textareaClassName={`w-full h-24 p-3 pr-10 border border-[var(--input-border)] rounded-xl text-sm resize-y focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] placeholder:text-[var(--text-muted)] transition-colors duration-300 ${refiningFields.has('additional') ? 'text-[var(--text-muted)] italic' : 'text-[var(--text-primary)]'}`}
-                patientContext={patientContext}
-              />
-              {refiningFields.has('additional') && (
-                <div className="absolute bottom-2 left-3 text-[10px] text-blue-400 font-medium animate-pulse z-10">Refining dictation...</div>
-              )}
-              <div className="absolute top-1.5 right-1.5 z-10">
-                <VoiceRecorder
-                  mode="dictation"
-                  onTranscript={(text) => {
-                    const base = preRecordAdditional || additional;
-                    setAdditional(base ? `${base}\n${text}` : text);
-                    setFieldRefining('additional', false);
-                  }}
-                  onRecordingStart={() => setPreRecordAdditional(additional)}
-                  onInterimTranscript={(text) => {
-                    setAdditional(preRecordAdditional ? `${preRecordAdditional}\n${text}` : text);
-                  }}
-                  onProcessingChange={(p) => setFieldRefining('additional', p)}
+          {/* More fields — collapsible */}
+          <button
+            type="button"
+            onClick={() => setShowMoreFields(!showMoreFields)}
+            className="flex items-center gap-1.5 text-[11px] text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-colors py-1"
+          >
+            <ChevronDown className={`w-3 h-3 transition-transform duration-200 ${showMoreFields ? 'rotate-180' : ''}`} />
+            {showMoreFields ? 'Less fields' : 'More fields'}
+            {(additional || pastDocs) && !showMoreFields && (
+              <span className="w-1.5 h-1.5 rounded-full bg-blue-400" />
+            )}
+          </button>
+
+          {showMoreFields && (
+            <div className="space-y-4 animate-fadeIn">
+              {/* Additional Findings with Exam Toggles */}
+              <div>
+                <label className="block text-xs font-semibold text-[var(--text-muted)] uppercase tracking-widest mb-1.5">
+                  Additional Findings / Exam
+                </label>
+                <ExamToggles value={additional} onChange={setAdditional} />
+                <div className="relative">
+                  <AutocompleteTextarea
+                    value={additional}
+                    onChange={setAdditional}
+                    suggestions={allSuggestions}
+                    placeholder="Exam findings, investigations, results, updates..."
+                    textareaClassName={`w-full h-24 p-3 pr-10 border border-[var(--input-border)] rounded-xl text-sm resize-y focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] placeholder:text-[var(--text-muted)] transition-colors duration-300 ${refiningFields.has('additional') ? 'text-[var(--text-muted)] italic' : 'text-[var(--text-primary)]'}`}
+                    patientContext={patientContext}
+                  />
+                  {refiningFields.has('additional') && (
+                    <div className="absolute bottom-2 left-3 text-[10px] text-blue-400 font-medium animate-pulse z-10">Refining dictation...</div>
+                  )}
+                  <div className="absolute top-1.5 right-1.5 z-10">
+                    <VoiceRecorder
+                      mode="dictation"
+                      onTranscript={(text) => {
+                        const base = preRecordAdditional || additional;
+                        setAdditional(base ? `${base}\n${text}` : text);
+                        setFieldRefining('additional', false);
+                      }}
+                      onRecordingStart={() => setPreRecordAdditional(additional)}
+                      onInterimTranscript={(text) => {
+                        setAdditional(preRecordAdditional ? `${preRecordAdditional}\n${text}` : text);
+                      }}
+                      onProcessingChange={(p) => setFieldRefining('additional', p)}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Past Documentation */}
+              <div>
+                <label className="block text-xs font-semibold text-[var(--text-muted)] uppercase tracking-widest mb-1.5">
+                  Past Documentation
+                </label>
+                <textarea
+                  value={pastDocs}
+                  onChange={(e) => setPastDocs(e.target.value)}
+                  placeholder="Previous visit notes, relevant history..."
+                  className="w-full h-20 p-3 border border-[var(--input-border)] rounded-xl text-sm resize-y focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)]"
                 />
               </div>
             </div>
-          </div>
-
-          {/* Past Documentation */}
-          <div>
-            <div className="flex items-center justify-between mb-1.5">
-              <label className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-widest">
-                Past Documentation
-              </label>
-              <SubmitButton field="pastDocs" content={pastDocs} clearFn={setPastDocs} />
-            </div>
-            <SubmissionTags field="pastDocs" />
-            <textarea
-              value={pastDocs}
-              onChange={(e) => setPastDocs(e.target.value)}
-              placeholder="Previous visit notes, relevant history..."
-              className="w-full h-20 p-3 border border-[var(--input-border)] rounded-xl text-sm resize-y focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)]"
-            />
-          </div>
+          )}
         </div>
 
         {/* Footer — with safe area padding for iPhone home indicator */}
@@ -956,10 +954,13 @@ export function ParseModal({ isOpen, onClose, onSave, onQuickAdd, patientRef: ex
                     </span>
                     <span className="flex items-center gap-2 mt-0.5">
                       <span
-                        onClick={(e) => { e.stopPropagation(); setNoteStyle(noteStyle === 'comprehensive' ? 'standard' : 'comprehensive'); }}
-                        className={`text-[9px] font-medium ${noteStyle === 'comprehensive' ? 'text-white' : 'text-white/50'}`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setNoteStyle(noteStyle === 'standard' ? 'comprehensive' : noteStyle === 'comprehensive' ? 'complete-exam' : 'standard');
+                        }}
+                        className={`text-[9px] font-medium ${noteStyle !== 'standard' ? 'text-white' : 'text-white/50'}`}
                       >
-                        {noteStyle === 'comprehensive' ? 'Detailed' : 'Standard'}
+                        {noteStyle === 'standard' ? 'Standard' : noteStyle === 'comprehensive' ? 'Detailed' : 'Complete Exam'}
                       </span>
                       <span className="text-white/30 text-[9px]">·</span>
                       <span

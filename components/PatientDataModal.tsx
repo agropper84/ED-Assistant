@@ -41,7 +41,7 @@ interface PatientDataModalProps {
 }
 
 export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate, onRegenerate }: PatientDataModalProps) {
-  const [noteStyle, setNoteStyle] = useState<'standard' | 'comprehensive'>('standard');
+  const [noteStyle, setNoteStyle] = useState<'standard' | 'comprehensive' | 'complete-exam'>('standard');
   const [customInstructions, setCustomInstructions] = useState('');
   const [showCustomInstructions, setShowCustomInstructions] = useState(false);
   const [transcript, setTranscript] = useState('');
@@ -525,87 +525,135 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
   return (
     <div className="fixed inset-0 modal-overlay z-50 flex items-end sm:items-center justify-center">
       <div className="relative w-full sm:max-w-lg animate-slideUp">
-      {/* Binder tabs — outside right edge, vertically centered on the modal */}
-      <div className="hidden sm:flex flex-col absolute -right-10 top-1/2 -translate-y-1/2 z-40">
-        {([
-          { id: 'profile' as const, icon: Heart, label: 'PMHx', color: 'blue', hasData: !!profileData, onClick: () => {
+      {/*
+        Folder tabs — sit outside the right edge of the modal card.
+        Each tab is a rounded rectangle that protrudes to the right.
+        The active tab visually connects to the card (no left border, same bg).
+        Positioned to straddle the card's right edge.
+      */}
+      <div className="hidden sm:flex flex-col absolute z-50" style={{ right: '-28px', top: '56px' }}>
+        {/* PMHx tab */}
+        <button
+          onClick={() => {
             setSidePanel(sidePanel === 'profile' ? null : 'profile');
             if (!profileData && !generatingProfile) handleGenerateProfile();
-          }},
-          { id: 'ddx' as const, icon: ListTree, label: 'DDx', color: 'violet', hasData: !!ddxData, onClick: () => {
-            setSidePanel(sidePanel === 'ddx' ? null : 'ddx');
-            if (!ddxData && !generatingDdx) handleGenerateDdx();
-          }},
-        ]).map((tab) => {
-          const isActive = sidePanel === tab.id;
-          const Icon = tab.icon;
-          return (
-            <button
-              key={tab.id}
-              onClick={tab.onClick}
-              className="relative group/tab outline-none"
-              title={tab.label}
-            >
-              <div
-                className={`
-                  w-10 py-4 flex flex-col items-center justify-center gap-1.5
-                  rounded-r-2xl border border-l-0
-                  transition-all duration-300 ease-out
-                  ${isActive
-                    ? `bg-[var(--card-bg)] border-[var(--border)] translate-x-0 ${tab.id === 'profile' ? 'text-blue-500 dark:text-blue-400' : 'text-violet-500 dark:text-violet-400'}`
-                    : 'bg-[var(--bg-secondary)] border-[var(--border)] -translate-x-1 text-[var(--text-muted)] hover:translate-x-0 hover:text-[var(--text-secondary)]'
-                  }
-                `}
+          }}
+          className="outline-none relative"
+        >
+          <div
+            className="flex items-center justify-center transition-all duration-250 ease-out"
+            style={{
+              width: sidePanel === 'profile' ? '30px' : '26px',
+              height: '72px',
+              background: sidePanel === 'profile'
+                ? 'linear-gradient(135deg, rgba(96,165,250,0.12), rgba(59,130,246,0.06))'
+                : 'var(--card-bg)',
+              border: '1px solid var(--card-border)',
+              borderLeft: 'none',
+              borderTopRightRadius: '12px',
+              borderBottomRightRadius: '12px',
+              boxShadow: sidePanel === 'profile'
+                ? '4px 0 12px rgba(0,0,0,0.2), inset 0 0 12px rgba(96,165,250,0.06)'
+                : '2px 0 8px rgba(0,0,0,0.12)',
+            }}
+          >
+            <div className="flex flex-col items-center gap-2">
+              <Heart
+                className="w-3 h-3 transition-colors duration-200"
+                style={{ color: sidePanel === 'profile' ? '#60a5fa' : 'var(--text-muted)' }}
+                fill={profileData ? 'currentColor' : 'none'}
+              />
+              <span
+                className="font-semibold uppercase leading-none transition-colors duration-200"
                 style={{
-                  boxShadow: isActive
-                    ? '6px 2px 16px rgba(0,0,0,0.12), 0 0 0 0.5px rgba(255,255,255,0.05)'
-                    : '3px 1px 8px rgba(0,0,0,0.06)',
+                  fontSize: '7px',
+                  letterSpacing: '0.1em',
+                  writingMode: 'vertical-rl',
+                  color: sidePanel === 'profile' ? '#60a5fa' : 'var(--text-muted)',
                 }}
               >
-                <Icon className="w-4 h-4 transition-transform duration-300 group-hover/tab:scale-110" fill={isActive && tab.hasData ? 'currentColor' : 'none'} />
-                <span
-                  className="text-[7px] font-bold uppercase tracking-[0.08em] leading-none"
-                  style={{ writingMode: 'horizontal-tb' }}
-                >
-                  {tab.label}
-                </span>
-                {tab.hasData && !isActive && (
-                  <span className={`absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full animate-fadeIn ${tab.id === 'profile' ? 'bg-blue-400' : 'bg-violet-400'}`} />
-                )}
-              </div>
-            </button>
-          );
-        })}
-      </div>
+                PMHx
+              </span>
+            </div>
+          </div>
+          {profileData && sidePanel !== 'profile' && (
+            <span className="absolute top-2 right-2 w-[5px] h-[5px] rounded-full bg-blue-400" />
+          )}
+        </button>
 
-      {/* Mobile: compact icon tabs at top-right of modal */}
-      <div className="sm:hidden absolute right-3 top-3 z-40 flex gap-0.5">
-        {([
-          { id: 'profile' as const, icon: Heart, color: 'blue', onClick: () => {
-            setSidePanel(sidePanel === 'profile' ? null : 'profile');
-            if (!profileData && !generatingProfile) handleGenerateProfile();
-          }},
-          { id: 'ddx' as const, icon: ListTree, color: 'violet', onClick: () => {
+        {/* DDx tab — offset slightly so tabs are staggered like real binder tabs */}
+        <button
+          onClick={() => {
             setSidePanel(sidePanel === 'ddx' ? null : 'ddx');
             if (!ddxData && !generatingDdx) handleGenerateDdx();
-          }},
-        ]).map((tab) => {
-          const Icon = tab.icon;
-          const isActive = sidePanel === tab.id;
-          return (
-            <button
-              key={tab.id}
-              onClick={tab.onClick}
-              className={`p-2 rounded-xl transition-all duration-200 ${
-                isActive
-                  ? `${tab.id === 'profile' ? 'bg-blue-500/15 text-blue-500' : 'bg-violet-500/15 text-violet-500'} scale-105`
-                  : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)] active:scale-95'
-              }`}
-            >
-              <Icon className="w-4 h-4" fill={isActive ? 'currentColor' : 'none'} />
-            </button>
-          );
-        })}
+          }}
+          className="outline-none relative mt-px"
+        >
+          <div
+            className="flex items-center justify-center transition-all duration-250 ease-out"
+            style={{
+              width: sidePanel === 'ddx' ? '30px' : '26px',
+              height: '64px',
+              background: sidePanel === 'ddx'
+                ? 'linear-gradient(135deg, rgba(167,139,250,0.12), rgba(139,92,246,0.06))'
+                : 'var(--card-bg)',
+              border: '1px solid var(--card-border)',
+              borderLeft: 'none',
+              borderTopRightRadius: '12px',
+              borderBottomRightRadius: '12px',
+              boxShadow: sidePanel === 'ddx'
+                ? '4px 0 12px rgba(0,0,0,0.2), inset 0 0 12px rgba(167,139,250,0.06)'
+                : '2px 0 8px rgba(0,0,0,0.12)',
+            }}
+          >
+            <div className="flex flex-col items-center gap-2">
+              <ListTree
+                className="w-3 h-3 transition-colors duration-200"
+                style={{ color: sidePanel === 'ddx' ? '#a78bfa' : 'var(--text-muted)' }}
+              />
+              <span
+                className="font-semibold uppercase leading-none transition-colors duration-200"
+                style={{
+                  fontSize: '7px',
+                  letterSpacing: '0.1em',
+                  writingMode: 'vertical-rl',
+                  color: sidePanel === 'ddx' ? '#a78bfa' : 'var(--text-muted)',
+                }}
+              >
+                DDx
+              </span>
+            </div>
+          </div>
+          {ddxData && sidePanel !== 'ddx' && (
+            <span className="absolute top-2 right-2 w-[5px] h-[5px] rounded-full bg-violet-400" />
+          )}
+        </button>
+      </div>
+
+      {/* Mobile: inline icons in header */}
+      <div className="sm:hidden absolute right-14 top-5 z-40 flex gap-1">
+        <button
+          onClick={() => {
+            setSidePanel(sidePanel === 'profile' ? null : 'profile');
+            if (!profileData && !generatingProfile) handleGenerateProfile();
+          }}
+          className={`p-1.5 rounded-lg transition-all duration-200 ${
+            sidePanel === 'profile' ? 'text-blue-400' : 'text-[var(--text-muted)] opacity-50'
+          }`}
+        >
+          <Heart className="w-4 h-4" fill={sidePanel === 'profile' ? 'currentColor' : 'none'} />
+        </button>
+        <button
+          onClick={() => {
+            setSidePanel(sidePanel === 'ddx' ? null : 'ddx');
+            if (!ddxData && !generatingDdx) handleGenerateDdx();
+          }}
+          className={`p-1.5 rounded-lg transition-all duration-200 ${
+            sidePanel === 'ddx' ? 'text-violet-400' : 'text-[var(--text-muted)] opacity-50'
+          }`}
+        >
+          <ListTree className="w-4 h-4" />
+        </button>
       </div>
 
       <div className="bg-[var(--card-bg)] w-full sm:rounded-3xl rounded-t-3xl max-h-[90vh] overflow-hidden flex flex-col" style={{ boxShadow: 'var(--card-shadow-elevated)' }}>
@@ -1010,10 +1058,13 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
                 </span>
                 <span className="flex items-center gap-2 mt-0.5">
                   <span
-                    onClick={(e) => { e.stopPropagation(); setNoteStyle(noteStyle === 'comprehensive' ? 'standard' : 'comprehensive'); }}
-                    className={`text-[9px] font-medium ${noteStyle === 'comprehensive' ? 'text-white' : 'text-white/50'}`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setNoteStyle(noteStyle === 'standard' ? 'comprehensive' : noteStyle === 'comprehensive' ? 'complete-exam' : 'standard');
+                    }}
+                    className={`text-[9px] font-medium ${noteStyle !== 'standard' ? 'text-white' : 'text-white/50'}`}
                   >
-                    {noteStyle === 'comprehensive' ? 'Detailed' : 'Standard'}
+                    {noteStyle === 'standard' ? 'Standard' : noteStyle === 'comprehensive' ? 'Detailed' : 'Complete Exam'}
                   </span>
                   <span className="text-white/30 text-[9px]">·</span>
                   <span
