@@ -83,7 +83,16 @@ export async function getPatients(ctx: DataContext, sheetName: string): Promise<
     const dj = await import('./drive-json');
     const patients = await dj.getPatientsFromDrive(ctx.drive, sheetName);
 
-    // Overlay billing from Sheets (source of truth for billing)
+    // Clear billing fields from Drive (Sheets is sole source of truth for billing)
+    for (const patient of patients) {
+      patient.visitProcedure = '';
+      patient.procCode = '';
+      patient.fee = '';
+      patient.unit = '';
+      patient.total = '';
+    }
+
+    // Overlay billing from Sheets
     try {
       const gs = await import('./google-sheets');
       const sheetsPatients = await gs.getPatients(ctx.sheets, sheetName);
@@ -104,7 +113,9 @@ export async function getPatients(ctx: DataContext, sheetName: string): Promise<
           patient.rowIndex = sp.rowIndex;
         }
       }
-    } catch {}
+    } catch (e) {
+      console.error('Failed to read billing from Sheets:', (e as Error).message);
+    }
 
     return patients;
   } catch {
@@ -128,6 +139,13 @@ export async function getPatient(ctx: DataContext, rowIndex: number, sheetName: 
     const patient = await dj.getPatientFromDrive(ctx.drive, rowIndex, sheetName);
     if (!patient) return null;
 
+    // Clear billing fields from Drive (Sheets is sole source of truth)
+    patient.visitProcedure = '';
+    patient.procCode = '';
+    patient.fee = '';
+    patient.unit = '';
+    patient.total = '';
+
     // Overlay billing from Sheets — find by name since rowIndex may have shifted
     try {
       const gs = await import('./google-sheets');
@@ -141,7 +159,9 @@ export async function getPatient(ctx: DataContext, rowIndex: number, sheetName: 
         patient.total = sp.total || '';
         patient.rowIndex = sp.rowIndex;
       }
-    } catch {}
+    } catch (e) {
+      console.error('Failed to read billing from Sheets:', (e as Error).message);
+    }
 
     return patient;
   } catch {
