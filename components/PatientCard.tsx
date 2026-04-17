@@ -3,7 +3,7 @@
 import { useState, useRef, useCallback, memo } from 'react';
 import { createPortal } from 'react-dom';
 import { Patient } from '@/lib/google-sheets';
-import { Clock, User, FileText, Trash2, DollarSign, Stethoscope, Copy, Check, Brain, ListTree, BookOpen, Play, Loader2, X, MessageCircleQuestion, Merge, CalendarDays, GraduationCap, Bookmark, Heart } from 'lucide-react';
+import { Clock, User, FileText, Trash2, DollarSign, Stethoscope, Copy, Check, Brain, ListTree, BookOpen, Play, Loader2, X, MessageCircleQuestion, Merge, CalendarDays, GraduationCap, Bookmark, Heart, Pin } from 'lucide-react';
 import { ProfileSummary } from '@/components/PatientProfile';
 import { QuickRecordButton } from '@/components/QuickRecordButton';
 import type { PatientProfile } from '@/app/api/profile/route';
@@ -36,6 +36,8 @@ interface PatientCardProps {
   onSaveResource?: (resource: { type: 'evidence' | 'education'; content: string; patientName: string; diagnosis: string }) => void;
   savedResourceKey?: (type: 'evidence' | 'education') => boolean;
   onQuickRecordComplete?: () => void;
+  isPinned?: boolean;
+  onUnpin?: () => void;
 }
 
 /** Convert a full name to initials, e.g. "John Smith" → "J.S." */
@@ -100,7 +102,7 @@ function IconTooltip({ anchorRef, visible, children }: { anchorRef: React.RefObj
   );
 }
 
-export const PatientCard = memo(function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChange, onBillingToggle, billingCodes, onNavigate, onSplitView, onProcess, onGenerateAnalysis, onGenerateSynopsis, onGenerateManagement, onGenerateEvidence, onGenerateDdxInvestigations, onGenerateManagementEvidence, onUpdateFields, onClinicalChat, onMerge, onDateChange, onGenerateEducation, showEducation, showIconsAlways, onSaveResource, savedResourceKey, onGenerateProfile, onQuickRecordComplete }: PatientCardProps) {
+export const PatientCard = memo(function PatientCard({ patient, onClick, onDelete, anonymize, onTimeChange, onBillingToggle, billingCodes, onNavigate, onSplitView, onProcess, onGenerateAnalysis, onGenerateSynopsis, onGenerateManagement, onGenerateEvidence, onGenerateDdxInvestigations, onGenerateManagementEvidence, onUpdateFields, onClinicalChat, onMerge, onDateChange, onGenerateEducation, showEducation, showIconsAlways, onSaveResource, savedResourceKey, onGenerateProfile, onQuickRecordComplete, isPinned, onUnpin }: PatientCardProps) {
   const [editingTime, setEditingTime] = useState(false);
   const [timeValue, setTimeValue] = useState(patient.timestamp || '');
   const [noteCopied, setNoteCopied] = useState(false);
@@ -309,6 +311,15 @@ export const PatientCard = memo(function PatientCard({ patient, onClick, onDelet
       >
         {/* Top row: Name + badges + inline info icons */}
         <div className="flex items-center gap-2.5 mb-0.5">
+          {isPinned && onUnpin && (
+            <span
+              onClick={(e) => { e.stopPropagation(); e.preventDefault(); onUnpin(); }}
+              className="flex-shrink-0 text-[var(--text-muted)] hover:text-[var(--accent)] cursor-pointer transition-colors"
+              title="Unpin — return to sort order"
+            >
+              <Pin className="w-3 h-3" style={{ transform: 'rotate(45deg)' }} />
+            </span>
+          )}
           <span
             className={`font-medium text-[15px] tracking-tight text-[var(--text-primary)] truncate ${onUpdateFields ? 'hover:text-blue-600 dark:hover:text-blue-400 cursor-pointer' : ''}`}
             onClick={onUpdateFields ? (e) => {

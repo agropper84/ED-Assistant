@@ -837,6 +837,8 @@ export default function HomePage() {
           onClick={() => handlePatientClick(patient)}
           onDelete={() => setDeleteConfirm(patient)}
           anonymize={anonymize}
+          isPinned={pinnedRowIndex === patient.rowIndex}
+          onUnpin={() => setPinnedRowIndex(null)}
           onTimeChange={(time) => handleTimeChange(patient, time)}
           onBillingToggle={isVchMode ? undefined : () => toggleBilling(patient.rowIndex)}
           billingCodes={isVchMode ? undefined : codes}
