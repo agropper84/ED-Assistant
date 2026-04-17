@@ -468,7 +468,16 @@ export async function updatePatientInDrive(
   const dateSheet = await getDateSheetFromDrive(ctx, sheetName);
   if (!dateSheet) return;
 
-  const idx = dateSheet.patients.findIndex(p => p.rowIndex === rowIndex);
+  // Find by rowIndex. If not found, search by name — rowIndex may differ
+  // from Sheets position due to billing continuation rows shifting rows.
+  let idx = dateSheet.patients.findIndex(p => p.rowIndex === rowIndex);
+  if (idx === -1) {
+    // Try name from fields, or scan for closest match
+    const name = fields.name as string | undefined;
+    if (name) {
+      idx = dateSheet.patients.findIndex(p => p.data.name === name);
+    }
+  }
   if (idx === -1) return;
 
   dateSheet.patients[idx].data = { ...dateSheet.patients[idx].data, ...fields };

@@ -723,7 +723,7 @@ export default function HomePage() {
       await fetch(`/api/patients/${patient.rowIndex}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ timestamp: newTime, _sheetName: patient.sheetName }),
+        body: JSON.stringify({ timestamp: newTime, _sheetName: patient.sheetName, _patientName: patient.name }),
       });
       fetchPatients();
     } catch (error) {
