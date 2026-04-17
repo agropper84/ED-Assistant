@@ -783,7 +783,7 @@ export function ParseModal({ isOpen, onClose, onSave, onQuickAdd, patientRef: ex
 
           {showMoreFields && (
             <div className="space-y-4 animate-fadeIn">
-              {/* Transcript */}
+{/* Transcript */}
               <div>
                 <div className="flex items-center justify-between mb-1.5">
                   <label className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-widest">
@@ -816,7 +816,7 @@ export function ParseModal({ isOpen, onClose, onSave, onQuickAdd, patientRef: ex
                   </div>
                 </div>
                 <div className="relative">
-                  {transcript && /^(Speaker \d|Dr:|Pt:|Family:)/m.test(transcript) && !refiningFields.has('transcript') ? (
+                  {transcript && /^(Speaker \d|Dr[.:]|Pt[.:]|Patient:|Family:|Physician:|Doctor:)/im.test(transcript) && !refiningFields.has('transcript') ? (
                     <div
                       className="w-full h-28 p-3 pr-16 border border-[var(--input-border)] rounded-xl text-sm overflow-y-auto bg-[var(--input-bg)] cursor-text"
                       onClick={(e) => {
@@ -826,8 +826,8 @@ export function ParseModal({ isOpen, onClose, onSave, onQuickAdd, patientRef: ex
                       }}
                     >
                       {transcript.split('\n').map((line, i) => {
-                        const isDr = /^(Speaker 1:|Dr:)/i.test(line);
-                        const isPt = /^(Speaker 2:|Pt:|Family:)/i.test(line);
+                        const isDr = /^(Speaker 1:|Dr[.:]|Physician:|Doctor:)/i.test(line);
+                        const isPt = /^(Speaker [2-9]:|Pt[.:]|Patient:|Family:)/i.test(line);
                         return (
                           <div key={i} className={`leading-relaxed ${isDr ? 'text-blue-400' : isPt ? 'text-amber-400' : 'text-[var(--text-primary)]'}`}>
                             {line || '\u00A0'}
@@ -841,14 +841,14 @@ export function ParseModal({ isOpen, onClose, onSave, onQuickAdd, patientRef: ex
                     onChange={(e) => setTranscript(e.target.value)}
                     onBlur={(e) => {
                       const prev = e.currentTarget.previousElementSibling as HTMLElement;
-                      if (prev && /^(Speaker \d|Dr:|Pt:|Family:)/m.test(transcript)) {
+                      if (prev && /^(Speaker \d|Dr[.:]|Pt[.:]|Patient:|Family:|Physician:|Doctor:)/im.test(transcript)) {
                         prev.style.display = 'block';
                         e.currentTarget.style.display = 'none';
                       }
                     }}
                     placeholder="Audio transcript or dictation..."
                     className={`w-full h-28 p-3 pr-16 border border-[var(--input-border)] rounded-xl text-sm resize-y focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] placeholder:text-[var(--text-muted)] transition-colors duration-300 ${refiningFields.has('transcript') ? 'text-[var(--text-muted)] italic' : 'text-[var(--text-primary)]'}`}
-                    style={transcript && /^(Speaker \d|Dr:|Pt:|Family:)/m.test(transcript) && !refiningFields.has('transcript') ? { display: 'none' } : undefined}
+                    style={transcript && /^(Speaker \d|Dr[.:]|Pt[.:]|Patient:|Family:|Physician:|Doctor:)/im.test(transcript) && !refiningFields.has('transcript') ? { display: 'none' } : undefined}
                   />
                   {refiningFields.has('transcript') && (
                     <div className="absolute bottom-2 left-3 text-[10px] text-blue-400 font-medium animate-pulse">Refining transcription...</div>
@@ -908,7 +908,7 @@ export function ParseModal({ isOpen, onClose, onSave, onQuickAdd, patientRef: ex
                   </div>
                 </div>
               </div>
-              {/* Additional Findings with Exam Toggles */}
+                        {/* Additional Findings with Exam Toggles */}
               <div>
                 <label className="block text-xs font-semibold text-[var(--text-muted)] uppercase tracking-widest mb-1.5">
                   Additional Findings / Exam
