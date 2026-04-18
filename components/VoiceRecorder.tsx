@@ -785,12 +785,13 @@ export function VoiceRecorder({
       boostGainRef.current = gainNode;
       boostCompressorRef.current = compressor;
 
-      // Record from the BOOSTED stream with high bitrate for speech clarity
+      // Record from RAW stream — server-side transcription gets unprocessed audio
+      // for maximum accuracy. Boosted stream is only used for waveform visualization.
       const recorderOptions: MediaRecorderOptions = { mimeType };
       if (mimeType.includes('webm')) {
-        recorderOptions.audioBitsPerSecond = 128000; // 128kbps — much better than default ~32kbps
+        recorderOptions.audioBitsPerSecond = 128000; // 128kbps for speech clarity
       }
-      const recorder = new MediaRecorder(boostedStream, recorderOptions);
+      const recorder = new MediaRecorder(rawStream, recorderOptions);
       mediaRecorderRef.current = recorder;
       chunksRef.current = [];
       recorder.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data); };
@@ -811,74 +812,62 @@ export function VoiceRecorder({
         onProcessingRef.current?.(true);
 
         try {
-          // Combine ALL chunks into a single blob for more reliable transcription
           const fullBlob = new Blob(allChunks, { type: mimeType });
-          console.log(`[Encounter] Audio blob: ${(fullBlob.size / 1024).toFixed(1)}KB, type=${mimeType}`);
+          console.log(`[Encounter] Raw audio: ${(fullBlob.size / 1024).toFixed(1)}KB, type=${mimeType}`);
 
           if (fullBlob.size < 1000) {
-            console.warn('[Encounter] Audio too small, skipping transcription');
+            console.warn('[Encounter] Audio too small, skipping');
             setRecState('idle');
             onProcessingRef.current?.(false);
             onRecordingStopRef.current?.();
             return;
           }
 
-          // Backup to Vercel Blob (fire-and-forget) for recovery
+          // Server-side transcription: upload raw audio → Vercel Blob backup + Deepgram
+          // Raw audio (no browser compressor/gain) produces better transcription accuracy
+          let transcript = '';
           try {
-            const backupForm = new FormData();
-            backupForm.append('audio', fullBlob, `encounter-${Date.now()}.${getFileExtension(mimeType)}`);
-            fetch('/api/backup-audio', { method: 'POST', body: backupForm }).catch(() => {});
-          } catch {}
-
-          const webEngine = getTranscribeWebAPI();
-
-          // For large recordings (>5 min / ~5MB), split into segments
-          const MAX_SEGMENT_SIZE = 5 * 1024 * 1024; // 5MB
-          const segments: Blob[] = [];
-          if (fullBlob.size > MAX_SEGMENT_SIZE) {
-            const CHUNKS_PER_SEGMENT = 30;
-            for (let i = 0; i < allChunks.length; i += CHUNKS_PER_SEGMENT) {
-              segments.push(new Blob(allChunks.slice(i, i + CHUNKS_PER_SEGMENT), { type: mimeType }));
+            console.log('[Encounter] Uploading to server for transcription...');
+            const formData = new FormData();
+            formData.append('audio', fullBlob, `encounter.${getFileExtension(mimeType)}`);
+            const res = await fetch('/api/transcribe-server', { method: 'POST', body: formData });
+            if (res.ok) {
+              const data = await res.json();
+              transcript = data.text?.trim() || '';
+              console.log(`[Encounter] Server transcript: ${transcript.length} chars${data.blobUrl ? `, backup: ${data.blobUrl}` : ''}`);
+            } else {
+              const err = await res.text().catch(() => '');
+              console.warn(`[Encounter] Server transcription failed (${res.status}), falling back to client-side`, err);
             }
-          } else {
-            segments.push(fullBlob);
+          } catch (e) {
+            console.warn('[Encounter] Server transcription error, falling back to client-side:', e);
           }
 
-          console.log(`[Encounter] Processing ${segments.length} segment(s) via ${webEngine}`);
-
-          // Process segments — in parallel for speed, concatenate results in order
-          const segmentResults = await Promise.all(
-            segments.map(async (segBlob, idx) => {
-              if (segBlob.size < 1000) return '';
-              const formData = new FormData();
-              formData.append('audio', segBlob, `segment-${idx}.${getFileExtension(mimeType)}`);
-              formData.append('mode', mode);
-              formData.append('skipMedicalize', 'true');
-              try {
-                const res = await fetch(getTranscribeEndpoint(webEngine), { method: 'POST', body: formData });
-                if (res.ok) {
-                  const data = await res.json();
-                  console.log(`[Encounter] Segment ${idx}: ${data.text?.length || 0} chars`);
-                  return data.text?.trim() || '';
-                } else {
-                  const err = await res.text().catch(() => '');
-                  console.error(`[Encounter] Segment ${idx} failed: ${res.status} ${err}`);
-                }
-              } catch (e) {
-                console.error(`[Encounter] Segment ${idx} error:`, e);
+          // Fallback: client-side transcription if server failed
+          if (!transcript) {
+            console.log('[Encounter] Using client-side fallback transcription');
+            const webEngine = getTranscribeWebAPI();
+            const formData = new FormData();
+            formData.append('audio', fullBlob, `encounter.${getFileExtension(mimeType)}`);
+            formData.append('mode', 'encounter');
+            try {
+              const res = await fetch(getTranscribeEndpoint(webEngine), { method: 'POST', body: formData });
+              if (res.ok) {
+                const data = await res.json();
+                transcript = data.text?.trim() || '';
+                console.log(`[Encounter] Client fallback transcript: ${transcript.length} chars`);
               }
-              return '';
-            })
-          );
+            } catch {}
+          }
 
-          const combinedText = segmentResults.filter(Boolean).join('\n');
-          console.log(`[Encounter] Final transcript: ${combinedText.length} chars`);
+          // Last resort: Web Speech accumulated text
+          if (!transcript && accumulatedTextRef.current?.trim()) {
+            console.log('[Encounter] Using Web Speech fallback');
+            transcript = accumulatedTextRef.current.trim();
+          }
 
-          if (combinedText.trim()) {
-            onTranscript(combinedText.trim());
-          } else if (accumulatedTextRef.current?.trim()) {
-            console.log('[Encounter] Using Web Speech fallback text');
-            onTranscript(accumulatedTextRef.current.trim());
+          if (transcript) {
+            onTranscript(transcript);
           } else {
             console.warn('[Encounter] No transcript produced from any source');
           }
