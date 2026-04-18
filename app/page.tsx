@@ -719,15 +719,22 @@ export default function HomePage() {
   };
 
   const handleTimeChange = async (patient: Patient, newTime: string) => {
+    // Optimistic update
+    setPatients(prev => prev.map(p =>
+      p.rowIndex === patient.rowIndex && p.sheetName === patient.sheetName
+        ? { ...p, timestamp: newTime } : p
+    ));
     try {
-      await fetch(`/api/patients/${patient.rowIndex}`, {
+      const res = await fetch(`/api/patients/${patient.rowIndex}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ timestamp: newTime, _sheetName: patient.sheetName, _patientName: patient.name }),
       });
+      if (!res.ok) console.error('Time save failed:', res.status);
       fetchPatients();
     } catch (error) {
       console.error('Failed to update time:', error);
+      fetchPatients(); // revert optimistic update on error
     }
   };
 
@@ -1171,7 +1178,7 @@ export default function HomePage() {
                   Today
                 </button>
               )}
-              {/* Temporary: Sync Drive → Sheets */}
+              {/* Sync Drive JSON → Google Sheets (Sheets is a read-only mirror) */}
               <button
                 onClick={handleSyncToSheets}
                 disabled={syncing}
@@ -1708,10 +1715,10 @@ export default function HomePage() {
         {fabPos && (
           <button
             onClick={resetFabPosition}
-            className="absolute -top-2.5 -left-2.5 w-5 h-5 bg-purple-600 dark:bg-purple-500 rounded-full flex items-center justify-center shadow-lg hover:bg-purple-700 dark:hover:bg-purple-400 hover:scale-110 opacity-0 scale-75 group-hover/fab:opacity-100 group-hover/fab:scale-100 transition-all duration-200 delay-150 z-10"
+            className="absolute -top-1.5 -left-1.5 w-3 h-3 bg-purple-600/50 dark:bg-purple-500/50 rounded-full flex items-center justify-center hover:bg-purple-600/80 dark:hover:bg-purple-400/80 hover:scale-110 opacity-0 scale-75 group-hover/fab:opacity-50 group-hover/fab:scale-100 transition-all duration-200 delay-150 z-10"
             title="Reset position"
           >
-            <RotateCcw className="w-2.5 h-2.5 text-white" strokeWidth={2.5} />
+            <RotateCcw className="w-1.5 h-1.5 text-white/70" strokeWidth={2.5} />
           </button>
         )}
         <button
