@@ -126,9 +126,15 @@ export const PatientCard = memo(function PatientCard({ patient, onClick, onDelet
   const dateInputRef = useRef<HTMLInputElement>(null);
 
   // Track held keys for H/O/P + click on encounter note
+  // Ignore when typing in inputs/textareas
   const heldKeyRef = useRef<string | null>(null);
   useEffect(() => {
+    const isTyping = () => {
+      const tag = document.activeElement?.tagName;
+      return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
+    };
     const down = (e: KeyboardEvent) => {
+      if (isTyping()) return;
       const k = e.key.toLowerCase();
       if (k === 'h' || k === 'o' || k === 'p') heldKeyRef.current = k;
     };
@@ -776,10 +782,11 @@ export const PatientCard = memo(function PatientCard({ patient, onClick, onDelet
                 onBlur={handleDiagnosisSave}
                 onKeyDown={(e) => {
                   e.stopPropagation();
+                  if (e.key === ' ') e.stopImmediatePropagation(); // prevent button click on space
                   if (e.key === 'Enter') handleDiagnosisSave();
                   if (e.key === 'Escape') setEditingDiagnosis(false);
                 }}
-                onKeyUp={(e) => e.stopPropagation()}
+                onKeyUp={(e) => { e.stopPropagation(); e.preventDefault(); }}
                 autoFocus
                 disabled={savingDiagnosis}
                 className="w-32 px-1.5 py-0.5 border border-blue-400 rounded text-[12px] bg-[var(--input-bg)] text-[var(--text-primary)] focus:ring-1 focus:ring-blue-500 focus:outline-none"
