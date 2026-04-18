@@ -828,48 +828,77 @@ export function VoiceRecorder({
             return;
           }
 
-          // Send raw audio directly to transcription endpoint
-          // (raw stream = no browser compressor/gain = better accuracy)
+          // Transcribe the audio
           let transcript = '';
           const webEngine = getTranscribeWebAPI();
-          console.log(`[Encounter] Transcribing ${(fullBlob.size / 1024).toFixed(1)}KB via ${webEngine}...`);
+          const sizeMB = (fullBlob.size / (1024 * 1024)).toFixed(2);
+          console.log(`[Encounter] Transcribing ${sizeMB}MB via ${webEngine}...`);
 
-          try {
-            const formData = new FormData();
-            formData.append('audio', fullBlob, `encounter.${getFileExtension(mimeType)}`);
-            formData.append('mode', 'encounter');
-            const res = await fetch(getTranscribeEndpoint(webEngine), { method: 'POST', body: formData });
-            if (res.ok) {
-              const data = await res.json();
-              transcript = data.text?.trim() || '';
-              console.log(`[Encounter] Transcript: ${transcript.length} chars`);
-            } else {
-              const err = await res.text().catch(() => '');
-              console.error(`[Encounter] Transcription failed: ${res.status} ${err}`);
+          // If blob > 4MB, split into smaller segments (Vercel body limit ~4.5MB)
+          const MAX_UPLOAD = 4 * 1024 * 1024;
+          const blobs: Blob[] = [];
+          if (fullBlob.size > MAX_UPLOAD) {
+            console.log(`[Encounter] Splitting ${sizeMB}MB into segments...`);
+            const CHUNKS_PER_SEG = Math.floor(allChunks.length * MAX_UPLOAD / fullBlob.size);
+            for (let i = 0; i < allChunks.length; i += Math.max(1, CHUNKS_PER_SEG)) {
+              blobs.push(new Blob(allChunks.slice(i, i + CHUNKS_PER_SEG), { type: mimeType }));
             }
-          } catch (e) {
-            console.error('[Encounter] Transcription error:', e);
+            console.log(`[Encounter] Split into ${blobs.length} segments`);
+          } else {
+            blobs.push(fullBlob);
           }
 
-          // Last resort: Web Speech accumulated text
+          const results: string[] = [];
+          for (let idx = 0; idx < blobs.length; idx++) {
+            const seg = blobs[idx];
+            if (seg.size < 500) continue;
+            try {
+              const formData = new FormData();
+              formData.append('audio', seg, `encounter-${idx}.${getFileExtension(mimeType)}`);
+              formData.append('mode', 'encounter');
+              console.log(`[Encounter] Uploading segment ${idx + 1}/${blobs.length} (${(seg.size / 1024).toFixed(0)}KB)...`);
+              const res = await fetch(getTranscribeEndpoint(webEngine), { method: 'POST', body: formData });
+              if (res.ok) {
+                const data = await res.json();
+                if (data.text?.trim()) {
+                  results.push(data.text.trim());
+                  console.log(`[Encounter] Segment ${idx + 1}: ${data.text.length} chars`);
+                }
+              } else {
+                const errText = await res.text().catch(() => '');
+                console.error(`[Encounter] Segment ${idx + 1} failed: ${res.status}`, errText);
+              }
+            } catch (e) {
+              console.error(`[Encounter] Segment ${idx + 1} error:`, e);
+            }
+          }
+
+          transcript = results.join('\n');
+
+          // Fallback: Web Speech accumulated text
           if (!transcript && accumulatedTextRef.current?.trim()) {
             console.log('[Encounter] Using Web Speech fallback');
             transcript = accumulatedTextRef.current.trim();
           }
 
           if (transcript) {
+            console.log(`[Encounter] Final: ${transcript.length} chars`);
             onTranscript(transcript);
           } else {
-            console.warn('[Encounter] No transcript produced from any source');
+            console.warn('[Encounter] No transcript produced');
+            // Show error to user via onTranscript so it's visible
+            onTranscript('[Transcription failed — please try again or use Live Text mode]');
           }
 
           onProcessingRef.current?.(false);
         } catch (err: any) {
           onProcessingRef.current?.(false);
+          console.error('[Encounter] Error:', err);
           if (accumulatedTextRef.current?.trim()) {
             onTranscript(accumulatedTextRef.current.trim());
+          } else {
+            onTranscript('[Transcription error — please try again]');
           }
-          console.error('[Encounter] Transcription error:', err);
         }
         onAudioLevelRef.current?.({ level: 0, lowFreq: 0, highFreq: 0, speakerHint: 'silent' });
         setRecState('idle');
