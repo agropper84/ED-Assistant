@@ -1176,6 +1176,7 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
                       }).catch(() => {});
                       (onGenerated || onSaved)();
                       onClose();
+                      onNavigate();
                     }
                   } catch (error) {
                     console.error('Failed to generate:', error);
