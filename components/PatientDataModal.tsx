@@ -774,26 +774,46 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
                   })}
                 </div>
               ) : null}
-              {/* Recording waveform — scales with mic sensitivity so user can titrate */}
+              {/* Recording waveform — centered, extends both directions */}
               {isRecordingEncounter && !showLiveTranscript && (() => {
-                // Scale visualization to match sensitivity: higher sensitivity = taller bars
-                const vizGain = micSensitivity === 1 ? 30 : micSensitivity === 2 ? 45 : micSensitivity === 3 ? 60 : 80;
+                const vizGain = micSensitivity === 1 ? 24 : micSensitivity === 2 ? 36 : micSensitivity === 3 ? 50 : 64;
+                const barCount = 80;
                 return (
-                  <div className="w-full h-28 border border-blue-400/20 rounded-xl bg-[var(--input-bg)] flex flex-col items-center justify-center relative overflow-hidden">
-                    <div className="flex items-end justify-center gap-[2px] h-16 px-4">
-                      {Array.from({ length: 64 }).map((_, i) => {
+                  <div className="w-full h-28 rounded-xl relative overflow-hidden" style={{
+                    background: 'linear-gradient(180deg, rgba(15,23,42,0.6) 0%, rgba(15,23,42,0.8) 100%)',
+                    border: '1px solid rgba(96,165,250,0.12)',
+                  }}>
+                    {/* Subtle center line */}
+                    <div className="absolute left-4 right-4 top-1/2 h-px" style={{ background: 'rgba(96,165,250,0.08)' }} />
+                    {/* Waveform bars — centered vertically */}
+                    <div className="absolute inset-0 flex items-center justify-center gap-[1.5px] px-3">
+                      {Array.from({ length: barCount }).map((_, i) => {
                         const sample = waveHistoryRef.current[i];
                         const level = sample?.level || 0;
-                        const h = Math.max(2, level * vizGain);
-                        const color = level > 0.03
-                          ? `rgba(96, 165, 250, ${0.3 + Math.min(level * 1.5, 0.7)})`
-                          : 'rgba(148, 163, 184, 0.1)';
+                        const barH = Math.max(1, level * vizGain);
+                        const totalH = barH * 2 + 1;
+                        const opacity = level > 0.03 ? 0.35 + Math.min(level * 1.2, 0.65) : 0.06;
                         return (
-                          <div key={i} className="rounded-full" style={{ width: '2px', height: `${h}px`, backgroundColor: color, transition: 'height 80ms ease-out' }} />
+                          <div
+                            key={i}
+                            className="rounded-full flex-shrink-0"
+                            style={{
+                              width: '2px',
+                              height: `${totalH}px`,
+                              background: level > 0.03
+                                ? `linear-gradient(180deg, rgba(96,165,250,${opacity * 0.6}) 0%, rgba(96,165,250,${opacity}) 50%, rgba(96,165,250,${opacity * 0.6}) 100%)`
+                                : 'rgba(148,163,184,0.06)',
+                              transition: 'height 60ms ease-out',
+                            }}
+                          />
                         );
                       })}
                     </div>
-                    <span className="text-[9px] text-blue-400/60 font-medium tracking-wide mt-2">Recording encounter</span>
+                    {/* Pulsing recording indicator */}
+                    <div className="absolute bottom-2.5 left-0 right-0 flex items-center justify-center gap-2">
+                      <div className="w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse" />
+                      <span className="text-[9px] text-white/40 font-medium tracking-widest uppercase">Recording</span>
+                    </div>
                   </div>
                 );
               })()}
@@ -834,7 +854,7 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
                   onAudioLevel={!showLiveTranscript ? (data) => {
                     setAudioData(data);
                     // Build scrolling wave history (last 64 samples)
-                    waveHistoryRef.current = [...waveHistoryRef.current.slice(-63), { level: data.level, speaker: data.speakerHint }];
+                    waveHistoryRef.current = [...waveHistoryRef.current.slice(-79), { level: data.level, speaker: data.speakerHint }];
                   } : undefined}
                 />
               </div>
