@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useCallback, memo } from 'react';
+import { useState, useRef, useCallback, useEffect, memo } from 'react';
 import { createPortal } from 'react-dom';
 import { Patient } from '@/lib/google-sheets';
 import { Clock, User, FileText, Trash2, DollarSign, Stethoscope, Copy, Check, Brain, ListTree, BookOpen, Play, Loader2, X, MessageCircleQuestion, Merge, CalendarDays, GraduationCap, Bookmark, Heart, Pin } from 'lucide-react';
@@ -124,6 +124,19 @@ export const PatientCard = memo(function PatientCard({ patient, onClick, onDelet
   const [savingDiagnosis, setSavingDiagnosis] = useState(false);
   const diagInputRef = useRef<HTMLInputElement>(null);
   const dateInputRef = useRef<HTMLInputElement>(null);
+
+  // Track held keys for H/O/P + click on encounter note
+  const heldKeyRef = useRef<string | null>(null);
+  useEffect(() => {
+    const down = (e: KeyboardEvent) => {
+      const k = e.key.toLowerCase();
+      if (k === 'h' || k === 'o' || k === 'p') heldKeyRef.current = k;
+    };
+    const up = () => { heldKeyRef.current = null; };
+    window.addEventListener('keydown', down);
+    window.addEventListener('keyup', up);
+    return () => { window.removeEventListener('keydown', down); window.removeEventListener('keyup', up); };
+  }, []);
 
   // Tooltip state — replaces CSS group-hover with portal-based tooltips
   const [activeTooltip, setActiveTooltip] = useState<string | null>(null);
@@ -400,24 +413,46 @@ export const PatientCard = memo(function PatientCard({ patient, onClick, onDelet
                     onClick={async (e) => {
                       e.stopPropagation();
                       if (e.metaKey || e.ctrlKey) {
+                        // ⌘+click: regenerate (open clinical info to add data and regenerate)
                         onNavigate();
                       } else {
-                        const fullNote = [
-                          patient.hpi && `HPI:\n${patient.hpi}`,
-                          patient.objective && `OBJECTIVE:\n${patient.objective}`,
-                          patient.assessmentPlan && `ASSESSMENT & PLAN:\n${patient.assessmentPlan}`,
-                        ].filter(Boolean).join('\n\n');
-                        await navigator.clipboard.writeText(fullNote);
-                        setCopiedIcon('note');
-                        setTimeout(() => setCopiedIcon(null), 1500);
+                        // Check for H/O/P key held during click
+                        const section = heldKeyRef.current;
+                        let text = '';
+                        let label = 'note';
+                        if (section === 'h' && patient.hpi) {
+                          text = patient.hpi;
+                          label = 'note-h';
+                        } else if (section === 'o' && patient.objective) {
+                          text = patient.objective;
+                          label = 'note-o';
+                        } else if (section === 'p' && patient.assessmentPlan) {
+                          text = patient.assessmentPlan;
+                          label = 'note-p';
+                        } else {
+                          text = [
+                            patient.hpi && `HPI:\n${patient.hpi}`,
+                            patient.objective && `OBJECTIVE:\n${patient.objective}`,
+                            patient.assessmentPlan && `ASSESSMENT & PLAN:\n${patient.assessmentPlan}`,
+                          ].filter(Boolean).join('\n\n');
+                        }
+                        if (text) {
+                          await navigator.clipboard.writeText(text);
+                          setCopiedIcon(label);
+                          setTimeout(() => setCopiedIcon(null), 1500);
+                        }
                       }
                     }}
                     onMouseEnter={() => showTooltip('note')}
                     onMouseLeave={hideTooltip}
                     className="p-0.5 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 rounded transition-colors cursor-pointer inline-flex"
-                    title="Click to copy · ⌘+click to view"
+                    title="Click: copy all · H+click: HPI · O+click: Objective · P+click: A&P · ⌘+click: regenerate"
                   >
-                    {copiedIcon === 'note' ? <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" /> : <FileText className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />}
+                    {copiedIcon === 'note' ? <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                      : copiedIcon === 'note-h' ? <span className="text-[9px] font-bold text-emerald-600 dark:text-emerald-400 w-3.5 h-3.5 flex items-center justify-center">H</span>
+                      : copiedIcon === 'note-o' ? <span className="text-[9px] font-bold text-emerald-600 dark:text-emerald-400 w-3.5 h-3.5 flex items-center justify-center">O</span>
+                      : copiedIcon === 'note-p' ? <span className="text-[9px] font-bold text-emerald-600 dark:text-emerald-400 w-3.5 h-3.5 flex items-center justify-center">P</span>
+                      : <FileText className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />}
                   </span>
                   <IconTooltip anchorRef={tooltipRefs.note} visible={activeTooltip === 'note'}>
                     <div onMouseEnter={keepTooltip} onMouseLeave={hideTooltip}>
