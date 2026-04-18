@@ -823,64 +823,27 @@ export function VoiceRecorder({
             return;
           }
 
-          // Step 1: Upload raw audio to Vercel Blob (avoids body size limits)
-          // Step 2: Server fetches from Blob URL and sends to Deepgram
+          // Send raw audio directly to transcription endpoint
+          // (raw stream = no browser compressor/gain = better accuracy)
           let transcript = '';
+          const webEngine = getTranscribeWebAPI();
+          console.log(`[Encounter] Transcribing ${(fullBlob.size / 1024).toFixed(1)}KB via ${webEngine}...`);
+
           try {
-            // Upload to Blob first
-            console.log('[Encounter] Uploading audio to Blob...');
-            const uploadForm = new FormData();
-            uploadForm.append('audio', fullBlob, `encounter-${Date.now()}.${getFileExtension(mimeType)}`);
-            const uploadRes = await fetch('/api/backup-audio', { method: 'POST', body: uploadForm });
-
-            if (uploadRes.ok) {
-              const { url: blobUrl } = await uploadRes.json();
-              console.log(`[Encounter] Blob uploaded: ${blobUrl}`);
-
-              // Now tell the server to transcribe from the Blob URL
-              const res = await fetch('/api/transcribe-server', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ blobUrl }),
-              });
-              if (res.ok) {
-                const data = await res.json();
-                transcript = data.text?.trim() || '';
-                console.log(`[Encounter] Server transcript: ${transcript.length} chars`);
-              } else {
-                const err = await res.text().catch(() => '');
-                console.warn(`[Encounter] Server transcription failed (${res.status}):`, err);
-              }
-            } else {
-              console.warn('[Encounter] Blob upload failed, trying direct upload...');
-              // Fallback: direct upload to transcribe-server
-              const formData = new FormData();
-              formData.append('audio', fullBlob, `encounter.${getFileExtension(mimeType)}`);
-              const res = await fetch('/api/transcribe-server', { method: 'POST', body: formData });
-              if (res.ok) {
-                const data = await res.json();
-                transcript = data.text?.trim() || '';
-              }
-            }
-          } catch (e) {
-            console.warn('[Encounter] Server transcription error:', e);
-          }
-
-          // Fallback: client-side transcription
-          if (!transcript) {
-            console.log('[Encounter] Using client-side fallback');
-            const webEngine = getTranscribeWebAPI();
             const formData = new FormData();
             formData.append('audio', fullBlob, `encounter.${getFileExtension(mimeType)}`);
             formData.append('mode', 'encounter');
-            try {
-              const res = await fetch(getTranscribeEndpoint(webEngine), { method: 'POST', body: formData });
-              if (res.ok) {
-                const data = await res.json();
-                transcript = data.text?.trim() || '';
-                console.log(`[Encounter] Client fallback: ${transcript.length} chars`);
-              }
-            } catch {}
+            const res = await fetch(getTranscribeEndpoint(webEngine), { method: 'POST', body: formData });
+            if (res.ok) {
+              const data = await res.json();
+              transcript = data.text?.trim() || '';
+              console.log(`[Encounter] Transcript: ${transcript.length} chars`);
+            } else {
+              const err = await res.text().catch(() => '');
+              console.error(`[Encounter] Transcription failed: ${res.status} ${err}`);
+            }
+          } catch (e) {
+            console.error('[Encounter] Transcription error:', e);
           }
 
           // Last resort: Web Speech accumulated text
