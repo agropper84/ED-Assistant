@@ -248,12 +248,13 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
   // Recording timer
   useEffect(() => {
     if (!isRecordingEncounter) { setRecordingElapsed(0); return; }
-    setRecordingStartTime(Date.now());
+    const startTime = Date.now();
+    setRecordingStartTime(startTime);
+    setRecordingElapsed(0);
     const interval = setInterval(() => {
-      setRecordingElapsed(Math.floor((Date.now() - (recordingStartTime || Date.now())) / 1000));
+      setRecordingElapsed(Math.floor((Date.now() - startTime) / 1000));
     }, 1000);
     return () => clearInterval(interval);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isRecordingEncounter]);
 
   useEffect(() => {
@@ -804,10 +805,10 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
                     background: 'linear-gradient(180deg, rgba(15,23,42,0.6) 0%, rgba(15,23,42,0.8) 100%)',
                     border: '1px solid rgba(96,165,250,0.12)',
                   }}>
-                    {/* Subtle center line — full width */}
-                    <div className="absolute inset-x-0 top-1/2 h-px" style={{ background: 'rgba(96,165,250,0.06)' }} />
-                    {/* Waveform bars — fill entire width */}
-                    <div className="absolute inset-x-0 top-0 bottom-6 flex items-center justify-between px-0">
+                    {/* Subtle center line — full width, true center */}
+                    <div className="absolute inset-x-0 top-[calc(50%-1px)] h-px" style={{ background: 'rgba(96,165,250,0.06)' }} />
+                    {/* Waveform bars — fill entire width, true vertical center */}
+                    <div className="absolute inset-0 flex items-center justify-between">
                       {Array.from({ length: barCount }).map((_, i) => {
                         const sample = waveHistoryRef.current[i];
                         const level = sample?.level || 0;
