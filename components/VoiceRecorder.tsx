@@ -267,34 +267,34 @@ export function VoiceRecorder({
       analyser.getFloatTimeDomainData(timeData);
       let sum = 0;
       for (let i = 0; i < timeData.length; i++) sum += timeData[i] * timeData[i];
-      const level = Math.min(1, Math.sqrt(sum / timeData.length) / 0.12);
+      // RMS level — use 0.05 divisor for higher sensitivity (was 0.12)
+      const rms = Math.sqrt(sum / timeData.length);
+      const level = Math.min(1, rms / 0.04);
       setAudioLevel(level);
 
       // Frequency domain for speaker characteristics
       analyser.getByteFrequencyData(freqData);
       const binCount = freqData.length;
       const lowEnd = Math.floor(binCount * 0.15);  // ~0-750Hz (fundamental voice range)
-      const midStart = Math.floor(binCount * 0.15);
-      const midEnd = Math.floor(binCount * 0.4);    // ~750-2000Hz (voice formants)
       const highStart = Math.floor(binCount * 0.4);
       const highEnd = Math.floor(binCount * 0.7);   // ~2000-3500Hz (sibilants, clarity)
 
       let lowSum = 0, highSum = 0;
       for (let i = 0; i < lowEnd; i++) lowSum += freqData[i];
       for (let i = highStart; i < highEnd; i++) highSum += freqData[i];
-      const lowFreq = Math.min(1, (lowSum / lowEnd) / 128);
-      const highFreq = Math.min(1, (highSum / (highEnd - highStart)) / 128);
+      const lowFreq = Math.min(1, (lowSum / lowEnd) / 80);
+      const highFreq = Math.min(1, (highSum / (highEnd - highStart)) / 80);
 
       // Update running baseline (smoothed average of speech levels)
-      if (level > 0.05) {
+      if (level > 0.02) {
         sampleCount++;
-        baselineLevel = baselineLevel + (level - baselineLevel) / Math.min(sampleCount, 50);
+        baselineLevel = baselineLevel + (level - baselineLevel) / Math.min(sampleCount, 30);
       }
 
       // Speaker hint based on volume relative to baseline
       let speakerHint: 'near' | 'far' | 'silent' = 'silent';
-      if (level > 0.05) {
-        speakerHint = level > baselineLevel * 0.8 ? 'near' : 'far';
+      if (level > 0.02) {
+        speakerHint = level > baselineLevel * 0.6 ? 'near' : 'far';
       }
 
       onAudioLevelRef.current?.({ level, lowFreq, highFreq, speakerHint });
@@ -851,11 +851,13 @@ export function VoiceRecorder({
       recorder.start(10000);
       setRecState('recording');
 
+      // Visualize the BOOSTED stream (not raw) so quiet voices are visible
       try {
         const vizCtx = new AudioContext();
-        const vizSource = vizCtx.createMediaStreamSource(rawStream);
+        const vizSource = vizCtx.createMediaStreamSource(boostedStream);
         const vizAnalyser = vizCtx.createAnalyser();
         vizAnalyser.fftSize = 2048;
+        vizAnalyser.smoothingTimeConstant = 0.3;
         vizSource.connect(vizAnalyser);
         audioContextRef.current = vizCtx;
         analyserRef.current = vizAnalyser;
