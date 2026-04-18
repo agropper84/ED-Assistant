@@ -1,7 +1,8 @@
 // Service worker for Web Share Target API
 // Intercepts shared audio files and caches them for the app to pick up
+// v2 — force SW update to bust cached JS bundles
 
-const CACHE_NAME = 'share-target';
+const CACHE_NAME = 'share-target-v2';
 const CACHE_KEY = '/shared-audio';
 
 self.addEventListener('activate', (event) => {

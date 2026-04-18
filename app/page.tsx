@@ -849,7 +849,7 @@ export default function HomePage() {
           onTimeChange={(time) => handleTimeChange(patient, time)}
           onBillingToggle={isVchMode ? undefined : () => toggleBilling(patient.rowIndex)}
           billingCodes={isVchMode ? undefined : codes}
-          onNavigate={() => router.push(`/patient/${patient.rowIndex}?sheet=${encodeURIComponent(patient.sheetName)}`)}
+          onNavigate={() => router.push(`/patient/${patient.rowIndex}?sheet=${encodeURIComponent(patient.sheetName)}&name=${encodeURIComponent(patient.name || '')}`)}
           onSplitView={() => setSplitPatient(patient)}
           onProcess={async () => {
             let settings: any;
@@ -989,7 +989,7 @@ export default function HomePage() {
 
   const navigateToPatient = (patient: Patient) => {
     setDataModalPatient(null);
-    router.push(`/patient/${patient.rowIndex}?sheet=${encodeURIComponent(patient.sheetName)}`);
+    router.push(`/patient/${patient.rowIndex}?sheet=${encodeURIComponent(patient.sheetName)}&name=${encodeURIComponent(patient.name || '')}`);
   };
 
   if (away.awayScreen) {
@@ -1679,7 +1679,7 @@ export default function HomePage() {
             </div>
             <div className="flex items-center gap-1">
               <button
-                onClick={() => router.push(`/patient/${splitPatient.rowIndex}?sheet=${encodeURIComponent(splitPatient.sheetName)}`)}
+                onClick={() => router.push(`/patient/${splitPatient.rowIndex}?sheet=${encodeURIComponent(splitPatient.sheetName)}&name=${encodeURIComponent(splitPatient.name || '')}`)}
                 className="p-1.5 rounded-lg hover:bg-[var(--bg-tertiary)] transition-colors"
                 title="Open full page"
               >
@@ -1695,7 +1695,7 @@ export default function HomePage() {
             </div>
           </div>
           <iframe
-            src={`/patient/${splitPatient.rowIndex}?sheet=${encodeURIComponent(splitPatient.sheetName)}&embed=1`}
+            src={`/patient/${splitPatient.rowIndex}?sheet=${encodeURIComponent(splitPatient.sheetName)}&name=${encodeURIComponent(splitPatient.name || '')}&embed=1`}
             className="w-full border-0"
             style={{ height: 'calc(100vh - 170px)' }}
           />

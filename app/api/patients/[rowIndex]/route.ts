@@ -11,9 +11,11 @@ export async function GET(
     const ctx = await getDataContext();
     const rowIndex = parseInt(params.rowIndex);
     const sheetName = request.nextUrl.searchParams.get('sheet') || '';
-    const patient = await getPatient(ctx, rowIndex, sheetName);
+    const patientName = request.nextUrl.searchParams.get('name') || undefined;
+    const patient = await getPatient(ctx, rowIndex, sheetName, patientName);
 
     if (!patient) {
+      console.error(`GET patient: not found — rowIndex=${rowIndex}, name=${patientName}, sheet="${sheetName}", mode=${ctx.mode}, hasDrive=${!!ctx.drive}`);
       return NextResponse.json({ error: 'Patient not found' }, { status: 404 });
     }
 
@@ -44,19 +46,6 @@ export async function PATCH(
     const body = await request.json();
     const { _sheetName, _billingItems, _upsertDiagnosis, _moveToSheet, _patientName, ...fields } = body;
 
-    // Verify patient identity — use Sheets directly since rowIndex reflects
-    // Sheets position (which shifts with billing continuation rows)
-    if (_sheetName && _patientName) {
-      const gs = await import('@/lib/google-sheets');
-      const sheetsPatient = await gs.getPatient(ctx.sheets, rowIndex, _sheetName);
-      if (sheetsPatient && sheetsPatient.name !== _patientName) {
-        return NextResponse.json(
-          { error: 'Patient identity mismatch — please close and reopen the chart.' },
-          { status: 409 }
-        );
-      }
-    }
-
     // Move patient to a different date sheet
     if (_moveToSheet) {
       const result = await movePatientToSheet(ctx.sheets, rowIndex, _sheetName || '', _moveToSheet);
@@ -64,23 +53,23 @@ export async function PATCH(
     }
 
     if (_billingItems) {
-      // Billing is Sheets-only — use the rowIndex directly (already synced to Sheets position)
-      await saveBillingRows(ctx.sheets, rowIndex, _billingItems, _sheetName || undefined);
+      // Write billing to Drive JSON (source of truth) + Sheets mirror
+      const { serializeBillingItems } = await import('@/lib/billing');
+      const serialized = serializeBillingItems(_billingItems);
+      const allFields: Record<string, string> = {
+        ...fields,
+        visitProcedure: serialized.visitProcedure,
+        procCode: serialized.procCode,
+        fee: serialized.fee,
+        unit: serialized.unit,
+        total: serialized.total,
+      };
+      await updatePatientFields(ctx, rowIndex, allFields, _sheetName || '', _patientName || undefined);
 
-      // Save any non-billing fields (comments, etc.)
-      const nonBillingFields = { ...fields };
-      delete nonBillingFields.visitProcedure;
-      delete nonBillingFields.procCode;
-      delete nonBillingFields.fee;
-      delete nonBillingFields.unit;
-      delete nonBillingFields.total;
-      if (Object.keys(nonBillingFields).length > 0) {
-        await updatePatientFields(ctx, rowIndex, nonBillingFields, _sheetName || '');
-      }
+      // Mirror to Sheets (fire-and-forget — for viewing/export only)
+      saveBillingRows(ctx.sheets, rowIndex, _billingItems, _sheetName || undefined).catch(() => {});
     } else {
-      // Include patient name so Drive can find patient by name if rowIndex doesn't match
-      const fieldsWithName = _patientName ? { ...fields, name: fields.name || _patientName } : fields;
-      await updatePatientFields(ctx, rowIndex, fieldsWithName, _sheetName || undefined);
+      await updatePatientFields(ctx, rowIndex, fields, _sheetName || '', _patientName || undefined);
     }
 
     // Upsert diagnosis→ICD mapping to registry if requested

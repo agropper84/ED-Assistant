@@ -183,8 +183,19 @@ export const POST = withApiHandler(
 
           const billingItems = getSmartBilling(result, timestamp, isWeekend, noteStyle === 'complete-exam');
 
-          // Billing is Sheets-only — Sheets is the source of truth for billing
-          await saveBillingRows(ctx.sheets, rowIndex, billingItems, sheetName);
+          // Write billing to Drive JSON (source of truth)
+          const { serializeBillingItems } = await import('@/lib/billing');
+          const serialized = serializeBillingItems(billingItems);
+          await updatePatientFields(ctx, rowIndex, {
+            visitProcedure: serialized.visitProcedure,
+            procCode: serialized.procCode,
+            fee: serialized.fee,
+            unit: serialized.unit,
+            total: serialized.total,
+          }, sheetName);
+
+          // Mirror to Sheets (fire-and-forget)
+          saveBillingRows(ctx.sheets, rowIndex, billingItems, sheetName).catch(() => {});
         }
       } catch (e) {
         console.error('Auto-billing failed:', e);

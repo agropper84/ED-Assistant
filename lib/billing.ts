@@ -124,7 +124,7 @@ const YUKON_CODES: Record<string, BillingCodeEntry> = {
   '0152': { description: 'Night premium', fee: '177.00', group: 'Premiums' },
   '0153': { description: 'WL/DC Evening premium', fee: '24.50', group: 'Premiums' },
   '0154': { description: 'WL/DC Night premium', fee: '107.40', group: 'Premiums' },
-  '1153': { description: 'WGH Evening/Weekend premium', fee: '24.50', group: 'Premiums' },
+  '1153': { description: 'WGH Evening/Weekend premium', fee: '50.00', group: 'Premiums' },
   '1154': { description: 'WGH Night premium', fee: '107.40', group: 'Premiums' },
 
   // Communication
@@ -397,7 +397,7 @@ export function getAutoBilling(timestamp: string, isWeekend: boolean): BillingIt
   // Time premium
   if (hour >= 0) {
     if ((hour >= 18 && hour < 23) || isWeekend) {
-      items.push({ code: '1153', description: 'WGH Evening/Weekend premium', fee: '24.50', unit: '1', category: 'premium' });
+      items.push({ code: '1153', description: 'WGH Evening/Weekend premium', fee: '50.00', unit: '1', category: 'premium' });
     } else if (hour >= 23 || hour < 8) {
       items.push({ code: '1154', description: 'WGH Night premium', fee: '107.40', unit: '1', category: 'premium' });
     }

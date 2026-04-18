@@ -77,49 +77,23 @@ export async function getPatients(ctx: DataContext, sheetName: string): Promise<
     return gs.getPatients(ctx.sheets, sheetName);
   }
 
-  // Drive for clinical data, Sheets for billing (matched by name, not rowIndex,
-  // because billing continuation rows shift Sheets row positions)
+  // Drive JSON is the single source of truth for ALL patient data including billing
   try {
     const dj = await import('./drive-json');
     const patients = await dj.getPatientsFromDrive(ctx.drive, sheetName);
+    if (patients.length > 0) return patients;
 
-    // Clear billing fields from Drive (Sheets is sole source of truth for billing)
-    for (const patient of patients) {
-      patient.visitProcedure = '';
-      patient.procCode = '';
-      patient.fee = '';
-      patient.unit = '';
-      patient.total = '';
-    }
-
-    // Overlay billing from Sheets
+    // Drive has no patients for this date — fall back to Sheets
+    // (handles legacy data created before Drive JSON was set up)
+    const gs = await import('./google-sheets');
+    return gs.getPatients(ctx.sheets, sheetName);
+  } catch {
     try {
       const gs = await import('./google-sheets');
-      const sheetsPatients = await gs.getPatients(ctx.sheets, sheetName);
-      // Match by patient name since rowIndex diverges when continuation rows exist
-      const billingByName = new Map<string, typeof sheetsPatients[0]>();
-      for (const sp of sheetsPatients) {
-        if (sp.name) billingByName.set(sp.name, sp);
-      }
-      for (const patient of patients) {
-        const sp = patient.name ? billingByName.get(patient.name) : null;
-        if (sp) {
-          patient.visitProcedure = sp.visitProcedure || '';
-          patient.procCode = sp.procCode || '';
-          patient.fee = sp.fee || '';
-          patient.unit = sp.unit || '';
-          patient.total = sp.total || '';
-          // Update rowIndex to match Sheets (so billing writes go to the right row)
-          patient.rowIndex = sp.rowIndex;
-        }
-      }
-    } catch (e) {
-      console.error('Failed to read billing from Sheets:', (e as Error).message);
+      return gs.getPatients(ctx.sheets, sheetName);
+    } catch {
+      return [];
     }
-
-    return patients;
-  } catch {
-    return [];
   }
 }
 
@@ -127,45 +101,29 @@ export async function getPatients(ctx: DataContext, sheetName: string): Promise<
 // SINGLE PATIENT
 // ============================================================
 
-export async function getPatient(ctx: DataContext, rowIndex: number, sheetName: string): Promise<Patient | null> {
+export async function getPatient(ctx: DataContext, rowIndex: number, sheetName: string, patientName?: string): Promise<Patient | null> {
   if (ctx.mode === 'sheets' || !ctx.drive) {
     const gs = await import('./google-sheets');
     return gs.getPatient(ctx.sheets, rowIndex, sheetName);
   }
 
-  // Drive for clinical data, Sheets for billing
+  // Drive JSON is the single source of truth
   try {
     const dj = await import('./drive-json');
-    const patient = await dj.getPatientFromDrive(ctx.drive, rowIndex, sheetName);
-    if (!patient) return null;
+    const patient = await dj.getPatientFromDrive(ctx.drive, rowIndex, sheetName, patientName);
+    if (patient) return patient;
 
-    // Clear billing fields from Drive (Sheets is sole source of truth)
-    patient.visitProcedure = '';
-    patient.procCode = '';
-    patient.fee = '';
-    patient.unit = '';
-    patient.total = '';
-
-    // Overlay billing from Sheets — find by name since rowIndex may have shifted
+    // Not in Drive — fall back to Sheets (legacy data)
+    const gs = await import('./google-sheets');
+    return gs.getPatient(ctx.sheets, rowIndex, sheetName);
+  } catch (e) {
+    console.warn('getPatient Drive error:', (e as Error).message);
     try {
       const gs = await import('./google-sheets');
-      const sheetsPatients = await gs.getPatients(ctx.sheets, patient.sheetName);
-      const sp = sheetsPatients.find(p => p.name === patient.name);
-      if (sp) {
-        patient.visitProcedure = sp.visitProcedure || '';
-        patient.procCode = sp.procCode || '';
-        patient.fee = sp.fee || '';
-        patient.unit = sp.unit || '';
-        patient.total = sp.total || '';
-        patient.rowIndex = sp.rowIndex;
-      }
-    } catch (e) {
-      console.error('Failed to read billing from Sheets:', (e as Error).message);
+      return gs.getPatient(ctx.sheets, rowIndex, sheetName);
+    } catch {
+      return null;
     }
-
-    return patient;
-  } catch {
-    return null;
   }
 }
 
@@ -178,6 +136,7 @@ export async function updatePatientFields(
   rowIndex: number,
   fields: Record<string, string>,
   sheetName: string,
+  originalName?: string,
 ): Promise<void> {
   if (ctx.mode === 'sheets' || !ctx.drive) {
     const gs = await import('./google-sheets');
@@ -186,12 +145,12 @@ export async function updatePatientFields(
 
   // Drive primary write
   const dj = await import('./drive-json');
-  await dj.updatePatientInDrive(ctx.drive, sheetName, rowIndex, fields as Partial<PatientFields>);
+  await dj.updatePatientInDrive(ctx.drive, sheetName, rowIndex, fields as Partial<PatientFields>, originalName);
 
-  // Fire-and-forget Sheets mirror
+  // Sheets mirror — fire-and-forget (Sheets is a read-only mirror, not read by the app)
   import('./google-sheets').then(gs =>
     gs.updatePatientFields(ctx.sheets, rowIndex, fields, sheetName)
-  ).catch(e => console.warn('Sheets mirror failed:', (e as Error).message));
+  ).catch(() => {});
 }
 
 // ============================================================
@@ -203,29 +162,31 @@ export async function addSubmission(
   rowIndex: number,
   sheetName: string,
   entry: SubmissionEntry,
+  patientName?: string,
 ): Promise<SubmissionEntry[]> {
   // Build the content with title label (so AI knows what the content represents)
   const labeledContent = entry.title
     ? `[${entry.title.toUpperCase()}]\n${entry.content}`
     : entry.content;
 
-  // Append to the flat field in Sheets (don't replace — accumulate submissions)
-  const gs = await import('./google-sheets');
-  const existingPatient = await gs.getPatient(ctx.sheets, rowIndex, sheetName);
-  const existingContent = existingPatient ? (existingPatient as any)[entry.field] || '' : '';
-  const combined = existingContent && labeledContent
-    ? `${existingContent}\n\n${labeledContent}`
-    : labeledContent || existingContent;
-  gs.updatePatientFields(ctx.sheets, rowIndex, { [entry.field]: combined }, sheetName)
-    .catch(e => console.warn('Sheets field update failed:', (e as Error).message));
+  // Sheets mirror — fire-and-forget (append to flat field for dev visibility)
+  import('./google-sheets').then(async gs => {
+    const existingPatient = await gs.getPatient(ctx.sheets, rowIndex, sheetName);
+    const existingContent = existingPatient ? (existingPatient as any)[entry.field] || '' : '';
+    const combined = existingContent && labeledContent
+      ? `${existingContent}\n\n${labeledContent}`
+      : labeledContent || existingContent;
+    await gs.updatePatientFields(ctx.sheets, rowIndex, { [entry.field]: combined }, sheetName);
+  }).catch(e => console.warn('Sheets field update failed:', (e as Error).message));
 
   if (ctx.mode === 'sheets' || !ctx.drive) {
     return [entry]; // No Drive storage for submissions in sheets-only mode
   }
 
-  // Drive: add to submissions array + update flat field
+  // Drive: find patient (by rowIndex or name), add submission
+  // addSubmissionToDrive uses findPatientInSheet which searches by rowIndex then name
   const dj = await import('./drive-json');
-  return dj.addSubmissionToDrive(ctx.drive, sheetName, rowIndex, entry);
+  return dj.addSubmissionToDrive(ctx.drive, sheetName, rowIndex, entry, patientName);
 }
 
 // ============================================================
@@ -310,16 +271,27 @@ export async function getOrCreateDateSheet(
 // GET SUBMISSIONS (for tag display)
 // ============================================================
 
-export async function getSubmissions(ctx: DataContext, rowIndex: number, sheetName: string): Promise<SubmissionEntry[]> {
+export async function getSubmissions(ctx: DataContext, rowIndex: number, sheetName: string, patientName?: string): Promise<SubmissionEntry[]> {
   if (ctx.mode !== 'sheets' && ctx.drive) {
     try {
       const dj = await import('./drive-json');
-      const dateSheet = await dj.getDateSheetFromDrive(ctx.drive, sheetName);
-      if (dateSheet) {
-        const patient = dateSheet.patients.find(p => p.rowIndex === rowIndex);
-        if (patient?.submissions) return patient.submissions;
+      // Use getPatientFromDrive which searches by rowIndex then name
+      const patient = await dj.getPatientFromDrive(ctx.drive, rowIndex, sheetName, patientName);
+      if (patient) {
+        // Patient found — but submissions live on the EDPatientFile, not the mapped Patient
+        // Read directly from the date sheet to get the file-level submissions
+        const dateSheet = await dj.getDateSheetFromDrive(ctx.drive, sheetName);
+        if (dateSheet) {
+          // Find the same patient in the raw data
+          const file = dateSheet.patients.find(p =>
+            Number(p.rowIndex) === Number(patient.rowIndex) || (patientName && p.data.name === patientName)
+          );
+          if (file) return file.submissions || [];
+        }
       }
-    } catch {}
+    } catch (e) {
+      console.warn('getSubmissions Drive error:', (e as Error).message);
+    }
   }
   return [];
 }
@@ -328,12 +300,15 @@ export async function getSubmissions(ctx: DataContext, rowIndex: number, sheetNa
 // DELETE SUBMISSION
 // ============================================================
 
-export async function deleteSubmission(ctx: DataContext, rowIndex: number, sheetName: string, submissionId: string): Promise<void> {
+export async function deleteSubmission(ctx: DataContext, rowIndex: number, sheetName: string, submissionId: string, patientName?: string): Promise<void> {
   if (ctx.mode !== 'sheets' && ctx.drive) {
     const dj = await import('./drive-json');
     const dateSheet = await dj.getDateSheetFromDrive(ctx.drive, sheetName);
     if (dateSheet) {
-      const patientIdx = dateSheet.patients.findIndex(p => p.rowIndex === rowIndex);
+      // Find by rowIndex or name
+      const patientIdx = dateSheet.patients.findIndex(p =>
+        Number(p.rowIndex) === Number(rowIndex) || (patientName && p.data.name === patientName)
+      );
       if (patientIdx !== -1 && dateSheet.patients[patientIdx].submissions) {
         dateSheet.patients[patientIdx].submissions = dateSheet.patients[patientIdx].submissions!.filter(
           s => s.id !== submissionId

@@ -1,14 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDataContext } from '@/lib/data-layer';
-import { getOrCreateDateSheet, updatePatientFields, saveBillingRows, getPatients as getSheetsPatients } from '@/lib/google-sheets';
+import { getOrCreateDateSheet, updatePatientFields, saveBillingRows, DATA_START_ROW } from '@/lib/google-sheets';
 import { parseBillingItems } from '@/lib/billing';
+
+export const maxDuration = 60;
 
 /**
  * POST /api/sync-to-sheets
- * Bidirectional sync for a date sheet:
- *   1. Drive → Sheets: writes all patient data to Google Sheets
- *   2. Sheets → Drive: backfills billing fields that exist in Sheets but not Drive
- *
+ * One-way sync: Drive JSON → Google Sheets.
+ * Clears the sheet first, then writes each patient with proper billing continuation rows.
  * Body: { sheetName: "Apr 15, 2026" }
  */
 export async function POST(request: NextRequest) {
@@ -27,104 +27,153 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'sheetName is required' }, { status: 400 });
     }
 
-    // 1. Ensure the Sheets date tab (and clinical companion) exist
+    // Ensure the Sheets date tab exists
     await getOrCreateDateSheet(ctx.sheets, sheetName);
 
-    // 2. Read patients from both Drive and Sheets
+    // Read all patients from Drive JSON (source of truth)
     const dj = await import('@/lib/drive-json');
     const drivePatients = await dj.getPatientsFromDrive(ctx.drive, sheetName);
-    const sheetsPatients = await getSheetsPatients(ctx.sheets, sheetName);
+    const { sheets, spreadsheetId } = ctx.sheets;
+
+    // Write shift times to row 5 (read from current Sheets state since shift times
+    // are managed via the dashboard header controls, not stored in Drive JSON)
+    try {
+      const { getShiftTimes } = await import('@/lib/google-sheets');
+      const shift = await getShiftTimes(ctx.sheets, sheetName);
+      if (shift.start || shift.end) {
+        await sheets.spreadsheets.values.update({
+          spreadsheetId,
+          range: `'${sheetName}'!A5:G5`,
+          valueInputOption: 'RAW',
+          requestBody: { values: [[shift.start, shift.end, shift.hours, shift.feeType, shift.code, shift.fee, shift.total]] },
+        });
+      }
+    } catch {}
+
+    if (drivePatients.length === 0) {
+      return NextResponse.json({ synced: 0, total: 0 });
+    }
+
+    // Clear the billing sheet data area (keep headers in rows 1-7, only columns A-Q)
+    try {
+      await sheets.spreadsheets.values.clear({
+        spreadsheetId,
+        range: `'${sheetName}'!A${DATA_START_ROW}:Q500`,
+      });
+    } catch {}
 
     let synced = 0;
-    let billingBackfilled = 0;
     const errors: string[] = [];
 
-    // --- Phase 1: Drive → Sheets (push all patient data to Sheets) ---
+    // Write each patient sequentially — row position shifts as continuation rows are added
+    let currentRow = DATA_START_ROW;
+
     for (const patient of drivePatients) {
       try {
-        const fields: Record<string, string> = {};
-        const fieldKeys = [
-          'patientNum', 'timestamp', 'name', 'age', 'gender', 'birthday',
-          'hcn', 'mrn', 'diagnosis', 'icd9', 'icd10',
-          'comments', 'triageVitals', 'transcript', 'encounterNotes',
-          'additional', 'pastDocs', 'ddx', 'investigations',
-          'hpi', 'objective', 'assessmentPlan', 'referral',
-          'synopsis', 'management', 'evidence',
-          'apNotes', 'clinicalQA', 'education', 'admission', 'profile', 'room',
+        // Parse billing items from Drive JSON's serialized format
+        const billingItems = parseBillingItems(
+          patient.visitProcedure || '',
+          patient.procCode || '',
+          patient.fee || '',
+          patient.unit || '',
+        );
+
+        // Calculate total
+        const total = billingItems.reduce((sum, item) => {
+          const f = parseFloat(item.fee) || 0;
+          const u = parseInt(item.unit || '1') || 1;
+          return sum + f * u;
+        }, 0);
+
+        // Build patient row data (columns A-Q)
+        const patientRow = [
+          patient.patientNum || '',   // A: #
+          patient.timestamp || '',     // B: Time
+          patient.name || '',          // C: Patient Name
+          patient.age || '',           // D: Age
+          patient.gender || '',        // E: Gender
+          patient.birthday || '',      // F: DOB
+          patient.hcn || '',           // G: HCN
+          patient.mrn || '',           // H: MRN
+          patient.diagnosis || '',     // I: Diagnosis
+          patient.icd9 || '',          // J: ICD-9
+          patient.icd10 || '',         // K: ICD-10
+          billingItems[0]?.description || '', // L: Procedure (first item)
+          billingItems[0]?.code || '',        // M: Code (first item)
+          billingItems[0]?.fee || '',         // N: Fee (first item)
+          billingItems[0]?.unit || '1',       // O: Unit (first item)
+          total > 0 ? total.toFixed(2) : '',  // P: Total
+          patient.comments || '',      // Q: Comments
         ];
 
-        for (const key of fieldKeys) {
-          const val = (patient as any)[key];
-          if (val) fields[key] = val;
+        // Write patient row
+        await sheets.spreadsheets.values.update({
+          spreadsheetId,
+          range: `'${sheetName}'!A${currentRow}`,
+          valueInputOption: 'RAW',
+          requestBody: { values: [patientRow] },
+        });
+
+        // Write continuation rows for additional billing items (one per row)
+        for (let i = 1; i < billingItems.length; i++) {
+          const contRow = [
+            '', '', '', '', '', '', '', '', '', '', '', // A-K: empty
+            billingItems[i].description || '',  // L: Procedure
+            billingItems[i].code || '',         // M: Code
+            billingItems[i].fee || '',          // N: Fee
+            billingItems[i].unit || '1',        // O: Unit
+            '',                                 // P: Total (blank for continuation)
+            '',                                 // Q: Comments
+          ];
+          currentRow++;
+          await sheets.spreadsheets.values.update({
+            spreadsheetId,
+            range: `'${sheetName}'!A${currentRow}`,
+            valueInputOption: 'RAW',
+            requestBody: { values: [contRow] },
+          });
         }
 
-        // Write billing items via saveBillingRows if present in Drive
-        if (patient.visitProcedure || patient.procCode) {
-          try {
-            const billingItems = parseBillingItems(
-              patient.visitProcedure || '',
-              patient.procCode || '',
-              patient.fee || '',
-              patient.unit || '',
-            );
-            if (billingItems.length > 0) {
-              await saveBillingRows(ctx.sheets, patient.rowIndex, billingItems, sheetName);
-            }
-          } catch (e) {
-            if (patient.visitProcedure) fields.visitProcedure = patient.visitProcedure;
-            if (patient.procCode) fields.procCode = patient.procCode;
-            if (patient.fee) fields.fee = patient.fee;
-            if (patient.unit) fields.unit = patient.unit;
-            if (patient.total) fields.total = patient.total;
-          }
-        }
-
-        if (Object.keys(fields).length > 0) {
-          await updatePatientFields(ctx.sheets, patient.rowIndex, fields, sheetName);
-        }
-
+        currentRow++;
         synced++;
       } catch (e) {
-        errors.push(`Drive→Sheets row ${patient.rowIndex} (${patient.name}): ${(e as Error).message}`);
+        errors.push(`${patient.name}: ${(e as Error).message}`);
+        currentRow++;
       }
     }
 
-    // --- Phase 2: Sheets → Drive (backfill billing data missing from Drive) ---
-    for (const sheetsPatient of sheetsPatients) {
-      // Only backfill if Sheets has billing but Drive doesn't
-      const sheetsBilling = sheetsPatient.procCode?.trim();
-      if (!sheetsBilling) continue;
-
-      const drivePatient = drivePatients.find(
-        p => p.rowIndex === sheetsPatient.rowIndex
-      );
-
-      const driveBilling = drivePatient?.procCode?.trim();
-      if (driveBilling) continue; // Drive already has billing — skip
-
+    // Write clinical data to companion sheet only (not the billing sheet)
+    const { clinicalSheetName } = await import('@/lib/google-sheets');
+    const clinSheet = clinicalSheetName(sheetName);
+    for (const patient of drivePatients) {
       try {
-        const billingFields: Record<string, string> = {};
-        if (sheetsPatient.visitProcedure) billingFields.visitProcedure = sheetsPatient.visitProcedure;
-        if (sheetsPatient.procCode) billingFields.procCode = sheetsPatient.procCode;
-        if (sheetsPatient.fee) billingFields.fee = sheetsPatient.fee;
-        if (sheetsPatient.unit) billingFields.unit = sheetsPatient.unit;
-        if (sheetsPatient.total) billingFields.total = sheetsPatient.total;
-        if (sheetsPatient.diagnosis) billingFields.diagnosis = sheetsPatient.diagnosis;
-        if (sheetsPatient.icd9) billingFields.icd9 = sheetsPatient.icd9;
-        if (sheetsPatient.icd10) billingFields.icd10 = sheetsPatient.icd10;
-
-        if (Object.keys(billingFields).length > 0) {
-          await dj.updatePatientInDrive(ctx.drive, sheetName, sheetsPatient.rowIndex, billingFields as any);
-          billingBackfilled++;
+        const CLINICAL_COLS: Record<string, string> = {
+          triageVitals: 'C', transcript: 'D', encounterNotes: 'E', additional: 'F',
+          pastDocs: 'G', ddx: 'H', investigations: 'I', hpi: 'J',
+          objective: 'K', assessmentPlan: 'L', referral: 'M',
+          synopsis: 'N', management: 'O', evidence: 'P',
+          apNotes: 'Q', clinicalQA: 'R', education: 'S',
+          admission: 'T', profile: 'U',
+        };
+        const data: Array<{ range: string; values: string[][] }> = [];
+        // Identity columns
+        data.push({ range: `'${clinSheet}'!A${patient.rowIndex}`, values: [[patient.name || '']] });
+        data.push({ range: `'${clinSheet}'!B${patient.rowIndex}`, values: [[patient.hcn || '']] });
+        for (const [key, col] of Object.entries(CLINICAL_COLS)) {
+          const val = (patient as any)[key];
+          if (val) data.push({ range: `'${clinSheet}'!${col}${patient.rowIndex}`, values: [[val]] });
         }
-      } catch (e) {
-        errors.push(`Sheets→Drive billing row ${sheetsPatient.rowIndex} (${sheetsPatient.name}): ${(e as Error).message}`);
-      }
+        if (data.length > 0) {
+          await sheets.spreadsheets.values.batchUpdate({
+            spreadsheetId,
+            requestBody: { valueInputOption: 'RAW', data },
+          });
+        }
+      } catch {}
     }
 
     return NextResponse.json({
       synced,
-      billingBackfilled,
       total: drivePatients.length,
       errors: errors.length > 0 ? errors : undefined,
     });

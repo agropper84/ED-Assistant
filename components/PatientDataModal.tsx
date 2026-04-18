@@ -322,7 +322,7 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
       setGeneratingDdx(false);
 
       // Fetch submissions, then populate text boxes only for fields WITHOUT submissions
-      fetch(`/api/patients/${patient.rowIndex}/submit?sheet=${encodeURIComponent(patient.sheetName)}`)
+      fetch(`/api/patients/${patient.rowIndex}/submit?sheet=${encodeURIComponent(patient.sheetName)}&name=${encodeURIComponent(patient.name || '')}`)
         .then(r => r.ok ? r.json() : { submissions: [] })
         .then(data => {
           const subs: Array<{ id: string; field: string; content: string; submittedAt: string; title?: string; date?: string }> = data.submissions || [];

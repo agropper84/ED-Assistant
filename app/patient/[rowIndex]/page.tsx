@@ -31,6 +31,7 @@ export default function PatientPage() {
   const searchParams = useSearchParams();
   const rowIndex = params.rowIndex as string;
   const sheetName = searchParams.get('sheet') || undefined;
+  const patientNameParam = searchParams.get('name') || undefined;
   const isEmbed = searchParams.get('embed') === '1';
 
   const [patient, setPatient] = useState<Patient | null>(null);
@@ -123,8 +124,11 @@ export default function PatientPage() {
 
   const fetchPatient = async () => {
     try {
-      const sheetParam = sheetName ? `?sheet=${encodeURIComponent(sheetName)}` : '';
-      const res = await fetch(`/api/patients/${rowIndex}${sheetParam}`, { cache: 'no-store' });
+      const queryParts: string[] = [];
+      if (sheetName) queryParts.push(`sheet=${encodeURIComponent(sheetName)}`);
+      if (patientNameParam) queryParts.push(`name=${encodeURIComponent(patientNameParam)}`);
+      const queryStr = queryParts.length ? `?${queryParts.join('&')}` : '';
+      const res = await fetch(`/api/patients/${rowIndex}${queryStr}`, { cache: 'no-store' });
       if (res.status === 403) { window.location.href = '/pending'; return; }
       if (res.status === 401) { window.location.href = '/login'; return; }
       const data = await res.json();

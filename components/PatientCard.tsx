@@ -779,6 +779,7 @@ export const PatientCard = memo(function PatientCard({ patient, onClick, onDelet
                   if (e.key === 'Enter') handleDiagnosisSave();
                   if (e.key === 'Escape') setEditingDiagnosis(false);
                 }}
+                onKeyUp={(e) => e.stopPropagation()}
                 autoFocus
                 disabled={savingDiagnosis}
                 className="w-32 px-1.5 py-0.5 border border-blue-400 rounded text-[12px] bg-[var(--input-bg)] text-[var(--text-primary)] focus:ring-1 focus:ring-blue-500 focus:outline-none"

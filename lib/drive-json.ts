@@ -417,18 +417,51 @@ export function fieldsToPatient(file: EDPatientFile): Patient {
   };
 }
 
+/**
+ * Find a patient in a Drive date sheet.
+ * Searches by rowIndex first, then by name. Within a date sheet, name is the
+ * stable identifier — rowIndex is a Sheets artifact that can drift.
+ */
 export async function getPatientFromDrive(
   ctx: DriveContext,
   rowIndex: number,
   sheetName: string,
+  patientName?: string,
 ): Promise<Patient | null> {
   const dateSheet = await getDateSheetFromDrive(ctx, sheetName);
   if (!dateSheet) return null;
 
-  const patientFile = dateSheet.patients.find(p => p.rowIndex === rowIndex);
-  if (!patientFile) return null;
+  const file = findPatientInSheet(dateSheet, rowIndex, patientName);
+  if (!file) return null;
 
-  return fieldsToPatient(patientFile);
+  return fieldsToPatient(file);
+}
+
+/**
+ * Core patient lookup within a date sheet. Used by all read/write functions.
+ * Returns the EDPatientFile (mutable reference into the dateSheet.patients array).
+ */
+function findPatientInSheet(
+  dateSheet: DateSheetFile,
+  rowIndex: number,
+  patientName?: string,
+): EDPatientFile | undefined {
+  // 1. Exact rowIndex match
+  let file = dateSheet.patients.find(p => Number(p.rowIndex) === Number(rowIndex));
+  if (file) return file;
+
+  // 2. Name match (stable identifier within a date sheet)
+  if (patientName) {
+    file = dateSheet.patients.find(p => p.data.name === patientName);
+    if (file) return file;
+  }
+
+  // 3. Single patient fallback
+  if (dateSheet.patients.length === 1) {
+    return dateSheet.patients[0];
+  }
+
+  return undefined;
 }
 
 export async function getPatientsFromDrive(
@@ -437,6 +470,15 @@ export async function getPatientsFromDrive(
 ): Promise<Patient[]> {
   const dateSheet = await getDateSheetFromDrive(ctx, sheetName);
   if (!dateSheet) return [];
+
+  // Auto-heal: merge any duplicate entries on read
+  const hadDupes = dateSheet.patients.length;
+  deduplicatePatients(dateSheet);
+  if (dateSheet.patients.length < hadDupes) {
+    // Save the cleaned-up data
+    await saveDateSheetToDrive(ctx, dateSheet);
+  }
+
   return dateSheet.patients.map(fieldsToPatient);
 }
 
@@ -464,25 +506,139 @@ export async function updatePatientInDrive(
   sheetName: string,
   rowIndex: number,
   fields: Partial<PatientFields>,
+  originalName?: string,
 ): Promise<void> {
-  const dateSheet = await getDateSheetFromDrive(ctx, sheetName);
-  if (!dateSheet) return;
+  const dateSheet = await getOrCreateDateSheetInDrive(ctx, sheetName);
 
-  // Find by rowIndex. If not found, search by name — rowIndex may differ
-  // from Sheets position due to billing continuation rows shifting rows.
-  let idx = dateSheet.patients.findIndex(p => p.rowIndex === rowIndex);
-  if (idx === -1) {
-    // Try name from fields, or scan for closest match
-    const name = fields.name as string | undefined;
-    if (name) {
-      idx = dateSheet.patients.findIndex(p => p.data.name === name);
+  // Deduplicate: if multiple entries share the same name, merge them first
+  deduplicatePatients(dateSheet);
+
+  // Find patient using all available identifiers
+  const nameToSearch = originalName || (fields.name as string | undefined);
+  let file = findPatientInSheet(dateSheet, rowIndex, nameToSearch);
+
+  // Also try new name if original name didn't match
+  if (!file && fields.name && fields.name !== nameToSearch) {
+    file = findPatientInSheet(dateSheet, rowIndex, fields.name as string);
+  }
+
+  if (!file) {
+    // Patient truly doesn't exist — create (only valid path for new patients)
+    const name = originalName || (fields.name as string) || 'Unknown';
+    console.log(`updatePatientInDrive: creating new patient (rowIndex=${rowIndex}, name=${name}, sheet=${sheetName})`);
+
+    // Try to read full patient data from Sheets for legacy migration
+    let fullData: Partial<PatientFields> = { ...fields };
+    try {
+      const gs = await import('./google-sheets');
+      const { getSheetsContext } = await import('./google-sheets');
+      const sheetsCtx = await getSheetsContext();
+      const sheetsPatient = await gs.getPatient(sheetsCtx, rowIndex, sheetName);
+      if (sheetsPatient) {
+        const sheetsFields: Record<string, string> = {};
+        for (const key of Object.keys(sheetsPatient)) {
+          if (key !== 'rowIndex' && key !== 'sheetName' && key !== 'hasOutput' && key !== 'status') {
+            const val = (sheetsPatient as any)[key];
+            if (val) sheetsFields[key] = val;
+          }
+        }
+        fullData = { ...sheetsFields, ...fields } as Partial<PatientFields>;
+      }
+    } catch (e) {
+      console.warn('Could not read Sheets data for migration:', (e as Error).message);
+    }
+
+    dateSheet.patients.push({
+      version: 1,
+      patientId: `${name}_${Date.now()}`,
+      lastModified: new Date().toISOString(),
+      sheetName,
+      rowIndex,
+      data: fullData as PatientFields,
+    });
+    await saveDateSheetToDrive(ctx, dateSheet);
+    return;
+  }
+
+  // Update existing patient — also fix rowIndex if it drifted
+  if (Number(file.rowIndex) !== Number(rowIndex)) {
+    console.log(`updatePatientInDrive: fixing rowIndex ${file.rowIndex} → ${rowIndex} for "${file.data.name}"`);
+    file.rowIndex = rowIndex;
+  }
+  file.data = { ...file.data, ...fields };
+  file.lastModified = new Date().toISOString();
+  await saveDateSheetToDrive(ctx, dateSheet);
+}
+
+/**
+ * Merge duplicate patient entries (same name) in a date sheet.
+ * Keeps the entry with the most data, merges submissions from all copies.
+ */
+function deduplicatePatients(dateSheet: DateSheetFile): void {
+  const byName = new Map<string, number[]>();
+  for (let i = 0; i < dateSheet.patients.length; i++) {
+    const name = dateSheet.patients[i].data.name;
+    if (!name) continue;
+    const indices = byName.get(name) || [];
+    indices.push(i);
+    byName.set(name, indices);
+  }
+
+  const toRemove: number[] = [];
+  byName.forEach((indices, name) => {
+    if (indices.length <= 1) return;
+    console.warn(`deduplicatePatients: merging ${indices.length} entries for "${name}"`);
+
+    // Pick the entry with the most data (most non-empty fields + most submissions)
+    let bestIdx = indices[0];
+    let bestScore = 0;
+    for (const idx of indices) {
+      const p = dateSheet.patients[idx];
+      const fieldCount = Object.values(p.data).filter(v => v && String(v).trim()).length;
+      const subCount = p.submissions?.length || 0;
+      const score = fieldCount + subCount * 10; // Weight submissions heavily
+      if (score > bestScore) {
+        bestScore = score;
+        bestIdx = idx;
+      }
+    }
+
+    // Merge submissions and non-empty fields from all copies into the best one
+    const best = dateSheet.patients[bestIdx];
+    for (const idx of indices) {
+      if (idx === bestIdx) continue;
+      const other = dateSheet.patients[idx];
+
+      // Merge submissions (deduplicate by id)
+      if (other.submissions?.length) {
+        if (!best.submissions) best.submissions = [];
+        const existingIds = new Set(best.submissions.map(s => s.id));
+        for (const sub of other.submissions) {
+          if (!existingIds.has(sub.id)) {
+            best.submissions.push(sub);
+          }
+        }
+      }
+
+      // Fill empty fields from the duplicate
+      const bestData = best.data as unknown as Record<string, string>;
+      const otherData = other.data as unknown as Record<string, string>;
+      Object.keys(otherData).forEach(key => {
+        if (otherData[key] && !bestData[key]) {
+          bestData[key] = otherData[key];
+        }
+      });
+
+      toRemove.push(idx);
+    }
+  });
+
+  // Remove duplicates (reverse order to preserve indices)
+  if (toRemove.length > 0) {
+    for (const idx of toRemove.sort((a, b) => b - a)) {
+      dateSheet.patients.splice(idx, 1);
     }
   }
-  if (idx === -1) return;
-
-  dateSheet.patients[idx].data = { ...dateSheet.patients[idx].data, ...fields };
-  dateSheet.patients[idx].lastModified = new Date().toISOString();
-  await saveDateSheetToDrive(ctx, dateSheet);
 }
 
 export async function addSubmissionToDrive(
@@ -490,14 +646,28 @@ export async function addSubmissionToDrive(
   sheetName: string,
   rowIndex: number,
   entry: import('./types-json').SubmissionEntry,
+  patientName?: string,
 ): Promise<import('./types-json').SubmissionEntry[]> {
-  const dateSheet = await getDateSheetFromDrive(ctx, sheetName);
-  if (!dateSheet) return [];
+  const dateSheet = await getOrCreateDateSheetInDrive(ctx, sheetName);
 
-  const idx = dateSheet.patients.findIndex(p => p.rowIndex === rowIndex);
-  if (idx === -1) return [];
+  // Deduplicate first, then find patient
+  deduplicatePatients(dateSheet);
+  const patient = findPatientInSheet(dateSheet, rowIndex, patientName);
 
-  const patient = dateSheet.patients[idx];
+  if (!patient) {
+    // Log available patients for debugging — never create duplicates here
+    const available = dateSheet.patients.map(p => `"${p.data.name}"(row=${p.rowIndex})`).join(', ');
+    throw new Error(
+      `Cannot add submission: patient "${patientName || '?'}" not found in sheet "${sheetName}". ` +
+      `Searched rowIndex=${rowIndex}. Available: [${available}]`
+    );
+  }
+
+  // Fix rowIndex if it drifted
+  if (Number(patient.rowIndex) !== Number(rowIndex)) {
+    patient.rowIndex = rowIndex;
+  }
+
   if (!patient.submissions) patient.submissions = [];
   patient.submissions.push(entry);
 
@@ -506,14 +676,13 @@ export async function addSubmissionToDrive(
     ? `[${entry.title.toUpperCase()}]\n${entry.content}`
     : entry.content;
 
-  // Append to the flat field (don't replace — accumulate submissions)
-  const field = entry.field as keyof import('./types-json').PatientFields;
-  if (field in patient.data) {
-    const existing = (patient.data as unknown as Record<string, string>)[field] || '';
-    (patient.data as unknown as Record<string, string>)[field] = existing && labeledContent
-      ? `${existing}\n\n${labeledContent}`
-      : labeledContent || existing;
-  }
+  // Append to the flat field for AI processing
+  const field = entry.field as string;
+  const data = patient.data as unknown as Record<string, string>;
+  const existing = data[field] || '';
+  data[field] = existing && labeledContent
+    ? `${existing}\n\n${labeledContent}`
+    : labeledContent || existing;
 
   patient.lastModified = new Date().toISOString();
   await saveDateSheetToDrive(ctx, dateSheet);
@@ -528,7 +697,7 @@ export async function deletePatientFromDrive(
   const dateSheet = await getDateSheetFromDrive(ctx, sheetName);
   if (!dateSheet) return;
 
-  dateSheet.patients = dateSheet.patients.filter(p => p.rowIndex !== rowIndex);
+  dateSheet.patients = dateSheet.patients.filter(p => Number(p.rowIndex) !== Number(rowIndex));
   await saveDateSheetToDrive(ctx, dateSheet);
 }
 

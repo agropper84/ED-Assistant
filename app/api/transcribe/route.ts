@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { DICTATION_WHISPER_PROMPT, ENCOUNTER_WHISPER_PROMPT } from '@/lib/whisper-prompts';
 import { getAnthropicClient, getOpenAIClient } from '@/lib/api-keys';
+import { getSessionFromCookies } from '@/lib/session';
+import { getUserSettings } from '@/lib/kv';
 import { MODELS } from '@/lib/config';
 
 export const maxDuration = 60;
@@ -67,21 +69,45 @@ function isWhisperHallucination(text: string, context?: string): boolean {
   return false;
 }
 
+/** Get calibration rules for the medicalize prompt */
+async function getCalibrationRules(mode: string): Promise<string> {
+  try {
+    const session = await getSessionFromCookies();
+    if (!session.userId) return '';
+    const settings = await getUserSettings(session.userId);
+    const calKey = mode === 'dictation' ? 'dictationCalibration' : 'encounterCalibration';
+    const cal = settings?.[calKey] as Record<string, string> | undefined;
+    if (!cal) return '';
+    const parts: string[] = [];
+    if (cal.rules) parts.push(`Physician-specific rules:\n${cal.rules}`);
+    if (cal.terminology) parts.push(`Known terminology corrections:\n${cal.terminology}`);
+    if (cal.style) parts.push(`Physician style: ${cal.style}`);
+    if (cal.speakerLabeling) parts.push(`Speaker identification: ${cal.speakerLabeling}`);
+    return parts.length > 0 ? `\n\n${parts.join('\n')}` : '';
+  } catch {
+    return '';
+  }
+}
+
 async function medicalize(rawText: string, mode: string, context?: string): Promise<string> {
   const contextBlock = context
     ? `\n\nPrevious context for continuity (do NOT repeat, only use to resolve ambiguity):\n"${context}"\n`
     : '';
 
+  const calRules = await getCalibrationRules(mode);
+
   const prompt = mode === 'encounter'
     ? `Convert this recorded doctor-patient emergency department encounter into a structured clinical transcript. Rules:
-- Identify and label speakers as "Dr:" and "Pt:" (or "Family:" if applicable)
+- If the input already has speaker labels (e.g. "Speaker 1:", "Speaker 2:"), convert them to "Dr:" and "Pt:" (or "Family:")
+- If no speaker labels, identify speakers from context and label as "Dr:" and "Pt:"
 - Convert patient's colloquial descriptions into medically relevant language while preserving their reported symptoms and timeline
 - Convert physician's spoken language into proper medical terminology
 - Preserve all clinically relevant information — do NOT add, infer, or remove details
-- Fix filler words, false starts, and repetition
+- Fix speech-to-text errors for medical terms (e.g. "new Monya"→"pneumonia", "CPA"→"CVA")
+- Remove filler words, false starts, and repetition
 - Use concise, professional formatting
 - Output ONLY the converted transcript, nothing else
-- If the input contains no clinical content (e.g. just greetings, filler, or noise), output exactly: EMPTY
+- If the input contains no clinical content (e.g. just greetings, filler, or noise), output exactly: EMPTY${calRules}
 
 Recording:
 ${rawText}`
@@ -89,17 +115,19 @@ ${rawText}`
 
   const systemPrompt = mode === 'encounter'
     ? undefined
-    : `You are a medical transcription processor. You receive raw transcribed text from a physician's dictation. Your ONLY job is to clean it up and output the cleaned version. NEVER ask questions, request clarification, or add commentary. Just process whatever text you receive, even if it seems incomplete.
+    : `You are a medical transcription processor for an emergency physician's dictation. Your ONLY job is to clean up the raw speech-to-text output. NEVER ask questions, request clarification, or add commentary. Just process whatever text you receive, even if it seems incomplete — it may be a segment of a longer dictation.
 
 Rules:
 - PRESERVE ALL CONTENT — every word the physician dictated must be kept
-- Replace medical colloquialisms with proper terminology ONLY where clearly medical (e.g., "belly"→"abdomen", "heart attack"→"MI", "BP", "sugar"→"glucose")
-- Do NOT medicalize non-medical descriptions (mechanism of injury, activities, context)
-- Fix speech-to-text errors: "CPA"→"CVA", "tendered"→"tender", "new Monya"→"pneumonia"
-- Clean up filler words, false starts, and repetition
-- Output as a single continuous block
+- Replace medical colloquialisms: "belly"→"abdomen", "heart attack"→"MI", "sugar"→"glucose", "blood thinner"→"anticoagulant"
+- Keep standard medical abbreviations as-is: BP, HR, RR, SpO2, GCS, CVA, PE, DVT, STEMI, etc. Do NOT expand them
+- Fix speech-to-text errors on medical terms: "CPA"→"CVA", "tendered"→"tender", "new monya"→"pneumonia", "see PA"→"CVA"
+- Format vital signs consistently when dictated (e.g., "BP 120/80, HR 88, RR 16, SpO2 98% on RA")
+- If physician dictates in sections (e.g., "HPI", "Exam", "Plan"), preserve that structure with line breaks
+- Do NOT medicalize non-medical descriptions (mechanism of injury, patient activities, social context)
+- Clean up filler words (um, uh, like), false starts, and accidental repetition
 - Output ONLY the cleaned text — no explanations, no questions
-- If input is just noise/silence, output EMPTY${contextBlock}`;
+- If input is just noise/silence, output EMPTY${calRules}${contextBlock}`;
 
   const anthropic = await getAnthropicClient();
   const response = await anthropic.messages.create({
@@ -112,9 +140,39 @@ Rules:
 
   const result = response.content[0].type === 'text' ? response.content[0].text : '';
   const trimmed = result.trim();
-  // If Claude flagged as empty/no content, return empty string
   if (!trimmed || trimmed === 'EMPTY') return '';
+
+  // Safety: if Claude drastically shortened the text, return original
+  if (rawText.length > 20 && trimmed.length < rawText.length * 0.4) {
+    console.warn(`Medicalize over-condensed: ${rawText.length} chars → ${trimmed.length} chars. Returning original.`);
+    return rawText;
+  }
+
   return trimmed;
+}
+
+/** Get calibration terminology to append to Whisper prompt */
+async function getCalibrationTerms(mode: string): Promise<string> {
+  try {
+    const session = await getSessionFromCookies();
+    if (!session.userId) return '';
+    const settings = await getUserSettings(session.userId);
+    const calKey = mode === 'dictation' ? 'dictationCalibration' : 'encounterCalibration';
+    const cal = settings?.[calKey] as Record<string, string> | undefined;
+    if (!cal?.terminology) return '';
+    // Extract the written form from "spoken → written" pairs
+    const terms = cal.terminology
+      .split('\n')
+      .map(line => {
+        const arrow = line.indexOf('→');
+        return arrow >= 0 ? line.substring(arrow + 1).trim() : line.trim();
+      })
+      .filter(k => k.length > 1)
+      .slice(0, 30);
+    return terms.length > 0 ? `. User terminology: ${terms.join(', ')}` : '';
+  } catch {
+    return '';
+  }
 }
 
 export async function POST(request: NextRequest) {
@@ -131,15 +189,16 @@ export async function POST(request: NextRequest) {
 
     const basePrompt = mode === 'encounter' ? ENCOUNTER_WHISPER_PROMPT : DICTATION_WHISPER_PROMPT;
 
+    // Append user-specific calibration terminology to improve recognition
+    const calTerms = await getCalibrationTerms(mode);
+
     // Whisper uses the prompt for style/vocabulary conditioning AND context continuity.
-    // Appending the last ~50 words of previous text helps Whisper maintain context
-    // across segments (correct spelling, terminology consistency, fewer hallucinations).
     const contextTail = context
       ? context.split(/\s+/).slice(-50).join(' ')
       : '';
     const whisperPrompt = contextTail
-      ? `${basePrompt}. Previous context: ${contextTail}`
-      : basePrompt;
+      ? `${basePrompt}${calTerms}. Previous context: ${contextTail}`
+      : `${basePrompt}${calTerms}`;
 
     const openai = await getOpenAIClient();
     const transcription = await openai.audio.transcriptions.create({

@@ -16,7 +16,8 @@ export async function GET(
       return NextResponse.json({ error: 'sheet param required' }, { status: 400 });
     }
 
-    const submissions = await getSubmissions(ctx, rowIndex, sheetName);
+    const patientName = request.nextUrl.searchParams.get('name') || undefined;
+    const submissions = await getSubmissions(ctx, rowIndex, sheetName, patientName);
     return NextResponse.json({ submissions });
   } catch (error: any) {
     return NextResponse.json({ error: error?.message || 'Failed' }, { status: 500 });
@@ -40,9 +41,10 @@ export async function POST(
       return NextResponse.json({ error: 'sheetName is required' }, { status: 400 });
     }
 
-    // Verify the patient exists at this rowIndex
-    const patient = await getPatient(ctx, rowIndex, sheetName);
+    // Verify the patient exists — search by rowIndex first, then by name
+    const patient = await getPatient(ctx, rowIndex, sheetName, patientName);
     if (!patient) {
+      console.error(`Submit: patient not found — rowIndex=${rowIndex}, name=${patientName}, sheet=${sheetName}`);
       return NextResponse.json({ error: 'Patient not found at this row' }, { status: 404 });
     }
 
@@ -68,7 +70,7 @@ export async function POST(
     // 1. Drive JSON patient.submissions[] (encrypted, for tag persistence)
     // 2. Drive JSON patient.data flat field (encrypted, appended for note generation)
     // 3. Sheets flat field (async mirror, appended for dev visibility)
-    const submissions = await addSubmission(ctx, rowIndex, sheetName, entry);
+    const submissions = await addSubmission(ctx, rowIndex, sheetName, entry, patient.name);
 
     // Auto-update medical profile in background
     fetch(new URL('/api/profile', request.url), {

@@ -74,10 +74,8 @@ export async function POST(request: NextRequest) {
     body.patientNum = String(count + 1);
 
     // Write to data layer (Drive primary + Sheets mirror)
+    // updatePatientFields auto-creates the patient in Drive if not found
     await updatePatientFields(ctx, rowIndex, body, sheetName);
-
-    // Also add to Drive patient array
-    await addPatient(ctx, { rowIndex, sheetName, ...body } as Patient, sheetName);
 
     return NextResponse.json({ success: true, rowIndex, sheetName });
   } catch (error: any) {

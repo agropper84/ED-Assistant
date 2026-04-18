@@ -795,14 +795,14 @@ export function ParseModal({ isOpen, onClose, onSave, onQuickAdd, patientRef: ex
                       <input
                         type="range"
                         min="1"
-                        max="3"
+                        max="4"
                         step="1"
                         value={micSensitivity}
                         onChange={(e) => setMicSensitivity(parseInt(e.target.value))}
-                        className="w-12 h-1 accent-blue-500 cursor-pointer"
-                        title={micSensitivity === 1 ? 'Low — close speaker' : micSensitivity === 2 ? 'Medium — balanced' : 'High — room-wide'}
+                        className="w-14 h-1 accent-blue-500 cursor-pointer"
+                        title={micSensitivity === 1 ? 'Low — close speaker' : micSensitivity === 2 ? 'Medium — balanced' : micSensitivity === 3 ? 'High — room-wide' : 'Max — maximum pickup'}
                       />
-                      <span className="text-[9px] text-[var(--text-muted)] w-5">{micSensitivity === 1 ? 'Lo' : micSensitivity === 2 ? 'Mid' : 'Hi'}</span>
+                      <span className="text-[9px] text-[var(--text-muted)] w-6">{micSensitivity === 1 ? 'Lo' : micSensitivity === 2 ? 'Mid' : micSensitivity === 3 ? 'Hi' : 'Max'}</span>
                     </div>
                     <label className="flex items-center gap-1.5 cursor-pointer select-none">
                       <input
