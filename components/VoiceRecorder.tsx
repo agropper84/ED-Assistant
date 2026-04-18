@@ -794,60 +794,92 @@ export function VoiceRecorder({
         streamRef.current = null;
 
         const allChunks = chunksRef.current;
+        console.log(`[Encounter] Recording stopped. ${allChunks.length} chunks collected.`);
         if (allChunks.length === 0) { setRecState('idle'); return; }
 
         setRecState('transcribing');
         onProcessingRef.current?.(true);
 
         try {
-          const webEngine = getTranscribeWebAPI();
-          const useExternalSTT = webEngine === 'deepgram' || webEngine === 'wispr';
+          // Combine ALL chunks into a single blob for more reliable transcription
+          const fullBlob = new Blob(allChunks, { type: mimeType });
+          console.log(`[Encounter] Audio blob: ${(fullBlob.size / 1024).toFixed(1)}KB, type=${mimeType}`);
 
-          // Split audio into ~5-minute segments for reliable processing.
-          // Each chunk is ~10 seconds (from timeslice). Group into segments of 30 chunks.
-          const CHUNKS_PER_SEGMENT = 30;
-          const segments: Blob[] = [];
-          for (let i = 0; i < allChunks.length; i += CHUNKS_PER_SEGMENT) {
-            segments.push(new Blob(allChunks.slice(i, i + CHUNKS_PER_SEGMENT), { type: mimeType }));
+          if (fullBlob.size < 1000) {
+            console.warn('[Encounter] Audio too small, skipping transcription');
+            setRecState('idle');
+            onProcessingRef.current?.(false);
+            onRecordingStopRef.current?.();
+            return;
           }
+
+          // Backup to Vercel Blob (fire-and-forget) for recovery
+          try {
+            const backupForm = new FormData();
+            backupForm.append('audio', fullBlob, `encounter-${Date.now()}.${getFileExtension(mimeType)}`);
+            fetch('/api/backup-audio', { method: 'POST', body: backupForm }).catch(() => {});
+          } catch {}
+
+          const webEngine = getTranscribeWebAPI();
+
+          // For large recordings (>5 min / ~5MB), split into segments
+          const MAX_SEGMENT_SIZE = 5 * 1024 * 1024; // 5MB
+          const segments: Blob[] = [];
+          if (fullBlob.size > MAX_SEGMENT_SIZE) {
+            const CHUNKS_PER_SEGMENT = 30;
+            for (let i = 0; i < allChunks.length; i += CHUNKS_PER_SEGMENT) {
+              segments.push(new Blob(allChunks.slice(i, i + CHUNKS_PER_SEGMENT), { type: mimeType }));
+            }
+          } else {
+            segments.push(fullBlob);
+          }
+
+          console.log(`[Encounter] Processing ${segments.length} segment(s) via ${webEngine}`);
 
           // Process segments — in parallel for speed, concatenate results in order
           const segmentResults = await Promise.all(
             segments.map(async (segBlob, idx) => {
-              if (segBlob.size < 1000) return ''; // skip tiny segments
+              if (segBlob.size < 1000) return '';
               const formData = new FormData();
               formData.append('audio', segBlob, `segment-${idx}.${getFileExtension(mimeType)}`);
               formData.append('mode', mode);
-              formData.append('skipMedicalize', 'true'); // Raw STT only — no AI rewriting
+              formData.append('skipMedicalize', 'true');
               try {
                 const res = await fetch(getTranscribeEndpoint(webEngine), { method: 'POST', body: formData });
                 if (res.ok) {
-                  const { text } = await res.json();
-                  return text?.trim() || '';
+                  const data = await res.json();
+                  console.log(`[Encounter] Segment ${idx}: ${data.text?.length || 0} chars`);
+                  return data.text?.trim() || '';
+                } else {
+                  const err = await res.text().catch(() => '');
+                  console.error(`[Encounter] Segment ${idx} failed: ${res.status} ${err}`);
                 }
-              } catch {}
+              } catch (e) {
+                console.error(`[Encounter] Segment ${idx} error:`, e);
+              }
               return '';
             })
           );
 
           const combinedText = segmentResults.filter(Boolean).join('\n');
+          console.log(`[Encounter] Final transcript: ${combinedText.length} chars`);
 
           if (combinedText.trim()) {
-            // Store raw Deepgram/Whisper transcript directly — no AI medicalize
             onTranscript(combinedText.trim());
           } else if (accumulatedTextRef.current?.trim()) {
-            // All segments empty — fall back to Web Speech text
+            console.log('[Encounter] Using Web Speech fallback text');
             onTranscript(accumulatedTextRef.current.trim());
+          } else {
+            console.warn('[Encounter] No transcript produced from any source');
           }
 
           onProcessingRef.current?.(false);
         } catch (err: any) {
           onProcessingRef.current?.(false);
-          // Fall back to Web Speech on any error
           if (accumulatedTextRef.current?.trim()) {
             onTranscript(accumulatedTextRef.current.trim());
           }
-          console.error('Transcription error:', err);
+          console.error('[Encounter] Transcription error:', err);
         }
         onAudioLevelRef.current?.({ level: 0, lowFreq: 0, highFreq: 0, speakerHint: 'silent' });
         onRecordingStopRef.current?.();
