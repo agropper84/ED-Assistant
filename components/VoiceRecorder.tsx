@@ -823,29 +823,52 @@ export function VoiceRecorder({
             return;
           }
 
-          // Server-side transcription: upload raw audio → Vercel Blob backup + Deepgram
-          // Raw audio (no browser compressor/gain) produces better transcription accuracy
+          // Step 1: Upload raw audio to Vercel Blob (avoids body size limits)
+          // Step 2: Server fetches from Blob URL and sends to Deepgram
           let transcript = '';
           try {
-            console.log('[Encounter] Uploading to server for transcription...');
-            const formData = new FormData();
-            formData.append('audio', fullBlob, `encounter.${getFileExtension(mimeType)}`);
-            const res = await fetch('/api/transcribe-server', { method: 'POST', body: formData });
-            if (res.ok) {
-              const data = await res.json();
-              transcript = data.text?.trim() || '';
-              console.log(`[Encounter] Server transcript: ${transcript.length} chars${data.blobUrl ? `, backup: ${data.blobUrl}` : ''}`);
+            // Upload to Blob first
+            console.log('[Encounter] Uploading audio to Blob...');
+            const uploadForm = new FormData();
+            uploadForm.append('audio', fullBlob, `encounter-${Date.now()}.${getFileExtension(mimeType)}`);
+            const uploadRes = await fetch('/api/backup-audio', { method: 'POST', body: uploadForm });
+
+            if (uploadRes.ok) {
+              const { url: blobUrl } = await uploadRes.json();
+              console.log(`[Encounter] Blob uploaded: ${blobUrl}`);
+
+              // Now tell the server to transcribe from the Blob URL
+              const res = await fetch('/api/transcribe-server', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ blobUrl }),
+              });
+              if (res.ok) {
+                const data = await res.json();
+                transcript = data.text?.trim() || '';
+                console.log(`[Encounter] Server transcript: ${transcript.length} chars`);
+              } else {
+                const err = await res.text().catch(() => '');
+                console.warn(`[Encounter] Server transcription failed (${res.status}):`, err);
+              }
             } else {
-              const err = await res.text().catch(() => '');
-              console.warn(`[Encounter] Server transcription failed (${res.status}), falling back to client-side`, err);
+              console.warn('[Encounter] Blob upload failed, trying direct upload...');
+              // Fallback: direct upload to transcribe-server
+              const formData = new FormData();
+              formData.append('audio', fullBlob, `encounter.${getFileExtension(mimeType)}`);
+              const res = await fetch('/api/transcribe-server', { method: 'POST', body: formData });
+              if (res.ok) {
+                const data = await res.json();
+                transcript = data.text?.trim() || '';
+              }
             }
           } catch (e) {
-            console.warn('[Encounter] Server transcription error, falling back to client-side:', e);
+            console.warn('[Encounter] Server transcription error:', e);
           }
 
-          // Fallback: client-side transcription if server failed
+          // Fallback: client-side transcription
           if (!transcript) {
-            console.log('[Encounter] Using client-side fallback transcription');
+            console.log('[Encounter] Using client-side fallback');
             const webEngine = getTranscribeWebAPI();
             const formData = new FormData();
             formData.append('audio', fullBlob, `encounter.${getFileExtension(mimeType)}`);
@@ -855,7 +878,7 @@ export function VoiceRecorder({
               if (res.ok) {
                 const data = await res.json();
                 transcript = data.text?.trim() || '';
-                console.log(`[Encounter] Client fallback transcript: ${transcript.length} chars`);
+                console.log(`[Encounter] Client fallback: ${transcript.length} chars`);
               }
             } catch {}
           }

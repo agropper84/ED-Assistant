@@ -4,11 +4,8 @@ import { getDeepgramApiKey } from '@/lib/api-keys';
 import { getSessionFromCookies } from '@/lib/session';
 import { getUserSettings } from '@/lib/kv';
 
-export const maxDuration = 120; // 2 minutes for large recordings
+export const maxDuration = 120;
 
-/**
- * Fix common medical STT errors (same as transcribe-deepgram).
- */
 function fixCommonMedicalErrors(text: string): string {
   return text
     .replace(/\bnew monya\b/gi, 'pneumonia')
@@ -46,7 +43,6 @@ function fixCommonMedicalErrors(text: string): string {
     .trim();
 }
 
-/** Get calibration keywords for Deepgram keyword boosting */
 async function getCalibrationKeywords(userId: string): Promise<string[]> {
   try {
     const settings = await getUserSettings(userId);
@@ -65,7 +61,6 @@ async function getCalibrationKeywords(userId: string): Promise<string[]> {
   }
 }
 
-/** Format diarized Deepgram response with speaker labels */
 function formatDiarizedTranscript(data: any): string {
   const words = data?.results?.channels?.[0]?.alternatives?.[0]?.words;
   if (!Array.isArray(words) || words.length === 0) {
@@ -93,14 +88,11 @@ function formatDiarizedTranscript(data: any): string {
 /**
  * POST /api/transcribe-server
  *
- * Server-side encounter transcription:
- * 1. Receive raw audio from client (no browser processing)
- * 2. Backup to Vercel Blob
- * 3. Send directly to Deepgram for transcription
- * 4. Return transcript
+ * Two modes:
+ * 1. FormData with 'audio' file — uploads to Blob, then transcribes
+ * 2. JSON with 'blobUrl' — fetches from existing Blob URL, then transcribes
  *
- * This produces better results than client-side transcription because
- * the audio bypasses the browser's compressor/gain AudioContext chain.
+ * Server-side transcription with Vercel Blob backup.
  */
 export async function POST(request: NextRequest) {
   try {
@@ -111,36 +103,54 @@ export async function POST(request: NextRequest) {
 
     const apiKey = await getDeepgramApiKey();
     if (!apiKey) {
-      return NextResponse.json(
-        { error: 'Deepgram API key not configured' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Deepgram API key not configured' }, { status: 400 });
     }
 
-    const formData = await request.formData();
-    const audioFile = formData.get('audio');
-    if (!audioFile || !(audioFile instanceof File)) {
-      return NextResponse.json({ error: 'No audio file provided' }, { status: 400 });
-    }
-
-    const buffer = Buffer.from(await audioFile.arrayBuffer());
-    console.log(`[transcribe-server] Received ${(buffer.length / 1024).toFixed(1)}KB audio (${audioFile.type})`);
-
-    // 1. Backup to Vercel Blob (awaited — we want the URL for logging)
+    let audioArrayBuffer: ArrayBuffer;
+    let contentType = 'audio/webm';
     let blobUrl = '';
-    try {
-      const blob = await put(
-        `encounter-audio/${session.userId}/${Date.now()}-${audioFile.name}`,
-        new Blob([buffer], { type: audioFile.type }),
-        { access: 'public', addRandomSuffix: true }
-      );
-      blobUrl = blob.url;
-      console.log(`[transcribe-server] Backed up to blob: ${blobUrl}`);
-    } catch (e) {
-      console.warn('[transcribe-server] Blob backup failed:', (e as Error).message);
+
+    // Check if this is a blobUrl-based request (audio already uploaded)
+    const ct = request.headers.get('content-type') || '';
+    if (ct.includes('application/json')) {
+      const body = await request.json();
+      if (!body.blobUrl) {
+        return NextResponse.json({ error: 'blobUrl required' }, { status: 400 });
+      }
+      blobUrl = body.blobUrl;
+      console.log(`[transcribe-server] Fetching audio from blob: ${blobUrl}`);
+      const blobRes = await fetch(blobUrl);
+      if (!blobRes.ok) {
+        return NextResponse.json({ error: 'Failed to fetch audio from blob' }, { status: 500 });
+      }
+      audioArrayBuffer = await blobRes.arrayBuffer();
+      contentType = blobRes.headers.get('content-type') || 'audio/webm';
+    } else {
+      // FormData upload — store in Blob first, then transcribe
+      const formData = await request.formData();
+      const audioFile = formData.get('audio');
+      if (!audioFile || !(audioFile instanceof File)) {
+        return NextResponse.json({ error: 'No audio file provided' }, { status: 400 });
+      }
+      audioArrayBuffer = await audioFile.arrayBuffer();
+      contentType = audioFile.type || 'audio/webm';
+
+      // Backup to Vercel Blob
+      try {
+        const blob = await put(
+          `encounter-audio/${session.userId}/${Date.now()}-${audioFile.name}`,
+          new Blob([audioArrayBuffer], { type: contentType }),
+          { access: 'public', addRandomSuffix: true }
+        );
+        blobUrl = blob.url;
+      } catch (e) {
+        console.warn('[transcribe-server] Blob backup failed:', (e as Error).message);
+      }
     }
 
-    // 2. Send to Deepgram — encounter mode with diarization
+    console.log(`[transcribe-server] Audio: ${(audioArrayBuffer.byteLength / 1024).toFixed(1)}KB (${contentType}), blob: ${blobUrl || 'none'}`);
+
+    // Send to Deepgram
     const keywords = await getCalibrationKeywords(session.userId);
     const params = new URLSearchParams({
       model: 'nova-3-medical',
@@ -152,43 +162,33 @@ export async function POST(request: NextRequest) {
       utterances: 'true',
       paragraphs: 'true',
     });
-
     for (const kw of keywords) {
       params.append('keywords', `${kw}:2`);
     }
-
-    console.log(`[transcribe-server] Sending to Deepgram (${keywords.length} keywords)`);
 
     const dgRes = await fetch(`https://api.deepgram.com/v1/listen?${params.toString()}`, {
       method: 'POST',
       headers: {
         'Authorization': `Token ${apiKey}`,
-        'Content-Type': audioFile.type || 'audio/webm',
+        'Content-Type': contentType,
       },
-      body: buffer,
+      body: new Uint8Array(audioArrayBuffer),
     });
 
     if (!dgRes.ok) {
       const err = await dgRes.text();
       console.error('[transcribe-server] Deepgram error:', dgRes.status, err);
-      return NextResponse.json(
-        { error: `Deepgram error: ${dgRes.status}`, blobUrl },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: `Deepgram error: ${dgRes.status}`, blobUrl }, { status: 500 });
     }
 
     const data = await dgRes.json();
     const rawTranscript = formatDiarizedTranscript(data);
     const transcript = fixCommonMedicalErrors(rawTranscript);
 
-    console.log(`[transcribe-server] Transcript: ${transcript.length} chars, ${transcript.split('\n').length} lines`);
-
+    console.log(`[transcribe-server] Transcript: ${transcript.length} chars`);
     return NextResponse.json({ text: transcript.trim(), blobUrl });
   } catch (error: any) {
     console.error('[transcribe-server] Error:', error);
-    return NextResponse.json(
-      { error: error?.message || 'Server transcription failed' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: error?.message || 'Server transcription failed' }, { status: 500 });
   }
 }
