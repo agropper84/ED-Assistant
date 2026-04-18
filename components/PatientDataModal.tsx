@@ -774,25 +774,29 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
                   })}
                 </div>
               ) : null}
-              {/* Recording waveform — shown when live text OFF */}
-              {isRecordingEncounter && !showLiveTranscript && (
-                <div className="w-full h-28 border border-blue-400/20 rounded-xl bg-[var(--input-bg)] flex flex-col items-center justify-center relative overflow-hidden">
-                  <div className="flex items-end justify-center gap-[2px] h-16 px-4">
-                    {Array.from({ length: 64 }).map((_, i) => {
-                      const sample = waveHistoryRef.current[i];
-                      const level = sample?.level || 0;
-                      const h = Math.max(2, level * 48);
-                      const color = level > 0.03
-                        ? `rgba(96, 165, 250, ${0.3 + level * 0.7})`
-                        : 'rgba(148, 163, 184, 0.1)';
-                      return (
-                        <div key={i} className="rounded-full" style={{ width: '2px', height: `${h}px`, backgroundColor: color, transition: 'height 80ms ease-out' }} />
-                      );
-                    })}
+              {/* Recording waveform — scales with mic sensitivity so user can titrate */}
+              {isRecordingEncounter && !showLiveTranscript && (() => {
+                // Scale visualization to match sensitivity: higher sensitivity = taller bars
+                const vizGain = micSensitivity === 1 ? 30 : micSensitivity === 2 ? 45 : micSensitivity === 3 ? 60 : 80;
+                return (
+                  <div className="w-full h-28 border border-blue-400/20 rounded-xl bg-[var(--input-bg)] flex flex-col items-center justify-center relative overflow-hidden">
+                    <div className="flex items-end justify-center gap-[2px] h-16 px-4">
+                      {Array.from({ length: 64 }).map((_, i) => {
+                        const sample = waveHistoryRef.current[i];
+                        const level = sample?.level || 0;
+                        const h = Math.max(2, level * vizGain);
+                        const color = level > 0.03
+                          ? `rgba(96, 165, 250, ${0.3 + Math.min(level * 1.5, 0.7)})`
+                          : 'rgba(148, 163, 184, 0.1)';
+                        return (
+                          <div key={i} className="rounded-full" style={{ width: '2px', height: `${h}px`, backgroundColor: color, transition: 'height 80ms ease-out' }} />
+                        );
+                      })}
+                    </div>
+                    <span className="text-[9px] text-blue-400/60 font-medium tracking-wide mt-2">Recording encounter</span>
                   </div>
-                  <span className="text-[9px] text-blue-400/60 font-medium tracking-wide mt-2">Recording encounter</span>
-                </div>
-              )}
+                );
+              })()}
               <textarea
                 value={transcript}
                 onChange={(e) => setTranscript(e.target.value)}

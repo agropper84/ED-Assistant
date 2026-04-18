@@ -96,7 +96,9 @@ function sensitivitySettings(sensitivity: number): { gain: number; threshold: nu
 /** Create a gain-boosted audio stream for recording.
  * DynamicsCompressor amplifies quiet speech (patient at distance) while
  * preventing loud speech (physician close to mic) from clipping. */
-function createBoostedStream(stream: MediaStream, sensitivity: number): { boostedStream: MediaStream; ctx: AudioContext } {
+function createBoostedStream(stream: MediaStream, sensitivity: number): {
+  boostedStream: MediaStream; ctx: AudioContext; gainNode: GainNode; compressor: DynamicsCompressorNode;
+} {
   const settings = sensitivitySettings(sensitivity);
   const ctx = new AudioContext({ sampleRate: 48000 });
   const source = ctx.createMediaStreamSource(stream);
@@ -108,16 +110,16 @@ function createBoostedStream(stream: MediaStream, sensitivity: number): { booste
   compressor.attack.value = 0;        // Instant attack — no quiet speech lost
   compressor.release.value = settings.release;
 
-  const gain = ctx.createGain();
-  gain.gain.value = settings.gain;
+  const gainNode = ctx.createGain();
+  gainNode.gain.value = settings.gain;
 
   source.connect(compressor);
-  compressor.connect(gain);
+  compressor.connect(gainNode);
 
   const dest = ctx.createMediaStreamDestination();
-  gain.connect(dest);
+  gainNode.connect(dest);
 
-  return { boostedStream: dest.stream, ctx };
+  return { boostedStream: dest.stream, ctx, gainNode, compressor };
 }
 
 interface VoiceRecorderProps {
@@ -153,6 +155,8 @@ export function VoiceRecorder({
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const boostCtxRef = useRef<AudioContext | null>(null); // Encounter gain-boost AudioContext
+  const boostGainRef = useRef<GainNode | null>(null);  // Live-adjustable gain node
+  const boostCompressorRef = useRef<DynamicsCompressorNode | null>(null);
   const pressActiveRef = useRef(false);      // true from pointerDown to pointerUp
   const toggleModeRef = useRef(false);       // true when in click-to-stop non-medicalize mode
   const mimeTypeRef = useRef('');
@@ -198,6 +202,17 @@ export function VoiceRecorder({
   onRecordingStopRef.current = onRecordingStop;
 
   const useStreaming = mode === 'dictation' && !!onInterimTranscript;
+
+  // Live-update boost gain/compressor when sensitivity slider changes mid-recording
+  useEffect(() => {
+    if (boostGainRef.current && boostCompressorRef.current && state === 'recording') {
+      const settings = sensitivitySettings(sensitivity);
+      boostGainRef.current.gain.setTargetAtTime(settings.gain, boostGainRef.current.context.currentTime, 0.05);
+      boostCompressorRef.current.threshold.setTargetAtTime(settings.threshold, boostCompressorRef.current.context.currentTime, 0.05);
+      boostCompressorRef.current.ratio.setTargetAtTime(settings.ratio, boostCompressorRef.current.context.currentTime, 0.05);
+      boostCompressorRef.current.knee.setTargetAtTime(settings.knee, boostCompressorRef.current.context.currentTime, 0.05);
+    }
+  }, [sensitivity, state]);
 
   useEffect(() => {
     if (state === 'error') {
@@ -591,7 +606,7 @@ export function VoiceRecorder({
       stoppingRef.current = false;
 
       // Gain-boost dictation audio (sensitivity controls compression + gain level)
-      const { boostedStream, ctx: boostCtx } = createBoostedStream(rawStream, 2);
+      const { boostedStream, ctx: boostCtx, gainNode, compressor } = createBoostedStream(rawStream, 2);
       boostCtxRef.current = boostCtx;
 
       // Record from boosted stream for better Deepgram recognition
@@ -759,8 +774,10 @@ export function VoiceRecorder({
 
       // Create gain-boosted stream for encounter recording.
       // Sensitivity controls compression aggressiveness + gain level.
-      const { boostedStream, ctx: boostCtx } = createBoostedStream(rawStream, sensitivity);
+      const { boostedStream, ctx: boostCtx, gainNode, compressor } = createBoostedStream(rawStream, sensitivity);
       boostCtxRef.current = boostCtx;
+      boostGainRef.current = gainNode;
+      boostCompressorRef.current = compressor;
 
       // Record from the BOOSTED stream, not the raw mic
       const recorder = new MediaRecorder(boostedStream, { mimeType });
