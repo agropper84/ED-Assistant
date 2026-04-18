@@ -59,6 +59,8 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
   const [showLiveTranscript, setShowLiveTranscript] = useState(true);
   const [micSensitivity, setMicSensitivity] = useState(3); // default high for encounters
   const [isRecordingEncounter, setIsRecordingEncounter] = useState(false);
+  const [recordingStartTime, setRecordingStartTime] = useState<number | null>(null);
+  const [recordingElapsed, setRecordingElapsed] = useState(0);
   const [audioData, setAudioData] = useState({ level: 0, lowFreq: 0, highFreq: 0, speakerHint: 'silent' as 'near' | 'far' | 'silent' });
   const waveHistoryRef = useRef<Array<{ level: number; speaker: 'near' | 'far' | 'silent' }>>([]);
   const [refiningFields, setRefiningFields] = useState<Set<string>>(new Set());
@@ -125,27 +127,32 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
         alert(data.error || 'Patient identity mismatch. Please close and reopen.');
         return;
       }
-      if (res.ok) {
-        const data = await res.json();
-        setSubmissions(prev => [...prev, data.entry]);
-        if (fieldSetters[field]) fieldSetters[field]('');
-        setSubmitted(field);
-        onSaved();
-        if (sidePanel === 'profile') {
-          setGeneratingProfile(true);
-          fetch('/api/profile', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ rowIndex: patient.rowIndex, sheetName: patient.sheetName }),
-          }).then(r => r.ok ? r.json() : null)
-            .then(data => { if (data?.profile) setProfileData(data.profile); })
-            .catch(() => {})
-            .finally(() => setGeneratingProfile(false));
-        }
-        setTimeout(() => setSubmitted(null), 2000);
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({ error: 'Submit failed' }));
+        console.error('Submit failed:', data.error);
+        alert(`Submit failed: ${data.error || 'Unknown error'}. Please try again.`);
+        return;
       }
+      const data = await res.json();
+      setSubmissions(prev => [...prev, data.entry]);
+      if (fieldSetters[field]) fieldSetters[field]('');
+      setSubmitted(field);
+      onSaved();
+      if (sidePanel === 'profile') {
+        setGeneratingProfile(true);
+        fetch('/api/profile', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ rowIndex: patient.rowIndex, sheetName: patient.sheetName }),
+        }).then(r => r.ok ? r.json() : null)
+          .then(data => { if (data?.profile) setProfileData(data.profile); })
+          .catch(() => {})
+          .finally(() => setGeneratingProfile(false));
+      }
+      setTimeout(() => setSubmitted(null), 2000);
     } catch (e) {
       console.error('Section submit failed:', e);
+      alert('Submit failed — please check your connection and try again.');
     } finally {
       setSubmitting(null);
       setSubmitTitle('');
@@ -238,6 +245,17 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
   };
 
   // Fetch user's saved phrases for autocomplete
+  // Recording timer
+  useEffect(() => {
+    if (!isRecordingEncounter) { setRecordingElapsed(0); return; }
+    setRecordingStartTime(Date.now());
+    const interval = setInterval(() => {
+      setRecordingElapsed(Math.floor((Date.now() - (recordingStartTime || Date.now())) / 1000));
+    }, 1000);
+    return () => clearInterval(interval);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isRecordingEncounter]);
+
   useEffect(() => {
     if (isOpen) {
       fetch('/api/user-phrases')
@@ -778,6 +796,9 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
               {isRecordingEncounter && !showLiveTranscript && (() => {
                 const vizGain = micSensitivity === 1 ? 24 : micSensitivity === 2 ? 36 : micSensitivity === 3 ? 50 : 64;
                 const barCount = 80;
+                const mins = Math.floor(recordingElapsed / 60);
+                const secs = recordingElapsed % 60;
+                const timeStr = `${mins}:${secs.toString().padStart(2, '0')}`;
                 return (
                   <div className="w-full h-28 rounded-xl relative overflow-hidden" style={{
                     background: 'linear-gradient(180deg, rgba(15,23,42,0.6) 0%, rgba(15,23,42,0.8) 100%)',
@@ -785,8 +806,11 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
                   }}>
                     {/* Subtle center line */}
                     <div className="absolute left-4 right-4 top-1/2 h-px" style={{ background: 'rgba(96,165,250,0.08)' }} />
+                    {/* Edge fade masks */}
+                    <div className="absolute left-0 top-0 bottom-0 w-8 z-10 pointer-events-none" style={{ background: 'linear-gradient(to right, rgba(15,23,42,0.8), transparent)' }} />
+                    <div className="absolute right-0 top-0 bottom-0 w-8 z-10 pointer-events-none" style={{ background: 'linear-gradient(to left, rgba(15,23,42,0.8), transparent)' }} />
                     {/* Waveform bars — centered vertically */}
-                    <div className="absolute inset-0 flex items-center justify-center gap-[1.5px] px-3">
+                    <div className="absolute inset-0 flex items-center justify-center gap-[1.5px] px-1">
                       {Array.from({ length: barCount }).map((_, i) => {
                         const sample = waveHistoryRef.current[i];
                         const level = sample?.level || 0;
@@ -809,14 +833,29 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
                         );
                       })}
                     </div>
-                    {/* Pulsing recording indicator */}
-                    <div className="absolute bottom-2.5 left-0 right-0 flex items-center justify-center gap-2">
-                      <div className="w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse" />
-                      <span className="text-[9px] text-white/40 font-medium tracking-widest uppercase">Recording</span>
+                    {/* Bottom bar: recording indicator + timer */}
+                    <div className="absolute bottom-2 left-0 right-0 flex items-center justify-center gap-3 z-20">
+                      <div className="flex items-center gap-1.5">
+                        <div className="w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse" />
+                        <span className="text-[9px] text-white/40 font-medium tracking-widest uppercase">Recording</span>
+                      </div>
+                      <span className="text-[10px] text-white/50 font-mono tabular-nums">{timeStr}</span>
                     </div>
                   </div>
                 );
               })()}
+              {/* Transcribing overlay — shows after recording stops while processing */}
+              {refiningFields.has('transcript') && !isRecordingEncounter && (
+                <div className="w-full h-28 rounded-xl flex items-center justify-center" style={{
+                  background: 'linear-gradient(180deg, rgba(15,23,42,0.5) 0%, rgba(15,23,42,0.7) 100%)',
+                  border: '1px solid rgba(96,165,250,0.12)',
+                }}>
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 border-2 border-blue-400/40 border-t-blue-400 rounded-full animate-spin" />
+                    <span className="text-[11px] text-blue-400/70 font-medium">Transcribing...</span>
+                  </div>
+                </div>
+              )}
               <textarea
                 value={transcript}
                 onChange={(e) => setTranscript(e.target.value)}
@@ -829,11 +868,8 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
                 }}
                 placeholder="Audio transcript or dictation..."
                 className={`w-full h-28 p-3 pr-16 border border-[var(--input-border)] rounded-xl text-sm resize-y focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] placeholder:text-[var(--text-muted)] transition-colors duration-300 ${refiningFields.has('transcript') ? 'text-[var(--text-muted)] italic' : 'text-[var(--text-primary)]'}`}
-                style={(isRecordingEncounter && !showLiveTranscript) || (transcript && /^(Speaker \d|Dr[.:]|Pt[.:]|Patient:|Family:|Physician:|Doctor:)/im.test(transcript) && !refiningFields.has('transcript')) ? { display: 'none' } : undefined}
+                style={(isRecordingEncounter && !showLiveTranscript) || (refiningFields.has('transcript') && !isRecordingEncounter) || (transcript && /^(Speaker \d|Dr[.:]|Pt[.:]|Patient:|Family:|Physician:|Doctor:)/im.test(transcript) && !refiningFields.has('transcript')) ? { display: 'none' } : undefined}
               />
-              {refiningFields.has('transcript') && !isRecordingEncounter && (
-                <div className="absolute bottom-2 left-3 text-[10px] text-blue-400 font-medium animate-pulse">Transcribing...</div>
-              )}
               <div className="absolute top-1.5 right-1.5">
                 <VoiceRecorder
                   mode="encounter"

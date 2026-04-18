@@ -805,9 +805,13 @@ export function VoiceRecorder({
         rawStream.getTracks().forEach(t => t.stop());
         streamRef.current = null;
 
+        // Signal recording stopped BEFORE transcription starts —
+        // so the UI can show "Transcribing..." instead of the waveform
+        onRecordingStopRef.current?.();
+
         const allChunks = chunksRef.current;
         console.log(`[Encounter] Recording stopped. ${allChunks.length} chunks collected.`);
-        if (allChunks.length === 0) { setRecState('idle'); return; }
+        if (allChunks.length === 0) { setRecState('idle'); onProcessingRef.current?.(false); return; }
 
         setRecState('transcribing');
         onProcessingRef.current?.(true);
@@ -868,7 +872,6 @@ export function VoiceRecorder({
           console.error('[Encounter] Transcription error:', err);
         }
         onAudioLevelRef.current?.({ level: 0, lowFreq: 0, highFreq: 0, speakerHint: 'silent' });
-        onRecordingStopRef.current?.();
         setRecState('idle');
       };
 
