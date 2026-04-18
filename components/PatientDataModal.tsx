@@ -831,8 +831,8 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
                 className={`w-full h-28 p-3 pr-16 border border-[var(--input-border)] rounded-xl text-sm resize-y focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] placeholder:text-[var(--text-muted)] transition-colors duration-300 ${refiningFields.has('transcript') ? 'text-[var(--text-muted)] italic' : 'text-[var(--text-primary)]'}`}
                 style={(isRecordingEncounter && !showLiveTranscript) || (transcript && /^(Speaker \d|Dr[.:]|Pt[.:]|Patient:|Family:|Physician:|Doctor:)/im.test(transcript) && !refiningFields.has('transcript')) ? { display: 'none' } : undefined}
               />
-              {refiningFields.has('transcript') && (
-                <div className="absolute bottom-2 left-3 text-[10px] text-blue-400 font-medium animate-pulse">Refining transcription...</div>
+              {refiningFields.has('transcript') && !isRecordingEncounter && (
+                <div className="absolute bottom-2 left-3 text-[10px] text-blue-400 font-medium animate-pulse">Transcribing...</div>
               )}
               <div className="absolute top-1.5 right-1.5">
                 <VoiceRecorder
