@@ -792,10 +792,10 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
                   })}
                 </div>
               ) : null}
-              {/* Recording waveform — centered, extends both directions */}
+              {/* Recording waveform — centered, full width with edge fades */}
               {isRecordingEncounter && !showLiveTranscript && (() => {
                 const vizGain = micSensitivity === 1 ? 24 : micSensitivity === 2 ? 36 : micSensitivity === 3 ? 50 : 64;
-                const barCount = 80;
+                const barCount = 140;
                 const mins = Math.floor(recordingElapsed / 60);
                 const secs = recordingElapsed % 60;
                 const timeStr = `${mins}:${secs.toString().padStart(2, '0')}`;
@@ -804,13 +804,10 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
                     background: 'linear-gradient(180deg, rgba(15,23,42,0.6) 0%, rgba(15,23,42,0.8) 100%)',
                     border: '1px solid rgba(96,165,250,0.12)',
                   }}>
-                    {/* Subtle center line */}
-                    <div className="absolute left-4 right-4 top-1/2 h-px" style={{ background: 'rgba(96,165,250,0.08)' }} />
-                    {/* Edge fade masks */}
-                    <div className="absolute left-0 top-0 bottom-0 w-8 z-10 pointer-events-none" style={{ background: 'linear-gradient(to right, rgba(15,23,42,0.8), transparent)' }} />
-                    <div className="absolute right-0 top-0 bottom-0 w-8 z-10 pointer-events-none" style={{ background: 'linear-gradient(to left, rgba(15,23,42,0.8), transparent)' }} />
-                    {/* Waveform bars — centered vertically */}
-                    <div className="absolute inset-0 flex items-center justify-center gap-[1.5px] px-1">
+                    {/* Subtle center line — full width */}
+                    <div className="absolute inset-x-0 top-1/2 h-px" style={{ background: 'rgba(96,165,250,0.06)' }} />
+                    {/* Waveform bars — fill entire width */}
+                    <div className="absolute inset-x-0 top-0 bottom-6 flex items-center justify-between px-0">
                       {Array.from({ length: barCount }).map((_, i) => {
                         const sample = waveHistoryRef.current[i];
                         const level = sample?.level || 0;
@@ -820,19 +817,22 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
                         return (
                           <div
                             key={i}
-                            className="rounded-full flex-shrink-0"
+                            className="rounded-full"
                             style={{
-                              width: '2px',
+                              width: '1.5px',
                               height: `${totalH}px`,
                               background: level > 0.03
-                                ? `linear-gradient(180deg, rgba(96,165,250,${opacity * 0.6}) 0%, rgba(96,165,250,${opacity}) 50%, rgba(96,165,250,${opacity * 0.6}) 100%)`
-                                : 'rgba(148,163,184,0.06)',
+                                ? `linear-gradient(180deg, rgba(96,165,250,${opacity * 0.5}) 0%, rgba(96,165,250,${opacity}) 50%, rgba(96,165,250,${opacity * 0.5}) 100%)`
+                                : 'rgba(148,163,184,0.05)',
                               transition: 'height 60ms ease-out',
                             }}
                           />
                         );
                       })}
                     </div>
+                    {/* Edge fade — smooth wide gradient on both sides */}
+                    <div className="absolute left-0 top-0 bottom-0 w-16 z-10 pointer-events-none" style={{ background: 'linear-gradient(to right, rgba(15,23,42,0.85) 0%, rgba(15,23,42,0.4) 50%, transparent 100%)' }} />
+                    <div className="absolute right-0 top-0 bottom-0 w-16 z-10 pointer-events-none" style={{ background: 'linear-gradient(to left, rgba(15,23,42,0.85) 0%, rgba(15,23,42,0.4) 50%, transparent 100%)' }} />
                     {/* Bottom bar: recording indicator + timer */}
                     <div className="absolute bottom-2 left-0 right-0 flex items-center justify-center gap-3 z-20">
                       <div className="flex items-center gap-1.5">
@@ -890,7 +890,7 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
                   onAudioLevel={!showLiveTranscript ? (data) => {
                     setAudioData(data);
                     // Build scrolling wave history (last 64 samples)
-                    waveHistoryRef.current = [...waveHistoryRef.current.slice(-79), { level: data.level, speaker: data.speakerHint }];
+                    waveHistoryRef.current = [...waveHistoryRef.current.slice(-139), { level: data.level, speaker: data.speakerHint }];
                   } : undefined}
                 />
               </div>
