@@ -785,13 +785,14 @@ export function VoiceRecorder({
       boostGainRef.current = gainNode;
       boostCompressorRef.current = compressor;
 
-      // Record from RAW stream — server-side transcription gets unprocessed audio
-      // for maximum accuracy. Boosted stream is only used for waveform visualization.
+      // Record from the BOOSTED stream — the raw stream can't be shared between
+      // MediaRecorder and AudioContext on all browsers (Safari consumes the stream).
+      // With gentle compression (max 4:1) the audio quality is still good for Deepgram.
       const recorderOptions: MediaRecorderOptions = { mimeType };
       if (mimeType.includes('webm')) {
         recorderOptions.audioBitsPerSecond = 128000; // 128kbps for speech clarity
       }
-      const recorder = new MediaRecorder(rawStream, recorderOptions);
+      const recorder = new MediaRecorder(boostedStream, recorderOptions);
       mediaRecorderRef.current = recorder;
       chunksRef.current = [];
       recorder.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data); };
