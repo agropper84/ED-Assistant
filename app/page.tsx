@@ -1715,10 +1715,10 @@ export default function HomePage() {
         {fabPos && (
           <button
             onClick={resetFabPosition}
-            className="absolute -top-1.5 -left-1.5 w-3 h-3 bg-purple-600/50 dark:bg-purple-500/50 rounded-full flex items-center justify-center hover:bg-purple-600/80 dark:hover:bg-purple-400/80 hover:scale-110 opacity-0 scale-75 group-hover/fab:opacity-50 group-hover/fab:scale-100 transition-all duration-200 delay-150 z-10"
+            className="absolute -top-1 -left-1 w-3.5 h-3.5 bg-purple-600/40 dark:bg-purple-500/40 rounded-full flex items-center justify-center hover:bg-purple-600/70 dark:hover:bg-purple-400/70 hover:scale-110 opacity-0 scale-75 group-hover/fab:opacity-60 group-hover/fab:scale-100 transition-all duration-200 delay-150 z-10"
             title="Reset position"
           >
-            <RotateCcw className="w-1.5 h-1.5 text-white/70" strokeWidth={2.5} />
+            <RotateCcw className="w-2.5 h-2.5 text-white" strokeWidth={2.5} />
           </button>
         )}
         <button
