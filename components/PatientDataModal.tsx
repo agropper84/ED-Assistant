@@ -774,32 +774,23 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
                   })}
                 </div>
               ) : null}
-              {/* Recording waveform — speaker-aware colors, shown when live text OFF */}
+              {/* Recording waveform — shown when live text OFF */}
               {isRecordingEncounter && !showLiveTranscript && (
                 <div className="w-full h-28 border border-blue-400/20 rounded-xl bg-[var(--input-bg)] flex flex-col items-center justify-center relative overflow-hidden">
                   <div className="flex items-end justify-center gap-[2px] h-16 px-4">
                     {Array.from({ length: 64 }).map((_, i) => {
                       const sample = waveHistoryRef.current[i];
                       const level = sample?.level || 0;
-                      const speaker = sample?.speaker || 'silent';
-                      const h = Math.max(2, level * 56);
-                      const color = speaker === 'near'
-                        ? `rgba(96, 165, 250, ${0.4 + level * 0.6})`
-                        : speaker === 'far'
-                        ? `rgba(251, 191, 36, ${0.4 + level * 0.6})`
-                        : 'rgba(148, 163, 184, 0.12)';
+                      const h = Math.max(2, level * 48);
+                      const color = level > 0.03
+                        ? `rgba(96, 165, 250, ${0.3 + level * 0.7})`
+                        : 'rgba(148, 163, 184, 0.1)';
                       return (
                         <div key={i} className="rounded-full" style={{ width: '2px', height: `${h}px`, backgroundColor: color, transition: 'height 80ms ease-out' }} />
                       );
                     })}
                   </div>
-                  <div className="flex items-center gap-4 mt-2">
-                    <span className="text-[9px] text-blue-400/70 font-medium tracking-wide">Recording encounter</span>
-                    <div className="flex items-center gap-3">
-                      <div className="flex items-center gap-1"><div className="w-1.5 h-1.5 rounded-full bg-blue-400" /><span className="text-[8px] text-[var(--text-muted)]">Dr</span></div>
-                      <div className="flex items-center gap-1"><div className="w-1.5 h-1.5 rounded-full bg-amber-400" /><span className="text-[8px] text-[var(--text-muted)]">Pt</span></div>
-                    </div>
-                  </div>
+                  <span className="text-[9px] text-blue-400/60 font-medium tracking-wide mt-2">Recording encounter</span>
                 </div>
               )}
               <textarea

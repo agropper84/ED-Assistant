@@ -267,35 +267,26 @@ export function VoiceRecorder({
       analyser.getFloatTimeDomainData(timeData);
       let sum = 0;
       for (let i = 0; i < timeData.length; i++) sum += timeData[i] * timeData[i];
-      // RMS level — use 0.05 divisor for higher sensitivity (was 0.12)
       const rms = Math.sqrt(sum / timeData.length);
-      const level = Math.min(1, rms / 0.04);
+      const level = Math.min(1, rms / 0.07);
       setAudioLevel(level);
 
-      // Frequency domain for speaker characteristics
+      // Frequency data (kept for future use)
       analyser.getByteFrequencyData(freqData);
       const binCount = freqData.length;
-      const lowEnd = Math.floor(binCount * 0.15);  // ~0-750Hz (fundamental voice range)
+      const lowEnd = Math.floor(binCount * 0.15);
       const highStart = Math.floor(binCount * 0.4);
-      const highEnd = Math.floor(binCount * 0.7);   // ~2000-3500Hz (sibilants, clarity)
+      const highEnd = Math.floor(binCount * 0.7);
 
       let lowSum = 0, highSum = 0;
       for (let i = 0; i < lowEnd; i++) lowSum += freqData[i];
       for (let i = highStart; i < highEnd; i++) highSum += freqData[i];
-      const lowFreq = Math.min(1, (lowSum / lowEnd) / 80);
-      const highFreq = Math.min(1, (highSum / (highEnd - highStart)) / 80);
+      const lowFreq = Math.min(1, (lowSum / lowEnd) / 100);
+      const highFreq = Math.min(1, (highSum / (highEnd - highStart)) / 100);
 
-      // Update running baseline (smoothed average of speech levels)
-      if (level > 0.02) {
-        sampleCount++;
-        baselineLevel = baselineLevel + (level - baselineLevel) / Math.min(sampleCount, 30);
-      }
-
-      // Speaker hint based on volume relative to baseline
-      let speakerHint: 'near' | 'far' | 'silent' = 'silent';
-      if (level > 0.02) {
-        speakerHint = level > baselineLevel * 0.6 ? 'near' : 'far';
-      }
+      // Speaker hint: just voice vs silence (reliable diarization
+      // isn't possible from a single mono mic in real-time)
+      const speakerHint: 'near' | 'far' | 'silent' = level > 0.03 ? 'near' : 'silent';
 
       onAudioLevelRef.current?.({ level, lowFreq, highFreq, speakerHint });
       animFrameRef.current = requestAnimationFrame(tick);
