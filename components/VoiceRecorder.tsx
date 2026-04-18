@@ -65,32 +65,38 @@ function buildAudioConstraints(mode: string, sensitivity: number): MediaTrackCon
   const isEncounter = mode === 'encounter';
 
   if (isEncounter) {
+    // Encounter: capture ALL audio as cleanly as possible — like Voice Memos.
+    // Disable all browser processing that removes speech:
+    // - AGC ducks quiet speakers when loud ones talk
+    // - AEC removes patient voice (mistaken for echo in small rooms)
+    // - Noise suppression drops quiet speech classified as background
     return {
       sampleRate: { ideal: 48000 },
       channelCount: { ideal: 1 },
-      autoGainControl: true,
-      noiseSuppression: sensitivity <= 1,
-      echoCancellation: sensitivity <= 2, // ON at Lo/Mid, OFF at Hi for max raw pickup
+      autoGainControl: { ideal: false },
+      noiseSuppression: { ideal: false },
+      echoCancellation: { ideal: false },
     };
   }
 
-  // Dictation: single speaker
+  // Dictation: single close speaker — some processing OK
   return {
     sampleRate: { ideal: 48000 },
     channelCount: { ideal: 1 },
-    echoCancellation: false,
+    echoCancellation: { ideal: false },
     noiseSuppression: sensitivity <= 2,
     autoGainControl: sensitivity <= 2,
   };
 }
 
 /** Sensitivity → audio processing settings for the compressor/gain chain.
- * Higher sensitivity = more aggressive compression + higher gain to pick up quiet speakers. */
+ * Gentle settings to boost quiet voices WITHOUT destroying dynamic range.
+ * Max compression ratio 4:1 (broadcast standard) — never higher. */
 function sensitivitySettings(sensitivity: number): { gain: number; threshold: number; ratio: number; knee: number; release: number } {
-  if (sensitivity <= 1) return { gain: 1.0, threshold: -40, ratio: 8, knee: 40, release: 0.25 };   // Lo: light
-  if (sensitivity === 2) return { gain: 2.0, threshold: -50, ratio: 12, knee: 40, release: 0.25 };  // Mid: moderate
-  if (sensitivity === 3) return { gain: 3.5, threshold: -55, ratio: 16, knee: 30, release: 0.2 };   // Hi: aggressive
-  return { gain: 5.0, threshold: -60, ratio: 20, knee: 25, release: 0.15 };                          // Max (4+): pocket-mode level
+  if (sensitivity <= 1) return { gain: 1.0, threshold: -40, ratio: 2, knee: 40, release: 0.3 };    // Lo: minimal
+  if (sensitivity === 2) return { gain: 1.5, threshold: -45, ratio: 3, knee: 40, release: 0.25 };   // Mid: gentle
+  if (sensitivity === 3) return { gain: 2.0, threshold: -50, ratio: 3.5, knee: 35, release: 0.2 };  // Hi: moderate
+  return { gain: 2.5, threshold: -55, ratio: 4, knee: 30, release: 0.15 };                           // Max: broadcast-level
 }
 
 /** Create a gain-boosted audio stream for recording.
@@ -779,8 +785,12 @@ export function VoiceRecorder({
       boostGainRef.current = gainNode;
       boostCompressorRef.current = compressor;
 
-      // Record from the BOOSTED stream, not the raw mic
-      const recorder = new MediaRecorder(boostedStream, { mimeType });
+      // Record from the BOOSTED stream with high bitrate for speech clarity
+      const recorderOptions: MediaRecorderOptions = { mimeType };
+      if (mimeType.includes('webm')) {
+        recorderOptions.audioBitsPerSecond = 128000; // 128kbps — much better than default ~32kbps
+      }
+      const recorder = new MediaRecorder(boostedStream, recorderOptions);
       mediaRecorderRef.current = recorder;
       chunksRef.current = [];
       recorder.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data); };
@@ -953,6 +963,8 @@ export function VoiceRecorder({
     if (mode === 'encounter') {
       if (stateRef.current === 'recording') {
         if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+          // Flush any pending audio data before stopping
+          try { mediaRecorderRef.current.requestData(); } catch {}
           mediaRecorderRef.current.stop();
         }
       } else {
