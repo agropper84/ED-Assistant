@@ -325,15 +325,8 @@ export async function deleteSubmission(ctx: DataContext, rowIndex: number, sheet
 // ============================================================
 
 export async function getShiftTimes(ctx: DataContext, sheetName: string) {
-  // Drive primary
-  if (ctx.mode !== 'sheets' && ctx.drive) {
-    try {
-      const dj = await import('./drive-json');
-      const times = await dj.getShiftTimesFromDrive(ctx.drive, sheetName);
-      if (times) return times;
-    } catch {}
-  }
-  // Sheets fallback
+  // Always read from Sheets — shift times are written to Sheets first
+  // and the Drive mirror is fire-and-forget (may fail/lag)
   const gs = await import('./google-sheets');
   return gs.getShiftTimes(ctx.sheets, sheetName);
 }
