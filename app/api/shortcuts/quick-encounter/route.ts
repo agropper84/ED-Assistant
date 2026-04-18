@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { authenticateShortcut, isAuthed } from '@/lib/shortcut-auth';
 import { getPatients, getOrCreateDateSheet, updatePatientFields } from '@/lib/data-layer';
-import { getTodaySheetName } from '@/lib/google-sheets';
+import { getTodaySheetName, getNextEmptyRow, getPatientCount } from '@/lib/google-sheets';
 
 // POST /api/shortcuts/quick-encounter — Create a new patient/encounter row
 export async function POST(request: NextRequest) {
@@ -21,19 +21,14 @@ export async function POST(request: NextRequest) {
     // Ensure today's sheet exists
     const sheetName = await getOrCreateDateSheet(dataCtx, getTodaySheetName());
 
-    // Get existing patients to determine next row + numbering
-    const existing = await getPatients(dataCtx, sheetName);
-    const encounterNum = existing.length + 1;
+    // Use Sheets directly for reliable row counting (avoids Drive cache issues)
+    const sheetsCtx = dataCtx.sheets;
+    const rowIndex = await getNextEmptyRow(sheetsCtx, sheetName);
+    const patientCount = await getPatientCount(sheetsCtx, sheetName);
+    const encounterNum = patientCount + 1;
     const encounterName = patientName || `New Encounter ${encounterNum}`;
 
-    // Calculate next row index (data starts at row 8)
-    const DATA_START_ROW = 8;
-    let rowIndex = DATA_START_ROW;
-    if (existing.length > 0) {
-      // Find the max row index + 1
-      const maxRow = Math.max(...existing.map(p => p.rowIndex));
-      rowIndex = maxRow + 1;
-    }
+    console.log(`[quick-encounter] Creating patient at row ${rowIndex}, #${encounterNum}, sheet=${sheetName}`);
 
     const now = new Date();
     const timestamp = now.toLocaleTimeString('en-US', {
