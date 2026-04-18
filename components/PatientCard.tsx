@@ -782,7 +782,7 @@ export const PatientCard = memo(function PatientCard({ patient, onClick, onDelet
                 onBlur={handleDiagnosisSave}
                 onKeyDown={(e) => {
                   e.stopPropagation();
-                  if (e.key === ' ') e.stopImmediatePropagation(); // prevent button click on space
+                  if (e.key === ' ') (e.nativeEvent as Event).stopImmediatePropagation();
                   if (e.key === 'Enter') handleDiagnosisSave();
                   if (e.key === 'Escape') setEditingDiagnosis(false);
                 }}
