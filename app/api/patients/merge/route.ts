@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Update target with merged transcript
-    await updatePatientFields(ctx, targetRowIndex, { transcript: mergedTranscript }, sheetName);
+    await updatePatientFields(ctx, targetRowIndex, { transcript: mergedTranscript }, sheetName, target.name);
 
     // Clear the source row
     await clearPatient(ctx, sourceRowIndex, sheetName);

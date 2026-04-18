@@ -144,7 +144,7 @@ Output ONLY the reframed question, nothing else.`,
 
     await updatePatientFields(ctx, rowIndex, {
       clinicalQA: JSON.stringify(existingQA),
-    }, sheetName);
+    }, sheetName, patient.name);
 
     return NextResponse.json({ answer, ...(oeQuery ? { oeQuery } : {}) });
   }

@@ -179,12 +179,13 @@ async function processOne(pending: PendingAudio): Promise<{ transcript: string; 
       hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'America/Toronto',
     });
 
+    const newName = `New Encounter ${encounterNum}`;
     await updatePatientFields(ctx, rowIndex, {
       patientNum: String(encounterNum),
-      name: `New Encounter ${encounterNum}`,
+      name: newName,
       timestamp,
       transcript,
-    }, sheetName);
+    }, sheetName, newName);
 
     return { transcript, mode: 'quick' };
   }
@@ -194,17 +195,17 @@ async function processOne(pending: PendingAudio): Promise<{ transcript: string; 
   const sheetName = pending.sheetName || getTodaySheetName();
 
   // Assign transcript (append if needed)
+  const existingPatient = await getPatient(ctx, rowIndex, sheetName);
   if (pending.append) {
-    const existing = await getPatient(ctx, rowIndex, sheetName);
-    if (existing?.transcript) {
+    if (existingPatient?.transcript) {
       await updatePatientFields(ctx, rowIndex, {
-        transcript: existing.transcript + '\n\n---\n\n' + transcript,
-      }, sheetName);
+        transcript: existingPatient.transcript + '\n\n---\n\n' + transcript,
+      }, sheetName, existingPatient.name);
     } else {
-      await updatePatientFields(ctx, rowIndex, { transcript }, sheetName);
+      await updatePatientFields(ctx, rowIndex, { transcript }, sheetName, existingPatient?.name);
     }
   } else {
-    await updatePatientFields(ctx, rowIndex, { transcript }, sheetName);
+    await updatePatientFields(ctx, rowIndex, { transcript }, sheetName, existingPatient?.name);
   }
 
   // If mode is analyze or full, run AI processing
@@ -233,7 +234,7 @@ async function processOne(pending: PendingAudio): Promise<{ transcript: string; 
           ddx: result.ddx || '', investigations: result.investigations || '',
           management: result.management || '', evidence: result.evidence || '',
           diagnosis: result.diagnosis || '', icd9: result.icd9 || '', icd10: result.icd10 || '',
-        }, sheetName);
+        }, sheetName, patient.name);
       } else {
         const fields: Record<string, string> = {};
         if (result.ddx) fields.ddx = result.ddx;
@@ -241,7 +242,7 @@ async function processOne(pending: PendingAudio): Promise<{ transcript: string; 
         if (result.management) fields.management = result.management;
         if (result.evidence) fields.evidence = result.evidence;
         if (result.diagnosis) fields.diagnosis = result.diagnosis;
-        await updatePatientFields(ctx, rowIndex, fields, sheetName);
+        await updatePatientFields(ctx, rowIndex, fields, sheetName, patient.name);
       }
     }
   }

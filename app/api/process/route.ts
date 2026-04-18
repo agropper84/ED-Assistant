@@ -113,7 +113,7 @@ export const POST = withApiHandler(
             icd9: result.icd9,
             icd10: result.icd10,
           };
-          await updatePatientFields(ctx, rowIndex, fieldsToUpdate, sheetName);
+          await updatePatientFields(ctx, rowIndex, fieldsToUpdate, sheetName, patient.name);
 
           if (result.diagnosis?.trim()) {
             upsertDiagnosisCode(ctx.sheets, {
@@ -153,7 +153,7 @@ export const POST = withApiHandler(
       }),
     };
 
-    await updatePatientFields(ctx, rowIndex, fieldsToUpdate, sheetName);
+    await updatePatientFields(ctx, rowIndex, fieldsToUpdate, sheetName, patient.name);
 
     if (result.diagnosis?.trim()) {
       upsertDiagnosisCode(ctx.sheets, {
@@ -192,7 +192,7 @@ export const POST = withApiHandler(
             fee: serialized.fee,
             unit: serialized.unit,
             total: serialized.total,
-          }, sheetName);
+          }, sheetName, patient.name);
 
           // Mirror to Sheets (fire-and-forget)
           saveBillingRows(ctx.sheets, rowIndex, billingItems, sheetName).catch(() => {});

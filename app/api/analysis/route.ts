@@ -143,7 +143,7 @@ Cite pertinent evidence, guidelines, or clinical decision rules relevant to this
     }
 
     if (Object.keys(fields).length > 0) {
-      await updatePatientFields(ctx, rowIndex, fields, sheetName);
+      await updatePatientFields(ctx, rowIndex, fields, sheetName, patient.name);
     }
 
     return NextResponse.json({ success: true, ...fields });

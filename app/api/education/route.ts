@@ -62,7 +62,7 @@ Respond in this format for each topic:
     );
 
     education = await verifyLinks(education);
-    await updatePatientFields(ctx, rowIndex, { education }, sheetName);
+    await updatePatientFields(ctx, rowIndex, { education }, sheetName, patient.name);
 
     return NextResponse.json({ education });
   }

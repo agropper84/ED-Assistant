@@ -76,7 +76,7 @@ Respond with ONLY the regenerated section content. No headers, labels, or extra 
       { model: MODELS.default, maxTokens: 2048, temperature: 0.3 },
     );
 
-    await updatePatientFields(ctx, rowIndex, { [section]: regenerated.trim() }, sheetName);
+    await updatePatientFields(ctx, rowIndex, { [section]: regenerated.trim() }, sheetName, patient.name);
 
     return NextResponse.json({ success: true, content: regenerated.trim() });
   }

@@ -523,8 +523,20 @@ export async function updatePatientInDrive(
   }
 
   if (!file) {
-    // Patient truly doesn't exist — create (only valid path for new patients)
-    const name = originalName || (fields.name as string) || 'Unknown';
+    // Only create a new entry if we have a patient name (meaning this is genuinely
+    // a new patient, not an update like saving hpi/billing to an existing one).
+    // Without a name, creating an entry would produce an orphaned duplicate.
+    const name = originalName || (fields.name as string);
+    if (!name) {
+      console.error(
+        `updatePatientInDrive: CANNOT find patient to update — rowIndex=${rowIndex}, sheet="${sheetName}", ` +
+        `no name provided, fields=[${Object.keys(fields).join(',')}]. ` +
+        `Available: [${dateSheet.patients.map(p => `"${p.data.name}"(row=${p.rowIndex}/${typeof p.rowIndex})`).join(', ')}]. ` +
+        `Skipping write to prevent duplicate creation.`
+      );
+      return;
+    }
+
     console.log(`updatePatientInDrive: creating new patient (rowIndex=${rowIndex}, name=${name}, sheet=${sheetName})`);
 
     // Try to read full patient data from Sheets for legacy migration

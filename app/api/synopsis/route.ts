@@ -47,7 +47,7 @@ Write ONLY the synopsis, no headers or labels.`;
       { model: MODELS.fast, maxTokens: 512, temperature: 0.2 },
     );
 
-    await updatePatientFields(ctx, rowIndex, { synopsis: synopsis.trim() }, sheetName);
+    await updatePatientFields(ctx, rowIndex, { synopsis: synopsis.trim() }, sheetName, patient.name);
 
     return NextResponse.json({ synopsis: synopsis.trim() });
   }

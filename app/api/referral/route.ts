@@ -59,7 +59,7 @@ export const POST = withApiHandler(
       customInstructions,
     );
 
-    await updatePatientFields(ctx, rowIndex, { referral: referralText }, sheetName);
+    await updatePatientFields(ctx, rowIndex, { referral: referralText }, sheetName, patient.name);
 
     return NextResponse.json({ success: true, referral: referralText });
   }

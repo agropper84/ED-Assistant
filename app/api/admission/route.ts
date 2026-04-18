@@ -59,7 +59,7 @@ export const POST = withApiHandler(
       customInstructions,
     );
 
-    await updatePatientFields(ctx, rowIndex, { admission: admissionText }, sheetName);
+    await updatePatientFields(ctx, rowIndex, { admission: admissionText }, sheetName, patient.name);
 
     return NextResponse.json({ success: true, admission: admissionText });
   }

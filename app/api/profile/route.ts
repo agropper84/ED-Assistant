@@ -97,7 +97,7 @@ ${parts.join('\n\n---\n\n')}`,
     if (!profile.gender && patient.gender) profile.gender = patient.gender;
 
     const profileJson = JSON.stringify(profile);
-    await updatePatientFields(ctx, rowIndex, { profile: profileJson }, sheetName);
+    await updatePatientFields(ctx, rowIndex, { profile: profileJson }, sheetName, patient.name);
 
     return NextResponse.json({ profile });
   } catch (error: any) {
