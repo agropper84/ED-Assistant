@@ -128,6 +128,8 @@ export const PatientCard = memo(function PatientCard({ patient, onClick, onDelet
   // Track held keys for H/O/P + click on encounter note
   // Ignore when typing in inputs/textareas
   const heldKeyRef = useRef<string | null>(null);
+  const [heldKeyDisplay, setHeldKeyDisplay] = useState<string | null>(null);
+  const noteHoveredRef = useRef(false);
   useEffect(() => {
     const isTyping = () => {
       const tag = document.activeElement?.tagName;
@@ -136,9 +138,15 @@ export const PatientCard = memo(function PatientCard({ patient, onClick, onDelet
     const down = (e: KeyboardEvent) => {
       if (isTyping()) return;
       const k = e.key.toLowerCase();
-      if (k === 'h' || k === 'o' || k === 'p') heldKeyRef.current = k;
+      if (k === 'h' || k === 'o' || k === 'p') {
+        heldKeyRef.current = k;
+        if (noteHoveredRef.current) setHeldKeyDisplay(k);
+      }
     };
-    const up = () => { heldKeyRef.current = null; };
+    const up = () => {
+      heldKeyRef.current = null;
+      setHeldKeyDisplay(null);
+    };
     window.addEventListener('keydown', down);
     window.addEventListener('keyup', up);
     return () => { window.removeEventListener('keydown', down); window.removeEventListener('keyup', up); };
@@ -449,15 +457,16 @@ export const PatientCard = memo(function PatientCard({ patient, onClick, onDelet
                         }
                       }
                     }}
-                    onMouseEnter={() => showTooltip('note')}
-                    onMouseLeave={hideTooltip}
+                    onMouseEnter={() => { noteHoveredRef.current = true; setHeldKeyDisplay(heldKeyRef.current); showTooltip('note'); }}
+                    onMouseLeave={() => { noteHoveredRef.current = false; setHeldKeyDisplay(null); hideTooltip(); }}
                     className="p-0.5 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 rounded transition-colors cursor-pointer inline-flex"
                     title="Click: copy all · H+click: HPI · O+click: Objective · P+click: A&P · ⌘+click: regenerate"
                   >
                     {copiedIcon === 'note' ? <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-                      : copiedIcon === 'note-h' ? <span className="text-[9px] font-bold text-emerald-600 dark:text-emerald-400 w-3.5 h-3.5 flex items-center justify-center">H</span>
-                      : copiedIcon === 'note-o' ? <span className="text-[9px] font-bold text-emerald-600 dark:text-emerald-400 w-3.5 h-3.5 flex items-center justify-center">O</span>
-                      : copiedIcon === 'note-p' ? <span className="text-[9px] font-bold text-emerald-600 dark:text-emerald-400 w-3.5 h-3.5 flex items-center justify-center">P</span>
+                      : copiedIcon === 'note-h' ? <span className="text-[9px] font-bold text-emerald-600 dark:text-emerald-400 w-3.5 h-3.5 flex items-center justify-center">H ✓</span>
+                      : copiedIcon === 'note-o' ? <span className="text-[9px] font-bold text-emerald-600 dark:text-emerald-400 w-3.5 h-3.5 flex items-center justify-center">O ✓</span>
+                      : copiedIcon === 'note-p' ? <span className="text-[9px] font-bold text-emerald-600 dark:text-emerald-400 w-3.5 h-3.5 flex items-center justify-center">P ✓</span>
+                      : heldKeyDisplay ? <span className="text-[10px] font-bold text-amber-500 dark:text-amber-400 w-3.5 h-3.5 flex items-center justify-center">{heldKeyDisplay.toUpperCase()}</span>
                       : <FileText className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />}
                   </span>
                   <IconTooltip anchorRef={tooltipRefs.note} visible={activeTooltip === 'note'}>
