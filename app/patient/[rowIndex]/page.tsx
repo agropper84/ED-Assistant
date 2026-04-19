@@ -605,20 +605,6 @@ export default function PatientPage() {
                     <RefreshCw className="w-4 h-4" />
                     Modify
                   </button>
-                  <button
-                    onClick={() => setShowReferralModal(true)}
-                    className="py-3 px-3 border border-[var(--border)] text-[var(--text-secondary)] rounded-2xl font-medium flex items-center justify-center gap-1.5 hover:bg-[var(--bg-tertiary)] active:scale-[0.97] transition-all text-sm"
-                  >
-                    <Send className="w-4 h-4" />
-                    Refer
-                  </button>
-                  <button
-                    onClick={() => setShowAdmissionModal(true)}
-                    className="py-3 px-3 border border-[var(--border)] text-[var(--text-secondary)] rounded-2xl font-medium flex items-center justify-center gap-1.5 hover:bg-[var(--bg-tertiary)] active:scale-[0.97] transition-all text-sm"
-                  >
-                    <FilePlus className="w-4 h-4" />
-                    Consult
-                  </button>
                 </div>
 
                 {/* Modification Panel */}
