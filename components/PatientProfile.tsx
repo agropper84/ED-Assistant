@@ -69,7 +69,7 @@ export function PatientProfile({ profile, age, gender, onGenerate, generating }:
   };
 
   return (
-    <div className="bg-[var(--card-bg)] rounded-2xl border border-[var(--card-border)] border-l-2 border-l-rose-500/40 overflow-hidden" style={{ boxShadow: 'var(--card-shadow)' }}>
+    <div className="bg-[var(--card-bg)] rounded-2xl border border-[var(--card-border)] border-l-2 border-l-rose-500/40 overflow-hidden hover:shadow-lg hover:-translate-y-px transition-all duration-200" style={{ boxShadow: 'var(--card-shadow)' }}>
       <div
         className="flex items-center justify-between px-5 py-3.5 cursor-pointer select-none hover:bg-[var(--bg-tertiary)]/50 transition-colors"
         onClick={() => setExpanded(!expanded)}

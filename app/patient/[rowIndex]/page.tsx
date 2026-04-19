@@ -458,7 +458,7 @@ export default function PatientPage() {
 
         {/* Insights Section (DDx, Investigations, Management, Evidence) */}
         {(patient.ddx || patient.investigations || patient.management || patient.evidence || patient.education) && (
-          <div className="bg-[var(--card-bg)] rounded-2xl border border-[var(--card-border)] border-l-2 border-l-blue-500/40 overflow-hidden" style={{ boxShadow: 'var(--card-shadow)' }}>
+          <div className="bg-[var(--card-bg)] rounded-2xl border border-[var(--card-border)] border-l-2 border-l-blue-500/40 overflow-hidden hover:shadow-lg hover:-translate-y-px transition-all duration-200" style={{ boxShadow: 'var(--card-shadow)' }}>
             {/* Insights Header */}
             <div
               className="flex items-center justify-between px-5 py-3.5 cursor-pointer select-none hover:bg-[var(--bg-tertiary)]/50 transition-colors"
@@ -683,25 +683,8 @@ export default function PatientPage() {
                   accentBorder="border-l-emerald-500/40"
                 />
 
-                {/* Diagnosis & ICD Codes — moved below A&P */}
-                <DiagnosisSection
-                  patient={patient}
-                  onSave={async (fields) => {
-                    await fetch(`/api/patients/${rowIndex}`, {
-                      method: 'PATCH',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({
-                        ...fields,
-                        _sheetName: sheetName,
-                        _upsertDiagnosis: fields.diagnosis ? { diagnosis: fields.diagnosis, icd9: fields.icd9 || '', icd10: fields.icd10 || '' } : undefined,
-                      }),
-                    });
-                    await fetchPatient();
-                  }}
-                />
-
-                {/* Physician Notes for A&P */}
-                <div className="rounded-2xl border border-[var(--card-border)] border-l-2 border-l-amber-500/40 bg-[var(--card-bg)] overflow-hidden" style={{ boxShadow: 'var(--card-shadow)' }}>
+                {/* Physician Notes */}
+                <div className="rounded-2xl border border-[var(--card-border)] border-l-2 border-l-amber-500/40 bg-[var(--card-bg)] overflow-hidden hover:shadow-lg hover:-translate-y-px transition-all duration-200" style={{ boxShadow: 'var(--card-shadow)' }}>
                   <div className="px-4 py-3 border-b border-[var(--card-border)] flex items-center gap-2">
                     <FileText className="w-4 h-4 text-amber-600 dark:text-amber-400" />
                     <h3 className="font-semibold text-sm text-[var(--text-primary)]">Physician Notes</h3>
@@ -763,6 +746,23 @@ export default function PatientPage() {
                     </div>
                   </div>
                 </div>
+
+                {/* Diagnosis & ICD Codes */}
+                <DiagnosisSection
+                  patient={patient}
+                  onSave={async (fields) => {
+                    await fetch(`/api/patients/${rowIndex}`, {
+                      method: 'PATCH',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        ...fields,
+                        _sheetName: sheetName,
+                        _upsertDiagnosis: fields.diagnosis ? { diagnosis: fields.diagnosis, icd9: fields.icd9 || '', icd10: fields.icd10 || '' } : undefined,
+                      }),
+                    });
+                    await fetchPatient();
+                  }}
+                />
               </>
             ) : (
               <button
@@ -1009,7 +1009,7 @@ export default function PatientPage() {
         )}
 
         {/* Source Data — collapsible card */}
-        <div className="bg-[var(--card-bg)] rounded-2xl border border-[var(--card-border)] overflow-hidden" style={{ boxShadow: 'var(--card-shadow)' }}>
+        <div className="bg-[var(--card-bg)] rounded-2xl border border-[var(--card-border)] border-l-2 border-l-slate-400/40 overflow-hidden hover:shadow-lg hover:-translate-y-px transition-all duration-200" style={{ boxShadow: 'var(--card-shadow)' }}>
           <div
             className="flex items-center justify-between px-5 py-3.5 cursor-pointer select-none hover:bg-[var(--bg-tertiary)]/50 transition-colors"
             onClick={() => setSourceDataExpanded(!sourceDataExpanded)}
@@ -1263,7 +1263,7 @@ function OutputSection({
   };
 
   return (
-    <div className={`${bgClass} ${isFlat ? '' : 'rounded-2xl border'} ${borderClass} ${accentBorder && !isFlat ? `border-l-2 ${accentBorder}` : ''} overflow-hidden`} style={{ boxShadow: isFlat || variant === 'muted' ? 'none' : 'var(--card-shadow)' }}>
+    <div className={`${bgClass} ${isFlat ? '' : 'rounded-2xl border hover:shadow-lg hover:-translate-y-px'} ${borderClass} ${accentBorder && !isFlat ? `border-l-2 ${accentBorder}` : ''} overflow-hidden transition-all duration-200`} style={{ boxShadow: isFlat || variant === 'muted' ? 'none' : 'var(--card-shadow)' }}>
       <div className={`flex items-center justify-between ${isFlat ? 'px-5 py-3' : 'p-5'} cursor-pointer`} onClick={onToggle}>
         <h3 className={`${isFlat ? 'text-sm' : ''} font-semibold text-[var(--text-primary)]`}>{title}</h3>
         <div className="flex items-center gap-1">
