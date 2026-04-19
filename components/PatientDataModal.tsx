@@ -795,7 +795,7 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
               ) : null}
               {/* Recording waveform — centered, full width with edge fades */}
               {isRecordingEncounter && !showLiveTranscript && (() => {
-                const vizGain = micSensitivity === 1 ? 24 : micSensitivity === 2 ? 36 : micSensitivity === 3 ? 50 : 64;
+                const vizGain = micSensitivity === 1 ? 15 : micSensitivity === 2 ? 30 : micSensitivity === 3 ? 55 : 80;
                 const barCount = 140;
                 const mins = Math.floor(recordingElapsed / 60);
                 const secs = recordingElapsed % 60;
