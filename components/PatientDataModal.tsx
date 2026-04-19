@@ -801,7 +801,7 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
                 const secs = recordingElapsed % 60;
                 const timeStr = `${mins}:${secs.toString().padStart(2, '0')}`;
                 return (
-                  <div className="w-full h-28 rounded-xl relative" style={{
+                  <div className="w-full h-28 rounded-xl relative overflow-hidden" style={{
                     background: 'linear-gradient(180deg, rgba(15,23,42,0.6) 0%, rgba(15,23,42,0.8) 100%)',
                     border: '1px solid rgba(96,165,250,0.12)',
                   }}>
