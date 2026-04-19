@@ -1145,19 +1145,19 @@ export default function HomePage() {
                 }}
                 title="Menu"
               >
-                <svg width="20" height="20" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <svg width="24" height="24" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
                   <defs>
-                    <linearGradient id="ed-cross" x1="9" y1="8" x2="27" y2="28" gradientUnits="userSpaceOnUse">
-                      <stop offset="0%" stopColor="#dce6f5" stopOpacity="0.92" />
-                      <stop offset="100%" stopColor="#adbfd6" stopOpacity="0.55" />
+                    <linearGradient id="ed-gem" x1="18" y1="6" x2="18" y2="30" gradientUnits="userSpaceOnUse">
+                      <stop offset="0%" stopColor="#d2dfef" stopOpacity="0.95" />
+                      <stop offset="100%" stopColor="#8ea3ba" stopOpacity="0.55" />
                     </linearGradient>
                   </defs>
-                  {/* Vertical bar */}
-                  <rect x="14.5" y="8" width="7" height="20" rx="3.5" fill="url(#ed-cross)" />
-                  {/* Horizontal bar */}
-                  <rect x="8" y="14.5" width="20" height="7" rx="3.5" fill="url(#ed-cross)" />
-                  {/* Amber accent — intersection core */}
-                  <circle cx="18" cy="18" r="2" fill="#c8985c" opacity="0.85" />
+                  {/* Rounded diamond mark */}
+                  <rect x="10.5" y="10.5" width="15" height="15" rx="3.5" transform="rotate(45 18 18)" fill="url(#ed-gem)" />
+                  {/* Specular highlight — polished surface */}
+                  <ellipse cx="15.5" cy="14.5" rx="4.5" ry="2.5" fill="rgba(255,255,255,0.12)" transform="rotate(-40 15.5 14.5)" />
+                  {/* Amber core accent */}
+                  <circle cx="18" cy="18" r="2.2" fill="#c9935a" opacity="0.88" />
                 </svg>
               </button>
               <h1 className="text-[17px] font-bold tracking-[-0.02em]" style={{ color: 'var(--dash-text)' }}>ER Dashboard</h1>
