@@ -14,7 +14,7 @@ import {
   clearLocalStyleGuide,
 } from '@/lib/style-guide';
 import {
-  getSettings, saveSettings, AppSettings, DEFAULT_SETTINGS, DEFAULT_NOTE_STYLE_STANDARD, DEFAULT_NOTE_STYLE_DETAILED, DEFAULT_NOTE_STYLE_COMPLETE_EXAM, DEFAULT_REFERRAL_INSTRUCTIONS, DEFAULT_ADMISSION_INSTRUCTIONS,
+  getSettings, saveSettings, AppSettings, NamedTemplate, DEFAULT_SETTINGS, DEFAULT_NOTE_STYLE_STANDARD, DEFAULT_NOTE_STYLE_DETAILED, DEFAULT_NOTE_STYLE_COMPLETE_EXAM, DEFAULT_REFERRAL_INSTRUCTIONS, DEFAULT_ADMISSION_INSTRUCTIONS,
   PromptTemplates, DEFAULT_PROMPT_TEMPLATES, getPromptTemplates, savePromptTemplates,
   ParseRules, DEFAULT_PARSE_RULES, getParseRules, saveParseRules,
   EncounterType, DEFAULT_ENCOUNTER_TYPES, getEncounterTypes, saveEncounterTypes,
@@ -42,6 +42,107 @@ import {
 } from '@/lib/billing';
 
 type Tab = 'style' | 'settings' | 'billing' | 'prompts' | 'privacy' | 'keys';
+
+function TemplateManager({ label, templates, defaultInstructions, onChange }: {
+  label: string;
+  templates: NamedTemplate[];
+  defaultInstructions: string;
+  onChange: (templates: NamedTemplate[]) => void;
+}) {
+  const [editingIdx, setEditingIdx] = useState<number | null>(null);
+  const [editName, setEditName] = useState('');
+  const [editInstructions, setEditInstructions] = useState('');
+
+  const startEdit = (idx: number) => {
+    setEditingIdx(idx);
+    setEditName(templates[idx].name);
+    setEditInstructions(templates[idx].instructions);
+  };
+
+  const saveEdit = () => {
+    if (editingIdx === null || !editName.trim()) return;
+    const updated = [...templates];
+    updated[editingIdx] = { name: editName.trim(), instructions: editInstructions };
+    onChange(updated);
+    setEditingIdx(null);
+  };
+
+  const addTemplate = () => {
+    const newTemplate = { name: `${label} Template ${templates.length + 1}`, instructions: defaultInstructions };
+    const updated = [...templates, newTemplate];
+    onChange(updated);
+    startEdit(updated.length - 1);
+  };
+
+  const removeTemplate = (idx: number) => {
+    if (templates.length <= 1) return;
+    onChange(templates.filter((_, i) => i !== idx));
+    if (editingIdx === idx) setEditingIdx(null);
+  };
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-2">
+        <label className="text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider">{label} Templates</label>
+        <button
+          onClick={addTemplate}
+          className="flex items-center gap-1 px-2 py-1 text-[var(--text-muted)] hover:text-[var(--accent)] hover:bg-[var(--bg-tertiary)] rounded-lg text-xs transition-colors"
+        >
+          <Plus className="w-3 h-3" />
+          Add
+        </button>
+      </div>
+      <div className="space-y-2">
+        {templates.map((t, idx) => (
+          <div key={idx} className="border border-[var(--border)] rounded-xl overflow-hidden">
+            {editingIdx === idx ? (
+              <div className="p-3 space-y-2 bg-[var(--bg-tertiary)]">
+                <input
+                  type="text"
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  placeholder="Template name..."
+                  className="w-full px-2.5 py-1.5 border border-[var(--input-border)] rounded-lg text-sm bg-[var(--input-bg)] text-[var(--text-primary)] focus:ring-1 focus:ring-blue-500 focus:outline-none"
+                  autoFocus
+                />
+                <textarea
+                  value={editInstructions}
+                  onChange={(e) => setEditInstructions(e.target.value)}
+                  className="w-full h-32 p-2.5 border border-[var(--input-border)] rounded-lg text-xs resize-y bg-[var(--input-bg)] text-[var(--text-primary)] focus:ring-1 focus:ring-blue-500 focus:outline-none"
+                />
+                <div className="flex gap-2">
+                  <button onClick={saveEdit} className="flex items-center gap-1 px-3 py-1.5 bg-[var(--accent)] text-white rounded-lg text-xs font-medium active:scale-[0.97] transition-all">
+                    <Check className="w-3 h-3" /> Save
+                  </button>
+                  <button onClick={() => setEditingIdx(null)} className="flex items-center gap-1 px-3 py-1.5 text-[var(--text-muted)] rounded-lg text-xs font-medium hover:bg-[var(--bg-tertiary)] active:scale-[0.97] transition-all">
+                    <X className="w-3 h-3" /> Cancel
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-center justify-between px-3 py-2.5">
+                <div className="flex-1 min-w-0">
+                  <span className="text-sm font-medium text-[var(--text-primary)]">{t.name}</span>
+                  <p className="text-[10px] text-[var(--text-muted)] truncate mt-0.5">{t.instructions.substring(0, 80)}...</p>
+                </div>
+                <div className="flex items-center gap-0.5 ml-2">
+                  <button onClick={() => startEdit(idx)} className="p-1.5 hover:bg-[var(--bg-tertiary)] rounded-lg transition-colors" title="Edit">
+                    <Pencil className="w-3 h-3 text-[var(--text-muted)]" />
+                  </button>
+                  {templates.length > 1 && (
+                    <button onClick={() => removeTemplate(idx)} className="p-1.5 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg transition-colors" title="Delete">
+                      <Trash2 className="w-3 h-3 text-[var(--text-muted)] hover:text-red-500" />
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -1499,42 +1600,36 @@ export default function SettingsPage() {
               </div>
             </div>
 
-            {/* Referral & Admission Instructions */}
-            <div className="bg-[var(--card-bg)] rounded-2xl border border-[var(--card-border)] p-5 space-y-4" style={{ boxShadow: 'var(--card-shadow)' }}>
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="font-semibold text-[var(--text-primary)]">Referral & Consult Templates</h3>
-                  <p className="text-xs text-[var(--text-muted)] mt-0.5">Customize the instructions AI uses when generating referral letters and consult notes.</p>
-                </div>
-                <button
-                  onClick={() => {
-                    handleSettingChange('referralInstructions', DEFAULT_REFERRAL_INSTRUCTIONS);
-                    handleSettingChange('admissionInstructions', DEFAULT_ADMISSION_INSTRUCTIONS);
-                  }}
-                  className="flex items-center gap-1 px-2 py-1 text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] rounded-lg text-xs transition-colors"
-                >
-                  <RotateCcw className="w-3 h-3" />
-                  Reset
-                </button>
+            {/* Referral & Consult Templates */}
+            <div className="bg-[var(--card-bg)] rounded-2xl border border-[var(--card-border)] p-5 space-y-5" style={{ boxShadow: 'var(--card-shadow)' }}>
+              <div>
+                <h3 className="font-semibold text-[var(--text-primary)]">Referral & Consult Templates</h3>
+                <p className="text-xs text-[var(--text-muted)] mt-0.5">Create multiple templates for different referral and consult scenarios. Select which template to use when generating.</p>
               </div>
 
-              <div>
-                <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">Referral Letter</label>
-                <textarea
-                  value={settings.referralInstructions || DEFAULT_REFERRAL_INSTRUCTIONS}
-                  onChange={(e) => handleSettingChange('referralInstructions', e.target.value)}
-                  className="w-full h-28 p-2.5 border border-[var(--input-border)] rounded-lg text-xs resize-y bg-[var(--input-bg)] text-[var(--text-primary)] focus:ring-1 focus:ring-blue-500 focus:outline-none"
-                />
-              </div>
+              {/* Referral Templates */}
+              <TemplateManager
+                label="Referral"
+                templates={settings.referralTemplates || [{ name: 'Default', instructions: settings.referralInstructions || DEFAULT_REFERRAL_INSTRUCTIONS }]}
+                defaultInstructions={DEFAULT_REFERRAL_INSTRUCTIONS}
+                onChange={(templates) => {
+                  const updated = { ...settings, referralTemplates: templates, referralInstructions: templates[0]?.instructions || DEFAULT_REFERRAL_INSTRUCTIONS };
+                  setSettings(updated);
+                  saveSettings(updated);
+                }}
+              />
 
-              <div>
-                <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">Consult Note</label>
-                <textarea
-                  value={settings.admissionInstructions || DEFAULT_ADMISSION_INSTRUCTIONS}
-                  onChange={(e) => handleSettingChange('admissionInstructions', e.target.value)}
-                  className="w-full h-32 p-2.5 border border-[var(--input-border)] rounded-lg text-xs resize-y bg-[var(--input-bg)] text-[var(--text-primary)] focus:ring-1 focus:ring-blue-500 focus:outline-none"
-                />
-              </div>
+              {/* Consult Templates */}
+              <TemplateManager
+                label="Consult"
+                templates={settings.consultTemplates || [{ name: 'Default', instructions: settings.admissionInstructions || DEFAULT_ADMISSION_INSTRUCTIONS }]}
+                defaultInstructions={DEFAULT_ADMISSION_INSTRUCTIONS}
+                onChange={(templates) => {
+                  const updated = { ...settings, consultTemplates: templates, admissionInstructions: templates[0]?.instructions || DEFAULT_ADMISSION_INSTRUCTIONS };
+                  setSettings(updated);
+                  saveSettings(updated);
+                }}
+              />
             </div>
 
             {/* Encounter Types */}

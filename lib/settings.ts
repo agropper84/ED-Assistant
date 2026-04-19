@@ -1,3 +1,8 @@
+export interface NamedTemplate {
+  name: string;
+  instructions: string;
+}
+
 export interface AppSettings {
   model: string;
   maxTokens: number;
@@ -12,6 +17,8 @@ export interface AppSettings {
   noteStyleCompleteExam: string;
   referralInstructions: string;
   admissionInstructions: string;
+  referralTemplates?: NamedTemplate[];
+  consultTemplates?: NamedTemplate[];
 }
 
 export const DEFAULT_NOTE_STYLE_STANDARD = 'Write a concise, focused note. Include only clinically relevant findings. Use brief, direct language. Omit normal findings unless pertinent to the differential.';

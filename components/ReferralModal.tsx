@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 import { X, Loader2, Send } from 'lucide-react';
-import { getSettings } from '@/lib/settings';
+import { getSettings, DEFAULT_REFERRAL_INSTRUCTIONS } from '@/lib/settings';
+import type { NamedTemplate } from '@/lib/settings';
 
 interface ReferralModalProps {
   isOpen: boolean;
@@ -25,6 +26,7 @@ export function ReferralModal({ isOpen, onClose, rowIndex, sheetName, onGenerate
   const [reason, setReason] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [selectedTemplate, setSelectedTemplate] = useState(0);
 
   if (!isOpen) return null;
 
@@ -47,7 +49,11 @@ export function ReferralModal({ isOpen, onClose, rowIndex, sheetName, onGenerate
           specialty: specialty.trim(),
           urgency,
           reason: reason.trim(),
-          customInstructions: getSettings().referralInstructions || undefined,
+          customInstructions: (() => {
+            const s = getSettings();
+            const templates = s.referralTemplates || [{ name: 'Default', instructions: s.referralInstructions || DEFAULT_REFERRAL_INSTRUCTIONS }];
+            return templates[selectedTemplate]?.instructions || s.referralInstructions || undefined;
+          })(),
         }),
       });
 
@@ -151,11 +157,29 @@ export function ReferralModal({ isOpen, onClose, rowIndex, sheetName, onGenerate
         </div>
 
         {/* Footer */}
-        <div className="px-5 py-4 border-t border-[var(--border)] bg-[var(--bg-tertiary)]">
+        <div className="px-5 py-4 border-t border-[var(--border)] bg-[var(--bg-tertiary)] space-y-3">
+          {(() => {
+            const s = getSettings();
+            const templates = s.referralTemplates || [{ name: 'Default', instructions: s.referralInstructions || DEFAULT_REFERRAL_INSTRUCTIONS }];
+            return templates.length > 1 ? (
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-[var(--text-muted)] whitespace-nowrap">Template:</span>
+                <select
+                  value={selectedTemplate}
+                  onChange={(e) => setSelectedTemplate(parseInt(e.target.value))}
+                  className="flex-1 px-2.5 py-1.5 border border-[var(--input-border)] rounded-lg text-sm bg-[var(--input-bg)] text-[var(--text-primary)] focus:ring-1 focus:ring-blue-500 focus:outline-none"
+                >
+                  {templates.map((t, i) => (
+                    <option key={i} value={i}>{t.name}</option>
+                  ))}
+                </select>
+              </div>
+            ) : null;
+          })()}
           <button
             onClick={handleGenerate}
             disabled={loading || !specialty.trim() || !reason.trim()}
-            className="w-full py-3 bg-purple-600 text-white rounded-lg font-medium disabled:opacity-50 flex items-center justify-center gap-2 active:scale-[0.97] transition-all"
+            className="w-full py-3 bg-[var(--accent)] text-white rounded-lg font-medium disabled:opacity-50 flex items-center justify-center gap-2 hover:brightness-110 active:scale-[0.97] transition-all"
           >
             {loading ? (
               <>
