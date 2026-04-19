@@ -347,9 +347,10 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
       if (patient.audioBackup) {
         try {
           const backup = JSON.parse(patient.audioBackup);
-          // Check if backup is still within 12-hour window
+          // Check if backup is still within retention window
+          const retentionMs = (getSettings().audioRetentionHours || 12) * 60 * 60 * 1000;
           const age = Date.now() - new Date(backup.createdAt).getTime();
-          if (age < 12 * 60 * 60 * 1000) {
+          if (age < retentionMs) {
             setAudioBlobUrl(backup.blobUrl || null);
             setAudioBlobIv(backup.iv || null);
             setAudioBlobContentType(backup.contentType || 'audio/webm');
@@ -1012,7 +1013,7 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
             {/* Re-transcribe from Blob backup */}
             {audioBlobUrl && audioBlobIv && !isRecordingEncounter && (() => {
               const hoursLeft = audioBlobCreatedAt
-                ? Math.max(0, Math.floor((12 * 60 * 60 * 1000 - (Date.now() - new Date(audioBlobCreatedAt).getTime())) / (60 * 60 * 1000)))
+                ? Math.max(0, Math.floor(((getSettings().audioRetentionHours || 12) * 60 * 60 * 1000 - (Date.now() - new Date(audioBlobCreatedAt).getTime())) / (60 * 60 * 1000)))
                 : null;
               const handleRetranscribe = async () => {
                 setRetranscribing(true);

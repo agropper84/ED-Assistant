@@ -3,7 +3,7 @@ import { list, del } from '@vercel/blob';
 
 export const maxDuration = 60;
 
-const MAX_AGE_MS = 12 * 60 * 60 * 1000; // 12 hours
+const MAX_AGE_MS = 24 * 60 * 60 * 1000; // 24 hours — max possible retention (user setting controls display)
 
 /**
  * GET /api/cron/cleanup-blobs

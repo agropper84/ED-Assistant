@@ -19,6 +19,7 @@ export interface AppSettings {
   admissionInstructions: string;
   referralTemplates?: NamedTemplate[];
   consultTemplates?: NamedTemplate[];
+  audioRetentionHours: number;
 }
 
 export const DEFAULT_NOTE_STYLE_STANDARD = 'Write a concise, focused note. Include only clinically relevant findings. Use brief, direct language. Omit normal findings unless pertinent to the differential.';
@@ -76,6 +77,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   noteStyleCompleteExam: DEFAULT_NOTE_STYLE_COMPLETE_EXAM,
   referralInstructions: DEFAULT_REFERRAL_INSTRUCTIONS,
   admissionInstructions: DEFAULT_ADMISSION_INSTRUCTIONS,
+  audioRetentionHours: 12,
 };
 
 const STORAGE_KEY = 'ed-app-settings';

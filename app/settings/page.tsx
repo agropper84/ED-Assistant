@@ -1111,6 +1111,26 @@ export default function SettingsPage() {
                   <span>1 (Creative)</span>
                 </div>
               </div>
+
+              <div>
+                <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">
+                  Audio Backup Retention: {settings.audioRetentionHours || 12}h
+                </label>
+                <input
+                  type="range"
+                  min="2"
+                  max="24"
+                  step="1"
+                  value={settings.audioRetentionHours || 12}
+                  onChange={(e) => handleSettingChange('audioRetentionHours', parseInt(e.target.value))}
+                  className="w-full accent-blue-600"
+                />
+                <div className="flex justify-between text-xs text-[var(--text-muted)]">
+                  <span>2h</span>
+                  <span>24h</span>
+                </div>
+                <p className="text-[10px] text-[var(--text-muted)] mt-1">How long encrypted audio recordings are kept for re-transcription</p>
+              </div>
             </div>
 
             {/* Auto-generate analysis */}
