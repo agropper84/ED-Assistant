@@ -289,8 +289,7 @@ export function VoiceRecorder({
       let sum = 0;
       for (let i = 0; i < timeData.length; i++) sum += timeData[i] * timeData[i];
       const rms = Math.sqrt(sum / timeData.length);
-      // Normalize to 0-1. Use sqrt for perceptual scaling (quiet sounds more visible)
-      const level = Math.min(1, Math.sqrt(rms / 0.15));
+      const level = Math.min(1, rms / 0.07);
       setAudioLevel(level);
 
       // Frequency data (kept for future use)
