@@ -30,7 +30,7 @@ export function AdmissionModal({ isOpen, onClose, rowIndex, sheetName, onGenerat
 
   const handleGenerate = async () => {
     if (!service.trim() || !reason.trim()) {
-      setError('Please provide admitting service and reason for admission');
+      setError('Please provide consulting service and reason for consult');
       return;
     }
 
@@ -53,7 +53,7 @@ export function AdmissionModal({ isOpen, onClose, rowIndex, sheetName, onGenerat
 
       if (!res.ok) {
         const data = await res.json();
-        throw new Error(data.error || 'Failed to generate admission note');
+        throw new Error(data.error || 'Failed to generate consult note');
       }
 
       setService('');
@@ -61,7 +61,7 @@ export function AdmissionModal({ isOpen, onClose, rowIndex, sheetName, onGenerat
       setReason('');
       onGenerated();
     } catch (e: any) {
-      setError(e.message || 'Failed to generate admission note');
+      setError(e.message || 'Failed to generate consult note');
     } finally {
       setLoading(false);
     }
@@ -77,7 +77,7 @@ export function AdmissionModal({ isOpen, onClose, rowIndex, sheetName, onGenerat
     <div className="fixed inset-0 modal-overlay z-50 flex items-end sm:items-center justify-center">
       <div className="bg-[var(--card-bg)] w-full sm:max-w-lg sm:rounded-3xl rounded-t-3xl max-h-[90vh] overflow-hidden flex flex-col animate-slideUp" style={{ boxShadow: 'var(--card-shadow-elevated)' }}>
         <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border)]">
-          <h2 className="text-lg font-semibold text-[var(--text-primary)]">Generate Admission Note</h2>
+          <h2 className="text-lg font-semibold text-[var(--text-primary)]">Generate Consult Note</h2>
           <button onClick={onClose} className="p-2 hover:bg-[var(--bg-tertiary)] rounded-full">
             <X className="w-5 h-5 text-[var(--text-muted)]" />
           </button>
@@ -127,12 +127,12 @@ export function AdmissionModal({ isOpen, onClose, rowIndex, sheetName, onGenerat
 
           <div>
             <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">
-              Reason for Admission
+              Reason for Consult
             </label>
             <textarea
               value={reason}
               onChange={(e) => setReason(e.target.value)}
-              placeholder="Describe the reason for admission, key clinical concerns, and any specific admission orders..."
+              placeholder="Describe the reason for consult, key clinical concerns, and any specific questions for the consultant..."
               className="w-full h-32 p-3 border border-[var(--input-border)] rounded-lg text-sm resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)]"
             />
           </div>
@@ -158,7 +158,7 @@ export function AdmissionModal({ isOpen, onClose, rowIndex, sheetName, onGenerat
             ) : (
               <>
                 <FilePlus className="w-4 h-4" />
-                Generate Admission Note
+                Generate Consult Note
               </>
             )}
           </button>

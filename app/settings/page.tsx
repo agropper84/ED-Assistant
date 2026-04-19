@@ -617,7 +617,7 @@ export default function SettingsPage() {
     objective: 'Objective',
     assessmentPlan: 'Assessment & Plan',
     referral: 'Referral Letter',
-    admission: 'Admission Note',
+    admission: 'Consult Note',
   };
 
   return (
@@ -1503,8 +1503,8 @@ export default function SettingsPage() {
             <div className="bg-[var(--card-bg)] rounded-2xl border border-[var(--card-border)] p-5 space-y-4" style={{ boxShadow: 'var(--card-shadow)' }}>
               <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="font-semibold text-[var(--text-primary)]">Referral & Admission Templates</h3>
-                  <p className="text-xs text-[var(--text-muted)] mt-0.5">Customize the instructions AI uses when generating referral letters and admission notes.</p>
+                  <h3 className="font-semibold text-[var(--text-primary)]">Referral & Consult Templates</h3>
+                  <p className="text-xs text-[var(--text-muted)] mt-0.5">Customize the instructions AI uses when generating referral letters and consult notes.</p>
                 </div>
                 <button
                   onClick={() => {
@@ -1528,7 +1528,7 @@ export default function SettingsPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">Admission Note</label>
+                <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">Consult Note</label>
                 <textarea
                   value={settings.admissionInstructions || DEFAULT_ADMISSION_INSTRUCTIONS}
                   onChange={(e) => handleSettingChange('admissionInstructions', e.target.value)}

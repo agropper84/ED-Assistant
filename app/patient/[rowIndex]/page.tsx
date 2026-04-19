@@ -567,7 +567,7 @@ export default function PatientPage() {
 
         {/* Tab Bar */}
         <div className={`flex gap-1 bg-[var(--bg-tertiary)] p-1 ${isEmbed ? 'rounded-xl' : 'rounded-2xl'}`} style={{ boxShadow: 'var(--card-shadow)' }}>
-          {(['encounter', 'referral', 'admission'] as const).map((tab) => (
+          {(['encounter', 'admission', 'referral'] as const).map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -577,7 +577,7 @@ export default function PatientPage() {
                   : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
               }`}
             >
-              {tab === 'encounter' ? 'Note' : tab === 'referral' ? 'Referral' : 'Admission'}
+              {tab === 'encounter' ? 'Note' : tab === 'admission' ? 'Consult' : 'Referral'}
             </button>
           ))}
         </div>
@@ -624,7 +624,7 @@ export default function PatientPage() {
                     className="py-3 px-3 border border-[var(--border)] text-[var(--text-secondary)] rounded-2xl font-medium flex items-center justify-center gap-1.5 hover:bg-[var(--bg-tertiary)] active:scale-[0.97] transition-all text-sm"
                   >
                     <FilePlus className="w-4 h-4" />
-                    Admit
+                    Consult
                   </button>
                 </div>
 
@@ -846,7 +846,7 @@ export default function PatientPage() {
           <>
             {patient.admission ? (
               <OutputSection
-                title="Admission Note"
+                title="Consult Note"
                 content={patient.admission}
                 field="admission"
                 expanded={expandedSections.has('admission')}
@@ -859,13 +859,13 @@ export default function PatientPage() {
               />
             ) : (
               <div className="bg-[var(--card-bg)] rounded-2xl border border-[var(--card-border)] p-6 text-center" style={{ boxShadow: 'var(--card-shadow)' }}>
-                <p className="text-[var(--text-muted)] mb-3">No admission note generated yet</p>
+                <p className="text-[var(--text-muted)] mb-3">No consult note generated yet</p>
                 <button
                   onClick={() => setShowAdmissionModal(true)}
                   className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 dark:bg-blue-500 text-white rounded-lg font-medium hover:bg-blue-700 dark:hover:bg-blue-600 active:scale-[0.97] transition-all"
                 >
                   <FilePlus className="w-4 h-4" />
-                  Generate Admission Note
+                  Generate Consult Note
                 </button>
               </div>
             )}
