@@ -5,7 +5,7 @@ import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import { Patient } from '@/lib/google-sheets';
 import {
   ArrowLeft, Loader2, Play, Copy, Check,
-  User, Calendar, CreditCard, FileText,
+  FileText,
   ChevronDown, ChevronUp, Pencil, X, Save,
   RefreshCw, Send, Bookmark, Plus, Scissors, FilePlus
 } from 'lucide-react';
@@ -51,7 +51,10 @@ export default function PatientPage() {
   const [showAdmissionModal, setShowAdmissionModal] = useState(false);
 
   // Active tab for output view
-  const [activeTab, setActiveTab] = useState<'encounter' | 'ddx' | 'referral' | 'admission'>('encounter');
+  const [activeTab, setActiveTab] = useState<'encounter' | 'referral' | 'admission'>('encounter');
+
+  // Insights panel (replaces DDx tab)
+  const [insightsExpanded, setInsightsExpanded] = useState(false);
 
   // Billing state
   const [showBilling, setShowBilling] = useState(false);
@@ -400,7 +403,7 @@ export default function PatientPage() {
     <div className={isEmbed ? 'pb-8' : 'min-h-screen pb-24'}>
       {/* Header */}
       {!isEmbed ? (
-        <header className="dash-header px-4 py-4 sticky top-0 z-40">
+        <header className="dash-header px-4 py-3 sticky top-0 z-40">
           <div className="flex items-center gap-3 max-w-2xl mx-auto">
             <button
               onClick={() => router.push('/')}
@@ -412,11 +415,14 @@ export default function PatientPage() {
               <h1 className="font-semibold truncate" style={{ color: 'var(--dash-text)' }}>
                 {patient.name || 'Unknown'}
               </h1>
-              <p className="text-sm" style={{ color: 'var(--dash-text-muted)' }}>
-                {patient.age && `${patient.age} `}
-                {patient.gender && `${patient.gender} `}
-                {patient.timestamp && `• ${patient.timestamp}`}
-              </p>
+              <div className="flex items-center gap-2 text-xs mt-0.5 flex-wrap" style={{ color: 'var(--dash-text-muted)' }}>
+                {patient.age && <span>{patient.age}</span>}
+                {patient.gender && <span>{patient.gender}</span>}
+                {patient.timestamp && <><span className="opacity-40">·</span><span>{patient.timestamp}</span></>}
+                {patient.birthday && <><span className="opacity-40">·</span><span>DOB {patient.birthday}</span></>}
+                {patient.hcn && <><span className="opacity-40">·</span><span>HCN {patient.hcn}</span></>}
+                {patient.mrn && <><span className="opacity-40">·</span><span>MRN {patient.mrn}</span></>}
+              </div>
             </div>
           </div>
         </header>
@@ -432,36 +438,6 @@ export default function PatientPage() {
       )}
 
       <main className={isEmbed ? 'px-3 py-3 space-y-3' : 'max-w-2xl mx-auto px-[var(--page-px)] py-4 space-y-4 animate-fadeIn'}>
-        {/* Patient Info Card — hidden in embed (shown in compact header) */}
-        {!isEmbed && (
-        <div className="bg-[var(--card-bg)] rounded-2xl border border-[var(--card-border)] p-5" style={{ boxShadow: 'var(--card-shadow)' }}>
-          <div className="grid grid-cols-2 gap-3 text-sm">
-            <div className="flex items-center gap-2">
-              <Calendar className="w-4 h-4 text-[var(--text-muted)]" />
-              <span className="text-[var(--text-secondary)]">DOB:</span>
-              <span className="font-medium text-[var(--text-primary)]">{patient.birthday || '—'}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <CreditCard className="w-4 h-4 text-[var(--text-muted)]" />
-              <span className="text-[var(--text-secondary)]">HCN:</span>
-              <span className="font-medium text-[var(--text-primary)]">{patient.hcn || '—'}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <User className="w-4 h-4 text-[var(--text-muted)]" />
-              <span className="text-[var(--text-secondary)]">MRN:</span>
-              <span className="font-medium text-[var(--text-primary)]">{patient.mrn || '—'}</span>
-            </div>
-            {patient.diagnosis && (
-              <div className="flex items-center gap-2">
-                <FileText className="w-4 h-4 text-[var(--text-muted)]" />
-                <span className="text-[var(--text-secondary)]">Dx:</span>
-                <span className="font-medium text-[var(--text-primary)]">{patient.diagnosis}</span>
-              </div>
-            )}
-          </div>
-        </div>
-        )}
-
         {/* Patient Profile Card */}
         <PatientProfile
           profile={profileData}
@@ -471,24 +447,115 @@ export default function PatientPage() {
           generating={generatingProfile}
         />
 
-        {/* Update Medical Profile Button */}
-        <button
-          onClick={handleUpdateAnalysis}
-          disabled={updatingAnalysis}
-          className={`w-full border border-[var(--border)] text-[var(--text-secondary)] font-medium flex items-center justify-center gap-2 hover:bg-[var(--bg-tertiary)] active:scale-[0.99] transition-all disabled:opacity-50 ${isEmbed ? 'py-2 rounded-xl text-xs' : 'py-3 rounded-2xl'}`}
-        >
-          {updatingAnalysis ? (
-            <>
-              <Loader2 className="w-4 h-4 animate-spin" />
-              Updating Medical Profile...
-            </>
-          ) : (
-            <>
-              <RefreshCw className="w-4 h-4" />
-              Update Medical Profile
-            </>
-          )}
-        </button>
+        {/* Insights Section (DDx, Investigations, Management, Evidence) */}
+        {(patient.ddx || patient.investigations || patient.management || patient.evidence || patient.education) && (
+          <div className="bg-[var(--card-bg)] rounded-2xl border border-[var(--card-border)] border-l-2 border-l-blue-500/40 overflow-hidden" style={{ boxShadow: 'var(--card-shadow)' }}>
+            {/* Insights Header */}
+            <div
+              className="flex items-center justify-between px-5 py-3.5 cursor-pointer select-none hover:bg-[var(--bg-tertiary)]/50 transition-colors"
+              onClick={() => setInsightsExpanded(!insightsExpanded)}
+            >
+              <div className="flex items-center gap-2.5">
+                <h3 className="text-xs font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-widest">Insights</h3>
+                {!insightsExpanded && (
+                  <span className="text-[10px] text-[var(--text-muted)]">
+                    {[patient.ddx && 'DDx', patient.investigations && 'Investigations', patient.management && 'Management', patient.evidence && 'Evidence'].filter(Boolean).join(' · ')}
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={(e) => { e.stopPropagation(); handleUpdateAnalysis(); }}
+                  disabled={updatingAnalysis}
+                  className="p-1.5 hover:bg-[var(--bg-tertiary)] rounded-lg transition-colors"
+                  title="Refresh insights & profile"
+                >
+                  {updatingAnalysis ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin text-[var(--text-muted)]" />
+                  ) : (
+                    <RefreshCw className="w-3.5 h-3.5 text-[var(--text-muted)]" />
+                  )}
+                </button>
+                {insightsExpanded ? (
+                  <ChevronUp className="w-4 h-4 text-[var(--text-muted)]" />
+                ) : (
+                  <ChevronDown className="w-4 h-4 text-[var(--text-muted)]" />
+                )}
+              </div>
+            </div>
+
+            {/* Insights Body */}
+            {insightsExpanded && (
+              <div className="border-t border-[var(--card-border)] divide-y divide-[var(--card-border)]">
+                {patient.ddx && (
+                  <OutputSection
+                    title="Differential Diagnosis"
+                    content={patient.ddx}
+                    field="ddx"
+                    expanded={expandedSections.has('ddx')}
+                    onToggle={() => toggleSection('ddx')}
+                    onCopy={() => copyToClipboard(patient.ddx, 'ddx')}
+                    copied={copied === 'ddx'}
+                    onSave={(value) => handleSaveField('ddx', value)}
+                    variant="flat"
+                  />
+                )}
+                {patient.investigations && (
+                  <OutputSection
+                    title="Recommended Investigations"
+                    content={patient.investigations}
+                    field="investigations"
+                    expanded={expandedSections.has('investigations')}
+                    onToggle={() => toggleSection('investigations')}
+                    onCopy={() => copyToClipboard(patient.investigations, 'investigations')}
+                    copied={copied === 'investigations'}
+                    onSave={(value) => handleSaveField('investigations', value)}
+                    variant="flat"
+                  />
+                )}
+                {patient.management && (
+                  <OutputSection
+                    title="Recommended Management"
+                    content={patient.management}
+                    field="management"
+                    expanded={expandedSections.has('management')}
+                    onToggle={() => toggleSection('management')}
+                    onCopy={() => copyToClipboard(patient.management, 'management')}
+                    copied={copied === 'management'}
+                    onSave={(value) => handleSaveField('management', value)}
+                    variant="flat"
+                  />
+                )}
+                {patient.evidence && (
+                  <OutputSection
+                    title="Pertinent Evidence"
+                    content={patient.evidence}
+                    field="evidence"
+                    expanded={expandedSections.has('evidence')}
+                    onToggle={() => toggleSection('evidence')}
+                    onCopy={() => copyToClipboard(patient.evidence, 'evidence')}
+                    copied={copied === 'evidence'}
+                    onSave={(value) => handleSaveField('evidence', value)}
+                    variant="flat"
+                  />
+                )}
+                {patient.education && (
+                  <OutputSection
+                    title="Learning Resources"
+                    content={patient.education}
+                    field="education"
+                    expanded={expandedSections.has('education')}
+                    onToggle={() => toggleSection('education')}
+                    onCopy={() => copyToClipboard(patient.education, 'education')}
+                    copied={copied === 'education'}
+                    onSave={(value) => handleSaveField('education', value)}
+                    variant="flat"
+                  />
+                )}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Process Error */}
         {processError && (
@@ -500,17 +567,17 @@ export default function PatientPage() {
 
         {/* Tab Bar */}
         <div className={`flex gap-1 bg-[var(--bg-tertiary)] p-1 ${isEmbed ? 'rounded-xl' : 'rounded-2xl'}`} style={{ boxShadow: 'var(--card-shadow)' }}>
-          {(['encounter', 'ddx', 'referral', 'admission'] as const).map((tab) => (
+          {(['encounter', 'referral', 'admission'] as const).map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
               className={`flex-1 font-medium transition-all ${isEmbed ? 'py-1.5 text-[11px] rounded-lg' : 'py-2.5 text-xs sm:text-sm rounded-xl'} ${
                 activeTab === tab
-                  ? 'bg-[var(--accent)] text-white shadow-sm'
+                  ? 'bg-[var(--accent)] text-white shadow-md'
                   : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
               }`}
             >
-              {tab === 'encounter' ? 'Note' : tab === 'ddx' ? 'DDx' : tab === 'referral' ? 'Referral' : 'Admission'}
+              {tab === 'encounter' ? 'Note' : tab === 'referral' ? 'Referral' : 'Admission'}
             </button>
           ))}
         </div>
@@ -739,68 +806,6 @@ export default function PatientPage() {
                   </>
                 )}
               </button>
-            )}
-          </>
-        )}
-
-        {/* DDx & Management Tab */}
-        {activeTab === 'ddx' && (
-          <>
-            <OutputSection
-              title="Differential Diagnosis"
-              content={patient.ddx}
-              field="ddx"
-              expanded={expandedSections.has('ddx')}
-              onToggle={() => toggleSection('ddx')}
-              onCopy={() => copyToClipboard(patient.ddx, 'ddx')}
-              copied={copied === 'ddx'}
-              onSave={(value) => handleSaveField('ddx', value)}
-            />
-
-            <OutputSection
-              title="Recommended Investigations"
-              content={patient.investigations}
-              field="investigations"
-              expanded={expandedSections.has('investigations')}
-              onToggle={() => toggleSection('investigations')}
-              onCopy={() => copyToClipboard(patient.investigations, 'investigations')}
-              copied={copied === 'investigations'}
-              onSave={(value) => handleSaveField('investigations', value)}
-            />
-
-            <OutputSection
-              title="Recommended Management"
-              content={patient.management}
-              field="management"
-              expanded={expandedSections.has('management')}
-              onToggle={() => toggleSection('management')}
-              onCopy={() => copyToClipboard(patient.management, 'management')}
-              copied={copied === 'management'}
-              onSave={(value) => handleSaveField('management', value)}
-            />
-
-            <OutputSection
-              title="Pertinent Evidence"
-              content={patient.evidence}
-              field="evidence"
-              expanded={expandedSections.has('evidence')}
-              onToggle={() => toggleSection('evidence')}
-              onCopy={() => copyToClipboard(patient.evidence, 'evidence')}
-              copied={copied === 'evidence'}
-              onSave={(value) => handleSaveField('evidence', value)}
-            />
-
-            {patient.education && (
-              <OutputSection
-                title="Learning Resources"
-                content={patient.education}
-                field="education"
-                expanded={expandedSections.has('education')}
-                onToggle={() => toggleSection('education')}
-                onCopy={() => copyToClipboard(patient.education, 'education')}
-                copied={copied === 'education'}
-                onSave={(value) => handleSaveField('education', value)}
-              />
             )}
           </>
         )}
@@ -1071,7 +1076,7 @@ function OutputSection({
   onToggle: () => void;
   onCopy: () => void;
   copied: boolean;
-  variant?: 'default' | 'muted';
+  variant?: 'default' | 'muted' | 'flat';
   onSave?: (value: string) => void;
   onSaveStyle?: () => void;
   styleSaved?: boolean;
@@ -1086,8 +1091,9 @@ function OutputSection({
 
   if (!content && !editing && !onSave) return null;
 
-  const bgClass = variant === 'muted' ? 'bg-[var(--bg-tertiary)]' : 'bg-[var(--card-bg)]';
-  const borderClass = variant === 'muted' ? 'border-[var(--border-light)]' : 'border-[var(--card-border)]';
+  const isFlat = variant === 'flat';
+  const bgClass = isFlat ? '' : variant === 'muted' ? 'bg-[var(--bg-tertiary)]' : 'bg-[var(--card-bg)]';
+  const borderClass = isFlat ? 'border-none' : variant === 'muted' ? 'border-[var(--border-light)]' : 'border-[var(--card-border)]';
 
   const handleStartEdit = () => {
     setEditValue(content);
@@ -1124,9 +1130,9 @@ function OutputSection({
   };
 
   return (
-    <div className={`${bgClass} rounded-2xl border ${borderClass} overflow-hidden`} style={{ boxShadow: variant === 'muted' ? 'none' : 'var(--card-shadow)' }}>
-      <div className="flex items-center justify-between p-5 cursor-pointer" onClick={onToggle}>
-        <h3 className="font-semibold text-[var(--text-primary)]">{title}</h3>
+    <div className={`${bgClass} ${isFlat ? '' : 'rounded-2xl border'} ${borderClass} overflow-hidden`} style={{ boxShadow: isFlat || variant === 'muted' ? 'none' : 'var(--card-shadow)' }}>
+      <div className={`flex items-center justify-between ${isFlat ? 'px-5 py-3' : 'p-5'} cursor-pointer`} onClick={onToggle}>
+        <h3 className={`${isFlat ? 'text-sm' : ''} font-semibold text-[var(--text-primary)]`}>{title}</h3>
         <div className="flex items-center gap-1">
           {onSaveStyle && (
             <button
