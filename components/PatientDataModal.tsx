@@ -65,6 +65,8 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
   const [waveHistory, setWaveHistory] = useState<Array<{ level: number; speaker: 'near' | 'far' | 'silent' }>>([]);
   const waveFrameCountRef = useRef(0);
   const [processingWord, setProcessingWord] = useState(0);
+  const [encryptionKey, setEncryptionKey] = useState<string | null>(null);
+  const [audioBlobUrl, setAudioBlobUrl] = useState<string | null>(null);
   const [refiningFields, setRefiningFields] = useState<Set<string>>(new Set());
   const setFieldRefining = (field: string, refining: boolean) => {
     setRefiningFields(prev => {
@@ -272,6 +274,10 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
       fetch('/api/user-phrases')
         .then(r => r.ok ? r.json() : { phrases: [] })
         .then(data => setUserPhrases(data.phrases || []))
+        .catch(() => {});
+      fetch('/api/encryption-key')
+        .then(r => r.ok ? r.json() : { key: null })
+        .then(data => setEncryptionKey(data.key))
         .catch(() => {});
     }
   }, [isOpen]);
@@ -893,12 +899,14 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
                   mode="encounter"
                   showUpload
                   sensitivity={micSensitivity}
+                  encryptionKey={encryptionKey || undefined}
+                  onBlobBackup={(url) => setAudioBlobUrl(url)}
                   onTranscript={(text) => {
                     const base = preRecordTranscript || '';
                     setTranscript(base ? `${base}\n\n${text}` : text);
                     setFieldRefining('transcript', false);
                   }}
-                  onRecordingStart={() => { setPreRecordTranscript(transcript); setIsRecordingEncounter(true); setWaveHistory([]); waveFrameCountRef.current = 0; }}
+                  onRecordingStart={() => { setPreRecordTranscript(transcript); setIsRecordingEncounter(true); setWaveHistory([]); waveFrameCountRef.current = 0; setAudioBlobUrl(null); }}
                   onRecordingStop={() => { setIsRecordingEncounter(false); setAudioData({ level: 0, lowFreq: 0, highFreq: 0, speakerHint: 'silent' }); }}
                   onInterimTranscript={showLiveTranscript ? (text) => {
                     const base = preRecordTranscript || '';

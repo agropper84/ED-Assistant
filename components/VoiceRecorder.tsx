@@ -144,11 +144,28 @@ interface VoiceRecorderProps {
   showUpload?: boolean;
   /** Mic sensitivity: 1=low (close speaker), 2=medium (default), 3=high (room-wide), 4=max */
   sensitivity?: number;
+  /** Base64 encryption key for blob backup. If provided, encrypts audio before uploading. */
+  encryptionKey?: string;
+  /** Called with blob URL after successful backup upload */
+  onBlobBackup?: (blobUrl: string) => void;
+}
+
+/** Encrypt binary data with AES-256-GCM using Web Crypto API (browser-native) */
+async function encryptAudioBlob(audioBlob: Blob, keyBase64: string): Promise<{ encrypted: Blob; ivBase64: string }> {
+  const keyBytes = Uint8Array.from(atob(keyBase64), c => c.charCodeAt(0));
+  const key = await crypto.subtle.importKey('raw', keyBytes, 'AES-GCM', false, ['encrypt']);
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const plaintext = new Uint8Array(await audioBlob.arrayBuffer());
+  const ciphertext = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, plaintext);
+  // Pack: ciphertext + authTag (last 16 bytes are the tag in Web Crypto)
+  const encrypted = new Blob([new Uint8Array(ciphertext)], { type: 'application/octet-stream' });
+  const ivBase64 = btoa(Array.from(iv).map(b => String.fromCharCode(b)).join(''));
+  return { encrypted, ivBase64 };
 }
 
 export function VoiceRecorder({
   onTranscript, onInterimTranscript, onRecordingStart, onRecordingStop, onProcessingChange, onAudioLevel,
-  disabled, mode = 'dictation', showUpload, sensitivity = 2,
+  disabled, mode = 'dictation', showUpload, sensitivity = 2, encryptionKey, onBlobBackup,
 }: VoiceRecorderProps) {
   const [state, setState] = useState<RecorderState>('idle');
   const stateRef = useRef<RecorderState>('idle');
@@ -828,56 +845,99 @@ export function VoiceRecorder({
             return;
           }
 
-          // Transcribe the audio
-          let transcript = '';
-          const webEngine = getTranscribeWebAPI();
           const sizeMB = (fullBlob.size / (1024 * 1024)).toFixed(2);
-          console.log(`[Encounter] Transcribing ${sizeMB}MB via ${webEngine}...`);
+          const MAX_DIRECT = 4 * 1024 * 1024; // 4MB — Vercel serverless body limit
+          const isLarge = fullBlob.size >= MAX_DIRECT;
+          let transcript = '';
+          let blobUrl = '';
 
-          // If blob > 4MB, split into smaller segments (Vercel body limit ~4.5MB)
-          const MAX_UPLOAD = 4 * 1024 * 1024;
-          const blobs: Blob[] = [];
-          if (fullBlob.size > MAX_UPLOAD) {
-            console.log(`[Encounter] Splitting ${sizeMB}MB into segments...`);
-            const CHUNKS_PER_SEG = Math.floor(allChunks.length * MAX_UPLOAD / fullBlob.size);
-            for (let i = 0; i < allChunks.length; i += Math.max(1, CHUNKS_PER_SEG)) {
-              blobs.push(new Blob(allChunks.slice(i, i + CHUNKS_PER_SEG), { type: mimeType }));
-            }
-            console.log(`[Encounter] Split into ${blobs.length} segments`);
-          } else {
-            blobs.push(fullBlob);
-          }
-
-          const results: string[] = [];
-          for (let idx = 0; idx < blobs.length; idx++) {
-            const seg = blobs[idx];
-            if (seg.size < 500) continue;
+          // Step 1: Encrypt and upload ALL recordings to Blob (backup)
+          if (encryptionKey) {
             try {
-              const formData = new FormData();
-              formData.append('audio', seg, `encounter-${idx}.${getFileExtension(mimeType)}`);
-              formData.append('mode', 'encounter');
-              console.log(`[Encounter] Uploading segment ${idx + 1}/${blobs.length} (${(seg.size / 1024).toFixed(0)}KB)...`);
-              const res = await fetch(getTranscribeEndpoint(webEngine), { method: 'POST', body: formData });
-              if (res.ok) {
-                const data = await res.json();
-                if (data.text?.trim()) {
-                  results.push(data.text.trim());
-                  console.log(`[Encounter] Segment ${idx + 1}: ${data.text.length} chars`);
+              console.log(`[Encounter] Encrypting ${sizeMB}MB...`);
+              const { encrypted, ivBase64 } = await encryptAudioBlob(fullBlob, encryptionKey);
+              console.log(`[Encounter] Uploading encrypted blob (${(encrypted.size / 1024).toFixed(0)}KB)...`);
+
+              // Client-side upload via Vercel Blob (no size limit)
+              const { upload } = await import('@vercel/blob/client');
+              const result = await upload(
+                `encounter-audio/${Date.now()}.enc`,
+                encrypted,
+                { access: 'public', handleUploadUrl: '/api/blob-upload-token' }
+              );
+              blobUrl = result.url;
+              console.log(`[Encounter] Blob backup: ${blobUrl}`);
+              onBlobBackup?.(blobUrl);
+
+              // Step 2: For large files, use server-side transcription from Blob
+              if (isLarge) {
+                console.log(`[Encounter] Large file (${sizeMB}MB) — server-side transcription`);
+                const res = await fetch('/api/transcribe-server', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ blobUrl, iv: ivBase64, contentType: mimeType }),
+                });
+                if (res.ok) {
+                  const data = await res.json();
+                  transcript = data.text?.trim() || '';
+                  console.log(`[Encounter] Server transcript: ${transcript.length} chars`);
+                } else {
+                  const err = await res.text().catch(() => '');
+                  console.warn(`[Encounter] Server transcription failed: ${res.status}`, err);
                 }
-              } else {
-                const errText = await res.text().catch(() => '');
-                console.error(`[Encounter] Segment ${idx + 1} failed: ${res.status}`, errText);
               }
             } catch (e) {
-              console.error(`[Encounter] Segment ${idx + 1} error:`, e);
+              console.warn('[Encounter] Blob backup/encryption failed:', e);
             }
           }
 
-          transcript = results.join('\n');
+          // Step 3: Direct transcription (short files, or fallback for large files)
+          if (!transcript) {
+            const webEngine = getTranscribeWebAPI();
+            console.log(`[Encounter] Direct transcription ${sizeMB}MB via ${webEngine}...`);
 
-          // Fallback: Web Speech accumulated text
+            if (isLarge && !blobUrl) {
+              // Large file, no blob — split into segments
+              const CHUNKS_PER_SEG = Math.floor(allChunks.length * MAX_DIRECT / fullBlob.size);
+              const segments: Blob[] = [];
+              for (let i = 0; i < allChunks.length; i += Math.max(1, CHUNKS_PER_SEG)) {
+                segments.push(new Blob(allChunks.slice(i, i + CHUNKS_PER_SEG), { type: mimeType }));
+              }
+              const results: string[] = [];
+              for (let idx = 0; idx < segments.length; idx++) {
+                if (segments[idx].size < 500) continue;
+                try {
+                  const formData = new FormData();
+                  formData.append('audio', segments[idx], `encounter-${idx}.${getFileExtension(mimeType)}`);
+                  formData.append('mode', 'encounter');
+                  const res = await fetch(getTranscribeEndpoint(webEngine), { method: 'POST', body: formData });
+                  if (res.ok) {
+                    const data = await res.json();
+                    if (data.text?.trim()) results.push(data.text.trim());
+                  }
+                } catch {}
+              }
+              transcript = results.join('\n');
+            } else {
+              // Short file — single upload
+              const formData = new FormData();
+              formData.append('audio', fullBlob, `encounter.${getFileExtension(mimeType)}`);
+              formData.append('mode', 'encounter');
+              try {
+                const res = await fetch(getTranscribeEndpoint(webEngine), { method: 'POST', body: formData });
+                if (res.ok) {
+                  const data = await res.json();
+                  transcript = data.text?.trim() || '';
+                  console.log(`[Encounter] Direct transcript: ${transcript.length} chars`);
+                }
+              } catch (e) {
+                console.error('[Encounter] Direct transcription error:', e);
+              }
+            }
+          }
+
+          // Last resort: Web Speech
           if (!transcript && accumulatedTextRef.current?.trim()) {
-            console.log('[Encounter] Using Web Speech fallback');
             transcript = accumulatedTextRef.current.trim();
           }
 
@@ -885,8 +945,6 @@ export function VoiceRecorder({
             console.log(`[Encounter] Final: ${transcript.length} chars`);
             onTranscript(transcript);
           } else {
-            console.warn('[Encounter] No transcript produced');
-            // Show error to user via onTranscript so it's visible
             onTranscript('[Transcription failed — please try again or use Live Text mode]');
           }
 

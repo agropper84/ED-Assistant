@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { put } from '@vercel/blob';
+import { del as deleteBlob } from '@vercel/blob';
+import crypto from 'crypto';
 import { getDeepgramApiKey } from '@/lib/api-keys';
 import { getSessionFromCookies } from '@/lib/session';
-import { getUserSettings } from '@/lib/kv';
+import { getUserSettings, getUserEncryptionKey } from '@/lib/kv';
 
 export const maxDuration = 120;
 
@@ -66,10 +67,8 @@ function formatDiarizedTranscript(data: any): string {
   if (!Array.isArray(words) || words.length === 0) {
     return data?.results?.channels?.[0]?.alternatives?.[0]?.transcript || '';
   }
-
   const turns: { speaker: number; text: string }[] = [];
   let currentSpeaker = -1;
-
   for (const word of words) {
     const speaker = word.speaker ?? 0;
     if (speaker !== currentSpeaker) {
@@ -79,20 +78,30 @@ function formatDiarizedTranscript(data: any): string {
       turns[turns.length - 1].text += ' ' + (word.punctuated_word || word.word);
     }
   }
+  return turns.map(t => `Speaker ${t.speaker + 1}: ${t.text}`).join('\n');
+}
 
-  return turns
-    .map(t => `Speaker ${t.speaker + 1}: ${t.text}`)
-    .join('\n');
+/** Decrypt AES-256-GCM encrypted audio blob */
+function decryptAudio(encryptedBuffer: ArrayBuffer, keyBase64: string, ivBase64: string): Buffer {
+  const key = Buffer.from(keyBase64, 'base64');
+  const iv = Buffer.from(ivBase64, 'base64');
+  const data = Buffer.from(encryptedBuffer);
+
+  const TAG_LENGTH = 16;
+  const authTag = data.subarray(data.length - TAG_LENGTH);
+  const ciphertext = data.subarray(0, data.length - TAG_LENGTH);
+
+  const decipher = crypto.createDecipheriv('aes-256-gcm', key, iv, { authTagLength: TAG_LENGTH });
+  decipher.setAuthTag(authTag);
+  return Buffer.concat([decipher.update(ciphertext), decipher.final()]);
 }
 
 /**
  * POST /api/transcribe-server
  *
- * Two modes:
- * 1. FormData with 'audio' file — uploads to Blob, then transcribes
- * 2. JSON with 'blobUrl' — fetches from existing Blob URL, then transcribes
- *
- * Server-side transcription with Vercel Blob backup.
+ * Accepts JSON with { blobUrl, iv, contentType } — fetches encrypted audio
+ * from Vercel Blob, decrypts, sends to Deepgram, returns transcript.
+ * Deletes the blob after successful transcription.
  */
 export async function POST(request: NextRequest) {
   try {
@@ -106,49 +115,31 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Deepgram API key not configured' }, { status: 400 });
     }
 
-    let audioArrayBuffer: ArrayBuffer;
-    let contentType = 'audio/webm';
-    let blobUrl = '';
-
-    // Check if this is a blobUrl-based request (audio already uploaded)
-    const ct = request.headers.get('content-type') || '';
-    if (ct.includes('application/json')) {
-      const body = await request.json();
-      if (!body.blobUrl) {
-        return NextResponse.json({ error: 'blobUrl required' }, { status: 400 });
-      }
-      blobUrl = body.blobUrl;
-      console.log(`[transcribe-server] Fetching audio from blob: ${blobUrl}`);
-      const blobRes = await fetch(blobUrl);
-      if (!blobRes.ok) {
-        return NextResponse.json({ error: 'Failed to fetch audio from blob' }, { status: 500 });
-      }
-      audioArrayBuffer = await blobRes.arrayBuffer();
-      contentType = blobRes.headers.get('content-type') || 'audio/webm';
-    } else {
-      // FormData upload — store in Blob first, then transcribe
-      const formData = await request.formData();
-      const audioFile = formData.get('audio');
-      if (!audioFile || !(audioFile instanceof File)) {
-        return NextResponse.json({ error: 'No audio file provided' }, { status: 400 });
-      }
-      audioArrayBuffer = await audioFile.arrayBuffer();
-      contentType = audioFile.type || 'audio/webm';
-
-      // Backup to Vercel Blob
-      try {
-        const blob = await put(
-          `encounter-audio/${session.userId}/${Date.now()}-${audioFile.name}`,
-          new Blob([audioArrayBuffer], { type: contentType }),
-          { access: 'public', addRandomSuffix: true }
-        );
-        blobUrl = blob.url;
-      } catch (e) {
-        console.warn('[transcribe-server] Blob backup failed:', (e as Error).message);
-      }
+    const body = await request.json();
+    const { blobUrl, iv, contentType: audioContentType } = body;
+    if (!blobUrl || !iv) {
+      return NextResponse.json({ error: 'blobUrl and iv required' }, { status: 400 });
     }
 
-    console.log(`[transcribe-server] Audio: ${(audioArrayBuffer.byteLength / 1024).toFixed(1)}KB (${contentType}), blob: ${blobUrl || 'none'}`);
+    // Get user's encryption key
+    const encryptionKey = await getUserEncryptionKey(session.userId);
+    if (!encryptionKey) {
+      return NextResponse.json({ error: 'No encryption key' }, { status: 400 });
+    }
+
+    // Fetch encrypted blob
+    console.log(`[transcribe-server] Fetching encrypted blob: ${blobUrl}`);
+    const blobRes = await fetch(blobUrl);
+    if (!blobRes.ok) {
+      return NextResponse.json({ error: 'Failed to fetch blob' }, { status: 500 });
+    }
+    const encryptedBuffer = await blobRes.arrayBuffer();
+    console.log(`[transcribe-server] Encrypted blob: ${(encryptedBuffer.byteLength / 1024).toFixed(1)}KB`);
+
+    // Decrypt
+    const audioBuffer = decryptAudio(encryptedBuffer, encryptionKey, iv);
+    const contentType = audioContentType || 'audio/webm';
+    console.log(`[transcribe-server] Decrypted audio: ${(audioBuffer.length / 1024).toFixed(1)}KB (${contentType})`);
 
     // Send to Deepgram
     const keywords = await getCalibrationKeywords(session.userId);
@@ -172,7 +163,7 @@ export async function POST(request: NextRequest) {
         'Authorization': `Token ${apiKey}`,
         'Content-Type': contentType,
       },
-      body: new Uint8Array(audioArrayBuffer),
+      body: new Uint8Array(audioBuffer),
     });
 
     if (!dgRes.ok) {
@@ -184,9 +175,17 @@ export async function POST(request: NextRequest) {
     const data = await dgRes.json();
     const rawTranscript = formatDiarizedTranscript(data);
     const transcript = fixCommonMedicalErrors(rawTranscript);
-
     console.log(`[transcribe-server] Transcript: ${transcript.length} chars`);
-    return NextResponse.json({ text: transcript.trim(), blobUrl });
+
+    // Delete blob after successful transcription (cleanup)
+    try {
+      await deleteBlob(blobUrl);
+      console.log(`[transcribe-server] Deleted blob: ${blobUrl}`);
+    } catch (e) {
+      console.warn('[transcribe-server] Blob deletion failed (will be cleaned by cron):', (e as Error).message);
+    }
+
+    return NextResponse.json({ text: transcript.trim() });
   } catch (error: any) {
     console.error('[transcribe-server] Error:', error);
     return NextResponse.json({ error: error?.message || 'Server transcription failed' }, { status: 500 });
