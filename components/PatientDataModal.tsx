@@ -71,6 +71,8 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
   const [audioBlobContentType, setAudioBlobContentType] = useState<string>('audio/webm');
   const [audioBlobCreatedAt, setAudioBlobCreatedAt] = useState<string | null>(null);
   const [retranscribing, setRetranscribing] = useState(false);
+  const [showRetranscribeOptions, setShowRetranscribeOptions] = useState(false);
+  const [retranscribeHints, setRetranscribeHints] = useState('');
   const [refiningFields, setRefiningFields] = useState<Set<string>>(new Set());
   const setFieldRefining = (field: string, refining: boolean) => {
     setRefiningFields(prev => {
@@ -980,40 +982,67 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
               const hoursLeft = audioBlobCreatedAt
                 ? Math.max(0, Math.floor((12 * 60 * 60 * 1000 - (Date.now() - new Date(audioBlobCreatedAt).getTime())) / (60 * 60 * 1000)))
                 : null;
+              const handleRetranscribe = async () => {
+                setRetranscribing(true);
+                setFieldRefining('transcript', true);
+                try {
+                  const res = await fetch('/api/transcribe-server', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      blobUrl: audioBlobUrl,
+                      iv: audioBlobIv,
+                      contentType: audioBlobContentType,
+                      ...(retranscribeHints.trim() ? { keywords: retranscribeHints.trim() } : {}),
+                    }),
+                  });
+                  if (res.ok) {
+                    const data = await res.json();
+                    if (data.text?.trim()) setTranscript(data.text.trim());
+                  }
+                } catch (e) {
+                  console.error('Re-transcribe failed:', e);
+                } finally {
+                  setRetranscribing(false);
+                  setFieldRefining('transcript', false);
+                }
+              };
               return (
-                <button
-                  onClick={async () => {
-                    setRetranscribing(true);
-                    setFieldRefining('transcript', true);
-                    try {
-                      const res = await fetch('/api/transcribe-server', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ blobUrl: audioBlobUrl, iv: audioBlobIv, contentType: audioBlobContentType }),
-                      });
-                      if (res.ok) {
-                        const data = await res.json();
-                        if (data.text?.trim()) {
-                          setTranscript(data.text.trim());
-                        }
-                      }
-                    } catch (e) {
-                      console.error('Re-transcribe failed:', e);
-                    } finally {
-                      setRetranscribing(false);
-                      setFieldRefining('transcript', false);
-                    }
-                  }}
-                  disabled={retranscribing}
-                  className="mt-1 w-full flex items-center justify-center gap-1.5 py-1 rounded-lg text-[10px] font-medium text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] transition-colors"
-                  title={hoursLeft !== null ? `Audio backup expires in ${hoursLeft}h` : undefined}
-                >
-                  {retranscribing ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
-                  Re-transcribe
-                  {hoursLeft !== null && (
-                    <span className="text-[8px] opacity-50 ml-0.5">· {hoursLeft}h left</span>
+                <div className="mt-1">
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={handleRetranscribe}
+                      disabled={retranscribing}
+                      className="flex-1 flex items-center justify-center gap-1.5 py-1 rounded-lg text-[10px] font-medium text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] transition-colors"
+                      title={hoursLeft !== null ? `Audio backup expires in ${hoursLeft}h` : undefined}
+                    >
+                      {retranscribing ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
+                      Re-transcribe
+                      {hoursLeft !== null && <span className="text-[8px] opacity-50">· {hoursLeft}h left</span>}
+                    </button>
+                    <button
+                      onClick={() => setShowRetranscribeOptions(!showRetranscribeOptions)}
+                      className={`px-1.5 py-1 rounded text-[9px] transition-colors ${showRetranscribeOptions ? 'text-[var(--text-secondary)]' : 'text-[var(--text-muted)] opacity-50 hover:opacity-100'}`}
+                    >
+                      ···
+                    </button>
+                  </div>
+                  {showRetranscribeOptions && (
+                    <div className="mt-1.5 animate-fadeIn">
+                      <input
+                        type="text"
+                        value={retranscribeHints}
+                        onChange={(e) => setRetranscribeHints(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleRetranscribe(); } }}
+                        placeholder="Boost terms: drug names, conditions, names..."
+                        className="w-full px-2.5 py-1.5 border border-[var(--input-border)] rounded-lg text-[10px] bg-[var(--input-bg)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:ring-1 focus:ring-blue-500 focus:outline-none"
+                      />
+                      <p className="text-[8px] text-[var(--text-muted)] mt-0.5 ml-1 opacity-60">
+                        Add words Deepgram should listen for (comma-separated)
+                      </p>
+                    </div>
                   )}
-                </button>
+                </div>
               );
             })()}
           </div>

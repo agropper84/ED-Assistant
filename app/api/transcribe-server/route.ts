@@ -116,7 +116,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { blobUrl, iv, contentType: audioContentType } = body;
+    const { blobUrl, iv, contentType: audioContentType, keywords: extraKeywords } = body;
     if (!blobUrl || !iv) {
       return NextResponse.json({ error: 'blobUrl and iv required' }, { status: 400 });
     }
@@ -155,6 +155,15 @@ export async function POST(request: NextRequest) {
     });
     for (const kw of keywords) {
       params.append('keywords', `${kw}:2`);
+    }
+
+    // Extra keywords from user's re-transcribe hints (higher boost)
+    if (extraKeywords) {
+      const hints = extraKeywords.split(/[,\n]+/).map((k: string) => k.trim()).filter((k: string) => k.length > 0);
+      for (const hint of hints) {
+        params.append('keywords', `${hint}:4`);
+      }
+      console.log(`[transcribe-server] Extra keywords: ${hints.join(', ')}`);
     }
 
     const dgRes = await fetch(`https://api.deepgram.com/v1/listen?${params.toString()}`, {
