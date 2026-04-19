@@ -20,6 +20,11 @@ export interface AppSettings {
   referralTemplates?: NamedTemplate[];
   consultTemplates?: NamedTemplate[];
   audioRetentionHours: number;
+  sessionTimeoutEnabled: boolean;
+  sessionTimeoutMinutes: number;
+  fullLoginRequired24h: boolean;
+  pinEnabled: boolean;
+  totpEnabled: boolean;
 }
 
 export const DEFAULT_NOTE_STYLE_STANDARD = 'Write a concise, focused note. Include only clinically relevant findings. Use brief, direct language. Omit normal findings unless pertinent to the differential.';
@@ -78,6 +83,11 @@ export const DEFAULT_SETTINGS: AppSettings = {
   referralInstructions: DEFAULT_REFERRAL_INSTRUCTIONS,
   admissionInstructions: DEFAULT_ADMISSION_INSTRUCTIONS,
   audioRetentionHours: 12,
+  sessionTimeoutEnabled: false,
+  sessionTimeoutMinutes: 30,
+  fullLoginRequired24h: false,
+  pinEnabled: false,
+  totpEnabled: false,
 };
 
 const STORAGE_KEY = 'ed-app-settings';
@@ -121,7 +131,7 @@ export const DEFAULT_PROMPT_TEMPLATES: PromptTemplates = {
 - Abbreviations are acceptable without explanation
 - Truncated sentences are acceptable
 - Use narrative/paragraph form, NOT bullet points or numbered lists
-- If information for a section is not available, write "Information not documented" or "Insufficient data"`,
+- If information for a section is not available, OMIT that section entirely — do NOT write "not documented", "not performed", "not recorded", or similar placeholder text`,
   ddx: `Provide differential diagnosis based on presentation. List most likely diagnosis first, followed by other considerations. Use narrative form.`,
   investigations: `Recommend appropriate investigations based on the presentation. Include labs, imaging, and other diagnostic tests as applicable. Use narrative form.`,
   management: `Recommend management and treatment plan based on the presentation and differential. Include medications, procedures, disposition planning, and follow-up. Use narrative form.`,
@@ -129,7 +139,7 @@ export const DEFAULT_PROMPT_TEMPLATES: PromptTemplates = {
   hpi: `Narrative summary of patient's presentation. Thoroughly document the history and features supporting the working diagnosis. Document that appropriate red flags have been ruled out. Professional, concise ED physician language.`,
   objective: `Physical examination findings ONLY. Use this format for normal exam:
 "Patient appears well, NAD. AVSS."
-Then include ONLY pertinent exam findings that were actually documented or mentioned. If no exam documented, state "Physical examination not documented."`,
+Then include ONLY pertinent exam findings that were actually documented or mentioned. If no exam findings were documented, leave this section empty.`,
   assessmentPlan: `Do NOT start with the diagnosis name (it is displayed separately above).
 Begin directly with the clinical rationale and assessment supporting the diagnosis.
 Include differential if applicable.
@@ -189,7 +199,7 @@ export const DEFAULT_ENCOUNTER_TYPES: EncounterType[] = [
 - Use narrative/paragraph form, NOT bullet points or numbered lists
 - Urgent care sees lower-acuity presentations — tailor language accordingly
 - Always consider whether the patient needs ED referral or can be safely managed outpatient
-- If information for a section is not available, write "Information not documented" or "Insufficient data"`,
+- If information for a section is not available, OMIT that section entirely — do NOT write "not documented", "not performed", "not recorded", or similar placeholder text`,
       ddx: `Provide a focused differential diagnosis appropriate for an urgent care presentation. Prioritize common outpatient conditions first. Flag any diagnoses that would require ED transfer or immediate escalation. Use narrative form.`,
       investigations: `Recommend investigations available in a typical urgent care setting (point-of-care testing, basic labs, plain radiographs, rapid strep/flu/COVID, UA, etc.). If advanced imaging or labs are needed, specify these as outpatient orders or reasons for ED referral. Use narrative form.`,
       management: `Recommend management appropriate for urgent care disposition. Include:
@@ -203,7 +213,7 @@ Use narrative form.`,
       hpi: `Narrative summary of the patient's urgent care presentation. Document the chief complaint, timeline, associated symptoms, and relevant history. Note pertinent negatives that support safe outpatient management. Document that red flags for conditions requiring ED care have been assessed. Professional, efficient urgent care physician language.`,
       objective: `Physical examination findings ONLY. Use this format for normal exam:
 "Patient appears well, NAD. AVSS."
-Then include ONLY pertinent exam findings that were actually documented or mentioned. For urgent care, include focused exam relevant to the chief complaint. If no exam documented, state "Physical examination not documented."`,
+Then include ONLY pertinent exam findings that were actually documented or mentioned. For urgent care, include focused exam relevant to the chief complaint. If no exam findings were documented, leave this section empty.`,
       assessmentPlan: `Do NOT start with the diagnosis name (it is displayed separately above).
 Begin with clinical reasoning supporting the working diagnosis in an urgent care context.
 Address why the patient can be safely managed outpatient (or why ED referral is needed).
@@ -225,7 +235,7 @@ Use paragraph/narrative form only. No bullet points.`,
 - Use narrative/paragraph form, NOT bullet points or numbered lists
 - Consider the patient's full medical context: chronic conditions, medications, preventive health
 - Frame acute complaints within the context of longitudinal care
-- If information for a section is not available, write "Information not documented" or "Insufficient data"`,
+- If information for a section is not available, OMIT that section entirely — do NOT write "not documented", "not performed", "not recorded", or similar placeholder text`,
       ddx: `Provide a differential diagnosis considering both acute and chronic primary care conditions. Include common outpatient diagnoses first. Consider how existing comorbidities may influence the differential. Note any red flags that would change management urgency. Use narrative form.`,
       investigations: `Recommend investigations appropriate for the primary care setting. Include:
 - Routine labs and screening tests (guided by age, sex, risk factors)
@@ -246,7 +256,7 @@ Use narrative form.`,
       hpi: `Narrative summary of the patient's presentation in a primary care context. Include the current complaint within the context of their ongoing care — relevant chronic conditions, medication history, previous visits for similar issues, and social determinants of health. Document pertinent positives and negatives. Professional, thorough primary care physician language.`,
       objective: `Physical examination findings ONLY. Use this format for normal exam:
 "Patient appears well, NAD. AVSS."
-Include a focused exam relevant to the chief complaint and any chronic disease monitoring (e.g., diabetic foot exam, cardiovascular exam). Document pertinent findings only. If no exam documented, state "Physical examination not documented."`,
+Include a focused exam relevant to the chief complaint and any chronic disease monitoring (e.g., diabetic foot exam, cardiovascular exam). Document pertinent findings only. If no exam findings were documented, leave this section empty.`,
       assessmentPlan: `Do NOT start with the diagnosis name (it is displayed separately above).
 Begin with clinical reasoning and assessment of the current complaint.
 Integrate the acute issue with the patient's chronic disease management plan.

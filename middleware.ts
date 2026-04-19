@@ -37,6 +37,11 @@ export function middleware(request: NextRequest) {
     return addSecurityHeaders(NextResponse.next());
   }
 
+  // Allow lock screen
+  if (pathname === '/locked') {
+    return addSecurityHeaders(NextResponse.next());
+  }
+
   // Check for session cookie (iron-session cookie name)
   const sessionCookie = request.cookies.get('ed-assistant-session');
   if (!sessionCookie?.value) {

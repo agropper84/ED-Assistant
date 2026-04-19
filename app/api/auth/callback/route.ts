@@ -137,6 +137,9 @@ export async function GET(request: NextRequest) {
     session.refreshToken = sessionData.refreshToken;
     session.tokenExpiry = sessionData.tokenExpiry;
     session.approved = sessionData.approved;
+    session.lastFullLogin = Date.now();
+    session.lastActivity = Date.now();
+    session.locked = false;
     await session.save();
 
     if (isApproved) {

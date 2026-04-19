@@ -308,8 +308,18 @@ export default function HomePage() {
     };
     const handleVisibility = () => {
       if (!document.hidden && Date.now() - lastFetchRef.current > 3000) {
+        // Check session timeout
+        const appSettings = getSettings();
+        if (appSettings.sessionTimeoutEnabled) {
+          const lastActivity = parseInt(sessionStorage.getItem('ed-last-activity') || '0');
+          if (lastActivity && Date.now() - lastActivity > (appSettings.sessionTimeoutMinutes || 30) * 60 * 1000) {
+            window.location.href = '/locked';
+            return;
+          }
+        }
         fetchPatients();
       }
+      sessionStorage.setItem('ed-last-activity', String(Date.now()));
     };
     window.addEventListener('focus', handleFocus);
     document.addEventListener('visibilitychange', handleVisibility);
@@ -1128,26 +1138,26 @@ export default function HomePage() {
             <div className="flex items-center gap-2.5 min-w-0">
               <button
                 onClick={() => setSidebarOpen(true)}
-                className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 transition-all duration-300 hover:scale-[1.05] active:scale-[0.94]"
+                className="w-10 h-10 rounded-[12px] flex items-center justify-center flex-shrink-0 transition-all duration-300 hover:scale-[1.05] active:scale-[0.94]"
                 style={{
-                  background: 'rgba(255,255,255,0.05)',
-                  boxShadow: '0 0 0 1px rgba(255,255,255,0.07)',
+                  background: 'linear-gradient(140deg, #5c6f84 0%, #3f5165 45%, #2d3f52 100%)',
+                  boxShadow: '0 1px 4px rgba(0,0,0,0.28), 0 0 0 0.5px rgba(255,255,255,0.08), inset 0 1px 0 rgba(255,255,255,0.12)',
                 }}
                 title="Menu"
               >
-                <svg width="24" height="24" viewBox="0 0 36 36" fill="none">
-                  {/* Rounded cross shape — the ER */}
-                  <rect x="13" y="4" width="10" height="28" rx="3" fill="rgba(200,215,240,0.12)" />
-                  <rect x="4" y="13" width="28" height="10" rx="3" fill="rgba(200,215,240,0.12)" />
-                  {/* EKG pulse — the Dashboard / monitoring */}
-                  <polyline
-                    points="5,18 11,18 13.5,12 16,24 18.5,10 21,22 23,18 31,18"
-                    fill="none"
-                    stroke="rgba(200,220,255,0.85)"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
+                <svg width="20" height="20" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <defs>
+                    <linearGradient id="ed-cross" x1="9" y1="8" x2="27" y2="28" gradientUnits="userSpaceOnUse">
+                      <stop offset="0%" stopColor="#dce6f5" stopOpacity="0.92" />
+                      <stop offset="100%" stopColor="#adbfd6" stopOpacity="0.55" />
+                    </linearGradient>
+                  </defs>
+                  {/* Vertical bar */}
+                  <rect x="14.5" y="8" width="7" height="20" rx="3.5" fill="url(#ed-cross)" />
+                  {/* Horizontal bar */}
+                  <rect x="8" y="14.5" width="20" height="7" rx="3.5" fill="url(#ed-cross)" />
+                  {/* Amber accent — intersection core */}
+                  <circle cx="18" cy="18" r="2" fill="#c8985c" opacity="0.85" />
                 </svg>
               </button>
               <h1 className="text-[17px] font-bold tracking-[-0.02em]" style={{ color: 'var(--dash-text)' }}>ER Dashboard</h1>

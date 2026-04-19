@@ -330,3 +330,31 @@ export async function getAuthExchangeToken(token: string): Promise<string | null
   if (val) await getRedis().del(`auth-exchange:${token}`); // one-time use
   return val;
 }
+
+// --- PIN & TOTP ---
+
+export async function setUserPin(userId: string, pinHash: string): Promise<void> {
+  await getRedis().set(`user:${userId}:pin-hash`, encryptSecret(pinHash));
+}
+
+export async function getUserPin(userId: string): Promise<string | null> {
+  const val = await getRedis().get(`user:${userId}:pin-hash`);
+  return val ? decryptSecret(val) : null;
+}
+
+export async function deleteUserPin(userId: string): Promise<void> {
+  await getRedis().del(`user:${userId}:pin-hash`);
+}
+
+export async function setUserTotpSecret(userId: string, secret: string): Promise<void> {
+  await getRedis().set(`user:${userId}:totp-secret`, encryptSecret(secret));
+}
+
+export async function getUserTotpSecret(userId: string): Promise<string | null> {
+  const val = await getRedis().get(`user:${userId}:totp-secret`);
+  return val ? decryptSecret(val) : null;
+}
+
+export async function deleteUserTotpSecret(userId: string): Promise<void> {
+  await getRedis().del(`user:${userId}:totp-secret`);
+}

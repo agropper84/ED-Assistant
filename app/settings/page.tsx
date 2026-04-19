@@ -43,6 +43,181 @@ import {
 
 type Tab = 'style' | 'settings' | 'billing' | 'prompts' | 'privacy' | 'keys';
 
+/** PIN setup/change/remove component */
+function PinSetup() {
+  const [pin, setPin] = useState('');
+  const [confirmPin, setConfirmPin] = useState('');
+  const [step, setStep] = useState<'idle' | 'enter' | 'confirm'>('idle');
+  const [status, setStatus] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const handleSave = async () => {
+    if (pin !== confirmPin) { setStatus('PINs do not match'); return; }
+    if (!/^\d{4}$/.test(pin)) { setStatus('PIN must be 4 digits'); return; }
+    setLoading(true);
+    try {
+      const res = await fetch('/api/auth/pin-set', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pin }),
+      });
+      if (res.ok) { setStatus('PIN saved'); setStep('idle'); setPin(''); setConfirmPin(''); }
+      else { const d = await res.json(); setStatus(d.error || 'Failed'); }
+    } catch { setStatus('Error'); }
+    finally { setLoading(false); }
+  };
+
+  const handleRemove = async () => {
+    setLoading(true);
+    try {
+      await fetch('/api/auth/pin-set', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'remove' }),
+      });
+      setStatus('PIN removed');
+    } catch { setStatus('Error'); }
+    finally { setLoading(false); }
+  };
+
+  if (step === 'idle') {
+    return (
+      <div className="flex items-center gap-2">
+        <button onClick={() => setStep('enter')} className="px-3 py-1.5 text-xs font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+          Set PIN
+        </button>
+        <button onClick={handleRemove} disabled={loading} className="px-3 py-1.5 text-xs font-medium text-[var(--text-muted)] hover:text-red-500 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors">
+          Remove PIN
+        </button>
+        {status && <span className="text-[10px] text-emerald-500">{status}</span>}
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-2">
+      <input
+        type="tel" inputMode="numeric" maxLength={4} value={step === 'enter' ? pin : confirmPin}
+        onChange={(e) => {
+          const v = e.target.value.replace(/\D/g, '').slice(0, 4);
+          if (step === 'enter') { setPin(v); if (v.length === 4) setStep('confirm'); }
+          else setConfirmPin(v);
+        }}
+        placeholder={step === 'enter' ? 'Enter 4-digit PIN' : 'Confirm PIN'}
+        autoFocus
+        className="w-32 px-3 py-2 text-center text-lg font-mono tracking-[0.3em] border border-[var(--input-border)] rounded-lg bg-[var(--input-bg)] text-[var(--text-primary)] focus:ring-1 focus:ring-blue-500 focus:outline-none"
+      />
+      <div className="flex gap-2">
+        {step === 'confirm' && (
+          <button onClick={handleSave} disabled={confirmPin.length !== 4 || loading} className="px-3 py-1.5 text-xs font-medium bg-blue-600 text-white rounded-lg disabled:opacity-40">
+            {loading ? 'Saving...' : 'Save PIN'}
+          </button>
+        )}
+        <button onClick={() => { setStep('idle'); setPin(''); setConfirmPin(''); setStatus(''); }} className="px-3 py-1.5 text-xs text-[var(--text-muted)]">
+          Cancel
+        </button>
+      </div>
+      {status && <span className="text-[10px] text-red-500">{status}</span>}
+    </div>
+  );
+}
+
+/** TOTP setup component */
+function TotpSetup() {
+  const [qrCode, setQrCode] = useState('');
+  const [secret, setSecret] = useState('');
+  const [code, setCode] = useState('');
+  const [step, setStep] = useState<'idle' | 'setup' | 'verify'>('idle');
+  const [status, setStatus] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const handleSetup = async () => {
+    setLoading(true); setStatus('');
+    try {
+      const res = await fetch('/api/auth/totp-setup', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'setup' }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setQrCode(data.qrCode);
+        setSecret(data.secret);
+        setStep('verify');
+      } else { setStatus('Setup failed'); }
+    } catch { setStatus('Error'); }
+    finally { setLoading(false); }
+  };
+
+  const handleVerify = async () => {
+    if (!/^\d{6}$/.test(code)) { setStatus('Enter 6-digit code'); return; }
+    setLoading(true); setStatus('');
+    try {
+      const res = await fetch('/api/auth/totp-verify', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code }),
+      });
+      if (res.ok) { setStatus('2FA enabled'); setStep('idle'); setQrCode(''); setSecret(''); setCode(''); }
+      else { const d = await res.json(); setStatus(d.error || 'Invalid code'); setCode(''); }
+    } catch { setStatus('Error'); }
+    finally { setLoading(false); }
+  };
+
+  const handleDisable = async () => {
+    setLoading(true);
+    try {
+      await fetch('/api/auth/totp-setup', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'disable' }),
+      });
+      setStatus('2FA disabled');
+    } catch { setStatus('Error'); }
+    finally { setLoading(false); }
+  };
+
+  if (step === 'idle') {
+    return (
+      <div className="flex items-center gap-2">
+        <button onClick={handleSetup} disabled={loading} className="px-3 py-1.5 text-xs font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+          {loading ? 'Setting up...' : 'Enable 2FA'}
+        </button>
+        <button onClick={handleDisable} disabled={loading} className="px-3 py-1.5 text-xs font-medium text-[var(--text-muted)] hover:text-red-500 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors">
+          Disable 2FA
+        </button>
+        {status && <span className="text-[10px] text-emerald-500">{status}</span>}
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      {qrCode && (
+        <div className="flex flex-col items-center gap-2 p-3 bg-white rounded-xl">
+          <img src={qrCode} alt="TOTP QR Code" className="w-48 h-48" />
+        </div>
+      )}
+      {secret && (
+        <div className="text-[10px] text-[var(--text-muted)]">
+          Manual entry: <code className="px-1.5 py-0.5 bg-[var(--bg-tertiary)] rounded text-[var(--text-secondary)] select-all">{secret}</code>
+        </div>
+      )}
+      <div className="flex items-center gap-2">
+        <input
+          type="tel" inputMode="numeric" maxLength={6} value={code}
+          onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+          placeholder="6-digit code"
+          autoFocus
+          className="w-32 px-3 py-2 text-center text-lg font-mono tracking-[0.3em] border border-[var(--input-border)] rounded-lg bg-[var(--input-bg)] text-[var(--text-primary)] focus:ring-1 focus:ring-blue-500 focus:outline-none"
+        />
+        <button onClick={handleVerify} disabled={code.length !== 6 || loading} className="px-3 py-1.5 text-xs font-medium bg-emerald-600 text-white rounded-lg disabled:opacity-40">
+          Verify
+        </button>
+        <button onClick={() => { setStep('idle'); setStatus(''); }} className="px-3 py-1.5 text-xs text-[var(--text-muted)]">
+          Cancel
+        </button>
+      </div>
+      {status && <span className="text-[10px] text-red-500">{status}</span>}
+    </div>
+  );
+}
+
 function TemplateManager({ label, templates, defaultInstructions, onChange }: {
   label: string;
   templates: NamedTemplate[];
@@ -2519,29 +2694,74 @@ export default function SettingsPage() {
                   </div>
                 </div>
 
-                {/* Two-Factor Authentication */}
-                <div className="bg-[var(--card-bg)] rounded-2xl border border-[var(--card-border)] p-5 space-y-3" style={{ boxShadow: 'var(--card-shadow)' }}>
-                  <div className="flex items-start gap-3 p-3 rounded-lg" style={{
-                    background: 'rgba(148,163,184,0.06)',
-                    border: '1px solid rgba(148,163,184,0.15)',
-                  }}>
-                    <div className="flex items-center gap-3 flex-1">
-                      <div className="w-4 h-4 flex-shrink-0 rounded border border-[var(--border)]" />
-                      <div>
-                        <span className="text-sm font-medium block text-[var(--text-primary)]">
-                          Two-Factor Authentication (2FA)
-                          <span className="text-[9px] font-normal text-[var(--text-muted)] ml-2">Coming soon</span>
-                        </span>
-                        <span className="text-[11px] block mt-0.5 text-[var(--text-muted)]">
-                          Add an extra layer of security with an authenticator app (Google Authenticator, Authy, etc.). A 6-digit code will be required at login in addition to your Google account.
-                        </span>
+                {/* Session Security */}
+                <div className="bg-[var(--card-bg)] rounded-2xl border border-[var(--card-border)] p-5 space-y-4" style={{ boxShadow: 'var(--card-shadow)' }}>
+                  <h3 className="font-semibold text-[var(--text-primary)]">Session Security</h3>
+
+                  {/* Session Timeout */}
+                  <label className="flex items-center justify-between cursor-pointer">
+                    <div>
+                      <span className="text-sm font-medium text-[var(--text-primary)] block">
+                        Session timeout ({settings.sessionTimeoutMinutes || 30} min)
+                      </span>
+                      <span className="text-[11px] text-[var(--text-muted)]">
+                        Lock screen after inactivity. Requires PIN or authenticator to unlock.
+                      </span>
+                    </div>
+                    <input
+                      type="checkbox"
+                      checked={settings.sessionTimeoutEnabled || false}
+                      onChange={(e) => handleSettingChange('sessionTimeoutEnabled', e.target.checked)}
+                      className="rounded w-4 h-4 flex-shrink-0 accent-blue-600"
+                    />
+                  </label>
+                  {settings.sessionTimeoutEnabled && (
+                    <div className="pl-4">
+                      <input
+                        type="range" min="5" max="60" step="5"
+                        value={settings.sessionTimeoutMinutes || 30}
+                        onChange={(e) => handleSettingChange('sessionTimeoutMinutes', parseInt(e.target.value))}
+                        className="w-full accent-blue-600"
+                      />
+                      <div className="flex justify-between text-[10px] text-[var(--text-muted)]">
+                        <span>5 min</span><span>60 min</span>
                       </div>
                     </div>
-                  </div>
-                  <div className="text-[10px] space-y-1 text-[var(--text-muted)]">
-                    <p><strong>How it works:</strong> After enabling, scan a QR code with your authenticator app. Each login will require your Google sign-in plus a time-based 6-digit code.</p>
-                    <p><strong>Recovery:</strong> Backup codes will be provided during setup in case you lose access to your authenticator device.</p>
-                  </div>
+                  )}
+
+                  {/* Full login every 24h */}
+                  <label className="flex items-center justify-between cursor-pointer">
+                    <div>
+                      <span className="text-sm font-medium text-[var(--text-primary)] block">Require full login every 24 hours</span>
+                      <span className="text-[11px] text-[var(--text-muted)]">
+                        Forces Google sign-in after 24h regardless of activity.
+                      </span>
+                    </div>
+                    <input
+                      type="checkbox"
+                      checked={settings.fullLoginRequired24h || false}
+                      onChange={(e) => handleSettingChange('fullLoginRequired24h', e.target.checked)}
+                      className="rounded w-4 h-4 flex-shrink-0 accent-blue-600"
+                    />
+                  </label>
+                </div>
+
+                {/* Quick Unlock PIN */}
+                <div className="bg-[var(--card-bg)] rounded-2xl border border-[var(--card-border)] p-5 space-y-3" style={{ boxShadow: 'var(--card-shadow)' }}>
+                  <h3 className="font-semibold text-[var(--text-primary)]">Quick Unlock PIN</h3>
+                  <p className="text-[11px] text-[var(--text-muted)]">
+                    Set a 4-digit PIN for quick re-authentication when your session is locked.
+                  </p>
+                  <PinSetup />
+                </div>
+
+                {/* Two-Factor Authentication */}
+                <div className="bg-[var(--card-bg)] rounded-2xl border border-[var(--card-border)] p-5 space-y-3" style={{ boxShadow: 'var(--card-shadow)' }}>
+                  <h3 className="font-semibold text-[var(--text-primary)]">Two-Factor Authentication (2FA)</h3>
+                  <p className="text-[11px] text-[var(--text-muted)]">
+                    Use an authenticator app (Google Authenticator, Authy) for an extra layer of security at login and session unlock.
+                  </p>
+                  <TotpSetup />
                 </div>
               </>
             )}
