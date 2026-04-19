@@ -764,7 +764,7 @@ export default function SettingsPage() {
             { id: 'settings' as const, label: 'Processing' },
             { id: 'prompts' as const, label: 'Prompts' },
             { id: 'billing' as const, label: 'Billing' },
-            { id: 'privacy' as const, label: 'Privacy' },
+            { id: 'privacy' as const, label: 'Privacy & Security' },
             { id: 'keys' as const, label: 'API Keys' },
           ]).map(({ id, label }) => (
             <button
@@ -2461,29 +2461,24 @@ export default function SettingsPage() {
                   <div
                     className="flex items-start gap-3 p-3 rounded-lg"
                     style={{
-                      background: phiProtection ? 'rgba(34,197,94,0.06)' : 'rgba(245,158,11,0.06)',
-                      border: `1px solid ${phiProtection ? 'rgba(34,197,94,0.2)' : 'rgba(245,158,11,0.2)'}`,
+                      background: 'rgba(34,197,94,0.06)',
+                      border: '1px solid rgba(34,197,94,0.2)',
                     }}
                   >
-                    <label className="flex items-center gap-3 cursor-pointer flex-1">
-                      <input
-                        type="checkbox"
-                        checked={phiProtection}
-                        onChange={(e) => {
-                          setPhiProtection(e.target.checked);
-                          updatePrivacySetting('phiProtection', e.target.checked);
-                        }}
-                        className="rounded w-4 h-4 flex-shrink-0"
-                      />
+                    <div className="flex items-center gap-3 flex-1">
+                      <div className="w-4 h-4 flex-shrink-0 rounded bg-emerald-500 flex items-center justify-center">
+                        <Check className="w-3 h-3 text-white" />
+                      </div>
                       <div>
                         <span className="text-sm font-medium block text-[var(--text-primary)]">
                           De-identify data before sending to AI
+                          <span className="text-[9px] font-normal text-emerald-600 dark:text-emerald-400 ml-2">Always on</span>
                         </span>
                         <span className="text-[11px] block mt-0.5 text-[var(--text-muted)]">
-                          Strips patient names, MRN, HCN, and DOB from prompts sent to Claude. The AI receives only clinical data (age, gender, diagnoses, labs, vitals, medications). Identifying info is restored in the response automatically.
+                          Patient names, MRN, HCN, and DOB are stripped from all AI prompts. Clinical data only — identifiers restored automatically in the output.
                         </span>
                       </div>
-                    </label>
+                    </div>
                   </div>
                   <div className="text-[10px] space-y-1 text-[var(--text-muted)]">
                     <p><strong>What gets stripped:</strong> Patient name, MRN, HCN, DOB, and these values wherever they appear in document text.</p>
@@ -2497,35 +2492,55 @@ export default function SettingsPage() {
                   <div
                     className="flex items-start gap-3 p-3 rounded-lg"
                     style={{
-                      background: encryptionEnabled ? 'rgba(34,197,94,0.06)' : 'rgba(245,158,11,0.06)',
-                      border: `1px solid ${encryptionEnabled ? 'rgba(34,197,94,0.2)' : 'rgba(245,158,11,0.2)'}`,
+                      background: 'rgba(34,197,94,0.06)',
+                      border: '1px solid rgba(34,197,94,0.2)',
                     }}
                   >
-                    <label className="flex items-center gap-3 cursor-pointer flex-1">
-                      <input
-                        type="checkbox"
-                        checked={encryptionEnabled}
-                        onChange={(e) => {
-                          setEncryptionEnabled(e.target.checked);
-                          updatePrivacySetting('encryptionEnabled', e.target.checked);
-                        }}
-                        className="rounded w-4 h-4 flex-shrink-0"
-                      />
+                    <div className="flex items-center gap-3 flex-1">
+                      <div className="w-4 h-4 flex-shrink-0 rounded bg-emerald-500 flex items-center justify-center">
+                        <Check className="w-3 h-3 text-white" />
+                      </div>
                       <div>
                         <span className="text-sm font-medium block text-[var(--text-primary)]">
-                          Encrypt patient data at rest (HIPAA)
+                          AES-256-GCM encryption at rest
+                          <span className="text-[9px] font-normal text-emerald-600 dark:text-emerald-400 ml-2">Always on</span>
                         </span>
                         <span className="text-[11px] block mt-0.5 text-[var(--text-muted)]">
-                          All patient data written to Google Sheets will be encrypted with AES-256-GCM. Data is encrypted before leaving the server and decrypted on read. The encryption key is stored securely in the server database.
+                          All patient data is encrypted before storage. The encryption key is unique to your account and stored securely server-side.
                         </span>
                       </div>
-                    </label>
+                    </div>
                   </div>
                   <div className="text-[10px] space-y-1 text-[var(--text-muted)]">
                     <p><strong>What gets encrypted:</strong> All patient fields in Google Sheets — demographics, clinical notes, generated output, billing data.</p>
                     <p><strong>What stays readable:</strong> Sheet tab names and column headers (structural data only, no PHI).</p>
                     <p><strong>Backward compatible:</strong> Unencrypted data (written before enabling) is still readable. New writes will be encrypted.</p>
                     <p><strong>Warning:</strong> If you lose access to your account, encrypted data cannot be recovered. The encryption key is tied to your user account.</p>
+                  </div>
+                </div>
+
+                {/* Two-Factor Authentication */}
+                <div className="bg-[var(--card-bg)] rounded-2xl border border-[var(--card-border)] p-5 space-y-3" style={{ boxShadow: 'var(--card-shadow)' }}>
+                  <div className="flex items-start gap-3 p-3 rounded-lg" style={{
+                    background: 'rgba(148,163,184,0.06)',
+                    border: '1px solid rgba(148,163,184,0.15)',
+                  }}>
+                    <div className="flex items-center gap-3 flex-1">
+                      <div className="w-4 h-4 flex-shrink-0 rounded border border-[var(--border)]" />
+                      <div>
+                        <span className="text-sm font-medium block text-[var(--text-primary)]">
+                          Two-Factor Authentication (2FA)
+                          <span className="text-[9px] font-normal text-[var(--text-muted)] ml-2">Coming soon</span>
+                        </span>
+                        <span className="text-[11px] block mt-0.5 text-[var(--text-muted)]">
+                          Add an extra layer of security with an authenticator app (Google Authenticator, Authy, etc.). A 6-digit code will be required at login in addition to your Google account.
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="text-[10px] space-y-1 text-[var(--text-muted)]">
+                    <p><strong>How it works:</strong> After enabling, scan a QR code with your authenticator app. Each login will require your Google sign-in plus a time-based 6-digit code.</p>
+                    <p><strong>Recovery:</strong> Backup codes will be provided during setup in case you lose access to your authenticator device.</p>
                   </div>
                 </div>
               </>
