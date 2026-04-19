@@ -584,28 +584,19 @@ export default function PatientPage() {
             {patient.hasOutput ? (
               <>
                 {/* Action Buttons */}
-                <div className="flex gap-2">
+                <div className="flex gap-2 justify-end">
                   <button
                     onClick={copyFullNote}
-                    className="flex-1 py-3 bg-[var(--accent)] text-white rounded-2xl font-medium flex items-center justify-center gap-2 hover:brightness-110 active:scale-[0.97] transition-all"
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-[var(--border)] text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] active:scale-[0.97] transition-all"
                   >
-                    {copied === 'full' ? (
-                      <>
-                        <Check className="w-4 h-4" />
-                        Copied!
-                      </>
-                    ) : (
-                      <>
-                        <Copy className="w-4 h-4" />
-                        Copy Full Note
-                      </>
-                    )}
+                    {copied === 'full' ? <Check className="w-3 h-3 text-emerald-500" /> : <Copy className="w-3 h-3" />}
+                    {copied === 'full' ? 'Copied' : 'Copy Note'}
                   </button>
                   <button
                     onClick={() => setShowModify(!showModify)}
-                    className="py-3 px-4 border border-[var(--border)] text-[var(--text-secondary)] rounded-2xl font-medium flex items-center justify-center gap-2 hover:bg-[var(--bg-tertiary)] active:scale-[0.97] transition-all"
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-[var(--border)] text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] active:scale-[0.97] transition-all"
                   >
-                    <RefreshCw className="w-4 h-4" />
+                    <Pencil className="w-3 h-3" />
                     Modify
                   </button>
                 </div>
@@ -656,6 +647,7 @@ export default function PatientPage() {
                   styleSaved={styleSaved === 'hpi'}
                   interactiveEdit
                   onRegenerate={(updates) => handleRegenerateSection('hpi', updates)}
+                  accentBorder="border-l-emerald-500/40"
                 />
 
                 <OutputSection
@@ -672,9 +664,26 @@ export default function PatientPage() {
                   showExamToggles
                   interactiveEdit
                   onRegenerate={(updates) => handleRegenerateSection('objective', updates)}
+                  accentBorder="border-l-emerald-500/40"
                 />
 
-                {/* Diagnosis & ICD Codes */}
+                <OutputSection
+                  title="Assessment & Plan"
+                  content={patient.assessmentPlan}
+                  field="assessmentPlan"
+                  expanded={expandedSections.has('assessmentPlan')}
+                  onToggle={() => toggleSection('assessmentPlan')}
+                  onCopy={() => copyToClipboard(patient.assessmentPlan, 'assessmentPlan')}
+                  copied={copied === 'assessmentPlan'}
+                  onSave={(value) => handleSaveField('assessmentPlan', value)}
+                  onSaveStyle={() => handleSaveStyleExample('assessmentPlan', patient.assessmentPlan)}
+                  styleSaved={styleSaved === 'assessmentPlan'}
+                  interactiveEdit
+                  onRegenerate={(updates) => handleRegenerateSection('assessmentPlan', updates)}
+                  accentBorder="border-l-emerald-500/40"
+                />
+
+                {/* Diagnosis & ICD Codes — moved below A&P */}
                 <DiagnosisSection
                   patient={patient}
                   onSave={async (fields) => {
@@ -691,23 +700,8 @@ export default function PatientPage() {
                   }}
                 />
 
-                <OutputSection
-                  title="Assessment & Plan"
-                  content={patient.assessmentPlan}
-                  field="assessmentPlan"
-                  expanded={expandedSections.has('assessmentPlan')}
-                  onToggle={() => toggleSection('assessmentPlan')}
-                  onCopy={() => copyToClipboard(patient.assessmentPlan, 'assessmentPlan')}
-                  copied={copied === 'assessmentPlan'}
-                  onSave={(value) => handleSaveField('assessmentPlan', value)}
-                  onSaveStyle={() => handleSaveStyleExample('assessmentPlan', patient.assessmentPlan)}
-                  styleSaved={styleSaved === 'assessmentPlan'}
-                  interactiveEdit
-                  onRegenerate={(updates) => handleRegenerateSection('assessmentPlan', updates)}
-                />
-
                 {/* Physician Notes for A&P */}
-                <div className="rounded-xl border border-[var(--card-border)] bg-[var(--card-bg)] overflow-hidden">
+                <div className="rounded-2xl border border-[var(--card-border)] border-l-2 border-l-amber-500/40 bg-[var(--card-bg)] overflow-hidden" style={{ boxShadow: 'var(--card-shadow)' }}>
                   <div className="px-4 py-3 border-b border-[var(--card-border)] flex items-center gap-2">
                     <FileText className="w-4 h-4 text-amber-600 dark:text-amber-400" />
                     <h3 className="font-semibold text-sm text-[var(--text-primary)]">Physician Notes</h3>
@@ -1205,6 +1199,7 @@ function OutputSection({
   showExamToggles,
   interactiveEdit,
   onRegenerate,
+  accentBorder,
 }: {
   title: string;
   content: string;
@@ -1220,6 +1215,7 @@ function OutputSection({
   showExamToggles?: boolean;
   interactiveEdit?: boolean;
   onRegenerate?: (updates: string) => Promise<void>;
+  accentBorder?: string;
 }) {
   const [editing, setEditing] = useState(false);
   const [editValue, setEditValue] = useState(content);
@@ -1267,7 +1263,7 @@ function OutputSection({
   };
 
   return (
-    <div className={`${bgClass} ${isFlat ? '' : 'rounded-2xl border'} ${borderClass} overflow-hidden`} style={{ boxShadow: isFlat || variant === 'muted' ? 'none' : 'var(--card-shadow)' }}>
+    <div className={`${bgClass} ${isFlat ? '' : 'rounded-2xl border'} ${borderClass} ${accentBorder && !isFlat ? `border-l-2 ${accentBorder}` : ''} overflow-hidden`} style={{ boxShadow: isFlat || variant === 'muted' ? 'none' : 'var(--card-shadow)' }}>
       <div className={`flex items-center justify-between ${isFlat ? 'px-5 py-3' : 'p-5'} cursor-pointer`} onClick={onToggle}>
         <h3 className={`${isFlat ? 'text-sm' : ''} font-semibold text-[var(--text-primary)]`}>{title}</h3>
         <div className="flex items-center gap-1">

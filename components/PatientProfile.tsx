@@ -3,7 +3,8 @@
 import { useState } from 'react';
 import {
   Loader2, RefreshCw, Copy, Check,
-  Heart, Pill, AlertTriangle, Users, Home
+  Heart, Pill, AlertTriangle, Users, Home,
+  ChevronDown, ChevronUp
 } from 'lucide-react';
 import type { PatientProfile as ProfileData } from '@/app/api/profile/route';
 
@@ -41,6 +42,7 @@ function ProfileSection({ icon: Icon, label, items, color }: {
 
 export function PatientProfile({ profile, age, gender, onGenerate, generating }: PatientProfileProps) {
   const [copied, setCopied] = useState(false);
+  const [expanded, setExpanded] = useState(true);
 
   const hasProfile = profile && (
     profile.pmhx.length > 0 ||
@@ -67,42 +69,52 @@ export function PatientProfile({ profile, age, gender, onGenerate, generating }:
   };
 
   return (
-    <div className="bg-[var(--card-bg)] rounded-2xl border border-[var(--card-border)] p-5" style={{ boxShadow: 'var(--card-shadow)' }}>
-      <div className="flex items-center justify-between mb-3">
-        <h3 className="text-xs font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-widest">
+    <div className="bg-[var(--card-bg)] rounded-2xl border border-[var(--card-border)] border-l-2 border-l-rose-500/40 overflow-hidden" style={{ boxShadow: 'var(--card-shadow)' }}>
+      <div
+        className="flex items-center justify-between px-5 py-3.5 cursor-pointer select-none hover:bg-[var(--bg-tertiary)]/50 transition-colors"
+        onClick={() => setExpanded(!expanded)}
+      >
+        <h3 className="text-xs font-semibold text-rose-600 dark:text-rose-400 uppercase tracking-widest">
           Patient Profile
         </h3>
-        {hasProfile && (
-          <div className="flex items-center gap-1">
-            <button
-              onClick={copyProfile}
-              className="p-1.5 hover:bg-[var(--bg-tertiary)] rounded-lg transition-colors"
-              title="Copy profile"
-            >
-              {copied ? (
-                <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-              ) : (
-                <Copy className="w-3.5 h-3.5 text-[var(--text-muted)]" />
-              )}
-            </button>
-            <button
-              onClick={onGenerate}
-              disabled={generating}
-              className="p-1.5 hover:bg-[var(--bg-tertiary)] rounded-lg transition-colors"
-              title="Refresh profile"
-            >
-              {generating ? (
-                <Loader2 className="w-3.5 h-3.5 animate-spin text-[var(--text-muted)]" />
-              ) : (
-                <RefreshCw className="w-3.5 h-3.5 text-[var(--text-muted)]" />
-              )}
-            </button>
-          </div>
-        )}
+        <div className="flex items-center gap-1">
+          {hasProfile && (
+            <>
+              <button
+                onClick={(e) => { e.stopPropagation(); copyProfile(); }}
+                className="p-1.5 hover:bg-[var(--bg-tertiary)] rounded-lg transition-colors"
+                title="Copy profile"
+              >
+                {copied ? (
+                  <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                ) : (
+                  <Copy className="w-3.5 h-3.5 text-[var(--text-muted)]" />
+                )}
+              </button>
+              <button
+                onClick={(e) => { e.stopPropagation(); onGenerate(); }}
+                disabled={generating}
+                className="p-1.5 hover:bg-[var(--bg-tertiary)] rounded-lg transition-colors"
+                title="Refresh profile"
+              >
+                {generating ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin text-[var(--text-muted)]" />
+                ) : (
+                  <RefreshCw className="w-3.5 h-3.5 text-[var(--text-muted)]" />
+                )}
+              </button>
+            </>
+          )}
+          {expanded ? (
+            <ChevronUp className="w-4 h-4 text-[var(--text-muted)]" />
+          ) : (
+            <ChevronDown className="w-4 h-4 text-[var(--text-muted)]" />
+          )}
+        </div>
       </div>
 
-      {hasProfile ? (
-        <div className="space-y-3">
+      {hasProfile && expanded ? (
+        <div className="px-5 pb-5 space-y-3">
           {/* Presenting issue */}
           {profile.presentingIssue && (
             <p className="text-sm text-[var(--text-primary)] font-medium leading-snug italic">
@@ -157,25 +169,27 @@ export function PatientProfile({ profile, age, gender, onGenerate, generating }:
             color="text-purple-500 dark:text-purple-400"
           />
         </div>
-      ) : (
-        <button
-          onClick={onGenerate}
-          disabled={generating}
-          className="w-full py-2.5 border border-dashed border-[var(--border)] text-[var(--text-muted)] rounded-xl text-sm font-medium flex items-center justify-center gap-2 hover:bg-[var(--bg-tertiary)] active:scale-[0.99] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {generating ? (
-            <>
-              <Loader2 className="w-4 h-4 animate-spin" />
-              Extracting Profile...
-            </>
-          ) : (
-            <>
-              <Heart className="w-4 h-4" />
-              Generate Patient Profile
-            </>
-          )}
-        </button>
-      )}
+      ) : expanded ? (
+        <div className="px-5 pb-5">
+          <button
+            onClick={onGenerate}
+            disabled={generating}
+            className="w-full py-2.5 border border-dashed border-[var(--border)] text-[var(--text-muted)] rounded-xl text-sm font-medium flex items-center justify-center gap-2 hover:bg-[var(--bg-tertiary)] active:scale-[0.99] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {generating ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Extracting Profile...
+              </>
+            ) : (
+              <>
+                <Heart className="w-4 h-4" />
+                Generate Patient Profile
+              </>
+            )}
+          </button>
+        </div>
+      ) : null}
     </div>
   );
 }

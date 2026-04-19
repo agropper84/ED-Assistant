@@ -63,7 +63,7 @@ export function DiagnosisSection({
   if (!hasDiagnosis && !editing) return null;
 
   return (
-    <div className="rounded-xl border border-[var(--card-border)] bg-[var(--card-bg)] overflow-hidden">
+    <div className="rounded-2xl border border-[var(--card-border)] border-l-2 border-l-purple-500/40 bg-[var(--card-bg)] overflow-hidden" style={{ boxShadow: 'var(--card-shadow)' }}>
       <div className="px-4 py-3 border-b border-[var(--card-border)] flex items-center justify-between">
         <div className="flex items-center gap-2">
           <FileText className="w-4 h-4 text-purple-600 dark:text-purple-400" />
