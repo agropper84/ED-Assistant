@@ -888,11 +888,18 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
                     setTranscript(base ? `${base}\n\n${text}` : text);
                   } : undefined}
                   onProcessingChange={(p) => setFieldRefining('transcript', p)}
-                  onAudioLevel={!showLiveTranscript ? (data) => {
-                    setAudioData(data);
-                    // Build scrolling wave history (last 64 samples)
-                    waveHistoryRef.current = [...waveHistoryRef.current.slice(-139), { level: data.level, speaker: data.speakerHint }];
-                  } : undefined}
+                  onAudioLevel={!showLiveTranscript ? (() => {
+                    let lastSampleTime = 0;
+                    return (data: { level: number; lowFreq: number; highFreq: number; speakerHint: 'near' | 'far' | 'silent' }) => {
+                      setAudioData(data);
+                      // Sample at ~5Hz (every 200ms) so 140 bars = ~28 seconds of visible history
+                      const now = Date.now();
+                      if (now - lastSampleTime >= 200) {
+                        lastSampleTime = now;
+                        waveHistoryRef.current = [...waveHistoryRef.current.slice(-139), { level: data.level, speaker: data.speakerHint }];
+                      }
+                    };
+                  })() : undefined}
                 />
               </div>
             </div>
