@@ -186,6 +186,7 @@ export default function HomePage() {
   // Search and sort
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<Patient[] | null>(null);
+  const [searchAllDates, setSearchAllDates] = useState(false);
   const [searching, setSearching] = useState(false);
   const searchDebounce = useRef<NodeJS.Timeout | null>(null);
   const [sortBy, setSortBy] = useState<'time' | 'name' | 'status' | 'recent'>('time');
@@ -329,16 +330,31 @@ export default function HomePage() {
     return () => clearInterval(interval);
   }, [sheetName, loading]);
 
-  // Debounced cross-sheet search
+  // Search: local (current day) or cross-sheet (all dates)
   useEffect(() => {
     if (searchDebounce.current) clearTimeout(searchDebounce.current);
-    const q = searchQuery.trim();
+    const q = searchQuery.trim().toLowerCase();
     if (!q) {
       setSearchResults(null);
       setSearching(false);
       return;
     }
     if (q.length < 2) return;
+
+    if (!searchAllDates) {
+      // Local search — filter current day's patients by name/diagnosis
+      const filtered = patients.filter(p =>
+        p.name?.toLowerCase().includes(q) ||
+        p.diagnosis?.toLowerCase().includes(q) ||
+        p.hcn?.toLowerCase().includes(q) ||
+        p.mrn?.toLowerCase().includes(q)
+      );
+      setSearchResults(filtered);
+      setSearching(false);
+      return;
+    }
+
+    // All-dates search — API call
     setSearching(true);
     searchDebounce.current = setTimeout(async () => {
       try {
@@ -353,7 +369,7 @@ export default function HomePage() {
       }
     }, 400);
     return () => { if (searchDebounce.current) clearTimeout(searchDebounce.current); };
-  }, [searchQuery]);
+  }, [searchQuery, searchAllDates, patients]);
 
   // SWR: user profile (deduped, cached)
   const { data: authData } = useSWR<{ email: string; name: string; termsAccepted?: boolean }>('/api/auth/me');
@@ -1246,6 +1262,14 @@ export default function HomePage() {
                   </button>
                 )}
               </div>
+              <span
+                onClick={() => setSearchAllDates(!searchAllDates)}
+                className="cursor-pointer select-none transition-colors"
+                style={{ color: searchAllDates ? 'var(--dash-text)' : 'var(--dash-text-muted)', fontSize: '8px', opacity: searchAllDates ? 1 : 0.5 }}
+                title={searchAllDates ? 'Searching all dates' : 'Searching today only'}
+              >
+                ALL
+              </span>
               <button
                 onClick={() => setSortBy(prev => prev === 'time' ? 'name' : prev === 'name' ? 'status' : prev === 'status' ? 'recent' : 'time')}
                 className="flex items-center gap-1 px-1.5 py-1 rounded-md text-[11px] font-medium transition-colors hover:bg-white/[0.07]"
@@ -1523,7 +1547,9 @@ export default function HomePage() {
             {/* Search results banner (search is now in header) */}
             {isSearching && searchResults !== null && !searching && (
               <div className="text-xs text-[var(--text-muted)] px-1">
-                {searchResults.length === 0 ? 'No patients found across all dates' : `${searchResults.length} result${searchResults.length !== 1 ? 's' : ''} across all dates`}
+                {searchResults.length === 0
+                  ? (searchAllDates ? 'No patients found across all dates' : 'No patients found today')
+                  : `${searchResults.length} result${searchResults.length !== 1 ? 's' : ''}${searchAllDates ? ' across all dates' : ''}`}
               </div>
             )}
 
