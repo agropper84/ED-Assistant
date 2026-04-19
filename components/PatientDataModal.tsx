@@ -63,7 +63,7 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
   const [recordingElapsed, setRecordingElapsed] = useState(0);
   const [audioData, setAudioData] = useState({ level: 0, lowFreq: 0, highFreq: 0, speakerHint: 'silent' as 'near' | 'far' | 'silent' });
   const [waveHistory, setWaveHistory] = useState<Array<{ level: number; speaker: 'near' | 'far' | 'silent' }>>([]);
-  const lastWaveSampleRef = useRef(0);
+  const waveFrameCountRef = useRef(0);
   const [refiningFields, setRefiningFields] = useState<Set<string>>(new Set());
   const setFieldRefining = (field: string, refining: boolean) => {
     setRefiningFields(prev => {
@@ -882,21 +882,20 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
                     setTranscript(base ? `${base}\n\n${text}` : text);
                     setFieldRefining('transcript', false);
                   }}
-                  onRecordingStart={() => { setPreRecordTranscript(transcript); setIsRecordingEncounter(true); setWaveHistory([]); }}
+                  onRecordingStart={() => { setPreRecordTranscript(transcript); setIsRecordingEncounter(true); setWaveHistory([]); waveFrameCountRef.current = 0; }}
                   onRecordingStop={() => { setIsRecordingEncounter(false); setAudioData({ level: 0, lowFreq: 0, highFreq: 0, speakerHint: 'silent' }); }}
                   onInterimTranscript={showLiveTranscript ? (text) => {
                     const base = preRecordTranscript || '';
                     setTranscript(base ? `${base}\n\n${text}` : text);
                   } : undefined}
                   onProcessingChange={(p) => setFieldRefining('transcript', p)}
-                  onAudioLevel={!showLiveTranscript ? (data) => {
-                    // Throttle wave history updates to ~5Hz for visible scrolling
-                    const now = Date.now();
-                    if (now - lastWaveSampleRef.current >= 200) {
-                      lastWaveSampleRef.current = now;
+                  onAudioLevel={(data) => {
+                    // Sample every 12th frame (~5Hz at 60fps) for visible scrolling
+                    waveFrameCountRef.current++;
+                    if (waveFrameCountRef.current % 12 === 0) {
                       setWaveHistory(prev => [...prev.slice(-139), { level: data.level, speaker: data.speakerHint }]);
                     }
-                  } : undefined}
+                  }}
                 />
               </div>
             </div>
