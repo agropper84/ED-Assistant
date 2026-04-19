@@ -69,6 +69,7 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
   const [audioBlobUrl, setAudioBlobUrl] = useState<string | null>(null);
   const [audioBlobIv, setAudioBlobIv] = useState<string | null>(null);
   const [audioBlobContentType, setAudioBlobContentType] = useState<string>('audio/webm');
+  const [audioBlobCreatedAt, setAudioBlobCreatedAt] = useState<string | null>(null);
   const [retranscribing, setRetranscribing] = useState(false);
   const [refiningFields, setRefiningFields] = useState<Set<string>>(new Set());
   const setFieldRefining = (field: string, refining: boolean) => {
@@ -344,16 +345,22 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
       if (patient.audioBackup) {
         try {
           const backup = JSON.parse(patient.audioBackup);
-          setAudioBlobUrl(backup.blobUrl || null);
-          setAudioBlobIv(backup.iv || null);
-          setAudioBlobContentType(backup.contentType || 'audio/webm');
+          // Check if backup is still within 12-hour window
+          const age = Date.now() - new Date(backup.createdAt).getTime();
+          if (age < 12 * 60 * 60 * 1000) {
+            setAudioBlobUrl(backup.blobUrl || null);
+            setAudioBlobIv(backup.iv || null);
+            setAudioBlobContentType(backup.contentType || 'audio/webm');
+            setAudioBlobCreatedAt(backup.createdAt || null);
+          } else {
+            // Expired
+            setAudioBlobUrl(null); setAudioBlobIv(null); setAudioBlobCreatedAt(null);
+          }
         } catch {
-          setAudioBlobUrl(null);
-          setAudioBlobIv(null);
+          setAudioBlobUrl(null); setAudioBlobIv(null); setAudioBlobCreatedAt(null);
         }
       } else {
-        setAudioBlobUrl(null);
-        setAudioBlobIv(null);
+        setAudioBlobUrl(null); setAudioBlobIv(null); setAudioBlobCreatedAt(null);
       }
 
       // Fetch submissions, then populate text boxes only for fields WITHOUT submissions
@@ -920,7 +927,8 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
                   sensitivity={micSensitivity}
                   encryptionKey={encryptionKey || undefined}
                   onBlobBackup={(url, iv, ct) => {
-                    setAudioBlobUrl(url); setAudioBlobIv(iv); setAudioBlobContentType(ct);
+                    const now = new Date().toISOString();
+                    setAudioBlobUrl(url); setAudioBlobIv(iv); setAudioBlobContentType(ct); setAudioBlobCreatedAt(now);
                     // Persist to patient data so re-transcribe works after modal close
                     if (patient) {
                       const backup = JSON.stringify({ blobUrl: url, iv, contentType: ct, createdAt: new Date().toISOString() });
@@ -968,37 +976,46 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
               {submitted === 'transcript' ? 'Saved' : 'Submit'}
             </button>
             {/* Re-transcribe from Blob backup */}
-            {audioBlobUrl && audioBlobIv && !isRecordingEncounter && (
-              <button
-                onClick={async () => {
-                  setRetranscribing(true);
-                  setFieldRefining('transcript', true);
-                  try {
-                    const res = await fetch('/api/transcribe-server', {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ blobUrl: audioBlobUrl, iv: audioBlobIv, contentType: audioBlobContentType }),
-                    });
-                    if (res.ok) {
-                      const data = await res.json();
-                      if (data.text?.trim()) {
-                        setTranscript(data.text.trim());
+            {audioBlobUrl && audioBlobIv && !isRecordingEncounter && (() => {
+              const hoursLeft = audioBlobCreatedAt
+                ? Math.max(0, Math.floor((12 * 60 * 60 * 1000 - (Date.now() - new Date(audioBlobCreatedAt).getTime())) / (60 * 60 * 1000)))
+                : null;
+              return (
+                <button
+                  onClick={async () => {
+                    setRetranscribing(true);
+                    setFieldRefining('transcript', true);
+                    try {
+                      const res = await fetch('/api/transcribe-server', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ blobUrl: audioBlobUrl, iv: audioBlobIv, contentType: audioBlobContentType }),
+                      });
+                      if (res.ok) {
+                        const data = await res.json();
+                        if (data.text?.trim()) {
+                          setTranscript(data.text.trim());
+                        }
                       }
+                    } catch (e) {
+                      console.error('Re-transcribe failed:', e);
+                    } finally {
+                      setRetranscribing(false);
+                      setFieldRefining('transcript', false);
                     }
-                  } catch (e) {
-                    console.error('Re-transcribe failed:', e);
-                  } finally {
-                    setRetranscribing(false);
-                    setFieldRefining('transcript', false);
-                  }
-                }}
-                disabled={retranscribing}
-                className="mt-1 w-full flex items-center justify-center gap-1.5 py-1 rounded-lg text-[10px] font-medium text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] transition-colors"
-              >
-                {retranscribing ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
-                Re-transcribe from backup
-              </button>
-            )}
+                  }}
+                  disabled={retranscribing}
+                  className="mt-1 w-full flex items-center justify-center gap-1.5 py-1 rounded-lg text-[10px] font-medium text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] transition-colors"
+                  title={hoursLeft !== null ? `Audio backup expires in ${hoursLeft}h` : undefined}
+                >
+                  {retranscribing ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
+                  Re-transcribe
+                  {hoursLeft !== null && (
+                    <span className="text-[8px] opacity-50 ml-0.5">· {hoursLeft}h left</span>
+                  )}
+                </button>
+              );
+            })()}
           </div>
 
           {/* Encounter Notes */}
