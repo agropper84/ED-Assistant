@@ -816,25 +816,57 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
             </div>
             <SubmissionTags field="transcript" />
             <div className="relative">
-              {transcript && /^(Speaker \d|Dr[.:]|Pt[.:]|Patient:|Family:|Physician:|Doctor:)/im.test(transcript) && !refiningFields.has('transcript') ? (
-                <div
-                  className="w-full h-28 p-3 pr-16 border border-[var(--input-border)] rounded-xl text-sm overflow-y-auto bg-[var(--input-bg)] cursor-text"
-                  onClick={(e) => {
-                    const ta = e.currentTarget.nextElementSibling as HTMLTextAreaElement;
-                    if (ta) { e.currentTarget.style.display = 'none'; ta.style.display = 'block'; ta.focus(); }
-                  }}
-                >
-                  {transcript.split('\n').map((line, i) => {
-                    const isDr = /^(Speaker 1:|Dr[.:]|Physician:|Doctor:)/i.test(line);
-                    const isPt = /^(Speaker [2-9]:|Pt[.:]|Patient:|Family:)/i.test(line);
-                    return (
-                      <div key={i} className={`leading-relaxed ${isDr ? 'text-blue-400' : isPt ? 'text-amber-400' : 'text-[var(--text-primary)]'}`}>
-                        {line || '\u00A0'}
-                      </div>
-                    );
-                  })}
-                </div>
-              ) : null}
+              {transcript && /^(Speaker \d|Dr[.:]|Pt[.:]|Patient:|Family:|Physician:|Doctor:)/im.test(transcript) && !refiningFields.has('transcript') ? (() => {
+                const SPEAKER_LABELS = ['Doctor:', 'Patient:', 'Family:', ''] as const;
+                const SPEAKER_REGEX = /^(Speaker \d+:|Dr[.:]|Physician:|Doctor:|Pt[.:]|Patient:|Family:)\s*/i;
+                const lines = transcript.split('\n');
+                const cycleLabel = (idx: number) => {
+                  const line = lines[idx];
+                  const match = line.match(SPEAKER_REGEX);
+                  const cur = match ? match[1].replace(/[.:]\s*$/, '').trim().toLowerCase() : '';
+                  const map: Record<string, number> = { 'speaker 1': 0, dr: 0, physician: 0, doctor: 0, 'speaker 2': 1, 'speaker 3': 1, pt: 1, patient: 1, family: 2, '': 3 };
+                  const next = SPEAKER_LABELS[((map[cur] ?? 3) + 1) % SPEAKER_LABELS.length];
+                  const stripped = match ? line.substring(match[0].length) : line;
+                  const updated = [...lines];
+                  updated[idx] = next ? `${next} ${stripped}` : stripped;
+                  setTranscript(updated.join('\n'));
+                };
+                return (
+                  <div className="w-full h-28 p-3 pr-16 border border-[var(--input-border)] rounded-xl text-sm overflow-y-auto bg-[var(--input-bg)]">
+                    {lines.map((line, i) => {
+                      const isDr = /^(Speaker 1:|Dr[.:]|Physician:|Doctor:)/i.test(line);
+                      const isPt = /^(Speaker [2-9]:|Pt[.:]|Patient:|Family:)/i.test(line);
+                      const match = line.match(SPEAKER_REGEX);
+                      const label = match ? match[0] : null;
+                      const rest = match ? line.substring(match[0].length) : line;
+                      return (
+                        <div key={i} className="leading-relaxed flex">
+                          {label && (
+                            <span
+                              onClick={(e) => { e.stopPropagation(); cycleLabel(i); }}
+                              className={`font-semibold cursor-pointer select-none hover:underline decoration-dotted underline-offset-2 flex-shrink-0 ${isDr ? 'text-blue-400' : isPt ? 'text-amber-400' : 'text-[var(--text-muted)]'}`}
+                              title="Click to change speaker"
+                            >{label}</span>
+                          )}
+                          <span
+                            className={`${isDr ? 'text-blue-400' : isPt ? 'text-amber-400' : 'text-[var(--text-primary)]'} cursor-text`}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const container = e.currentTarget.closest('.relative');
+                              const ta = container?.querySelector('textarea') as HTMLTextAreaElement;
+                              if (ta) {
+                                (e.currentTarget.closest('.overflow-y-auto') as HTMLElement).style.display = 'none';
+                                ta.style.display = 'block';
+                                ta.focus();
+                              }
+                            }}
+                          >{rest || '\u00A0'}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })() : null}
               {/* Recording waveform — centered, full width with edge fades */}
               {isRecordingEncounter && !showLiveTranscript && (() => {
                 const vizGain = micSensitivity === 1 ? 24 : micSensitivity === 2 ? 36 : micSensitivity === 3 ? 50 : 64;
