@@ -808,31 +808,38 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
                     {/* Subtle center line — full width, true center */}
                     <div className="absolute inset-x-0 top-[calc(50%-1px)] h-px" style={{ background: 'rgba(96,165,250,0.06)' }} />
                     {/* Waveform bars — fill entire width, true vertical center */}
-                    <div className="absolute inset-0 flex items-center justify-between">
-                      {Array.from({ length: barCount }).map((_, i) => {
-                        const sample = waveHistoryRef.current[i];
-                        const raw = sample?.level || 0;
-                        // Apply sensitivity-dependent scaling
-                        const scaled = Math.min(1, raw * (vizGain / 40));
-                        // Min bar height 2px, max ~40px per side (80px total)
-                        const barH = Math.max(1, scaled * 40);
-                        const totalH = barH * 2 + 1;
-                        const opacity = raw > 0.02 ? 0.3 + Math.min(scaled, 0.7) : 0.05;
-                        return (
-                          <div
-                            key={i}
-                            className="rounded-full"
-                            style={{
-                              width: '1.5px',
-                              height: `${totalH}px`,
-                              background: raw > 0.02
-                                ? `linear-gradient(180deg, rgba(96,165,250,${opacity * 0.4}) 0%, rgba(96,165,250,${opacity}) 50%, rgba(96,165,250,${opacity * 0.4}) 100%)`
-                                : 'rgba(148,163,184,0.04)',
-                              transition: 'height 60ms ease-out',
-                            }}
-                          />
-                        );
-                      })}
+                    <div className="absolute inset-x-0 top-2 bottom-8 flex items-center justify-between">
+                      {(() => {
+                        // Find peak level in current history for relative scaling
+                        const samples = waveHistoryRef.current;
+                        let peak = 0;
+                        for (const s of samples) { if (s && s.level > peak) peak = s.level; }
+                        // Sensitivity scales the peak reference: lower sensitivity = higher threshold
+                        const sensitivityScale = vizGain / 55; // 1.0 at Hi, lower at Lo/Mid, higher at Max
+                        const peakRef = Math.max(peak, 0.05) / sensitivityScale;
+
+                        return Array.from({ length: barCount }).map((_, i) => {
+                          const sample = samples[i];
+                          const raw = sample?.level || 0;
+                          // Normalize to 0-1 relative to the current peak
+                          const normalized = Math.min(1, raw / peakRef);
+                          const opacity = raw > 0.01 ? 0.3 + Math.min(normalized, 0.7) : 0.04;
+                          return (
+                            <div
+                              key={i}
+                              className="rounded-full"
+                              style={{
+                                width: '1.5px',
+                                height: `${Math.max(2, normalized * 100)}%`,
+                                background: raw > 0.01
+                                  ? `linear-gradient(180deg, rgba(96,165,250,${opacity * 0.4}) 0%, rgba(96,165,250,${opacity}) 50%, rgba(96,165,250,${opacity * 0.4}) 100%)`
+                                  : 'rgba(148,163,184,0.04)',
+                                transition: 'height 60ms ease-out',
+                              }}
+                            />
+                          );
+                        });
+                      })()}
                     </div>
                     {/* Edge fade — smooth wide gradient on both sides */}
                     <div className="absolute left-0 top-0 bottom-0 w-16 z-10 pointer-events-none" style={{ background: 'linear-gradient(to right, rgba(15,23,42,0.85) 0%, rgba(15,23,42,0.4) 50%, transparent 100%)' }} />
