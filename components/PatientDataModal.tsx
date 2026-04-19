@@ -67,6 +67,9 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
   const [processingWord, setProcessingWord] = useState(0);
   const [encryptionKey, setEncryptionKey] = useState<string | null>(null);
   const [audioBlobUrl, setAudioBlobUrl] = useState<string | null>(null);
+  const [audioBlobIv, setAudioBlobIv] = useState<string | null>(null);
+  const [audioBlobContentType, setAudioBlobContentType] = useState<string>('audio/webm');
+  const [retranscribing, setRetranscribing] = useState(false);
   const [refiningFields, setRefiningFields] = useState<Set<string>>(new Set());
   const setFieldRefining = (field: string, refining: boolean) => {
     setRefiningFields(prev => {
@@ -900,7 +903,7 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
                   showUpload
                   sensitivity={micSensitivity}
                   encryptionKey={encryptionKey || undefined}
-                  onBlobBackup={(url) => setAudioBlobUrl(url)}
+                  onBlobBackup={(url, iv, ct) => { setAudioBlobUrl(url); setAudioBlobIv(iv); setAudioBlobContentType(ct); }}
                   onTranscript={(text) => {
                     const base = preRecordTranscript || '';
                     setTranscript(base ? `${base}\n\n${text}` : text);
@@ -937,6 +940,38 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
               {submitting === 'transcript' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : submitted === 'transcript' ? <Check className="w-3.5 h-3.5" /> : <ArrowUpCircle className="w-3.5 h-3.5" />}
               {submitted === 'transcript' ? 'Saved' : 'Submit'}
             </button>
+            {/* Re-transcribe from Blob backup */}
+            {audioBlobUrl && audioBlobIv && !isRecordingEncounter && (
+              <button
+                onClick={async () => {
+                  setRetranscribing(true);
+                  setFieldRefining('transcript', true);
+                  try {
+                    const res = await fetch('/api/transcribe-server', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ blobUrl: audioBlobUrl, iv: audioBlobIv, contentType: audioBlobContentType }),
+                    });
+                    if (res.ok) {
+                      const data = await res.json();
+                      if (data.text?.trim()) {
+                        setTranscript(data.text.trim());
+                      }
+                    }
+                  } catch (e) {
+                    console.error('Re-transcribe failed:', e);
+                  } finally {
+                    setRetranscribing(false);
+                    setFieldRefining('transcript', false);
+                  }
+                }}
+                disabled={retranscribing}
+                className="mt-1 w-full flex items-center justify-center gap-1.5 py-1 rounded-lg text-[10px] font-medium text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] transition-colors"
+              >
+                {retranscribing ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
+                Re-transcribe from backup
+              </button>
+            )}
           </div>
 
           {/* Encounter Notes */}

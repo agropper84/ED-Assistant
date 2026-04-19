@@ -147,7 +147,7 @@ interface VoiceRecorderProps {
   /** Base64 encryption key for blob backup. If provided, encrypts audio before uploading. */
   encryptionKey?: string;
   /** Called with blob URL after successful backup upload */
-  onBlobBackup?: (blobUrl: string) => void;
+  onBlobBackup?: (blobUrl: string, iv: string, contentType: string) => void;
 }
 
 /** Encrypt binary data with AES-256-GCM using Web Crypto API (browser-native) */
@@ -867,7 +867,7 @@ export function VoiceRecorder({
               );
               blobUrl = result.url;
               console.log(`[Encounter] Blob backup: ${blobUrl}`);
-              onBlobBackup?.(blobUrl);
+              onBlobBackup?.(blobUrl, ivBase64, mimeType);
 
               // Step 2: For large files, use server-side transcription from Blob
               if (isLarge) {
