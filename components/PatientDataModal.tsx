@@ -340,6 +340,22 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
       setGeneratingProfile(false);
       setGeneratingDdx(false);
 
+      // Load audio backup info if available
+      if (patient.audioBackup) {
+        try {
+          const backup = JSON.parse(patient.audioBackup);
+          setAudioBlobUrl(backup.blobUrl || null);
+          setAudioBlobIv(backup.iv || null);
+          setAudioBlobContentType(backup.contentType || 'audio/webm');
+        } catch {
+          setAudioBlobUrl(null);
+          setAudioBlobIv(null);
+        }
+      } else {
+        setAudioBlobUrl(null);
+        setAudioBlobIv(null);
+      }
+
       // Fetch submissions, then populate text boxes only for fields WITHOUT submissions
       fetch(`/api/patients/${patient.rowIndex}/submit?sheet=${encodeURIComponent(patient.sheetName)}&name=${encodeURIComponent(patient.name || '')}`)
         .then(r => r.ok ? r.json() : { submissions: [] })
@@ -903,7 +919,18 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
                   showUpload
                   sensitivity={micSensitivity}
                   encryptionKey={encryptionKey || undefined}
-                  onBlobBackup={(url, iv, ct) => { setAudioBlobUrl(url); setAudioBlobIv(iv); setAudioBlobContentType(ct); }}
+                  onBlobBackup={(url, iv, ct) => {
+                    setAudioBlobUrl(url); setAudioBlobIv(iv); setAudioBlobContentType(ct);
+                    // Persist to patient data so re-transcribe works after modal close
+                    if (patient) {
+                      const backup = JSON.stringify({ blobUrl: url, iv, contentType: ct, createdAt: new Date().toISOString() });
+                      fetch(`/api/patients/${patient.rowIndex}`, {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ audioBackup: backup, _sheetName: patient.sheetName, _patientName: patient.name }),
+                      }).catch(() => {});
+                    }
+                  }}
                   onTranscript={(text) => {
                     const base = preRecordTranscript || '';
                     setTranscript(base ? `${base}\n\n${text}` : text);

@@ -401,6 +401,7 @@ export function patientToFields(p: Patient): PatientFields {
     admission: p.admission,
     profile: p.profile,
     room: p.room,
+    audioBackup: p.audioBackup,
   };
 }
 
@@ -412,6 +413,7 @@ export function fieldsToPatient(file: EDPatientFile): Patient {
     sheetName: file.sheetName,
     ...d,
     room: d.room || '',
+    audioBackup: d.audioBackup || '',
     hasOutput: !!(d.hpi || d.objective || d.assessmentPlan),
     status: d.hpi ? 'processed' : d.transcript ? 'pending' : 'new',
   };

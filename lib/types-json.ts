@@ -69,6 +69,7 @@ export interface PatientFields {
   admission: string;
   profile: string;
   room: string;
+  audioBackup: string; // JSON: { blobUrl, iv, contentType, createdAt }
 }
 
 // --- Date Sheet File (one per date/shift, contains all patients for that date) ---

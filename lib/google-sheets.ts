@@ -191,6 +191,7 @@ export interface Patient {
   admission: string;
   profile: string;
   room: string;
+  audioBackup: string;
   // Computed
   hasOutput: boolean;
   status: 'new' | 'pending' | 'processed';
@@ -1242,6 +1243,7 @@ function rowToPatient(row: string[], rowIndex: number, sheetName: string): Patie
     admission: getValue(COLUMNS.ADMISSION),
     profile: getValue(COLUMNS.PROFILE),
     room: '', // Room is stored on clinical companion sheet / Drive only
+    audioBackup: '', // Audio backup stored in Drive only
     hasOutput: !!(hpi || assessmentPlan),
     status,
   };
