@@ -289,9 +289,8 @@ export function VoiceRecorder({
       let sum = 0;
       for (let i = 0; i < timeData.length; i++) sum += timeData[i] * timeData[i];
       const rms = Math.sqrt(sum / timeData.length);
-      // Normalize RMS to 0-1 range. Lower divisor = more sensitive visualization.
-      // 0.03 makes speech clearly visible even at low sensitivity.
-      const level = Math.min(1, rms / 0.03);
+      // Normalize to 0-1. Use sqrt for perceptual scaling (quiet sounds more visible)
+      const level = Math.min(1, Math.sqrt(rms / 0.15));
       setAudioLevel(level);
 
       // Frequency data (kept for future use)

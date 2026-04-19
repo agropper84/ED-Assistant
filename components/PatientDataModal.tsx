@@ -811,10 +811,13 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
                     <div className="absolute inset-0 flex items-center justify-between">
                       {Array.from({ length: barCount }).map((_, i) => {
                         const sample = waveHistoryRef.current[i];
-                        const level = sample?.level || 0;
-                        const barH = Math.max(1, level * vizGain);
+                        const raw = sample?.level || 0;
+                        // Apply sensitivity-dependent scaling
+                        const scaled = Math.min(1, raw * (vizGain / 40));
+                        // Min bar height 2px, max ~40px per side (80px total)
+                        const barH = Math.max(1, scaled * 40);
                         const totalH = barH * 2 + 1;
-                        const opacity = level > 0.03 ? 0.35 + Math.min(level * 1.2, 0.65) : 0.06;
+                        const opacity = raw > 0.02 ? 0.3 + Math.min(scaled, 0.7) : 0.05;
                         return (
                           <div
                             key={i}
@@ -822,9 +825,9 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
                             style={{
                               width: '1.5px',
                               height: `${totalH}px`,
-                              background: level > 0.03
-                                ? `linear-gradient(180deg, rgba(96,165,250,${opacity * 0.5}) 0%, rgba(96,165,250,${opacity}) 50%, rgba(96,165,250,${opacity * 0.5}) 100%)`
-                                : 'rgba(148,163,184,0.05)',
+                              background: raw > 0.02
+                                ? `linear-gradient(180deg, rgba(96,165,250,${opacity * 0.4}) 0%, rgba(96,165,250,${opacity}) 50%, rgba(96,165,250,${opacity * 0.4}) 100%)`
+                                : 'rgba(148,163,184,0.04)',
                               transition: 'height 60ms ease-out',
                             }}
                           />
