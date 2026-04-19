@@ -7,7 +7,7 @@ import {
   ArrowLeft, Loader2, Play, Copy, Check,
   FileText,
   ChevronDown, ChevronUp, Pencil, X, Save,
-  RefreshCw, Send, Bookmark, Plus, Scissors, FilePlus
+  RefreshCw, Send, Bookmark, Plus, Scissors, FilePlus, BookOpen, Printer
 } from 'lucide-react';
 import { ExamToggles } from '@/components/ExamToggles';
 import { ReferralModal } from '@/components/ReferralModal';
@@ -51,7 +51,13 @@ export default function PatientPage() {
   const [showAdmissionModal, setShowAdmissionModal] = useState(false);
 
   // Active tab for output view
-  const [activeTab, setActiveTab] = useState<'encounter' | 'referral' | 'admission'>('encounter');
+  const [activeTab, setActiveTab] = useState<'encounter' | 'admission' | 'referral' | 'education'>('encounter');
+
+  // Patient education handout
+  const [eduTopic, setEduTopic] = useState('');
+  const [eduInstructions, setEduInstructions] = useState('');
+  const [eduLanguage, setEduLanguage] = useState('');
+  const [generatingEdu, setGeneratingEdu] = useState(false);
 
   // Insights panel (replaces DDx tab)
   const [insightsExpanded, setInsightsExpanded] = useState(false);
@@ -539,19 +545,6 @@ export default function PatientPage() {
                     variant="flat"
                   />
                 )}
-                {patient.education && (
-                  <OutputSection
-                    title="Learning Resources"
-                    content={patient.education}
-                    field="education"
-                    expanded={expandedSections.has('education')}
-                    onToggle={() => toggleSection('education')}
-                    onCopy={() => copyToClipboard(patient.education, 'education')}
-                    copied={copied === 'education'}
-                    onSave={(value) => handleSaveField('education', value)}
-                    variant="flat"
-                  />
-                )}
               </div>
             )}
           </div>
@@ -567,7 +560,7 @@ export default function PatientPage() {
 
         {/* Tab Bar */}
         <div className={`flex gap-1 bg-[var(--bg-tertiary)] p-1 ${isEmbed ? 'rounded-xl' : 'rounded-2xl'}`} style={{ boxShadow: 'var(--card-shadow)' }}>
-          {(['encounter', 'admission', 'referral'] as const).map((tab) => (
+          {(['encounter', 'admission', 'referral', 'education'] as const).map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -577,7 +570,7 @@ export default function PatientPage() {
                   : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
               }`}
             >
-              {tab === 'encounter' ? 'Note' : tab === 'admission' ? 'Consult' : 'Referral'}
+              {tab === 'encounter' ? 'Note' : tab === 'admission' ? 'Consult' : tab === 'referral' ? 'Referral' : 'Education'}
             </button>
           ))}
         </div>
@@ -866,6 +859,154 @@ export default function PatientPage() {
                 >
                   <FilePlus className="w-4 h-4" />
                   Generate Consult Note
+                </button>
+              </div>
+            )}
+          </>
+        )}
+
+        {/* Patient Education Tab */}
+        {activeTab === 'education' && (
+          <>
+            {patient.education ? (
+              <>
+                <div className="bg-[var(--card-bg)] rounded-2xl border border-[var(--card-border)] overflow-hidden" style={{ boxShadow: 'var(--card-shadow)' }}>
+                  <div className="flex items-center justify-between p-5">
+                    <h3 className="font-semibold text-[var(--text-primary)]">Patient Education Handout</h3>
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => {
+                          const printWindow = window.open('', '_blank');
+                          if (printWindow) {
+                            printWindow.document.write(`<html><head><title>Patient Education</title><style>body{font-family:system-ui,sans-serif;max-width:700px;margin:40px auto;padding:0 20px;line-height:1.6;color:#1a1a1a}h1,h2,h3{margin-top:1.5em}ul,ol{padding-left:1.5em}</style></head><body>${patient.education.replace(/\n/g,'<br>')}</body></html>`);
+                            printWindow.document.close();
+                            printWindow.print();
+                          }
+                        }}
+                        className="p-2 hover:bg-[var(--bg-tertiary)] rounded-lg transition-colors"
+                        title="Print handout"
+                      >
+                        <Printer className="w-4 h-4 text-[var(--text-muted)]" />
+                      </button>
+                      <button
+                        onClick={() => copyToClipboard(patient.education, 'education')}
+                        className="p-2 hover:bg-[var(--bg-tertiary)] rounded-lg transition-colors"
+                        title="Copy handout"
+                      >
+                        {copied === 'education' ? (
+                          <Check className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                        ) : (
+                          <Copy className="w-4 h-4 text-[var(--text-muted)]" />
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                  <div className="px-5 pb-5">
+                    <div className="text-sm text-[var(--text-secondary)] whitespace-pre-wrap leading-relaxed">
+                      {patient.education}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Regenerate with different parameters */}
+                <button
+                  onClick={() => {
+                    // Clear existing to show the form again
+                    handleSaveField('education', '');
+                  }}
+                  className="w-full py-2.5 border border-dashed border-[var(--border)] text-[var(--text-muted)] rounded-xl text-sm font-medium flex items-center justify-center gap-2 hover:bg-[var(--bg-tertiary)] active:scale-[0.99] transition-all"
+                >
+                  <RefreshCw className="w-3.5 h-3.5" />
+                  Generate New Handout
+                </button>
+              </>
+            ) : (
+              <div className="bg-[var(--card-bg)] rounded-2xl border border-[var(--card-border)] p-5 space-y-4" style={{ boxShadow: 'var(--card-shadow)' }}>
+                <div className="flex items-center gap-2">
+                  <BookOpen className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                  <h3 className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 uppercase tracking-widest">Patient Education Handout</h3>
+                </div>
+
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">Topic / Diagnosis</label>
+                    <input
+                      type="text"
+                      value={eduTopic || patient.diagnosis || ''}
+                      onChange={(e) => setEduTopic(e.target.value)}
+                      placeholder="e.g. Ankle sprain, Pneumonia, Laceration care..."
+                      className="w-full px-3 py-2 border border-[var(--input-border)] rounded-lg text-sm bg-[var(--input-bg)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">
+                      Instructions <span className="text-[var(--text-muted)] font-normal">(optional)</span>
+                    </label>
+                    <textarea
+                      value={eduInstructions}
+                      onChange={(e) => setEduInstructions(e.target.value)}
+                      placeholder="e.g. Emphasize ice and elevation, include return precautions for compartment syndrome, mention follow-up with ortho in 1 week..."
+                      className="w-full h-20 px-3 py-2 border border-[var(--input-border)] rounded-lg text-sm resize-y bg-[var(--input-bg)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">
+                      Language <span className="text-[var(--text-muted)] font-normal">(optional)</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={eduLanguage}
+                      onChange={(e) => setEduLanguage(e.target.value)}
+                      placeholder="e.g. French, Spanish, Simplified Chinese..."
+                      className="w-full px-3 py-2 border border-[var(--input-border)] rounded-lg text-sm bg-[var(--input-bg)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                    />
+                  </div>
+                </div>
+
+                <button
+                  onClick={async () => {
+                    setGeneratingEdu(true);
+                    try {
+                      const res = await fetch('/api/patient-education', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                          rowIndex: parseInt(rowIndex),
+                          sheetName,
+                          patientName: patient.name,
+                          topic: eduTopic || patient.diagnosis,
+                          instructions: eduInstructions || undefined,
+                          language: eduLanguage || undefined,
+                        }),
+                      });
+                      if (res.ok) {
+                        await fetchPatient();
+                      } else {
+                        const err = await res.json().catch(() => ({}));
+                        alert(err.error || 'Failed to generate handout');
+                      }
+                    } catch {
+                      alert('Failed to generate handout — check connection');
+                    } finally {
+                      setGeneratingEdu(false);
+                    }
+                  }}
+                  disabled={generatingEdu || !(eduTopic?.trim() || patient.diagnosis?.trim())}
+                  className="w-full py-3 bg-emerald-600 dark:bg-emerald-500 text-white rounded-xl font-medium flex items-center justify-center gap-2 disabled:opacity-50 hover:bg-emerald-700 dark:hover:bg-emerald-600 active:scale-[0.97] transition-all"
+                >
+                  {generatingEdu ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Generating Handout...
+                    </>
+                  ) : (
+                    <>
+                      <BookOpen className="w-4 h-4" />
+                      Generate Handout
+                    </>
+                  )}
                 </button>
               </div>
             )}
