@@ -56,7 +56,7 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
   const [saving, setSaving] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [userPhrases, setUserPhrases] = useState<string[]>([]);
-  const [showLiveTranscript, setShowLiveTranscript] = useState(true);
+  const [showLiveTranscript, setShowLiveTranscript] = useState(false);
   const [micSensitivity, setMicSensitivity] = useState(3); // default high for encounters
   const [isRecordingEncounter, setIsRecordingEncounter] = useState(false);
   const [recordingStartTime, setRecordingStartTime] = useState<number | null>(null);
@@ -64,6 +64,7 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
   const [audioData, setAudioData] = useState({ level: 0, lowFreq: 0, highFreq: 0, speakerHint: 'silent' as 'near' | 'far' | 'silent' });
   const [waveHistory, setWaveHistory] = useState<Array<{ level: number; speaker: 'near' | 'far' | 'silent' }>>([]);
   const waveFrameCountRef = useRef(0);
+  const [processingWord, setProcessingWord] = useState(0);
   const [refiningFields, setRefiningFields] = useState<Set<string>>(new Set());
   const setFieldRefining = (field: string, refining: boolean) => {
     setRefiningFields(prev => {
@@ -257,6 +258,14 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
     }, 1000);
     return () => clearInterval(interval);
   }, [isRecordingEncounter]);
+
+  // Alternate processing/refining text
+  useEffect(() => {
+    const isProcessing = refiningFields.has('transcript') && !isRecordingEncounter;
+    if (!isProcessing) return;
+    const interval = setInterval(() => setProcessingWord(p => (p + 1) % 2), 2000);
+    return () => clearInterval(interval);
+  }, [refiningFields, isRecordingEncounter]);
 
   useEffect(() => {
     if (isOpen) {
@@ -758,15 +767,13 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
                   />
                   <span className="text-[9px] text-[var(--text-muted)] w-7 text-center font-medium">{micSensitivity === 1 ? 'Lo' : micSensitivity === 2 ? 'Mid' : micSensitivity === 3 ? 'Hi' : 'Max'}</span>
                 </div>
-                <label className="flex items-center gap-1.5 cursor-pointer select-none">
-                  <input
-                    type="checkbox"
-                    checked={showLiveTranscript}
-                    onChange={(e) => setShowLiveTranscript(e.target.checked)}
-                    className="w-3 h-3 rounded text-blue-600 focus:ring-blue-500 accent-blue-600"
-                  />
-                  <span className="text-[10px] text-[var(--text-muted)]">Live text</span>
-                </label>
+                <span
+                  onClick={() => setShowLiveTranscript(!showLiveTranscript)}
+                  className="text-[9px] cursor-pointer select-none transition-colors"
+                  style={{ color: showLiveTranscript ? 'var(--text-secondary)' : 'var(--text-muted)', opacity: showLiveTranscript ? 0.8 : 0.4 }}
+                >
+                  {showLiveTranscript ? 'Live' : 'Live'}
+                </span>
               </div>
               {/* iOS positioning tip — removed */}
               {false && (
@@ -846,17 +853,27 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
                   </div>
                 );
               })()}
-              {/* Transcribing overlay — shows after recording stops while processing */}
+              {/* Draft text indicator when live text is on during recording */}
+              {isRecordingEncounter && showLiveTranscript && (
+                <div className="absolute bottom-1 left-3 z-10 flex items-center gap-1.5">
+                  <div className="w-1 h-1 rounded-full bg-amber-400 animate-pulse" />
+                  <span className="text-[9px] text-amber-400/60 font-medium">Draft — will be refined when recording stops</span>
+                </div>
+              )}
+              {/* Processing overlay — shows after recording stops while transcribing */}
               {refiningFields.has('transcript') && !isRecordingEncounter && (
                 <div className="w-full h-28 rounded-xl flex items-center justify-center" style={{
                   background: 'linear-gradient(180deg, rgba(15,23,42,0.5) 0%, rgba(15,23,42,0.7) 100%)',
                   border: '1px solid rgba(96,165,250,0.12)',
                 }}>
-                  <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 border-2 border-blue-400/40 border-t-blue-400 rounded-full animate-spin" />
-                    <span className="text-[11px] text-blue-400/70 font-medium">Transcribing...</span>
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-4 h-4 border-2 border-blue-400/30 border-t-blue-400 rounded-full animate-spin" />
+                    <span key={processingWord} className="text-[11px] text-blue-400/70 font-medium animate-fadeIn">
+                      {processingWord === 0 ? 'Processing' : 'Refining'}...
+                    </span>
                   </div>
                 </div>
+              )}
               )}
               <textarea
                 value={transcript}
