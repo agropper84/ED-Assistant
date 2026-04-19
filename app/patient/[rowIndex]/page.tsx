@@ -77,6 +77,9 @@ export default function PatientPage() {
   // Update analysis state
   const [updatingAnalysis, setUpdatingAnalysis] = useState(false);
 
+  // Source data section
+  const [sourceDataExpanded, setSourceDataExpanded] = useState(false);
+
   // Quick-add note state
   const [showQuickAdd, setShowQuickAdd] = useState(false);
   const [quickAddText, setQuickAddText] = useState('');
@@ -609,19 +612,19 @@ export default function PatientPage() {
 
                 {/* Modification Panel */}
                 {showModify && (
-                  <div className="bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800 rounded-xl p-4 space-y-3 animate-slideUp">
-                    <h3 className="font-semibold text-amber-900 dark:text-amber-200">Modify & Regenerate</h3>
+                  <div className="bg-[var(--card-bg)] border border-[var(--card-border)] rounded-2xl p-5 space-y-3 animate-slideUp" style={{ boxShadow: 'var(--card-shadow)' }}>
+                    <h3 className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-widest">Modifications</h3>
                     <textarea
                       value={modifications}
                       onChange={(e) => setModifications(e.target.value)}
                       placeholder="Describe what changes you want (e.g., 'Add chest pain to HPI', 'Change diagnosis to pneumonia')..."
-                      className="w-full h-24 p-3 border border-amber-300 dark:border-amber-700 rounded-lg text-sm resize-y focus:ring-2 focus:ring-amber-500 focus:border-amber-500 bg-[var(--input-bg)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)]"
+                      className="w-full h-24 p-3 border border-[var(--input-border)] rounded-xl text-sm resize-y focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)]"
                     />
                     <div className="flex gap-2">
                       <button
                         onClick={() => handleProcess(modifications)}
                         disabled={processing || !modifications.trim()}
-                        className="flex-1 py-2.5 bg-amber-600 text-white rounded-lg font-medium disabled:opacity-50 flex items-center justify-center gap-2 active:scale-[0.97] transition-all"
+                        className="flex-1 py-2.5 bg-[var(--accent)] text-white rounded-xl font-medium disabled:opacity-50 flex items-center justify-center gap-2 hover:brightness-110 active:scale-[0.97] transition-all"
                       >
                         {processing ? (
                           <Loader2 className="w-4 h-4 animate-spin" />
@@ -632,7 +635,7 @@ export default function PatientPage() {
                       </button>
                       <button
                         onClick={() => { setShowModify(false); setModifications(''); }}
-                        className="py-2.5 px-4 bg-[var(--bg-tertiary)] text-[var(--text-secondary)] rounded-lg font-medium active:scale-[0.97] transition-all"
+                        className="py-2.5 px-4 border border-[var(--border)] text-[var(--text-secondary)] rounded-xl font-medium hover:bg-[var(--bg-tertiary)] active:scale-[0.97] transition-all"
                       >
                         Cancel
                       </button>
@@ -740,7 +743,7 @@ export default function PatientPage() {
                           setSavingApNotes(false);
                         }}
                         disabled={savingApNotes}
-                        className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg bg-emerald-600 dark:bg-emerald-500 text-white hover:bg-emerald-700 dark:hover:bg-emerald-600 disabled:opacity-50 active:scale-[0.97] transition-all"
+                        className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded-xl bg-[var(--accent)] text-white hover:brightness-110 disabled:opacity-50 active:scale-[0.97] transition-all"
                       >
                         {savingApNotes ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
                         Save Notes
@@ -758,7 +761,7 @@ export default function PatientPage() {
                           }
                         }}
                         disabled={regeneratingAp || processing || !apNotes.trim()}
-                        className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg bg-amber-600 dark:bg-amber-500 text-white hover:bg-amber-700 dark:hover:bg-amber-600 disabled:opacity-50 active:scale-[0.97] transition-all"
+                        className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded-xl border border-[var(--border)] text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] disabled:opacity-50 active:scale-[0.97] transition-all"
                       >
                         {regeneratingAp ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
                         Regenerate Note
@@ -771,7 +774,7 @@ export default function PatientPage() {
               <button
                 onClick={() => handleProcess()}
                 disabled={processing}
-                className="w-full py-4 bg-blue-600 dark:bg-blue-500 text-white rounded-xl font-semibold flex items-center justify-center gap-2 disabled:opacity-50 hover:bg-blue-700 dark:hover:bg-blue-600 active:scale-[0.99] transition-all"
+                className="w-full py-3 bg-[var(--accent)] text-white rounded-2xl font-medium flex items-center justify-center gap-2 disabled:opacity-50 hover:brightness-110 active:scale-[0.97] transition-all"
               >
                 {processing ? (
                   <>
@@ -810,7 +813,7 @@ export default function PatientPage() {
                 <p className="text-[var(--text-muted)] mb-3">No referral generated yet</p>
                 <button
                   onClick={() => setShowReferralModal(true)}
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-violet-600 dark:bg-violet-500 text-white rounded-lg font-medium hover:bg-violet-700 dark:hover:bg-violet-600 active:scale-[0.97] transition-all"
+                  className="inline-flex items-center gap-2 px-5 py-2.5 bg-[var(--accent)] text-white rounded-xl font-medium hover:brightness-110 active:scale-[0.97] transition-all"
                 >
                   <Send className="w-4 h-4" />
                   Generate Referral
@@ -841,7 +844,7 @@ export default function PatientPage() {
                 <p className="text-[var(--text-muted)] mb-3">No consult note generated yet</p>
                 <button
                   onClick={() => setShowAdmissionModal(true)}
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 dark:bg-blue-500 text-white rounded-lg font-medium hover:bg-blue-700 dark:hover:bg-blue-600 active:scale-[0.97] transition-all"
+                  className="inline-flex items-center gap-2 px-5 py-2.5 bg-[var(--accent)] text-white rounded-xl font-medium hover:brightness-110 active:scale-[0.97] transition-all"
                 >
                   <FilePlus className="w-4 h-4" />
                   Generate Consult Note
@@ -921,7 +924,7 @@ export default function PatientPage() {
                       value={eduTopic || patient.diagnosis || ''}
                       onChange={(e) => setEduTopic(e.target.value)}
                       placeholder="e.g. Ankle sprain, Pneumonia, Laceration care..."
-                      className="w-full px-3 py-2 border border-[var(--input-border)] rounded-lg text-sm bg-[var(--input-bg)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                      className="w-full px-3 py-2 border border-[var(--input-border)] rounded-xl text-sm bg-[var(--input-bg)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     />
                   </div>
 
@@ -946,7 +949,7 @@ export default function PatientPage() {
                       value={eduLanguage}
                       onChange={(e) => setEduLanguage(e.target.value)}
                       placeholder="e.g. French, Spanish, Simplified Chinese..."
-                      className="w-full px-3 py-2 border border-[var(--input-border)] rounded-lg text-sm bg-[var(--input-bg)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                      className="w-full px-3 py-2 border border-[var(--input-border)] rounded-xl text-sm bg-[var(--input-bg)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     />
                   </div>
                 </div>
@@ -1011,118 +1014,125 @@ export default function PatientPage() {
           />
         )}
 
-        {/* Input Data (Triage, Transcript) */}
-        <div className="mt-8 pt-6 border-t border-[var(--border)]">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-widest">
-              Source Data
-            </h3>
-            <VoiceRecorder
-              mode="encounter"
-              onTranscript={(text) => {
-                const current = patient.transcript || '';
-                const updated = current ? `${current}\n\n${text}` : text;
-                handleSaveField('transcript', updated);
-              }}
-            />
+        {/* Source Data — collapsible card */}
+        <div className="bg-[var(--card-bg)] rounded-2xl border border-[var(--card-border)] overflow-hidden" style={{ boxShadow: 'var(--card-shadow)' }}>
+          <div
+            className="flex items-center justify-between px-5 py-3.5 cursor-pointer select-none hover:bg-[var(--bg-tertiary)]/50 transition-colors"
+            onClick={() => setSourceDataExpanded(!sourceDataExpanded)}
+          >
+            <h3 className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-widest">Source Data</h3>
+            <div className="flex items-center gap-1">
+              <VoiceRecorder
+                mode="encounter"
+                onTranscript={(text) => {
+                  const current = patient.transcript || '';
+                  const updated = current ? `${current}\n\n${text}` : text;
+                  handleSaveField('transcript', updated);
+                }}
+              />
+              {sourceDataExpanded ? (
+                <ChevronUp className="w-4 h-4 text-[var(--text-muted)]" />
+              ) : (
+                <ChevronDown className="w-4 h-4 text-[var(--text-muted)]" />
+              )}
+            </div>
           </div>
 
-          {patient.triageVitals && (
-            <OutputSection
-              title="Triage Notes"
-              content={patient.triageVitals}
-              field="triageVitals"
-              expanded={expandedSections.has('triage')}
-              onToggle={() => toggleSection('triage')}
-              onCopy={() => copyToClipboard(patient.triageVitals, 'triage')}
-              copied={copied === 'triage'}
-              variant="muted"
-              onSave={(value) => handleSaveField('triageVitals', value)}
-            />
-          )}
+          {sourceDataExpanded && (
+            <div className="border-t border-[var(--card-border)] divide-y divide-[var(--card-border)]">
+              {patient.triageVitals && (
+                <OutputSection
+                  title="Triage Notes"
+                  content={patient.triageVitals}
+                  field="triageVitals"
+                  expanded={expandedSections.has('triage')}
+                  onToggle={() => toggleSection('triage')}
+                  onCopy={() => copyToClipboard(patient.triageVitals, 'triage')}
+                  copied={copied === 'triage'}
+                  variant="flat"
+                  onSave={(value) => handleSaveField('triageVitals', value)}
+                />
+              )}
 
-          <OutputSection
-            title="Transcript"
-            content={patient.transcript || ''}
-            field="transcript"
-            expanded={expandedSections.has('transcript')}
-            onToggle={() => toggleSection('transcript')}
-            onCopy={() => copyToClipboard(patient.transcript || '', 'transcript')}
-            copied={copied === 'transcript'}
-            variant="muted"
-            onSave={(value) => handleSaveField('transcript', value)}
-          />
+              <OutputSection
+                title="Transcript"
+                content={patient.transcript || ''}
+                field="transcript"
+                expanded={expandedSections.has('transcript')}
+                onToggle={() => toggleSection('transcript')}
+                onCopy={() => copyToClipboard(patient.transcript || '', 'transcript')}
+                copied={copied === 'transcript'}
+                variant="flat"
+                onSave={(value) => handleSaveField('transcript', value)}
+              />
 
-          <OutputSection
-            title="Additional Findings"
-            content={patient.additional || ''}
-            field="additional"
-            expanded={expandedSections.has('additional')}
-            onToggle={() => toggleSection('additional')}
-            onCopy={() => copyToClipboard(patient.additional || '', 'additional')}
-            copied={copied === 'additional'}
-            variant="muted"
-            onSave={(value) => handleSaveField('additional', value)}
-          />
+              <OutputSection
+                title="Additional Findings"
+                content={patient.additional || ''}
+                field="additional"
+                expanded={expandedSections.has('additional')}
+                onToggle={() => toggleSection('additional')}
+                onCopy={() => copyToClipboard(patient.additional || '', 'additional')}
+                copied={copied === 'additional'}
+                variant="flat"
+                onSave={(value) => handleSaveField('additional', value)}
+              />
 
-          {/* Quick-add Note */}
-          <div className="mt-3">
-            {!showQuickAdd ? (
-              <button
-                onClick={() => setShowQuickAdd(true)}
-                className="w-full py-2.5 border border-dashed border-[var(--border)] text-[var(--text-muted)] rounded-xl text-sm font-medium flex items-center justify-center gap-2 hover:bg-[var(--bg-tertiary)] active:scale-[0.99] transition-all"
-              >
-                <Plus className="w-4 h-4" />
-                Add Note
-              </button>
-            ) : (
-              <div className="bg-[var(--bg-tertiary)] rounded-xl border border-[var(--border-light)] p-4 space-y-3 animate-slideUp">
-                <h4 className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-widest">Quick Add Note</h4>
-                <div className="relative">
-                  <textarea
-                    value={quickAddText}
-                    onChange={(e) => setQuickAddText(e.target.value)}
-                    placeholder="Add exam findings, investigation results, or clinical notes..."
-                    className="w-full h-24 p-3 pr-10 border border-[var(--input-border)] rounded-lg text-sm resize-y focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)]"
-                    autoFocus
-                  />
-                  <div className="absolute top-1.5 right-1.5">
-                    <VoiceRecorder
-                      onTranscript={(text) => {
-                        const base = preRecordQuickAdd || quickAddText;
-                        setQuickAddText(base ? `${base}\n${text}` : text);
-                      }}
-                      onRecordingStart={() => setPreRecordQuickAdd(quickAddText)}
-                      onInterimTranscript={(text) => {
-                        setQuickAddText(preRecordQuickAdd ? `${preRecordQuickAdd}\n${text}` : text);
-                      }}
-                    />
+              {/* Quick-add Note */}
+              <div className="px-5 py-3">
+                {!showQuickAdd ? (
+                  <button
+                    onClick={() => setShowQuickAdd(true)}
+                    className="w-full py-2 border border-dashed border-[var(--border)] text-[var(--text-muted)] rounded-xl text-sm font-medium flex items-center justify-center gap-2 hover:bg-[var(--bg-tertiary)] active:scale-[0.99] transition-all"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    Add Note
+                  </button>
+                ) : (
+                  <div className="space-y-3 animate-slideUp">
+                    <div className="relative">
+                      <textarea
+                        value={quickAddText}
+                        onChange={(e) => setQuickAddText(e.target.value)}
+                        placeholder="Add exam findings, investigation results, or clinical notes..."
+                        className="w-full h-24 p-3 pr-10 border border-[var(--input-border)] rounded-xl text-sm resize-y focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)]"
+                        autoFocus
+                      />
+                      <div className="absolute top-1.5 right-1.5">
+                        <VoiceRecorder
+                          onTranscript={(text) => {
+                            const base = preRecordQuickAdd || quickAddText;
+                            setQuickAddText(base ? `${base}\n${text}` : text);
+                          }}
+                          onRecordingStart={() => setPreRecordQuickAdd(quickAddText)}
+                          onInterimTranscript={(text) => {
+                            setQuickAddText(preRecordQuickAdd ? `${preRecordQuickAdd}\n${text}` : text);
+                          }}
+                        />
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={handleQuickAddSave}
+                        disabled={savingQuickAdd || !quickAddText.trim()}
+                        className="flex items-center gap-1.5 px-4 py-2 bg-[var(--accent)] text-white rounded-xl text-sm font-medium disabled:opacity-50 hover:brightness-110 active:scale-[0.97] transition-all"
+                      >
+                        {savingQuickAdd ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                        Save
+                      </button>
+                      <button
+                        onClick={() => { setShowQuickAdd(false); setQuickAddText(''); }}
+                        className="flex items-center gap-1.5 px-4 py-2 text-[var(--text-muted)] rounded-xl text-sm font-medium hover:bg-[var(--bg-tertiary)] active:scale-[0.97] transition-all"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                        Cancel
+                      </button>
+                    </div>
                   </div>
-                </div>
-                <div className="flex gap-2">
-                  <button
-                    onClick={handleQuickAddSave}
-                    disabled={savingQuickAdd || !quickAddText.trim()}
-                    className="flex items-center gap-1 px-4 py-2 bg-emerald-600 dark:bg-emerald-500 text-white rounded-lg text-sm font-medium disabled:opacity-50 active:scale-[0.97] transition-all"
-                  >
-                    {savingQuickAdd ? (
-                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                    ) : (
-                      <Save className="w-3.5 h-3.5" />
-                    )}
-                    Save
-                  </button>
-                  <button
-                    onClick={() => { setShowQuickAdd(false); setQuickAddText(''); }}
-                    className="flex items-center gap-1 px-4 py-2 bg-[var(--bg-tertiary)] text-[var(--text-secondary)] rounded-lg text-sm font-medium border border-[var(--border)] active:scale-[0.97] transition-all"
-                  >
-                    <X className="w-3.5 h-3.5" />
-                    Cancel
-                  </button>
-                </div>
+                )}
               </div>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       </main>
 
@@ -1341,7 +1351,7 @@ function OutputSection({
               <div className="flex gap-2">
                 <button
                   onClick={handleSaveEdit}
-                  className="flex items-center gap-1 px-3 py-1.5 bg-emerald-600 dark:bg-emerald-500 text-white rounded-lg text-sm font-medium active:scale-[0.97] transition-all"
+                  className="flex items-center gap-1.5 px-4 py-2 bg-[var(--accent)] text-white rounded-xl text-sm font-medium hover:brightness-110 active:scale-[0.97] transition-all"
                 >
                   <Save className="w-3.5 h-3.5" />
                   Save
@@ -1350,7 +1360,7 @@ function OutputSection({
                   <button
                     onClick={handleSaveAndRegenerate}
                     disabled={regenerating}
-                    className="flex items-center gap-1 px-3 py-1.5 bg-amber-600 dark:bg-amber-500 text-white rounded-lg text-sm font-medium disabled:opacity-50 active:scale-[0.97] transition-all"
+                    className="flex items-center gap-1.5 px-4 py-2 border border-[var(--border)] text-[var(--text-secondary)] rounded-xl text-sm font-medium disabled:opacity-50 hover:bg-[var(--bg-tertiary)] active:scale-[0.97] transition-all"
                   >
                     {regenerating ? (
                       <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -1362,7 +1372,7 @@ function OutputSection({
                 )}
                 <button
                   onClick={handleCancelEdit}
-                  className="flex items-center gap-1 px-3 py-1.5 bg-[var(--bg-tertiary)] text-[var(--text-secondary)] rounded-lg text-sm font-medium active:scale-[0.97] transition-all"
+                  className="flex items-center gap-1.5 px-4 py-2 text-[var(--text-muted)] rounded-xl text-sm font-medium hover:bg-[var(--bg-tertiary)] active:scale-[0.97] transition-all"
                 >
                   <X className="w-3.5 h-3.5" />
                   Cancel
