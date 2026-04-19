@@ -874,7 +874,6 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
                   </div>
                 </div>
               )}
-              )}
               <textarea
                 value={transcript}
                 onChange={(e) => setTranscript(e.target.value)}
