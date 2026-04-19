@@ -289,7 +289,7 @@ export function VoiceRecorder({
       let sum = 0;
       for (let i = 0; i < timeData.length; i++) sum += timeData[i] * timeData[i];
       const rms = Math.sqrt(sum / timeData.length);
-      const level = Math.min(1, rms / 0.07);
+      const level = rms / 0.07; // TEMP: no cap — testing max height
       setAudioLevel(level);
 
       // Frequency data (kept for future use)
