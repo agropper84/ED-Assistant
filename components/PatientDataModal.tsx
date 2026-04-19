@@ -892,7 +892,7 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
                   onAudioLevel={(data) => {
                     // Sample every 12th frame (~5Hz at 60fps) for visible scrolling
                     waveFrameCountRef.current++;
-                    if (waveFrameCountRef.current % 12 === 0) {
+                    if (waveFrameCountRef.current % 6 === 0) {
                       setWaveHistory(prev => [...prev.slice(-139), { level: data.level, speaker: data.speakerHint }]);
                     }
                   }}
