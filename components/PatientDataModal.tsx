@@ -1162,6 +1162,7 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
                       body: JSON.stringify({
                         rowIndex: patient.rowIndex,
                         sheetName: patient.sheetName,
+                        patientName: patient.name,
                         promptTemplates: getEffectivePromptTemplates(),
                         noteStyle,
                         noteStyleInstructions: noteStyle === 'standard' ? getSettings().noteStyleStandard : noteStyle === 'comprehensive' ? getSettings().noteStyleDetailed : getSettings().noteStyleCompleteExam,
@@ -1177,9 +1178,13 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
                       (onGenerated || onSaved)();
                       onClose();
                       onNavigate();
+                    } else {
+                      const err = await res.json().catch(() => ({ error: 'Generation failed' }));
+                      alert(`Note generation failed: ${err.error || 'Unknown error'}`);
                     }
                   } catch (error) {
                     console.error('Failed to generate:', error);
+                    alert('Note generation failed — please try again.');
                   } finally {
                     setGenerating(false);
                   }

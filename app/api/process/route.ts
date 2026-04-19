@@ -12,10 +12,10 @@ export const maxDuration = 60;
 export const POST = withApiHandler(
   { rateLimit: { limit: 10, window: 60 }, auditEvent: 'generate.process' },
   async (request: NextRequest) => {
-    const { rowIndex, sheetName, modifications, styleGuidance, settings, promptTemplates, stream: useStream, noteStyle, noteStyleInstructions, customInstructions } = await parseBody(request, processSchema);
+    const { rowIndex, sheetName, patientName, modifications, styleGuidance, settings, promptTemplates, stream: useStream, noteStyle, noteStyleInstructions, customInstructions } = await parseBody(request, processSchema);
     const ctx = await getDataContext();
 
-    const patient = await getPatient(ctx, rowIndex, sheetName);
+    const patient = await getPatient(ctx, rowIndex, sheetName, patientName);
     if (!patient) {
       return NextResponse.json({ error: 'Patient not found' }, { status: 404 });
     }

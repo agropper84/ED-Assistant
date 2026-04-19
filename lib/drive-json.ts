@@ -440,13 +440,19 @@ export async function getPatientFromDrive(
 /**
  * Core patient lookup within a date sheet. Used by all read/write functions.
  * Returns the EDPatientFile (mutable reference into the dateSheet.patients array).
+ *
+ * Search order:
+ *  1. Exact rowIndex match (Number coercion for type safety)
+ *  2. Name match (stable identifier within a date sheet)
+ *  3. Loose rowIndex match (string comparison — handles edge cases)
+ *  4. Single patient fallback
  */
 function findPatientInSheet(
   dateSheet: DateSheetFile,
   rowIndex: number,
   patientName?: string,
 ): EDPatientFile | undefined {
-  // 1. Exact rowIndex match
+  // 1. Exact rowIndex match (handles string/number via Number coercion)
   let file = dateSheet.patients.find(p => Number(p.rowIndex) === Number(rowIndex));
   if (file) return file;
 
@@ -456,7 +462,11 @@ function findPatientInSheet(
     if (file) return file;
   }
 
-  // 3. Single patient fallback
+  // 3. Loose string comparison (catches NaN, weird types)
+  file = dateSheet.patients.find(p => String(p.rowIndex) === String(rowIndex));
+  if (file) return file;
+
+  // 4. Single patient fallback
   if (dateSheet.patients.length === 1) {
     return dateSheet.patients[0];
   }

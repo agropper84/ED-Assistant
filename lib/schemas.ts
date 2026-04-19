@@ -15,6 +15,7 @@ const sheetName = z.string().min(1).max(200);
 export const processSchema = z.object({
   rowIndex,
   sheetName,
+  patientName: z.string().optional(),
   modifications: z.string().optional(),
   styleGuidance: z.string().optional(),
   noteStyle: z.enum(['standard', 'comprehensive', 'complete-exam']).optional(),
