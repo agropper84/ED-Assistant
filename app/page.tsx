@@ -1146,22 +1146,25 @@ export default function HomePage() {
                 title="Menu"
               >
                 <svg width="24" height="24" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  {/* Ripples — expanding from chest piece */}
-                  <circle cx="18" cy="21" r="7" fill="none" stroke="rgba(185,210,240,0.28)" strokeWidth="1" />
-                  <circle cx="18" cy="21" r="11" fill="none" stroke="rgba(185,210,240,0.14)" strokeWidth="0.8" />
-                  {/* Stethoscope tube — inverted U */}
-                  <path
-                    d="M13,7 C13,13 15,16 18,18 C21,16 23,13 23,7"
-                    fill="none"
-                    stroke="rgba(210,225,245,0.8)"
-                    strokeWidth="1.8"
-                    strokeLinecap="round"
-                  />
-                  {/* Ear tips */}
-                  <circle cx="13" cy="7" r="1.3" fill="rgba(210,225,245,0.55)" />
-                  <circle cx="23" cy="7" r="1.3" fill="rgba(210,225,245,0.55)" />
-                  {/* Chest piece — amber accent */}
-                  <circle cx="18" cy="21" r="3" fill="#c9935a" opacity="0.9" />
+                  <defs>
+                    <radialGradient id="ed-bell" cx="0.40" cy="0.36" r="0.52">
+                      <stop offset="0%" stopColor="#eef4fb" />
+                      <stop offset="50%" stopColor="#b0c5db" />
+                      <stop offset="100%" stopColor="#5d7d9a" />
+                    </radialGradient>
+                  </defs>
+                  {/* Ripples — expanding outward */}
+                  <circle cx="18" cy="18" r="17" fill="none" stroke="rgba(160,195,235,0.07)" strokeWidth="0.5" />
+                  <circle cx="18" cy="18" r="14.5" fill="none" stroke="rgba(160,195,235,0.14)" strokeWidth="0.6" />
+                  <circle cx="18" cy="18" r="12.5" fill="none" stroke="rgba(160,195,235,0.22)" strokeWidth="0.7" />
+                  {/* Bell face — polished 3D dome */}
+                  <circle cx="18" cy="18" r="10" fill="url(#ed-bell)" />
+                  {/* Diaphragm ring */}
+                  <circle cx="18" cy="18" r="6.5" fill="none" stroke="rgba(200,220,245,0.12)" strokeWidth="0.5" />
+                  {/* Specular catchlight */}
+                  <ellipse cx="14.5" cy="14" rx="4" ry="2.2" fill="rgba(255,255,255,0.2)" transform="rotate(-30 14.5 14)" />
+                  {/* Center hub — warm amber */}
+                  <circle cx="18" cy="18" r="2.5" fill="#d4a04a" opacity="0.92" />
                 </svg>
               </button>
               <h1 className="text-[17px] font-bold tracking-[-0.02em]" style={{ color: 'var(--dash-text)' }}>ER Dashboard</h1>
