@@ -1138,22 +1138,24 @@ export default function HomePage() {
             <div className="flex items-center gap-2.5 min-w-0">
               <button
                 onClick={() => setSidebarOpen(true)}
-                className="w-10 h-10 rounded-[12px] flex items-center justify-center flex-shrink-0 transition-all duration-300 hover:scale-[1.05] active:scale-[0.94]"
+                className="w-[42px] h-[42px] rounded-[13px] flex items-center justify-center flex-shrink-0 transition-all duration-300 hover:scale-[1.05] active:scale-[0.94]"
                 style={{
-                  background: 'linear-gradient(140deg, #5c6f84 0%, #3f5165 45%, #2d3f52 100%)',
-                  boxShadow: '0 1px 4px rgba(0,0,0,0.28), 0 0 0 0.5px rgba(255,255,255,0.08), inset 0 1px 0 rgba(255,255,255,0.12)',
+                  background: 'linear-gradient(145deg, rgba(255,255,255,0.07) 0%, rgba(255,255,255,0.02) 100%)',
+                  boxShadow: '0 0 0 0.5px rgba(255,255,255,0.09), inset 0 1px 0 rgba(255,255,255,0.06)',
                 }}
                 title="Menu"
               >
-                <svg width="24" height="24" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  {/* Bell — stroke only, negative space interior */}
-                  <circle cx="12" cy="18" r="6" fill="none" stroke="rgba(255,255,255,0.9)" strokeWidth="1.8" />
-                  {/* Amber center */}
-                  <circle cx="12" cy="18" r="1.5" fill="#d4a04a" />
-                  {/* Waves — fanning outward, fading */}
-                  <path d="M18.4,10.3 A10,10 0 0 1 18.4,25.7" fill="none" stroke="rgba(255,255,255,0.5)" strokeWidth="1.5" strokeLinecap="round" />
-                  <path d="M20.3,6.1 A14.5,14.5 0 0 1 20.3,29.9" fill="none" stroke="rgba(255,255,255,0.28)" strokeWidth="1.2" strokeLinecap="round" />
-                  <path d="M21.5,1.5 A19,19 0 0 1 21.5,34.5" fill="none" stroke="rgba(255,255,255,0.12)" strokeWidth="1" strokeLinecap="round" />
+                <svg width="28" height="28" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  {/* Bell — outer rim */}
+                  <circle cx="11" cy="18" r="7.5" fill="none" stroke="rgba(255,255,255,0.85)" strokeWidth="1.6" />
+                  {/* Bell — inner diaphragm ring */}
+                  <circle cx="11" cy="18" r="5" fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth="0.7" />
+                  {/* Bell — stem nub */}
+                  <circle cx="11" cy="18" r="1.6" fill="rgba(255,255,255,0.8)" />
+                  {/* Waves — fanning arcs, progressive fade */}
+                  <path d="M19,9 A10.5,10.5 0 0 1 19,27" fill="none" stroke="rgba(255,255,255,0.45)" strokeWidth="1.4" strokeLinecap="round" />
+                  <path d="M22,4.5 A15.5,15.5 0 0 1 22,31.5" fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth="1.1" strokeLinecap="round" />
+                  <path d="M24.5,0.5 A20,20 0 0 1 24.5,35.5" fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="0.8" strokeLinecap="round" />
                 </svg>
               </button>
               <h1 className="text-[17px] font-bold tracking-[-0.02em]" style={{ color: 'var(--dash-text)' }}>ER Dashboard</h1>
