@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { put } from '@vercel/blob';
 import { getSessionFromCookies } from '@/lib/session';
 
-export const maxDuration = 30;
+export const maxDuration = 60;
 
 // POST /api/backup-audio — Backup encounter audio to Vercel Blob
 export async function POST(request: NextRequest) {
@@ -18,15 +18,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No audio' }, { status: 400 });
     }
 
+    console.log(`[backup-audio] Uploading ${(audioFile.size / 1024).toFixed(0)}KB (${audioFile.type || 'unknown type'})`);
+
     const blob = await put(
-      `audio-backup/${session.userId}/${audioFile.name}`,
+      `encounter-audio/${session.userId}/${audioFile.name}`,
       audioFile,
       { access: 'public', addRandomSuffix: true }
     );
 
+    console.log(`[backup-audio] Stored: ${blob.url}`);
     return NextResponse.json({ url: blob.url });
   } catch (error: any) {
-    console.error('Audio backup failed:', error?.message);
-    return NextResponse.json({ error: 'Backup failed' }, { status: 500 });
+    console.error('Audio backup failed:', error?.message, error?.stack);
+    return NextResponse.json({ error: `Backup failed: ${error?.message || 'unknown'}` }, { status: 500 });
   }
 }

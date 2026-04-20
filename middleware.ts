@@ -11,6 +11,7 @@ const CSP_DIRECTIVES = [
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "font-src 'self' https://fonts.gstatic.com",
   "img-src 'self' data: blob: https:",
+  "media-src 'self' blob:",
   "connect-src 'self' https://api.anthropic.com https://api.openai.com https://api.deepgram.com https://sheets.googleapis.com https://www.googleapis.com https://accounts.google.com https://blob.vercel-storage.com https://*.public.blob.vercel-storage.com",
   "frame-ancestors 'self'",
   "base-uri 'self'",
