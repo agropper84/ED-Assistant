@@ -157,11 +157,11 @@ button, .btn {
 .ed-icon-btn .ed-wave { will-change: opacity; }
 
 .ed-w1 { --w-rest: 0.10; }
-.ed-w2 { --w-rest: 0.15; }
-.ed-w3 { --w-rest: 0.22; }
-.ed-w4 { --w-rest: 0.30; }
-.ed-w5 { --w-rest: 0.40; }
-.ed-w6 { --w-rest: 0.50; }
+.ed-w2 { --w-rest: 0.16; }
+.ed-w3 { --w-rest: 0.24; }
+.ed-w4 { --w-rest: 0.33; }
+.ed-w5 { --w-rest: 0.42; }
+.ed-w6 { --w-rest: 0.52; }
 
 /* Overlapping flashes — continuous traveling wave */
 .ed-icon-btn:hover .ed-wave {

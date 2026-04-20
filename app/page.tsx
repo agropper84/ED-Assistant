@@ -1153,8 +1153,7 @@ export default function HomePage() {
                     </radialGradient>
                   </defs>
                   {/* Sound waves — cool blue, compress toward bell */}
-                  <circle className="ed-wave ed-w6" cx="18" cy="18" r="20" fill="none" stroke="rgba(160,195,240,0.5)" strokeWidth="1.6" />
-                  <circle className="ed-wave ed-w5" cx="18" cy="18" r="17" fill="none" stroke="rgba(160,195,240,0.4)" strokeWidth="1.35" />
+                  <circle className="ed-wave ed-w6" cx="18" cy="18" r="17" fill="none" stroke="rgba(160,195,240,0.5)" strokeWidth="1.6" />
                   <circle className="ed-wave ed-w4" cx="18" cy="18" r="14.3" fill="none" stroke="rgba(160,195,240,0.3)" strokeWidth="1.1" />
                   <circle className="ed-wave ed-w3" cx="18" cy="18" r="12" fill="none" stroke="rgba(160,195,240,0.22)" strokeWidth="0.85" />
                   <circle className="ed-wave ed-w2" cx="18" cy="18" r="10" fill="none" stroke="rgba(160,195,240,0.15)" strokeWidth="0.6" />
