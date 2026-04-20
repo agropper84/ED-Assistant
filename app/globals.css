@@ -165,16 +165,16 @@ button, .btn {
 
 /* Outer 5 rings flash then fade — traveling highlight */
 .ed-icon-btn:hover .ed-wave {
-  animation: edFlash 0.28s ease-in-out;
+  animation: edFlash 0.5s ease-in-out;
 }
 .ed-icon-btn:hover .ed-w6 { animation-delay: 0s; }
-.ed-icon-btn:hover .ed-w5 { animation-delay: 0.1s; }
-.ed-icon-btn:hover .ed-w4 { animation-delay: 0.2s; }
-.ed-icon-btn:hover .ed-w3 { animation-delay: 0.3s; }
-.ed-icon-btn:hover .ed-w2 { animation-delay: 0.4s; }
+.ed-icon-btn:hover .ed-w5 { animation-delay: 0.25s; }
+.ed-icon-btn:hover .ed-w4 { animation-delay: 0.5s; }
+.ed-icon-btn:hover .ed-w3 { animation-delay: 0.75s; }
+.ed-icon-btn:hover .ed-w2 { animation-delay: 1s; }
 /* Innermost ring holds bright — sound has arrived */
 .ed-icon-btn:hover .ed-w1 {
-  animation: edFlashHold 0.28s ease-out 0.5s forwards;
+  animation: edFlashHold 0.5s ease-out 1.25s forwards;
 }
 
 @keyframes edFlash {
@@ -189,7 +189,7 @@ button, .btn {
 /* Bell responds once sound arrives */
 .ed-icon-btn .ed-bell-rim { will-change: stroke-width; }
 .ed-icon-btn:hover .ed-bell-rim {
-  animation: edBellPulse 0.4s ease-out 0.65s forwards;
+  animation: edBellPulse 0.5s ease-out 1.5s forwards;
 }
 
 @keyframes edBellPulse {
