@@ -1147,7 +1147,7 @@ export default function HomePage() {
               >
                 <svg width="28" height="28" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
                   {/* Bell — outer rim */}
-                  <circle cx="10.5" cy="18" r="7.8" fill="none" stroke="rgba(255,255,255,0.95)" strokeWidth="2.2" />
+                  <circle className="ed-bell-rim" cx="10.5" cy="18" r="7.8" fill="none" stroke="rgba(255,255,255,0.95)" strokeWidth="2.2" />
                   {/* Bell — inner diaphragm ring */}
                   <circle cx="10.5" cy="18" r="5" fill="none" stroke="rgba(255,255,255,0.25)" strokeWidth="0.8" />
                   {/* Bell — stem nub */}
