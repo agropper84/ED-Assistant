@@ -170,6 +170,7 @@ export default function PatientPage() {
         body: JSON.stringify({
           rowIndex: parseInt(rowIndex),
           sheetName,
+          patientName: patient?.name,
           modifications: mods,
           settings,
           promptTemplates: getEffectivePromptTemplates(),
@@ -197,7 +198,7 @@ export default function PatientPage() {
       await fetch(`/api/patients/${rowIndex}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ [field]: value, _sheetName: sheetName }),
+        body: JSON.stringify({ [field]: value, _sheetName: sheetName, _patientName: patient?.name }),
       });
       await fetchPatient();
     } catch (error) {
@@ -215,6 +216,7 @@ export default function PatientPage() {
           _billingItems: items,
           ...(comments !== undefined ? { comments } : {}),
           _sheetName: sheetName,
+          _patientName: patient?.name,
         }),
       });
     } catch (error) {
@@ -264,6 +266,7 @@ export default function PatientPage() {
       body: JSON.stringify({
         rowIndex: parseInt(rowIndex),
         sheetName,
+        patientName: patient?.name,
         section,
         updates,
       }),
@@ -281,7 +284,7 @@ export default function PatientPage() {
       const res = await fetch('/api/synopsis', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ rowIndex: parseInt(rowIndex), sheetName }),
+        body: JSON.stringify({ rowIndex: parseInt(rowIndex), sheetName, patientName: patient?.name }),
       });
       if (res.ok) {
         await fetchPatient();
@@ -299,7 +302,7 @@ export default function PatientPage() {
       const res = await fetch('/api/profile', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ rowIndex: parseInt(rowIndex), sheetName }),
+        body: JSON.stringify({ rowIndex: parseInt(rowIndex), sheetName, patientName: patient?.name }),
       });
       if (res.ok) {
         const data = await res.json();
@@ -318,21 +321,22 @@ export default function PatientPage() {
     setUpdatingAnalysis(true);
     try {
       // Regenerate synopsis, profile, and DDx/management/evidence in parallel
+      const pName = patient?.name;
       await Promise.all([
         fetch('/api/synopsis', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ rowIndex: parseInt(rowIndex), sheetName }),
+          body: JSON.stringify({ rowIndex: parseInt(rowIndex), sheetName, patientName: pName }),
         }),
         fetch('/api/profile', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ rowIndex: parseInt(rowIndex), sheetName }),
+          body: JSON.stringify({ rowIndex: parseInt(rowIndex), sheetName, patientName: pName }),
         }),
         fetch('/api/analysis', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ rowIndex: parseInt(rowIndex), sheetName }),
+          body: JSON.stringify({ rowIndex: parseInt(rowIndex), sheetName, patientName: pName }),
         }),
       ]);
 
