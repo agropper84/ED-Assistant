@@ -156,25 +156,25 @@ button, .btn {
 /* Stethoscope icon — cascading highlight on hover */
 .ed-icon-btn .ed-wave { will-change: opacity; }
 
-.ed-w1 { --w-rest: 0.10; --w-peak: 1;    --w-dim: 0.06; }
-.ed-w2 { --w-rest: 0.16; --w-peak: 0.92; --w-dim: 0.06; }
-.ed-w3 { --w-rest: 0.24; --w-peak: 0.82; --w-dim: 0.06; }
-.ed-w4 { --w-rest: 0.33; --w-peak: 0.72; --w-dim: 0.06; }
-.ed-w5 { --w-rest: 0.42; --w-peak: 0.62; --w-dim: 0.06; }
-.ed-w6 { --w-rest: 0.52; --w-peak: 0.58; --w-dim: 0.06; }
+.ed-w1 { --w-rest: 0.10; --w-peak: 0.52; --w-dim: 0.06; }
+.ed-w2 { --w-rest: 0.16; --w-peak: 0.52; --w-dim: 0.06; }
+.ed-w3 { --w-rest: 0.24; --w-peak: 0.52; --w-dim: 0.06; }
+.ed-w4 { --w-rest: 0.33; --w-peak: 0.52; --w-dim: 0.06; }
+.ed-w5 { --w-rest: 0.42; --w-peak: 0.52; --w-dim: 0.06; }
+.ed-w6 { --w-rest: 0.52; --w-peak: 0.52; --w-dim: 0.06; }
 
 /* Flash then dim — stays subtle via forwards */
 .ed-icon-btn:hover .ed-wave {
-  animation: edFlash 0.8s ease-in-out forwards;
+  animation: edFlash 1s ease-in-out forwards;
 }
 .ed-icon-btn:hover .ed-w6 { animation-delay: 0s; }
-.ed-icon-btn:hover .ed-w5 { animation-delay: 0.4s; }
-.ed-icon-btn:hover .ed-w4 { animation-delay: 0.8s; }
-.ed-icon-btn:hover .ed-w3 { animation-delay: 1.2s; }
-.ed-icon-btn:hover .ed-w2 { animation-delay: 1.6s; }
-/* Innermost holds bright — sound captured */
+.ed-icon-btn:hover .ed-w5 { animation-delay: 0.6s; }
+.ed-icon-btn:hover .ed-w4 { animation-delay: 1.2s; }
+.ed-icon-btn:hover .ed-w3 { animation-delay: 1.8s; }
+.ed-icon-btn:hover .ed-w2 { animation-delay: 2.4s; }
+/* Innermost holds at same brightness — sound captured */
 .ed-icon-btn:hover .ed-w1 {
-  animation: edFlashHold 0.6s ease-out 2.0s forwards;
+  animation: edFlashHold 0.8s ease-out 3.0s forwards;
 }
 
 @keyframes edFlash {
@@ -190,7 +190,7 @@ button, .btn {
 /* Bell responds once sound arrives */
 .ed-icon-btn .ed-bell-rim { will-change: stroke-width; }
 .ed-icon-btn:hover .ed-bell-rim {
-  animation: edBellPulse 0.5s ease-out 2.3s forwards;
+  animation: edBellPulse 0.5s ease-out 3.5s forwards;
 }
 
 @keyframes edBellPulse {
