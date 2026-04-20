@@ -155,9 +155,9 @@ button, .btn {
 
 /* Stethoscope icon — wave pulse on hover */
 .ed-icon-btn .ed-wave { will-change: opacity, transform; }
-.ed-w1 { --w-rest: 0.65; --w-peak: 1;   --w-dx: -1px; }
-.ed-w2 { --w-rest: 0.3;  --w-peak: 0.7; --w-dx: -2px; }
-.ed-w3 { --w-rest: 0.1;  --w-peak: 0.4; --w-dx: -3px; }
+.ed-w1 { --w-rest: 0.15; --w-peak: 0.5; --w-dx: -1px; }
+.ed-w2 { --w-rest: 0.35; --w-peak: 0.7; --w-dx: -2px; }
+.ed-w3 { --w-rest: 0.6;  --w-peak: 1;   --w-dx: -3px; }
 
 .ed-icon-btn:hover .ed-wave {
   animation: edPulse 1.8s ease-in-out infinite;
