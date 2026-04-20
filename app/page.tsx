@@ -1146,25 +1146,14 @@ export default function HomePage() {
                 title="Menu"
               >
                 <svg width="24" height="24" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <defs>
-                    <radialGradient id="ed-bell" cx="0.40" cy="0.36" r="0.52">
-                      <stop offset="0%" stopColor="#eef4fb" />
-                      <stop offset="50%" stopColor="#b0c5db" />
-                      <stop offset="100%" stopColor="#5d7d9a" />
-                    </radialGradient>
-                  </defs>
-                  {/* Ripples — expanding outward */}
-                  <circle cx="18" cy="18" r="17" fill="none" stroke="rgba(160,195,235,0.07)" strokeWidth="0.5" />
-                  <circle cx="18" cy="18" r="14.5" fill="none" stroke="rgba(160,195,235,0.14)" strokeWidth="0.6" />
-                  <circle cx="18" cy="18" r="12.5" fill="none" stroke="rgba(160,195,235,0.22)" strokeWidth="0.7" />
-                  {/* Bell face — polished 3D dome */}
-                  <circle cx="18" cy="18" r="10" fill="url(#ed-bell)" />
-                  {/* Diaphragm ring */}
-                  <circle cx="18" cy="18" r="6.5" fill="none" stroke="rgba(200,220,245,0.12)" strokeWidth="0.5" />
-                  {/* Specular catchlight */}
-                  <ellipse cx="14.5" cy="14" rx="4" ry="2.2" fill="rgba(255,255,255,0.2)" transform="rotate(-30 14.5 14)" />
-                  {/* Center hub — warm amber */}
-                  <circle cx="18" cy="18" r="2.5" fill="#d4a04a" opacity="0.92" />
+                  {/* Bell — stroke only, negative space interior */}
+                  <circle cx="12" cy="18" r="6" fill="none" stroke="rgba(255,255,255,0.9)" strokeWidth="1.8" />
+                  {/* Amber center */}
+                  <circle cx="12" cy="18" r="1.5" fill="#d4a04a" />
+                  {/* Waves — fanning outward, fading */}
+                  <path d="M18.4,10.3 A10,10 0 0 1 18.4,25.7" fill="none" stroke="rgba(255,255,255,0.5)" strokeWidth="1.5" strokeLinecap="round" />
+                  <path d="M20.3,6.1 A14.5,14.5 0 0 1 20.3,29.9" fill="none" stroke="rgba(255,255,255,0.28)" strokeWidth="1.2" strokeLinecap="round" />
+                  <path d="M21.5,1.5 A19,19 0 0 1 21.5,34.5" fill="none" stroke="rgba(255,255,255,0.12)" strokeWidth="1" strokeLinecap="round" />
                 </svg>
               </button>
               <h1 className="text-[17px] font-bold tracking-[-0.02em]" style={{ color: 'var(--dash-text)' }}>ER Dashboard</h1>
