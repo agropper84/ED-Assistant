@@ -1152,10 +1152,10 @@ export default function HomePage() {
                   <circle cx="10.5" cy="18" r="5" fill="none" stroke="rgba(255,255,255,0.25)" strokeWidth="0.8" />
                   {/* Bell — stem nub */}
                   <circle cx="10.5" cy="18" r="1.8" fill="rgba(255,255,255,0.9)" />
-                  {/* Waves — classes for hover animation */}
-                  <path className="ed-wave ed-w1" d="M19.5,8.5 A11,11 0 0 1 19.5,27.5" fill="none" stroke="white" strokeWidth="1.8" strokeLinecap="round" opacity="0.65" />
-                  <path className="ed-wave ed-w2" d="M23,4 A16,16 0 0 1 23,32" fill="none" stroke="white" strokeWidth="1.2" strokeLinecap="round" opacity="0.3" />
-                  <path className="ed-wave ed-w3" d="M26,1 A20.5,20.5 0 0 1 26,35" fill="none" stroke="white" strokeWidth="0.7" strokeLinecap="round" opacity="0.1" />
+                  {/* Waves — arcs curve inward toward bell, weight decreases toward bell */}
+                  <path className="ed-wave ed-w1" d="M19.5,8.5 A11,11 0 0 0 19.5,27.5" fill="none" stroke="white" strokeWidth="0.7" strokeLinecap="round" opacity="0.1" />
+                  <path className="ed-wave ed-w2" d="M23,4 A16,16 0 0 0 23,32" fill="none" stroke="white" strokeWidth="1.2" strokeLinecap="round" opacity="0.3" />
+                  <path className="ed-wave ed-w3" d="M26,1 A20.5,20.5 0 0 0 26,35" fill="none" stroke="white" strokeWidth="1.8" strokeLinecap="round" opacity="0.65" />
                 </svg>
               </button>
               <h1 className="text-[17px] font-bold tracking-[-0.02em]" style={{ color: 'var(--dash-text)' }}>ER Dashboard</h1>
