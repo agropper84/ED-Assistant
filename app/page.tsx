@@ -1163,6 +1163,12 @@ export default function HomePage() {
                   <circle cx="18" cy="18" r="3.4" fill="none" stroke="rgba(255,255,255,0.13)" strokeWidth="0.5" />
                   <ellipse cx="16.5" cy="16.2" rx="2.8" ry="1.6" fill="rgba(255,255,255,0.06)" transform="rotate(-25 16.5 16.2)" />
                   <circle cx="18" cy="18" r="1.2" fill="rgba(255,255,255,0.85)" />
+                  {/* Tube — draws from bell outward after pulse */}
+                  <path className="ed-tube" d="M18,12 C16.5,8 14,5.5 12,5.5" fill="none" stroke="rgba(255,255,255,0.6)" strokeWidth="1.1" strokeLinecap="round" strokeDasharray="30" strokeDashoffset="30" />
+                  <path className="ed-tube" d="M18,12 C19.5,8 22,5.5 24,5.5" fill="none" stroke="rgba(255,255,255,0.6)" strokeWidth="1.1" strokeLinecap="round" strokeDasharray="30" strokeDashoffset="30" />
+                  {/* Ear tips */}
+                  <circle className="ed-ear" cx="12" cy="5.5" r="0.9" fill="rgba(255,255,255,0.5)" opacity="0" />
+                  <circle className="ed-ear" cx="24" cy="5.5" r="0.9" fill="rgba(255,255,255,0.5)" opacity="0" />
                 </svg>
               </button>
               <h1 className="text-[17px] font-bold tracking-[-0.02em]" style={{ color: 'var(--dash-text)' }}>ER Dashboard</h1>
