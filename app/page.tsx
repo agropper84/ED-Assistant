@@ -1146,16 +1146,17 @@ export default function HomePage() {
                 title="Menu"
               >
                 <svg width="28" height="28" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  {/* Waves — full circles, strongest outside, fading inward */}
-                  <circle className="ed-wave ed-w3" cx="18" cy="18" r="16.5" fill="none" stroke="white" strokeWidth="1.6" opacity="0.5" />
-                  <circle className="ed-wave ed-w2" cx="18" cy="18" r="13" fill="none" stroke="white" strokeWidth="1.1" opacity="0.25" />
-                  <circle className="ed-wave ed-w1" cx="18" cy="18" r="10" fill="none" stroke="white" strokeWidth="0.6" opacity="0.1" />
+                  {/* Waves — 4 concentric rings, bold outside → ghost inside */}
+                  <circle className="ed-wave ed-w4" cx="18" cy="18" r="17" fill="none" stroke="white" strokeWidth="2" opacity="0.65" />
+                  <circle className="ed-wave ed-w3" cx="18" cy="18" r="14.2" fill="none" stroke="white" strokeWidth="1.4" opacity="0.38" />
+                  <circle className="ed-wave ed-w2" cx="18" cy="18" r="11.6" fill="none" stroke="white" strokeWidth="0.9" opacity="0.18" />
+                  <circle className="ed-wave ed-w1" cx="18" cy="18" r="9.2" fill="none" stroke="white" strokeWidth="0.5" opacity="0.07" />
                   {/* Bell — outer rim */}
-                  <circle className="ed-bell-rim" cx="18" cy="18" r="6.5" fill="none" stroke="rgba(255,255,255,0.95)" strokeWidth="2.2" />
+                  <circle className="ed-bell-rim" cx="18" cy="18" r="6.2" fill="none" stroke="rgba(255,255,255,0.95)" strokeWidth="2.5" />
                   {/* Bell — inner diaphragm ring */}
-                  <circle cx="18" cy="18" r="4" fill="none" stroke="rgba(255,255,255,0.25)" strokeWidth="0.7" />
+                  <circle cx="18" cy="18" r="3.8" fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth="0.6" />
                   {/* Bell — stem nub */}
-                  <circle cx="18" cy="18" r="1.5" fill="rgba(255,255,255,0.9)" />
+                  <circle cx="18" cy="18" r="1.4" fill="rgba(255,255,255,0.9)" />
                 </svg>
               </button>
               <h1 className="text-[17px] font-bold tracking-[-0.02em]" style={{ color: 'var(--dash-text)' }}>ER Dashboard</h1>
