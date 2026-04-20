@@ -851,43 +851,58 @@ export function VoiceRecorder({
           let transcript = '';
           let blobUrl = '';
 
-          // Step 1: Encrypt and upload ALL recordings to Blob (backup)
-          if (encryptionKey) {
+          // Step 1: Backup to Blob (server-side upload, non-blocking for small files)
+          if (encryptionKey && !isLarge) {
+            // Fire-and-forget backup for small files
             try {
-              console.log(`[Encounter] Encrypting ${sizeMB}MB...`);
+              encryptAudioBlob(fullBlob, encryptionKey).then(({ encrypted, ivBase64 }) => {
+                const formData = new FormData();
+                formData.append('audio', encrypted, `encounter-${Date.now()}.enc`);
+                fetch('/api/backup-audio', { method: 'POST', body: formData })
+                  .then(r => r.ok ? r.json() : null)
+                  .then(data => {
+                    if (data?.url) {
+                      blobUrl = data.url;
+                      console.log(`[Encounter] Blob backup: ${blobUrl}`);
+                      onBlobBackup?.(blobUrl, ivBase64, mimeType);
+                    }
+                  }).catch(() => {});
+              }).catch(() => {});
+            } catch {}
+          }
+
+          // Step 2: For large files, encrypt + upload + server transcribe
+          if (isLarge && encryptionKey) {
+            try {
+              console.log(`[Encounter] Large file (${sizeMB}MB) — encrypting for server transcription...`);
               const { encrypted, ivBase64 } = await encryptAudioBlob(fullBlob, encryptionKey);
-              console.log(`[Encounter] Uploading encrypted blob (${(encrypted.size / 1024).toFixed(0)}KB)...`);
 
-              // Client-side upload via Vercel Blob (no size limit)
-              const { upload } = await import('@vercel/blob/client');
-              const result = await upload(
-                `encounter-audio/${Date.now()}.enc`,
-                encrypted,
-                { access: 'public', handleUploadUrl: '/api/blob-upload-token' }
-              );
-              blobUrl = result.url;
-              console.log(`[Encounter] Blob backup: ${blobUrl}`);
-              onBlobBackup?.(blobUrl, ivBase64, mimeType);
+              // Upload via server-side backup endpoint
+              const formData = new FormData();
+              formData.append('audio', encrypted, `encounter-${Date.now()}.enc`);
+              const uploadRes = await fetch('/api/backup-audio', { method: 'POST', body: formData });
 
-              // Step 2: For large files, use server-side transcription from Blob
-              if (isLarge) {
-                console.log(`[Encounter] Large file (${sizeMB}MB) — server-side transcription`);
+              if (uploadRes.ok) {
+                const { url } = await uploadRes.json();
+                blobUrl = url;
+                onBlobBackup?.(blobUrl, ivBase64, mimeType);
+
+                // Server-side transcription from blob
                 const res = await fetch('/api/transcribe-server', {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ blobUrl, iv: ivBase64, contentType: mimeType }),
+                  body: JSON.stringify({ blobUrl: url, iv: ivBase64, contentType: mimeType }),
                 });
                 if (res.ok) {
                   const data = await res.json();
                   transcript = data.text?.trim() || '';
                   console.log(`[Encounter] Server transcript: ${transcript.length} chars`);
                 } else {
-                  const err = await res.text().catch(() => '');
-                  console.warn(`[Encounter] Server transcription failed: ${res.status}`, err);
+                  console.warn(`[Encounter] Server transcription failed, falling back to segments`);
                 }
               }
             } catch (e) {
-              console.warn('[Encounter] Blob backup/encryption failed:', e);
+              console.warn('[Encounter] Large file server path failed:', e);
             }
           }
 
