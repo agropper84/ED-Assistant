@@ -1147,15 +1147,15 @@ export default function HomePage() {
               >
                 <svg width="28" height="28" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
                   {/* Bell — outer rim */}
-                  <circle cx="11" cy="18" r="7.5" fill="none" stroke="rgba(255,255,255,0.85)" strokeWidth="1.6" />
+                  <circle cx="10.5" cy="18" r="7.8" fill="none" stroke="rgba(255,255,255,0.95)" strokeWidth="2.2" />
                   {/* Bell — inner diaphragm ring */}
-                  <circle cx="11" cy="18" r="5" fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth="0.7" />
+                  <circle cx="10.5" cy="18" r="5" fill="none" stroke="rgba(255,255,255,0.25)" strokeWidth="0.8" />
                   {/* Bell — stem nub */}
-                  <circle cx="11" cy="18" r="1.6" fill="rgba(255,255,255,0.8)" />
-                  {/* Waves — fanning arcs, progressive fade */}
-                  <path d="M19,9 A10.5,10.5 0 0 1 19,27" fill="none" stroke="rgba(255,255,255,0.45)" strokeWidth="1.4" strokeLinecap="round" />
-                  <path d="M22,4.5 A15.5,15.5 0 0 1 22,31.5" fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth="1.1" strokeLinecap="round" />
-                  <path d="M24.5,0.5 A20,20 0 0 1 24.5,35.5" fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="0.8" strokeLinecap="round" />
+                  <circle cx="10.5" cy="18" r="1.8" fill="rgba(255,255,255,0.9)" />
+                  {/* Waves — strong near bell, gracefully diminishing */}
+                  <path d="M19.5,8.5 A11,11 0 0 1 19.5,27.5" fill="none" stroke="rgba(255,255,255,0.65)" strokeWidth="1.8" strokeLinecap="round" />
+                  <path d="M23,4 A16,16 0 0 1 23,32" fill="none" stroke="rgba(255,255,255,0.3)" strokeWidth="1.2" strokeLinecap="round" />
+                  <path d="M26,1 A20.5,20.5 0 0 1 26,35" fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="0.7" strokeLinecap="round" />
                 </svg>
               </button>
               <h1 className="text-[17px] font-bold tracking-[-0.02em]" style={{ color: 'var(--dash-text)' }}>ER Dashboard</h1>
