@@ -1146,12 +1146,12 @@ export default function HomePage() {
                 title="Menu"
               >
                 <svg width="28" height="28" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  {/* Sound waves — 5 rings, all visible, bold outside → thin inside */}
+                  {/* Sound waves — gaps compress toward bell: 3.2 → 2.6 → 2 → 1.5 */}
                   <circle className="ed-wave ed-w5" cx="18" cy="18" r="17" fill="none" stroke="rgba(200,220,255,0.6)" strokeWidth="1.6" />
-                  <circle className="ed-wave ed-w4" cx="18" cy="18" r="14.8" fill="none" stroke="rgba(200,220,255,0.45)" strokeWidth="1.3" />
-                  <circle className="ed-wave ed-w3" cx="18" cy="18" r="12.6" fill="none" stroke="rgba(200,220,255,0.32)" strokeWidth="1.0" />
-                  <circle className="ed-wave ed-w2" cx="18" cy="18" r="10.6" fill="none" stroke="rgba(200,220,255,0.22)" strokeWidth="0.7" />
-                  <circle className="ed-wave ed-w1" cx="18" cy="18" r="8.8" fill="none" stroke="rgba(200,220,255,0.14)" strokeWidth="0.5" />
+                  <circle className="ed-wave ed-w4" cx="18" cy="18" r="13.8" fill="none" stroke="rgba(200,220,255,0.45)" strokeWidth="1.3" />
+                  <circle className="ed-wave ed-w3" cx="18" cy="18" r="11.2" fill="none" stroke="rgba(200,220,255,0.32)" strokeWidth="1.0" />
+                  <circle className="ed-wave ed-w2" cx="18" cy="18" r="9.2" fill="none" stroke="rgba(200,220,255,0.22)" strokeWidth="0.7" />
+                  <circle className="ed-wave ed-w1" cx="18" cy="18" r="7.7" fill="none" stroke="rgba(200,220,255,0.14)" strokeWidth="0.5" />
                   {/* Bell — solid object, warm white, subtle fill to distinguish from waves */}
                   <circle cx="18" cy="18" r="6" fill="rgba(255,255,255,0.03)" stroke="white" strokeWidth="2.5" className="ed-bell-rim" />
                   <circle cx="18" cy="18" r="3.5" fill="none" stroke="rgba(255,255,255,0.18)" strokeWidth="0.6" />

@@ -159,11 +159,11 @@ button, .btn {
   transform-origin: center;
   transform-box: fill-box;
 }
-.ed-w1 { --w-rest: 0.14; --w-peak: 0.4;  --w-shrink: 0.93; }
-.ed-w2 { --w-rest: 0.22; --w-peak: 0.5;  --w-shrink: 0.94; }
-.ed-w3 { --w-rest: 0.32; --w-peak: 0.6;  --w-shrink: 0.95; }
-.ed-w4 { --w-rest: 0.45; --w-peak: 0.75; --w-shrink: 0.96; }
-.ed-w5 { --w-rest: 0.6;  --w-peak: 1;    --w-shrink: 0.97; }
+.ed-w1 { --w-rest: 0.14; --w-peak: 0.45; --w-shrink: 0.88; }
+.ed-w2 { --w-rest: 0.22; --w-peak: 0.55; --w-shrink: 0.86; }
+.ed-w3 { --w-rest: 0.32; --w-peak: 0.65; --w-shrink: 0.85; }
+.ed-w4 { --w-rest: 0.45; --w-peak: 0.8;  --w-shrink: 0.84; }
+.ed-w5 { --w-rest: 0.6;  --w-peak: 1;    --w-shrink: 0.83; }
 
 .ed-icon-btn:hover .ed-wave {
   animation: edPulse 2s ease-in-out infinite;
