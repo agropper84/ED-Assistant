@@ -154,10 +154,14 @@ button, .btn {
 }
 
 /* Stethoscope icon — wave pulse on hover */
-.ed-icon-btn .ed-wave { will-change: opacity, transform; }
-.ed-w1 { --w-rest: 0.15; --w-peak: 0.5; --w-dx: -1px; }
-.ed-w2 { --w-rest: 0.35; --w-peak: 0.7; --w-dx: -2px; }
-.ed-w3 { --w-rest: 0.6;  --w-peak: 1;   --w-dx: -3px; }
+.ed-icon-btn .ed-wave {
+  will-change: opacity, transform;
+  transform-origin: center;
+  transform-box: fill-box;
+}
+.ed-w1 { --w-rest: 0.1;  --w-peak: 0.45; --w-shrink: 0.94; }
+.ed-w2 { --w-rest: 0.25; --w-peak: 0.65; --w-shrink: 0.95; }
+.ed-w3 { --w-rest: 0.5;  --w-peak: 1;    --w-shrink: 0.96; }
 
 .ed-icon-btn:hover .ed-wave {
   animation: edPulse 1.8s ease-in-out infinite;
@@ -168,11 +172,11 @@ button, .btn {
 @keyframes edPulse {
   0%, 60%, 100% {
     opacity: var(--w-rest);
-    transform: translateX(0);
+    transform: scale(1);
   }
   25% {
     opacity: var(--w-peak);
-    transform: translateX(var(--w-dx));
+    transform: scale(var(--w-shrink));
   }
 }
 
