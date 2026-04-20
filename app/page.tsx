@@ -1146,25 +1146,25 @@ export default function HomePage() {
                 title="Menu"
               >
                 <svg width="28" height="28" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  {/* Sound waves — centered on bell */}
-                  <circle className="ed-wave ed-w6" cx="18" cy="21" r="14.5" fill="none" stroke="rgba(160,195,240,0.5)" strokeWidth="1.6" />
-                  <circle className="ed-wave ed-w5" cx="18" cy="21" r="12.5" fill="none" stroke="rgba(160,195,240,0.38)" strokeWidth="1.25" />
-                  <circle className="ed-wave ed-w4" cx="18" cy="21" r="10.8" fill="none" stroke="rgba(160,195,240,0.28)" strokeWidth="0.95" />
-                  <circle className="ed-wave ed-w3" cx="18" cy="21" r="9.3" fill="none" stroke="rgba(160,195,240,0.2)" strokeWidth="0.7" />
-                  <circle className="ed-wave ed-w2" cx="18" cy="21" r="8" fill="none" stroke="rgba(160,195,240,0.13)" strokeWidth="0.5" />
-                  <circle className="ed-wave ed-w1" cx="18" cy="21" r="6.8" fill="none" stroke="rgba(160,195,240,0.08)" strokeWidth="0.35" />
-                  {/* Bell — smaller, shifted down */}
-                  <circle cx="18" cy="21" r="4.2" fill="rgba(255,255,255,0.03)" stroke="rgba(255,255,255,0.95)" strokeWidth="2" className="ed-bell-rim" />
-                  <circle cx="18" cy="21" r="2.5" fill="none" stroke="rgba(255,255,255,0.13)" strokeWidth="0.4" />
-                  <circle cx="18" cy="21" r="1" fill="rgba(255,255,255,0.85)" />
-                  {/* Tube — draws from bell, splits to earpieces */}
-                  <path className="ed-tube" d="M18,16.8 C17,13 14.5,7 13,5.5" fill="none" stroke="rgba(255,255,255,0.6)" strokeWidth="1.2" strokeLinecap="round" strokeDasharray="30" strokeDashoffset="30" />
-                  <path className="ed-tube" d="M18,16.8 C19,13 21.5,7 23,5.5" fill="none" stroke="rgba(255,255,255,0.6)" strokeWidth="1.2" strokeLinecap="round" strokeDasharray="30" strokeDashoffset="30" />
-                  {/* Headband — arch connecting earpieces */}
-                  <path className="ed-headband" d="M13,5.5 C13,3 15.5,1.5 18,1.5 C20.5,1.5 23,3 23,5.5" fill="none" stroke="rgba(255,255,255,0.6)" strokeWidth="1.2" strokeLinecap="round" strokeDasharray="30" strokeDashoffset="30" />
+                  {/* Sound waves — centered on bell, clip right/bottom */}
+                  <circle className="ed-wave ed-w6" cx="23" cy="24" r="14" fill="none" stroke="rgba(160,195,240,0.5)" strokeWidth="1.6" />
+                  <circle className="ed-wave ed-w5" cx="23" cy="24" r="12" fill="none" stroke="rgba(160,195,240,0.38)" strokeWidth="1.25" />
+                  <circle className="ed-wave ed-w4" cx="23" cy="24" r="10.2" fill="none" stroke="rgba(160,195,240,0.28)" strokeWidth="0.95" />
+                  <circle className="ed-wave ed-w3" cx="23" cy="24" r="8.6" fill="none" stroke="rgba(160,195,240,0.2)" strokeWidth="0.7" />
+                  <circle className="ed-wave ed-w2" cx="23" cy="24" r="7.2" fill="none" stroke="rgba(160,195,240,0.13)" strokeWidth="0.5" />
+                  <circle className="ed-wave ed-w1" cx="23" cy="24" r="6" fill="none" stroke="rgba(160,195,240,0.08)" strokeWidth="0.35" />
+                  {/* Bell — bottom right */}
+                  <circle cx="23" cy="24" r="3.5" fill="rgba(255,255,255,0.03)" stroke="rgba(255,255,255,0.95)" strokeWidth="1.8" className="ed-bell-rim" />
+                  <circle cx="23" cy="24" r="2" fill="none" stroke="rgba(255,255,255,0.13)" strokeWidth="0.35" />
+                  <circle cx="23" cy="24" r="0.8" fill="rgba(255,255,255,0.85)" />
+                  {/* Tube — left side long curve, right side short drop */}
+                  <path className="ed-tube ed-tube-long" d="M11,5 C5,10 3,22 10,29 Q17,34 23,24" fill="none" stroke="rgba(255,255,255,0.6)" strokeWidth="1.1" strokeLinecap="round" strokeDasharray="60" strokeDashoffset="60" />
+                  <path className="ed-tube ed-tube-short" d="M23,5 C27,10 27,18 23,24" fill="none" stroke="rgba(255,255,255,0.6)" strokeWidth="1.1" strokeLinecap="round" strokeDasharray="35" strokeDashoffset="35" />
+                  {/* Headband */}
+                  <path className="ed-headband" d="M11,5 C11,2 14.5,0.5 17,0.5 C19.5,0.5 23,2 23,5" fill="none" stroke="rgba(255,255,255,0.6)" strokeWidth="1.1" strokeLinecap="round" strokeDasharray="30" strokeDashoffset="30" />
                   {/* Ear tips */}
-                  <circle className="ed-ear" cx="13" cy="5.5" r="1.3" fill="rgba(255,255,255,0.55)" opacity="0" />
-                  <circle className="ed-ear" cx="23" cy="5.5" r="1.3" fill="rgba(255,255,255,0.55)" opacity="0" />
+                  <circle className="ed-ear" cx="11" cy="5" r="1.3" fill="rgba(255,255,255,0.55)" opacity="0" />
+                  <circle className="ed-ear" cx="23" cy="5" r="1.3" fill="rgba(255,255,255,0.55)" opacity="0" />
                 </svg>
               </button>
               <h1 className="text-[17px] font-bold tracking-[-0.02em]" style={{ color: 'var(--dash-text)' }}>ER Dashboard</h1>
