@@ -154,7 +154,8 @@ button, .btn {
 }
 
 /* Stethoscope icon — cascading highlight on hover */
-.ed-icon-btn .ed-wave { will-change: opacity; }
+.ed-icon-btn .ed-wave { will-change: opacity; transition: opacity 0.3s ease; }
+.ed-icon-btn:hover .ed-wave { opacity: 0 !important; }
 
 .ed-w1 { --w-rest: 0.12; --w-peak: 0.55; }
 .ed-w2 { --w-rest: 0.18; --w-peak: 0.6; }
@@ -178,12 +179,13 @@ button, .btn {
 }
 
 @keyframes edFlash {
-  0%, 100% { opacity: var(--w-rest); }
-  50% { opacity: var(--w-peak); }
+  0% { opacity: 0; }
+  40% { opacity: var(--w-peak); }
+  100% { opacity: 0; }
 }
 @keyframes edFlashHold {
-  from { opacity: var(--w-rest); }
-  to { opacity: var(--w-peak); }
+  0% { opacity: 0; }
+  100% { opacity: var(--w-peak); }
 }
 
 /* Bell responds once sound arrives */
