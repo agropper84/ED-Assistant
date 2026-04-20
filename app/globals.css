@@ -159,17 +159,19 @@ button, .btn {
   transform-origin: center;
   transform-box: fill-box;
 }
-.ed-w1 { --w-rest: 0.07; --w-peak: 0.35; --w-shrink: 0.93; }
-.ed-w2 { --w-rest: 0.18; --w-peak: 0.5;  --w-shrink: 0.94; }
-.ed-w3 { --w-rest: 0.38; --w-peak: 0.7;  --w-shrink: 0.95; }
-.ed-w4 { --w-rest: 0.65; --w-peak: 1;    --w-shrink: 0.96; }
+.ed-w1 { --w-rest: 0.14; --w-peak: 0.4;  --w-shrink: 0.93; }
+.ed-w2 { --w-rest: 0.22; --w-peak: 0.5;  --w-shrink: 0.94; }
+.ed-w3 { --w-rest: 0.32; --w-peak: 0.6;  --w-shrink: 0.95; }
+.ed-w4 { --w-rest: 0.45; --w-peak: 0.75; --w-shrink: 0.96; }
+.ed-w5 { --w-rest: 0.6;  --w-peak: 1;    --w-shrink: 0.97; }
 
 .ed-icon-btn:hover .ed-wave {
   animation: edPulse 2s ease-in-out infinite;
 }
-.ed-icon-btn:hover .ed-w1 { animation-delay: 0.48s; }
-.ed-icon-btn:hover .ed-w2 { animation-delay: 0.32s; }
-.ed-icon-btn:hover .ed-w3 { animation-delay: 0.16s; }
+.ed-icon-btn:hover .ed-w1 { animation-delay: 0.52s; }
+.ed-icon-btn:hover .ed-w2 { animation-delay: 0.39s; }
+.ed-icon-btn:hover .ed-w3 { animation-delay: 0.26s; }
+.ed-icon-btn:hover .ed-w4 { animation-delay: 0.13s; }
 
 @keyframes edPulse {
   0%, 60%, 100% {
@@ -185,7 +187,7 @@ button, .btn {
 /* Bell reacts after waves arrive */
 .ed-icon-btn .ed-bell-rim { will-change: stroke-width; }
 .ed-icon-btn:hover .ed-bell-rim {
-  animation: edBellPulse 2s ease-in-out 0.6s infinite;
+  animation: edBellPulse 2s ease-in-out 0.65s infinite;
 }
 
 @keyframes edBellPulse {
