@@ -155,41 +155,41 @@ button, .btn {
 
 /* Stethoscope icon — cascading highlight on hover */
 .ed-icon-btn .ed-wave {
-  will-change: opacity;
-  transition: opacity 0.6s ease;
+  will-change: opacity, stroke-width;
+  transition: opacity 0.6s ease, stroke-width 0.6s ease;
 }
 
-.ed-w1 { --w-rest: 0.10; --w-peak: 0.52; --w-dim: 0.05; }
-.ed-w2 { --w-rest: 0.16; --w-peak: 0.52; --w-dim: 0.05; }
-.ed-w3 { --w-rest: 0.24; --w-peak: 0.52; --w-dim: 0.05; }
-.ed-w4 { --w-rest: 0.33; --w-peak: 0.52; --w-dim: 0.05; }
-.ed-w5 { --w-rest: 0.42; --w-peak: 0.52; --w-dim: 0.05; }
-.ed-w6 { --w-rest: 0.52; --w-peak: 0.52; --w-dim: 0.05; }
+.ed-w1 { --w-rest: 0.08; --w-peak: 0.52; --w-dim: 0.04; --sw-rest: 0.35; --sw-peak: 1.6; --sw-dim: 0.2; }
+.ed-w2 { --w-rest: 0.14; --w-peak: 0.52; --w-dim: 0.04; --sw-rest: 0.55; --sw-peak: 1.6; --sw-dim: 0.2; }
+.ed-w3 { --w-rest: 0.22; --w-peak: 0.52; --w-dim: 0.04; --sw-rest: 0.8;  --sw-peak: 1.6; --sw-dim: 0.2; }
+.ed-w4 { --w-rest: 0.30; --w-peak: 0.52; --w-dim: 0.04; --sw-rest: 1.05; --sw-peak: 1.6; --sw-dim: 0.2; }
+.ed-w5 { --w-rest: 0.40; --w-peak: 0.52; --w-dim: 0.04; --sw-rest: 1.3;  --sw-peak: 1.6; --sw-dim: 0.2; }
+.ed-w6 { --w-rest: 0.50; --w-peak: 0.52; --w-dim: 0.04; --sw-rest: 1.6;  --sw-peak: 1.6; --sw-dim: 0.2; }
 
-/* Flash then dim — quick attack, brief hold, slow fade */
+/* Overlapping flashes — smooth traveling wave */
 .ed-icon-btn:hover .ed-wave {
-  animation: edFlash 1.1s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  animation: edFlash 0.8s cubic-bezier(0.4, 0, 0.2, 1) forwards;
 }
 .ed-icon-btn:hover .ed-w6 { animation-delay: 0s; }
-.ed-icon-btn:hover .ed-w5 { animation-delay: 0.6s; }
-.ed-icon-btn:hover .ed-w4 { animation-delay: 1.2s; }
-.ed-icon-btn:hover .ed-w3 { animation-delay: 1.8s; }
-.ed-icon-btn:hover .ed-w2 { animation-delay: 2.4s; }
+.ed-icon-btn:hover .ed-w5 { animation-delay: 0.3s; }
+.ed-icon-btn:hover .ed-w4 { animation-delay: 0.6s; }
+.ed-icon-btn:hover .ed-w3 { animation-delay: 0.9s; }
+.ed-icon-btn:hover .ed-w2 { animation-delay: 1.2s; }
 /* Innermost holds — sound captured */
 .ed-icon-btn:hover .ed-w1 {
-  animation: edFlashHold 0.8s cubic-bezier(0.4, 0, 0.2, 1) 3.0s forwards;
+  animation: edFlashHold 0.6s cubic-bezier(0.4, 0, 0.2, 1) 1.5s forwards;
 }
 
 @keyframes edFlash {
-  0%   { opacity: var(--w-rest); }
-  18%  { opacity: var(--w-peak); }
-  35%  { opacity: var(--w-peak); }
-  100% { opacity: var(--w-dim); }
+  0%   { opacity: var(--w-rest); stroke-width: var(--sw-rest); }
+  25%  { opacity: var(--w-peak); stroke-width: var(--sw-peak); }
+  45%  { opacity: var(--w-peak); stroke-width: var(--sw-peak); }
+  100% { opacity: var(--w-dim);  stroke-width: var(--sw-dim); }
 }
 @keyframes edFlashHold {
-  0%   { opacity: var(--w-rest); }
-  40%  { opacity: var(--w-peak); }
-  100% { opacity: var(--w-peak); }
+  0%   { opacity: var(--w-rest); stroke-width: var(--sw-rest); }
+  40%  { opacity: var(--w-peak); stroke-width: var(--sw-peak); }
+  100% { opacity: var(--w-peak); stroke-width: var(--sw-peak); }
 }
 
 /* Bell responds once sound arrives */
@@ -198,13 +198,13 @@ button, .btn {
   transition: stroke-width 0.6s ease, opacity 0.6s ease;
 }
 .ed-icon-btn:hover .ed-bell-rim {
-  animation: edBellPulse 0.7s cubic-bezier(0.16, 1, 0.3, 1) 3.4s forwards;
+  animation: edBellPulse 0.6s cubic-bezier(0.16, 1, 0.3, 1) 1.8s forwards;
 }
 
 @keyframes edBellPulse {
   0%   { stroke-width: 2.4; stroke-opacity: 0.95; }
-  50%  { stroke-width: 3.4; stroke-opacity: 1; }
-  100% { stroke-width: 3.0; stroke-opacity: 1; }
+  50%  { stroke-width: 3.2; stroke-opacity: 1; }
+  100% { stroke-width: 2.8; stroke-opacity: 1; }
 }
 
 /* Shift time selects — translucent, inside header gradient */

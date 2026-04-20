@@ -1152,17 +1152,17 @@ export default function HomePage() {
                       <stop offset="100%" stopColor="rgba(255,255,255,0.02)" />
                     </radialGradient>
                   </defs>
-                  {/* Sound waves — cool blue, compress toward bell */}
+                  {/* Sound waves — 6 rings, evenly spaced */}
                   <circle className="ed-wave ed-w6" cx="18" cy="18" r="17" fill="none" stroke="rgba(160,195,240,0.5)" strokeWidth="1.6" />
-                  <circle className="ed-wave ed-w4" cx="18" cy="18" r="14.3" fill="none" stroke="rgba(160,195,240,0.3)" strokeWidth="1.1" />
-                  <circle className="ed-wave ed-w3" cx="18" cy="18" r="12" fill="none" stroke="rgba(160,195,240,0.22)" strokeWidth="0.85" />
-                  <circle className="ed-wave ed-w2" cx="18" cy="18" r="10" fill="none" stroke="rgba(160,195,240,0.15)" strokeWidth="0.6" />
-                  <circle className="ed-wave ed-w1" cx="18" cy="18" r="8.3" fill="none" stroke="rgba(160,195,240,0.1)" strokeWidth="0.4" />
-                  {/* Bell — warm white, 3D dome, clearly an object */}
+                  <circle className="ed-wave ed-w5" cx="18" cy="18" r="15.2" fill="none" stroke="rgba(160,195,240,0.4)" strokeWidth="1.3" />
+                  <circle className="ed-wave ed-w4" cx="18" cy="18" r="13.4" fill="none" stroke="rgba(160,195,240,0.3)" strokeWidth="1.05" />
+                  <circle className="ed-wave ed-w3" cx="18" cy="18" r="11.6" fill="none" stroke="rgba(160,195,240,0.22)" strokeWidth="0.8" />
+                  <circle className="ed-wave ed-w2" cx="18" cy="18" r="9.8" fill="none" stroke="rgba(160,195,240,0.14)" strokeWidth="0.55" />
+                  <circle className="ed-wave ed-w1" cx="18" cy="18" r="8" fill="none" stroke="rgba(160,195,240,0.08)" strokeWidth="0.35" />
+                  {/* Bell */}
                   <circle cx="18" cy="18" r="5.5" fill="url(#ed-bell-fill)" stroke="rgba(255,255,255,0.95)" strokeWidth="2.4" className="ed-bell-rim" />
                   <circle cx="18" cy="18" r="3.4" fill="none" stroke="rgba(255,255,255,0.13)" strokeWidth="0.5" />
-                  <ellipse cx="16.5" cy="16.2" rx="2.8" ry="1.6" fill="rgba(255,255,255,0.06)" transform="rotate(-25 16.5 16.2)" />
-                  <circle cx="18" cy="18" r="1.2" fill="rgba(255,255,255,0.85)" />
+                  <circle cx="18" cy="18" r="2.2" fill="rgba(255,255,255,0.85)" />
                 </svg>
               </button>
               <h1 className="text-[17px] font-bold tracking-[-0.02em]" style={{ color: 'var(--dash-text)' }}>ER Dashboard</h1>
