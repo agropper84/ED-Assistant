@@ -1138,7 +1138,7 @@ export default function HomePage() {
             <div className="flex items-center gap-2.5 min-w-0">
               <button
                 onClick={() => setSidebarOpen(true)}
-                className="w-[42px] h-[42px] rounded-[13px] flex items-center justify-center flex-shrink-0 transition-all duration-300 hover:scale-[1.05] active:scale-[0.94]"
+                className="ed-icon-btn w-[42px] h-[42px] rounded-[13px] flex items-center justify-center flex-shrink-0 transition-all duration-300 hover:scale-[1.05] active:scale-[0.94]"
                 style={{
                   background: 'linear-gradient(145deg, rgba(255,255,255,0.07) 0%, rgba(255,255,255,0.02) 100%)',
                   boxShadow: '0 0 0 0.5px rgba(255,255,255,0.09), inset 0 1px 0 rgba(255,255,255,0.06)',
@@ -1152,10 +1152,10 @@ export default function HomePage() {
                   <circle cx="10.5" cy="18" r="5" fill="none" stroke="rgba(255,255,255,0.25)" strokeWidth="0.8" />
                   {/* Bell — stem nub */}
                   <circle cx="10.5" cy="18" r="1.8" fill="rgba(255,255,255,0.9)" />
-                  {/* Waves — strong near bell, gracefully diminishing */}
-                  <path d="M19.5,8.5 A11,11 0 0 1 19.5,27.5" fill="none" stroke="rgba(255,255,255,0.65)" strokeWidth="1.8" strokeLinecap="round" />
-                  <path d="M23,4 A16,16 0 0 1 23,32" fill="none" stroke="rgba(255,255,255,0.3)" strokeWidth="1.2" strokeLinecap="round" />
-                  <path d="M26,1 A20.5,20.5 0 0 1 26,35" fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="0.7" strokeLinecap="round" />
+                  {/* Waves — classes for hover animation */}
+                  <path className="ed-wave ed-w1" d="M19.5,8.5 A11,11 0 0 1 19.5,27.5" fill="none" stroke="white" strokeWidth="1.8" strokeLinecap="round" opacity="0.65" />
+                  <path className="ed-wave ed-w2" d="M23,4 A16,16 0 0 1 23,32" fill="none" stroke="white" strokeWidth="1.2" strokeLinecap="round" opacity="0.3" />
+                  <path className="ed-wave ed-w3" d="M26,1 A20.5,20.5 0 0 1 26,35" fill="none" stroke="white" strokeWidth="0.7" strokeLinecap="round" opacity="0.1" />
                 </svg>
               </button>
               <h1 className="text-[17px] font-bold tracking-[-0.02em]" style={{ color: 'var(--dash-text)' }}>ER Dashboard</h1>
