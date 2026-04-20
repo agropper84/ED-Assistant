@@ -1146,29 +1146,25 @@ export default function HomePage() {
                 title="Menu"
               >
                 <svg width="28" height="28" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <defs>
-                    <radialGradient id="ed-bell-fill" cx="0.42" cy="0.38" r="0.6">
-                      <stop offset="0%" stopColor="rgba(255,255,255,0.08)" />
-                      <stop offset="100%" stopColor="rgba(255,255,255,0.02)" />
-                    </radialGradient>
-                  </defs>
-                  {/* Sound waves — cool blue, compress toward bell */}
-                  <circle className="ed-wave ed-w6" cx="18" cy="18" r="17" fill="none" stroke="rgba(160,195,240,0.5)" strokeWidth="1.6" />
-                  <circle className="ed-wave ed-w4" cx="18" cy="18" r="14.3" fill="none" stroke="rgba(160,195,240,0.3)" strokeWidth="1.1" />
-                  <circle className="ed-wave ed-w3" cx="18" cy="18" r="12" fill="none" stroke="rgba(160,195,240,0.22)" strokeWidth="0.85" />
-                  <circle className="ed-wave ed-w2" cx="18" cy="18" r="10" fill="none" stroke="rgba(160,195,240,0.15)" strokeWidth="0.6" />
-                  <circle className="ed-wave ed-w1" cx="18" cy="18" r="8.3" fill="none" stroke="rgba(160,195,240,0.1)" strokeWidth="0.4" />
-                  {/* Bell — warm white, 3D dome, clearly an object */}
-                  <circle cx="18" cy="18" r="5.5" fill="url(#ed-bell-fill)" stroke="rgba(255,255,255,0.95)" strokeWidth="2.4" className="ed-bell-rim" />
-                  <circle cx="18" cy="18" r="3.4" fill="none" stroke="rgba(255,255,255,0.13)" strokeWidth="0.5" />
-                  <ellipse cx="16.5" cy="16.2" rx="2.8" ry="1.6" fill="rgba(255,255,255,0.06)" transform="rotate(-25 16.5 16.2)" />
-                  <circle cx="18" cy="18" r="1.2" fill="rgba(255,255,255,0.85)" />
-                  {/* Tube — draws from bell outward after pulse */}
-                  <path className="ed-tube" d="M18,12 C16.5,8 14,5.5 12,5.5" fill="none" stroke="rgba(255,255,255,0.6)" strokeWidth="1.1" strokeLinecap="round" strokeDasharray="30" strokeDashoffset="30" />
-                  <path className="ed-tube" d="M18,12 C19.5,8 22,5.5 24,5.5" fill="none" stroke="rgba(255,255,255,0.6)" strokeWidth="1.1" strokeLinecap="round" strokeDasharray="30" strokeDashoffset="30" />
+                  {/* Sound waves — centered on bell */}
+                  <circle className="ed-wave ed-w6" cx="18" cy="21" r="14.5" fill="none" stroke="rgba(160,195,240,0.5)" strokeWidth="1.6" />
+                  <circle className="ed-wave ed-w5" cx="18" cy="21" r="12.5" fill="none" stroke="rgba(160,195,240,0.38)" strokeWidth="1.25" />
+                  <circle className="ed-wave ed-w4" cx="18" cy="21" r="10.8" fill="none" stroke="rgba(160,195,240,0.28)" strokeWidth="0.95" />
+                  <circle className="ed-wave ed-w3" cx="18" cy="21" r="9.3" fill="none" stroke="rgba(160,195,240,0.2)" strokeWidth="0.7" />
+                  <circle className="ed-wave ed-w2" cx="18" cy="21" r="8" fill="none" stroke="rgba(160,195,240,0.13)" strokeWidth="0.5" />
+                  <circle className="ed-wave ed-w1" cx="18" cy="21" r="6.8" fill="none" stroke="rgba(160,195,240,0.08)" strokeWidth="0.35" />
+                  {/* Bell — smaller, shifted down */}
+                  <circle cx="18" cy="21" r="4.2" fill="rgba(255,255,255,0.03)" stroke="rgba(255,255,255,0.95)" strokeWidth="2" className="ed-bell-rim" />
+                  <circle cx="18" cy="21" r="2.5" fill="none" stroke="rgba(255,255,255,0.13)" strokeWidth="0.4" />
+                  <circle cx="18" cy="21" r="1" fill="rgba(255,255,255,0.85)" />
+                  {/* Tube — draws from bell, splits to earpieces */}
+                  <path className="ed-tube" d="M18,16.8 C17,13 14.5,7 13,5.5" fill="none" stroke="rgba(255,255,255,0.6)" strokeWidth="1.2" strokeLinecap="round" strokeDasharray="30" strokeDashoffset="30" />
+                  <path className="ed-tube" d="M18,16.8 C19,13 21.5,7 23,5.5" fill="none" stroke="rgba(255,255,255,0.6)" strokeWidth="1.2" strokeLinecap="round" strokeDasharray="30" strokeDashoffset="30" />
+                  {/* Headband — arch connecting earpieces */}
+                  <path className="ed-headband" d="M13,5.5 C13,3 15.5,1.5 18,1.5 C20.5,1.5 23,3 23,5.5" fill="none" stroke="rgba(255,255,255,0.6)" strokeWidth="1.2" strokeLinecap="round" strokeDasharray="30" strokeDashoffset="30" />
                   {/* Ear tips */}
-                  <circle className="ed-ear" cx="12" cy="5.5" r="0.9" fill="rgba(255,255,255,0.5)" opacity="0" />
-                  <circle className="ed-ear" cx="24" cy="5.5" r="0.9" fill="rgba(255,255,255,0.5)" opacity="0" />
+                  <circle className="ed-ear" cx="13" cy="5.5" r="1.3" fill="rgba(255,255,255,0.55)" opacity="0" />
+                  <circle className="ed-ear" cx="23" cy="5.5" r="1.3" fill="rgba(255,255,255,0.55)" opacity="0" />
                 </svg>
               </button>
               <h1 className="text-[17px] font-bold tracking-[-0.02em]" style={{ color: 'var(--dash-text)' }}>ER Dashboard</h1>
