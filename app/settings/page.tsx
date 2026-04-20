@@ -2435,9 +2435,13 @@ export default function SettingsPage() {
                           newBillingGroup
                         );
                         await loadBillingCodes(billingRegion);
+                        setNewBillingCode('');
+                        setNewBillingDesc('');
+                        setNewBillingFee('');
                         setAddingCode(false);
                       } catch (err) {
                         console.error('Failed to add billing code:', err);
+                        alert('Failed to save billing code. Please try again.');
                       }
                     }}
                     disabled={!newBillingCode.trim() || !newBillingDesc.trim()}
