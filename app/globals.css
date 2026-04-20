@@ -156,23 +156,25 @@ button, .btn {
 /* Stethoscope icon — cascading highlight on hover */
 .ed-icon-btn .ed-wave { will-change: opacity; }
 
-.ed-w1 { --w-rest: 0.14; --w-peak: 0.55; }
-.ed-w2 { --w-rest: 0.22; --w-peak: 0.6; }
-.ed-w3 { --w-rest: 0.32; --w-peak: 0.7; }
-.ed-w4 { --w-rest: 0.45; --w-peak: 0.85; }
-.ed-w5 { --w-rest: 0.6;  --w-peak: 1; }
+.ed-w1 { --w-rest: 0.12; --w-peak: 0.55; }
+.ed-w2 { --w-rest: 0.18; --w-peak: 0.6; }
+.ed-w3 { --w-rest: 0.26; --w-peak: 0.7; }
+.ed-w4 { --w-rest: 0.35; --w-peak: 0.8; }
+.ed-w5 { --w-rest: 0.45; --w-peak: 0.9; }
+.ed-w6 { --w-rest: 0.55; --w-peak: 1; }
 
-/* Outer 4 rings flash then fade — traveling highlight */
+/* Outer 5 rings flash then fade — traveling highlight */
 .ed-icon-btn:hover .ed-wave {
-  animation: edFlash 0.3s ease-in-out;
+  animation: edFlash 0.28s ease-in-out;
 }
-.ed-icon-btn:hover .ed-w5 { animation-delay: 0s; }
-.ed-icon-btn:hover .ed-w4 { animation-delay: 0.12s; }
-.ed-icon-btn:hover .ed-w3 { animation-delay: 0.24s; }
-.ed-icon-btn:hover .ed-w2 { animation-delay: 0.36s; }
+.ed-icon-btn:hover .ed-w6 { animation-delay: 0s; }
+.ed-icon-btn:hover .ed-w5 { animation-delay: 0.1s; }
+.ed-icon-btn:hover .ed-w4 { animation-delay: 0.2s; }
+.ed-icon-btn:hover .ed-w3 { animation-delay: 0.3s; }
+.ed-icon-btn:hover .ed-w2 { animation-delay: 0.4s; }
 /* Innermost ring holds bright — sound has arrived */
 .ed-icon-btn:hover .ed-w1 {
-  animation: edFlashHold 0.3s ease-out 0.48s forwards;
+  animation: edFlashHold 0.28s ease-out 0.5s forwards;
 }
 
 @keyframes edFlash {
@@ -187,7 +189,7 @@ button, .btn {
 /* Bell responds once sound arrives */
 .ed-icon-btn .ed-bell-rim { will-change: stroke-width; }
 .ed-icon-btn:hover .ed-bell-rim {
-  animation: edBellPulse 0.4s ease-out 0.6s forwards;
+  animation: edBellPulse 0.4s ease-out 0.65s forwards;
 }
 
 @keyframes edBellPulse {

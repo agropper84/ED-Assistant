@@ -1146,16 +1146,17 @@ export default function HomePage() {
                 title="Menu"
               >
                 <svg width="28" height="28" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  {/* Sound waves — gaps compress toward bell: 3.2 → 2.6 → 2 → 1.5 */}
-                  <circle className="ed-wave ed-w5" cx="18" cy="18" r="17" fill="none" stroke="rgba(200,220,255,0.6)" strokeWidth="1.6" />
-                  <circle className="ed-wave ed-w4" cx="18" cy="18" r="13.8" fill="none" stroke="rgba(200,220,255,0.45)" strokeWidth="1.3" />
-                  <circle className="ed-wave ed-w3" cx="18" cy="18" r="11.2" fill="none" stroke="rgba(200,220,255,0.32)" strokeWidth="1.0" />
-                  <circle className="ed-wave ed-w2" cx="18" cy="18" r="9.2" fill="none" stroke="rgba(200,220,255,0.22)" strokeWidth="0.7" />
-                  <circle className="ed-wave ed-w1" cx="18" cy="18" r="7.7" fill="none" stroke="rgba(200,220,255,0.14)" strokeWidth="0.5" />
-                  {/* Bell — solid object, warm white, subtle fill to distinguish from waves */}
-                  <circle cx="18" cy="18" r="6" fill="rgba(255,255,255,0.03)" stroke="white" strokeWidth="2.5" className="ed-bell-rim" />
-                  <circle cx="18" cy="18" r="3.5" fill="none" stroke="rgba(255,255,255,0.18)" strokeWidth="0.6" />
-                  <circle cx="18" cy="18" r="1.3" fill="rgba(255,255,255,0.9)" />
+                  {/* Sound waves — blue-tinted, compress toward bell, clip at edge */}
+                  <circle className="ed-wave ed-w6" cx="18" cy="18" r="20" fill="none" stroke="rgba(180,210,255,0.55)" strokeWidth="1.8" />
+                  <circle className="ed-wave ed-w5" cx="18" cy="18" r="17" fill="none" stroke="rgba(180,210,255,0.45)" strokeWidth="1.5" />
+                  <circle className="ed-wave ed-w4" cx="18" cy="18" r="14.3" fill="none" stroke="rgba(180,210,255,0.35)" strokeWidth="1.2" />
+                  <circle className="ed-wave ed-w3" cx="18" cy="18" r="12" fill="none" stroke="rgba(180,210,255,0.26)" strokeWidth="0.9" />
+                  <circle className="ed-wave ed-w2" cx="18" cy="18" r="10" fill="none" stroke="rgba(180,210,255,0.18)" strokeWidth="0.65" />
+                  <circle className="ed-wave ed-w1" cx="18" cy="18" r="8.3" fill="none" stroke="rgba(180,210,255,0.12)" strokeWidth="0.45" />
+                  {/* Bell — pure white, bold, filled surface — distinct from waves */}
+                  <circle cx="18" cy="18" r="5.5" fill="rgba(255,255,255,0.04)" stroke="white" strokeWidth="2.8" className="ed-bell-rim" />
+                  <circle cx="18" cy="18" r="3.2" fill="none" stroke="rgba(255,255,255,0.18)" strokeWidth="0.6" />
+                  <circle cx="18" cy="18" r="1.2" fill="rgba(255,255,255,0.9)" />
                 </svg>
               </button>
               <h1 className="text-[17px] font-bold tracking-[-0.02em]" style={{ color: 'var(--dash-text)' }}>ER Dashboard</h1>
