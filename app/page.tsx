@@ -1146,18 +1146,22 @@ export default function HomePage() {
                 title="Menu"
               >
                 <svg width="24" height="24" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <defs>
-                    <linearGradient id="ed-gem" x1="18" y1="6" x2="18" y2="30" gradientUnits="userSpaceOnUse">
-                      <stop offset="0%" stopColor="#d2dfef" stopOpacity="0.95" />
-                      <stop offset="100%" stopColor="#8ea3ba" stopOpacity="0.55" />
-                    </linearGradient>
-                  </defs>
-                  {/* Rounded diamond mark */}
-                  <rect x="10.5" y="10.5" width="15" height="15" rx="3.5" transform="rotate(45 18 18)" fill="url(#ed-gem)" />
-                  {/* Specular highlight — polished surface */}
-                  <ellipse cx="15.5" cy="14.5" rx="4.5" ry="2.5" fill="rgba(255,255,255,0.12)" transform="rotate(-40 15.5 14.5)" />
-                  {/* Amber core accent */}
-                  <circle cx="18" cy="18" r="2.2" fill="#c9935a" opacity="0.88" />
+                  {/* Ripples — expanding from chest piece */}
+                  <circle cx="18" cy="21" r="7" fill="none" stroke="rgba(185,210,240,0.28)" strokeWidth="1" />
+                  <circle cx="18" cy="21" r="11" fill="none" stroke="rgba(185,210,240,0.14)" strokeWidth="0.8" />
+                  {/* Stethoscope tube — inverted U */}
+                  <path
+                    d="M13,7 C13,13 15,16 18,18 C21,16 23,13 23,7"
+                    fill="none"
+                    stroke="rgba(210,225,245,0.8)"
+                    strokeWidth="1.8"
+                    strokeLinecap="round"
+                  />
+                  {/* Ear tips */}
+                  <circle cx="13" cy="7" r="1.3" fill="rgba(210,225,245,0.55)" />
+                  <circle cx="23" cy="7" r="1.3" fill="rgba(210,225,245,0.55)" />
+                  {/* Chest piece — amber accent */}
+                  <circle cx="18" cy="21" r="3" fill="#c9935a" opacity="0.9" />
                 </svg>
               </button>
               <h1 className="text-[17px] font-bold tracking-[-0.02em]" style={{ color: 'var(--dash-text)' }}>ER Dashboard</h1>
