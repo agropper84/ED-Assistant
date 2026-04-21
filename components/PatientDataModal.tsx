@@ -65,6 +65,7 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
   const [waveHistory, setWaveHistory] = useState<Array<{ level: number; speaker: 'near' | 'far' | 'silent' }>>([]);
   const waveFrameCountRef = useRef(0);
   const [processingWord, setProcessingWord] = useState(0);
+  const [speakerNames, setSpeakerNames] = useState({ s1: '', s2: '' });
   const [encryptionKey, setEncryptionKey] = useState<string | null>(null);
   const [audioBlobUrl, setAudioBlobUrl] = useState<string | null>(null);
   const [audioBlobIv, setAudioBlobIv] = useState<string | null>(null);
@@ -817,66 +818,102 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
             </div>
             <SubmissionTags field="transcript" />
             <div className="relative">
-              {transcript && /^(Speaker \d|Dr[.:]|Pt[.:]|Patient:|Family:|Physician:|Doctor:)/im.test(transcript) && !refiningFields.has('transcript') ? (() => {
-                const SPEAKER_LABELS = ['Doctor:', 'Patient:', 'Family:', ''] as const;
+              {transcript && !isRecordingEncounter && !refiningFields.has('transcript') &&
+                /^(Speaker \d|Dr[.:]|Pt[.:]|Patient:|Family:|Physician:|Doctor:)/im.test(transcript) ? (() => {
                 const SPEAKER_REGEX = /^(Speaker \d+:|Dr[.:]|Physician:|Doctor:|Pt[.:]|Patient:|Family:)\s*/i;
                 const lines = transcript.split('\n');
+                const speakerNum = (label: string): number => {
+                  const l = label.replace(/[.:]\s*$/, '').trim().toLowerCase();
+                  if (['speaker 1', 'dr', 'physician', 'doctor'].includes(l)) return 1;
+                  if (['speaker 2', 'speaker 3', 'pt', 'patient', 'family'].some(p => l.startsWith(p))) return 2;
+                  return 0;
+                };
+                const displayLabel = (num: number): string => {
+                  if (num === 1) return speakerNames.s1 ? `${speakerNames.s1}:` : 'Speaker 1:';
+                  if (num === 2) return speakerNames.s2 ? `${speakerNames.s2}:` : 'Speaker 2:';
+                  return '';
+                };
                 const cycleLabel = (idx: number) => {
                   const line = lines[idx];
                   const match = line.match(SPEAKER_REGEX);
-                  const cur = match ? match[1].replace(/[.:]\s*$/, '').trim().toLowerCase() : '';
-                  const map: Record<string, number> = { 'speaker 1': 0, dr: 0, physician: 0, doctor: 0, 'speaker 2': 1, 'speaker 3': 1, pt: 1, patient: 1, family: 2, '': 3 };
-                  const next = SPEAKER_LABELS[((map[cur] ?? 3) + 1) % SPEAKER_LABELS.length];
+                  const cur = match ? speakerNum(match[1]) : 0;
+                  const next = cur === 1 ? 2 : cur === 2 ? 0 : 1;
                   const stripped = match ? line.substring(match[0].length) : line;
-                  const updated = [...lines];
-                  updated[idx] = next ? `${next} ${stripped}` : stripped;
+                  const canon = next === 1 ? 'Speaker 1:' : next === 2 ? 'Speaker 2:' : '';
+                  const updated = [...lines]; updated[idx] = canon ? `${canon} ${stripped}` : stripped;
                   setTranscript(updated.join('\n'));
                 };
+                const swapSpeakers = () => {
+                  setTranscript(lines.map(line => {
+                    if (/^Speaker 1:/i.test(line)) return line.replace(/^Speaker 1:/i, 'Speaker 2:');
+                    if (/^Speaker 2:/i.test(line)) return line.replace(/^Speaker 2:/i, 'Speaker 1:');
+                    return line;
+                  }).join('\n'));
+                  setSpeakerNames(prev => ({ s1: prev.s2, s2: prev.s1 }));
+                };
+                const stripAll = () => setTranscript(lines.map(l => l.replace(SPEAKER_REGEX, '')).join('\n'));
+                const hasSpeakers = lines.some(l => SPEAKER_REGEX.test(l));
                 return (
-                  <div className="w-full h-28 p-3 pr-16 border border-[var(--input-border)] rounded-xl text-sm overflow-y-auto bg-[var(--input-bg)]">
-                    {lines.map((line, i) => {
-                      const isDr = /^(Speaker 1:|Dr[.:]|Physician:|Doctor:)/i.test(line);
-                      const isPt = /^(Speaker [2-9]:|Pt[.:]|Patient:|Family:)/i.test(line);
-                      const match = line.match(SPEAKER_REGEX);
-                      const label = match ? match[0] : null;
-                      const rest = match ? line.substring(match[0].length) : line;
-                      return (
-                        <div key={i} className="leading-relaxed flex">
-                          {label && (
-                            <span
-                              onClick={(e) => { e.stopPropagation(); cycleLabel(i); }}
-                              className={`font-semibold cursor-pointer select-none hover:underline decoration-dotted underline-offset-2 flex-shrink-0 ${isDr ? 'text-blue-400' : isPt ? 'text-amber-400' : 'text-[var(--text-muted)]'}`}
-                              title="Click to change speaker"
-                            >{label}</span>
-                          )}
-                          <span
-                            className={`${isDr ? 'text-blue-400' : isPt ? 'text-amber-400' : 'text-[var(--text-primary)]'} cursor-text`}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              const container = e.currentTarget.closest('.relative');
-                              const ta = container?.querySelector('textarea') as HTMLTextAreaElement;
-                              if (ta) {
-                                (e.currentTarget.closest('.overflow-y-auto') as HTMLElement).style.display = 'none';
-                                ta.style.display = 'block';
-                                ta.focus();
-                              }
-                            }}
-                          >{rest || '\u00A0'}</span>
+                  <div>
+                    {hasSpeakers && (
+                      <div className="flex items-center gap-3 mb-1 px-1">
+                        <div className="flex items-center gap-1.5">
+                          <div className="w-1.5 h-1.5 rounded-full bg-blue-400" />
+                          <input value={speakerNames.s1} onChange={e => setSpeakerNames(p => ({ ...p, s1: e.target.value }))}
+                            placeholder="Speaker 1" className="text-[10px] bg-transparent border-none outline-none w-20 placeholder:text-blue-400/40 text-blue-400 font-medium" />
                         </div>
-                      );
-                    })}
+                        <div className="flex items-center gap-1.5">
+                          <div className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+                          <input value={speakerNames.s2} onChange={e => setSpeakerNames(p => ({ ...p, s2: e.target.value }))}
+                            placeholder="Speaker 2" className="text-[10px] bg-transparent border-none outline-none w-20 placeholder:text-amber-400/40 text-amber-400 font-medium" />
+                        </div>
+                        <button onClick={swapSpeakers} className="text-[8px] text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-colors" title="Swap speakers">⇄ swap</button>
+                        <button onClick={stripAll} className="text-[8px] text-[var(--text-muted)] hover:text-red-400 ml-auto transition-colors">remove labels</button>
+                      </div>
+                    )}
+                    <div className="w-full max-h-28 p-3 pr-10 border border-[var(--input-border)] rounded-xl text-xs overflow-y-auto bg-[var(--input-bg)]">
+                      {lines.map((line, i) => {
+                        const match = line.match(SPEAKER_REGEX);
+                        const num = match ? speakerNum(match[1]) : 0;
+                        const isSp1 = num === 1;
+                        const isSp2 = num === 2;
+                        const label = match ? displayLabel(num) + ' ' : null;
+                        const rest = match ? line.substring(match[0].length) : line;
+                        return (
+                          <div key={i} className="leading-relaxed flex">
+                            {label ? (
+                              <span onClick={e => { e.stopPropagation(); cycleLabel(i); }}
+                                className={`font-semibold cursor-pointer select-none hover:underline decoration-dotted underline-offset-2 flex-shrink-0 ${isSp1 ? 'text-blue-400' : isSp2 ? 'text-amber-400' : ''}`}
+                                title="Click to change speaker">{label}</span>
+                            ) : rest?.trim() ? (
+                              <span onClick={e => { e.stopPropagation(); cycleLabel(i); }}
+                                className="w-3 flex-shrink-0 cursor-pointer opacity-0 hover:opacity-30 text-center" title="Click to assign speaker">+</span>
+                            ) : null}
+                            <span
+                              className={`${isSp1 ? 'text-blue-400' : isSp2 ? 'text-amber-400' : 'text-[var(--text-primary)]'} cursor-text`}
+                              onClick={e => {
+                                e.stopPropagation();
+                                const container = e.currentTarget.closest('.relative');
+                                const ta = container?.querySelector('textarea') as HTMLTextAreaElement;
+                                if (ta) { (e.currentTarget.closest('.overflow-y-auto') as HTMLElement).style.display = 'none'; ta.style.display = 'block'; ta.focus(); }
+                              }}
+                            >{rest || '\u00A0'}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
                 );
               })() : null}
-              {/* Recording waveform — centered, full width with edge fades */}
+              {/* Recording waveform — compact, centered, full width */}
               {isRecordingEncounter && !showLiveTranscript && (() => {
                 const vizGain = micSensitivity === 1 ? 24 : micSensitivity === 2 ? 36 : micSensitivity === 3 ? 50 : 64;
-                const barCount = 140;
                 const mins = Math.floor(recordingElapsed / 60);
                 const secs = recordingElapsed % 60;
                 const timeStr = `${mins}:${secs.toString().padStart(2, '0')}`;
                 return (
-                  <div className="w-full h-28 rounded-xl relative overflow-hidden" style={{
+                  <div className="w-full rounded-xl relative overflow-hidden" style={{
+                    height: '72px',
                     background: 'linear-gradient(180deg, rgba(15,23,42,0.6) 0%, rgba(15,23,42,0.8) 100%)',
                     border: '1px solid rgba(96,165,250,0.12)',
                   }}>
@@ -884,7 +921,7 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
                     <div className="absolute inset-x-0 top-[calc(50%-1px)] h-px" style={{ background: 'rgba(96,165,250,0.06)' }} />
                     {/* Waveform bars — fill entire width, true vertical center */}
                     <div className="absolute inset-0 flex items-center justify-between">
-                      {Array.from({ length: barCount }).map((_, i) => {
+                      {Array.from({ length: 140 }).map((_, i) => {
                         const sample = waveHistory[i];
                         const level = sample?.level || 0;
                         const barH = Math.max(1, level * vizGain);
@@ -906,9 +943,9 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
                         );
                       })}
                     </div>
-                    {/* Edge fade — smooth wide gradient on both sides */}
-                    <div className="absolute left-0 top-0 bottom-0 w-16 z-10 pointer-events-none" style={{ background: 'linear-gradient(to right, rgba(15,23,42,0.85) 0%, rgba(15,23,42,0.4) 50%, transparent 100%)' }} />
-                    <div className="absolute right-0 top-0 bottom-0 w-16 z-10 pointer-events-none" style={{ background: 'linear-gradient(to left, rgba(15,23,42,0.85) 0%, rgba(15,23,42,0.4) 50%, transparent 100%)' }} />
+                    {/* Edge fades */}
+                    <div className="absolute left-0 top-0 bottom-0 w-10 z-10 pointer-events-none" style={{ background: 'linear-gradient(to right, rgba(15,23,42,0.85) 0%, transparent 100%)' }} />
+                    <div className="absolute right-0 top-0 bottom-0 w-10 z-10 pointer-events-none" style={{ background: 'linear-gradient(to left, rgba(15,23,42,0.85) 0%, transparent 100%)' }} />
                     {/* Bottom bar: recording indicator + timer */}
                     <div className="absolute bottom-2 left-0 right-0 flex items-center justify-center gap-3 z-20">
                       <div className="flex items-center gap-1.5">
@@ -929,7 +966,7 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
               )}
               {/* Processing overlay — shows after recording stops while transcribing */}
               {refiningFields.has('transcript') && !isRecordingEncounter && (
-                <div className="w-full h-28 rounded-xl flex items-center justify-center" style={{
+                <div className="w-full rounded-xl flex items-center justify-center" style={{ height: '72px',
                   background: 'linear-gradient(180deg, rgba(15,23,42,0.5) 0%, rgba(15,23,42,0.7) 100%)',
                   border: '1px solid rgba(96,165,250,0.12)',
                 }}>
