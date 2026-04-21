@@ -23,19 +23,29 @@ function getRedis(): Redis {
 
 function encryptSecret(value: string): string {
   const key = process.env.KV_ENCRYPTION_KEY;
-  if (!key) return value;
+  if (!key) {
+    if (process.env.NODE_ENV === 'production') throw new Error('KV_ENCRYPTION_KEY is required in production');
+    return value;
+  }
   try {
     const buf = Buffer.from(key, 'base64');
-    if (buf.length !== 32) return value;
+    if (buf.length !== 32) {
+      if (process.env.NODE_ENV === 'production') throw new Error('KV_ENCRYPTION_KEY must be 32 bytes');
+      return value;
+    }
     return encryptValue(value, key);
-  } catch {
+  } catch (e) {
+    if (process.env.NODE_ENV === 'production') throw e;
     return value;
   }
 }
 
 function decryptSecret(value: string): string {
   const key = process.env.KV_ENCRYPTION_KEY;
-  if (!key) return value;
+  if (!key) {
+    if (process.env.NODE_ENV === 'production') throw new Error('KV_ENCRYPTION_KEY is required in production');
+    return value;
+  }
   try {
     return decryptValue(value, key);
   } catch {
@@ -148,11 +158,12 @@ export async function getUserRefreshToken(userId: string): Promise<string | null
 export async function getUserSettings(userId: string): Promise<Record<string, unknown> | null> {
   const val = await getRedis().get(`user:${userId}:settings`);
   if (!val) return null;
-  return JSON.parse(val);
+  const decrypted = decryptSecret(val);
+  return JSON.parse(decrypted);
 }
 
 export async function setUserSettings(userId: string, settings: Record<string, unknown>): Promise<void> {
-  await getRedis().set(`user:${userId}:settings`, JSON.stringify(settings));
+  await getRedis().set(`user:${userId}:settings`, encryptSecret(JSON.stringify(settings)));
 }
 
 // --- Encryption key (per-user, encrypted at rest) ---
@@ -286,7 +297,7 @@ export interface PendingAudio {
 
 export async function addPendingAudio(data: PendingAudio): Promise<void> {
   const key = `pending-audio:${data.id}`;
-  await getRedis().set(key, JSON.stringify(data), 'EX', 3600); // 1 hour TTL
+  await getRedis().set(key, encryptSecret(JSON.stringify(data)), 'EX', 3600); // 1 hour TTL
   await getRedis().sadd(`pending-audio-list:${data.userId}`, data.id);
   await getRedis().expire(`pending-audio-list:${data.userId}`, 3600);
 }
@@ -298,7 +309,7 @@ export async function getPendingAudioIds(userId: string): Promise<string[]> {
 export async function getPendingAudio(id: string): Promise<PendingAudio | null> {
   const val = await getRedis().get(`pending-audio:${id}`);
   if (!val) return null;
-  return JSON.parse(val);
+  return JSON.parse(decryptSecret(val));
 }
 
 export async function deletePendingAudio(id: string, userId: string): Promise<void> {

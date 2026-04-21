@@ -4,10 +4,11 @@ import { NextRequest, NextResponse } from 'next/server';
 const PUBLIC_PATHS = ['/login', '/api/auth', '/pending', '/api/shortcuts', '/tos', '/privacy'];
 const PUBLIC_PREFIXES = ['/_next', '/icons', '/manifest.json', '/icon-', '/favicon'];
 
-// Content Security Policy
+// Content Security Policy — unsafe-eval only in dev (Next.js hot reload)
+const isDev = process.env.NODE_ENV === 'development';
 const CSP_DIRECTIVES = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+  `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ''}`,
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "font-src 'self' https://fonts.gstatic.com",
   "img-src 'self' data: blob: https:",
