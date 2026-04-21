@@ -1147,9 +1147,13 @@ export default function HomePage() {
               >
                 <svg width="28" height="28" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
                   <defs>
-                    <radialGradient id="ed-bell-fill" cx="0.42" cy="0.38" r="0.6">
-                      <stop offset="0%" stopColor="rgba(255,255,255,0.08)" />
-                      <stop offset="100%" stopColor="rgba(255,255,255,0.02)" />
+                    <radialGradient id="ed-bell-face" cx="0.44" cy="0.40" r="0.56">
+                      <stop offset="0%" stopColor="rgba(255,255,255,0.09)" />
+                      <stop offset="100%" stopColor="rgba(255,255,255,0.01)" />
+                    </radialGradient>
+                    <radialGradient id="ed-nub" cx="0.4" cy="0.35" r="0.5">
+                      <stop offset="0%" stopColor="rgba(255,255,255,1)" />
+                      <stop offset="100%" stopColor="rgba(220,230,245,0.75)" />
                     </radialGradient>
                   </defs>
                   {/* Sound waves — 6 rings, evenly spaced */}
@@ -1159,10 +1163,10 @@ export default function HomePage() {
                   <circle className="ed-wave ed-w3" cx="18" cy="18" r="11.6" fill="none" stroke="rgba(160,195,240,0.22)" strokeWidth="0.8" />
                   <circle className="ed-wave ed-w2" cx="18" cy="18" r="9.8" fill="none" stroke="rgba(160,195,240,0.14)" strokeWidth="0.55" />
                   <circle className="ed-wave ed-w1" cx="18" cy="18" r="8" fill="none" stroke="rgba(160,195,240,0.08)" strokeWidth="0.35" />
-                  {/* Bell */}
-                  <circle cx="18" cy="18" r="5.5" fill="url(#ed-bell-fill)" stroke="rgba(255,255,255,0.95)" strokeWidth="2.4" className="ed-bell-rim" />
-                  <circle cx="18" cy="18" r="3.4" fill="none" stroke="rgba(255,255,255,0.13)" strokeWidth="0.5" />
-                  <circle cx="18" cy="18" r="2.2" fill="rgba(255,255,255,0.85)" />
+                  {/* Bell — rim, face, diaphragm ring, center nub */}
+                  <circle cx="18" cy="18" r="5.5" fill="url(#ed-bell-face)" stroke="rgba(230,240,255,0.9)" strokeWidth="2.2" className="ed-bell-rim" />
+                  <circle cx="18" cy="18" r="3.6" fill="none" stroke="rgba(200,220,245,0.1)" strokeWidth="0.4" />
+                  <circle cx="18" cy="18" r="2.2" fill="url(#ed-nub)" />
                 </svg>
               </button>
               <h1 className="text-[17px] font-bold tracking-[-0.02em]" style={{ color: 'var(--dash-text)' }}>ER Dashboard</h1>
