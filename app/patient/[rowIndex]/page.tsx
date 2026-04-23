@@ -382,7 +382,9 @@ export default function PatientPage() {
 
   const copyFullNote = async () => {
     if (!patient) return;
-    const fullNote = `HPI:\n${patient.hpi}\n\nOBJECTIVE:\n${patient.objective}\n\nASSESSMENT & PLAN:\n${patient.assessmentPlan}`;
+    // Clean blank lines from each section before copying
+    const clean = (s: string) => s?.split('\n').filter(l => l.trim()).join('\n') || '';
+    const fullNote = `HPI:\n${clean(patient.hpi)}\n\nOBJECTIVE:\n${clean(patient.objective)}\n\nASSESSMENT & PLAN:\n${clean(patient.assessmentPlan)}`;
     await copyToClipboard(fullNote, 'full');
   };
 
@@ -1336,15 +1338,16 @@ function OutputSection({
                 />
                 <div className="absolute top-1.5 right-1.5">
                   <VoiceRecorder
+                    mode="dictation"
                     onTranscript={(text) => {
                       const base = preRecordText || editValue;
-                      setEditValue(base ? `${base}\n\n${text}` : text);
+                      setEditValue(base ? `${base}\n${text}` : text);
                     }}
                     onRecordingStart={() => setPreRecordText(editValue)}
                     onInterimTranscript={(text) => {
-                      const base = preRecordText;
-                      setEditValue(base ? `${base}\n\n${text}` : text);
+                      setEditValue(preRecordText ? `${preRecordText}\n${text}` : text);
                     }}
+                    onProcessingChange={() => {}}
                   />
                 </div>
               </div>
@@ -1423,9 +1426,18 @@ function splitContent(text: string): ContentPart[] {
 
 /** Reconstruct text from parts, joining same-paragraph sentences with spaces */
 function partsToText(parts: ContentPart[]): string {
+  // Remove consecutive breaks (prevents blank lines when sentences are deleted)
+  const cleaned: ContentPart[] = [];
+  for (const p of parts) {
+    if (p.type === 'break' && (cleaned.length === 0 || cleaned[cleaned.length - 1].type === 'break')) continue;
+    cleaned.push(p);
+  }
+  // Remove trailing break
+  if (cleaned.length > 0 && cleaned[cleaned.length - 1].type === 'break') cleaned.pop();
+
   const lines: string[] = [];
   let cur: string[] = [];
-  for (const p of parts) {
+  for (const p of cleaned) {
     if (p.type === 'break') {
       lines.push(cur.join(' '));
       cur = [];
