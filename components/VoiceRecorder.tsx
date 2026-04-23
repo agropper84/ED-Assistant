@@ -7,6 +7,7 @@ import { getSpeechAPI, getTranscribeAPI, getTranscribeWebAPI, type TranscribeAPI
 function getTranscribeEndpoint(api: TranscribeAPI | string): string {
   if (api === 'deepgram') return '/api/transcribe-deepgram';
   if (api === 'wispr') return '/api/transcribe-wispr';
+  if (api === 'elevenlabs') return '/api/transcribe-elevenlabs';
   return '/api/transcribe';
 }
 
@@ -199,6 +200,10 @@ export function VoiceRecorder({
   const dgProcessorRef = useRef<ScriptProcessorNode | null>(null);
   const dgContextRef = useRef<AudioContext | null>(null);
 
+  // ElevenLabs WebSocket streaming refs
+  const elWsRef = useRef<WebSocket | null>(null);
+  const elProcessorRef = useRef<ScriptProcessorNode | null>(null);
+
   const [isHolding, setIsHolding] = useState(false);
   const isHoldingRef = useRef(false);
   const holdTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -255,6 +260,8 @@ export function VoiceRecorder({
       if (dgSocketRef.current) { try { dgSocketRef.current.close(); } catch {} }
       if (dgProcessorRef.current) { try { dgProcessorRef.current.disconnect(); } catch {} }
       if (dgContextRef.current) { try { dgContextRef.current.close(); } catch {} }
+      if (elWsRef.current) { try { elWsRef.current.close(); } catch {} }
+      if (elProcessorRef.current) { try { elProcessorRef.current.disconnect(); } catch {} }
       if (keepaliveAudioRef.current) { keepaliveAudioRef.current.pause(); keepaliveAudioRef.current = null; }
     };
   }, []);
@@ -457,6 +464,127 @@ export function VoiceRecorder({
     }
   }, [stopDeepgramStream]);
 
+  // --- Stop ElevenLabs WebSocket streaming ---
+  const stopElevenLabsStream = useCallback(() => {
+    if (elWsRef.current) {
+      try {
+        if (elWsRef.current.readyState === WebSocket.OPEN) {
+          // Send commit to flush final transcript
+          elWsRef.current.send(JSON.stringify({ message_type: 'input_audio_chunk', audio_base_64: '', commit: true, sample_rate: 16000 }));
+        }
+        elWsRef.current.close();
+      } catch {}
+      elWsRef.current = null;
+    }
+    if (elProcessorRef.current) { try { elProcessorRef.current.disconnect(); } catch {} elProcessorRef.current = null; }
+  }, []);
+
+  // --- Start ElevenLabs WebSocket streaming for real-time live text ---
+  const startElevenLabsStream = useCallback(async (audioStream: MediaStream): Promise<boolean> => {
+    let retryCount = 0;
+    const MAX_RETRIES = 1;
+
+    const connect = (): Promise<boolean> => new Promise(async (resolve) => {
+      try {
+        const tokenRes = await fetch('/api/elevenlabs-token');
+        if (!tokenRes.ok) { resolve(false); return; }
+        const tokenData = await tokenRes.json();
+        const token = tokenData.token;
+        if (!token) { resolve(false); return; }
+
+        const wsParams = new URLSearchParams({
+          model_id: 'scribe_v2_realtime',
+          language_code: 'en',
+          token,
+        });
+        const wsUrl = `wss://api.elevenlabs.io/v1/speech-to-text/realtime?${wsParams}`;
+
+        const ws = new WebSocket(wsUrl);
+        elWsRef.current = ws;
+        let fullTranscript = '';
+        let elAudioCtx: AudioContext | null = null;
+        let resolved = false;
+
+        ws.onmessage = (event) => {
+          if (isHoldingRef.current) return;
+          try {
+            const msg = JSON.parse(event.data);
+            const msgType = msg.message_type || msg.type;
+            if (msgType === 'partial_transcript') {
+              const text = msg.text || '';
+              const full = convertSpokenPunctuation((fullTranscript + text).trim());
+              accumulatedTextRef.current = full;
+              onInterimRef.current?.(full);
+            } else if (msgType === 'committed_transcript' || msgType === 'committed_transcript_with_timestamps') {
+              const text = msg.text || '';
+              fullTranscript += text + ' ';
+              const full = convertSpokenPunctuation(fullTranscript.trim());
+              accumulatedTextRef.current = full;
+              onInterimRef.current?.(full);
+            } else if (msgType === 'session_started') {
+              console.log('ElevenLabs realtime session started');
+            } else if (msgType === 'error') {
+              console.error('ElevenLabs realtime error:', msg);
+            }
+          } catch {}
+        };
+
+        ws.onopen = () => {
+          retryCount = 0;
+          if (!audioStream.active) return;
+          // Capture audio at 16kHz, convert to PCM16, send as base64 JSON chunks
+          elAudioCtx = new AudioContext({ sampleRate: 16000 });
+          const source = elAudioCtx.createMediaStreamSource(audioStream);
+          const processor = elAudioCtx.createScriptProcessor(4096, 1, 1);
+          elProcessorRef.current = processor;
+          processor.onaudioprocess = (e) => {
+            if (ws.readyState !== WebSocket.OPEN) return;
+            const input = e.inputBuffer.getChannelData(0);
+            const pcm = new Int16Array(input.length);
+            for (let i = 0; i < input.length; i++) {
+              pcm[i] = Math.max(-32768, Math.min(32767, Math.round(input[i] * 32767)));
+            }
+            const bytes = new Uint8Array(pcm.buffer);
+            let binary = '';
+            for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+            const base64 = btoa(binary);
+            ws.send(JSON.stringify({
+              message_type: 'input_audio_chunk',
+              audio_base_64: base64,
+              sample_rate: 16000,
+              commit: false,
+            }));
+          };
+          source.connect(processor);
+          processor.connect(elAudioCtx.destination);
+          if (!resolved) { resolved = true; resolve(true); }
+        };
+
+        ws.onerror = () => { console.warn('ElevenLabs WebSocket error'); };
+
+        ws.onclose = (e) => {
+          console.warn('ElevenLabs WebSocket closed:', e.code, e.reason);
+          elWsRef.current = null;
+          if (elAudioCtx) { try { elAudioCtx.close(); } catch {} }
+          if (!resolved) { resolved = true; resolve(false); }
+          // Reconnect if still recording
+          if (stateRef.current === 'recording' && audioStream.active && retryCount < MAX_RETRIES) {
+            retryCount++;
+            console.log(`ElevenLabs WebSocket reconnecting (attempt ${retryCount})...`);
+            setTimeout(() => connect(), 1000);
+          }
+        };
+
+        // Timeout if WebSocket doesn't connect
+        setTimeout(() => { if (!resolved) { resolved = true; resolve(false); } }, 5000);
+      } catch {
+        resolve(false);
+      }
+    });
+
+    return connect();
+  }, []);
+
   // --- Start Web Speech (suppresses output when isHoldingRef is true) ---
   const startWebSpeech = useCallback(() => {
     const SpeechAPI = typeof window !== 'undefined'
@@ -529,6 +657,7 @@ export function VoiceRecorder({
     stopKeepalive();
     stopWebSpeech();
     stopDeepgramStream();
+    stopElevenLabsStream();
     if (refineTimerRef.current) { clearInterval(refineTimerRef.current); refineTimerRef.current = null; }
     if (pauseTimerRef.current) { clearTimeout(pauseTimerRef.current); pauseTimerRef.current = null; }
     if (audioContextRef.current) { try { audioContextRef.current.close(); } catch {} audioContextRef.current = null; }
@@ -536,7 +665,7 @@ export function VoiceRecorder({
     analyserRef.current = null;
     streamRef.current?.getTracks().forEach(t => t.stop());
     streamRef.current = null;
-  }, [stopAudioLevelViz, stopKeepalive, stopWebSpeech]);
+  }, [stopAudioLevelViz, stopKeepalive, stopWebSpeech, stopElevenLabsStream]);
 
   // --- Collect audio blob from MediaRecorder ---
   const collectAudioBlob = useCallback(async (): Promise<Blob | null> => {
@@ -645,11 +774,22 @@ export function VoiceRecorder({
       refineCountRef.current = 0;
       setRecState('recording');
 
-      // Try Deepgram WebSocket streaming for real-time live text (~300ms latency)
-      // Falls back to Web Speech + periodic REST refinement if WS fails
-      const dgSuccess = await startDeepgramStream(rawStream, false);
-      if (!dgSuccess) {
-        // Fallback: Web Speech for instant text + periodic Deepgram REST refinement
+      // Try real-time WebSocket streaming for live text
+      const speechEngine = getSpeechAPI();
+      let streamSuccess = false;
+
+      if (speechEngine === 'elevenlabs') {
+        // ElevenLabs Scribe v2 realtime WebSocket
+        streamSuccess = await startElevenLabsStream(rawStream);
+      }
+
+      if (!streamSuccess && speechEngine !== 'elevenlabs') {
+        // Deepgram WebSocket streaming (~300ms latency, medical model)
+        streamSuccess = await startDeepgramStream(rawStream, false);
+      }
+
+      if (!streamSuccess) {
+        // Fallback: Web Speech for instant text + periodic REST refinement
         startWebSpeech();
         if (refineTimerRef.current) clearInterval(refineTimerRef.current);
         refineTimerRef.current = setInterval(() => {
@@ -671,13 +811,14 @@ export function VoiceRecorder({
     } catch {
       setRecState('error');
     }
-  }, [onRecordingStart, startKeepalive, startWebSpeech, startDeepgramStream, startAudioLevelViz, flushSegmentForRefinement]);
+  }, [onRecordingStart, startKeepalive, startWebSpeech, startDeepgramStream, startElevenLabsStream, startAudioLevelViz, flushSegmentForRefinement]);
 
   // --- Stop non-medicalize (toggle mode) ---
   const stopNonMedicalize = useCallback(async () => {
     // Stop refinement timer first
     if (refineTimerRef.current) { clearInterval(refineTimerRef.current); refineTimerRef.current = null; }
 
+    const speechEngine = getSpeechAPI();
     const transcribeEngine = getTranscribeAPI();
     const useDeepgramCleanup = transcribeEngine === 'deepgram' || transcribeEngine === 'wispr';
 
@@ -691,7 +832,40 @@ export function VoiceRecorder({
       });
     }
 
+    const webSpeechText = accumulatedTextRef.current || '';
+
     cleanupResources();
+
+    // ElevenLabs realtime: show live text immediately, then re-transcribe
+    // with medical keyterms in background for improved accuracy
+    if (speechEngine === 'elevenlabs' && webSpeechText.length > 0) {
+      onInterimRef.current?.(webSpeechText);
+
+      // Background: re-transcribe with medical keyterms via batch endpoint
+      if (finalBlob && finalBlob.size > 2000) {
+        (async () => {
+          try {
+            const fd = new FormData();
+            fd.append('audio', finalBlob!, `recording.${getFileExtension(mimeTypeRef.current)}`);
+            fd.append('mode', 'dictation');
+            const res = await fetch('/api/transcribe-elevenlabs', { method: 'POST', body: fd });
+            if (res.ok) {
+              const { text } = await res.json();
+              if (text?.trim() && text.trim() !== webSpeechText.trim()) {
+                onInterimRef.current?.(text.trim());
+              }
+            }
+          } catch {}
+        })();
+      }
+
+      onProcessingRef.current?.(false);
+      accumulatedTextRef.current = '';
+      refinedTextRef.current = '';
+      refineCountRef.current = 0;
+      setRecState('idle');
+      return;
+    }
 
     // STT-refine the final audio segment — verbatim only, no AI medicalize
     if (useDeepgramCleanup && finalBlob && finalBlob.size > 2000) {
@@ -715,16 +889,12 @@ export function VoiceRecorder({
     }
 
     // Non-medicalize: the best text is already displayed via onInterimTranscript
-    // (either from Deepgram WS or Web Speech during recording).
-    // Just ensure the final text stays visible — don't clear it.
     const dgWsText = accumulatedTextRef.current?.trim() || '';
     const refined = refinedTextRef.current?.trim() || '';
 
-    // If we have refined text from REST segments that's better, update display
     if (refined && refined.length > dgWsText.length * 0.9) {
       onInterimRef.current?.(refined);
     }
-    // Otherwise the Deepgram WS / Web Speech text already in the field is the final output
 
     onProcessingRef.current?.(false);
     accumulatedTextRef.current = '';
@@ -747,7 +917,7 @@ export function VoiceRecorder({
         formData.append('mode', 'dictation');
 
         const transcribeEngine = getTranscribeAPI();
-        const useExternalSTT = transcribeEngine === 'deepgram' || transcribeEngine === 'wispr';
+        const useExternalSTT = transcribeEngine === 'deepgram' || transcribeEngine === 'wispr' || transcribeEngine === 'elevenlabs';
 
         if (useExternalSTT) {
           const sttRes = await fetch(getTranscribeEndpoint(transcribeEngine), { method: 'POST', body: formData });
@@ -995,11 +1165,18 @@ export function VoiceRecorder({
         startAudioLevelViz(vizAnalyser);
       } catch {}
 
-      // Deepgram WebSocket streaming for live text (~300ms latency, medical model)
-      // Falls back to Web Speech if Deepgram WS fails
+      // Real-time WebSocket streaming for live text during encounter
+      // Falls back to Web Speech if WS fails
       if (onInterimTranscript) {
-        const dgOk = await startDeepgramStream(rawStream, true);
-        if (!dgOk) {
+        const webEngine = getTranscribeWebAPI();
+        let streamOk = false;
+        if (webEngine === 'elevenlabs') {
+          streamOk = await startElevenLabsStream(rawStream);
+        }
+        if (!streamOk && webEngine !== 'elevenlabs') {
+          streamOk = await startDeepgramStream(rawStream, true);
+        }
+        if (!streamOk) {
           // Fallback: Web Speech
           const SpeechRecognitionAPI = typeof window !== 'undefined'
             ? (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
@@ -1030,7 +1207,7 @@ export function VoiceRecorder({
     } catch {
       setRecState('error');
     }
-  }, [onTranscript, onInterimTranscript, onRecordingStart, mode, startKeepalive, stopKeepalive, startAudioLevelViz, stopAudioLevelViz, stopWebSpeech, startDeepgramStream]);
+  }, [onTranscript, onInterimTranscript, onRecordingStart, mode, startKeepalive, stopKeepalive, startAudioLevelViz, stopAudioLevelViz, stopWebSpeech, startDeepgramStream, startElevenLabsStream]);
 
   // =================================================================
   // POINTER HANDLERS

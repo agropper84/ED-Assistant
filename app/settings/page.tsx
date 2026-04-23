@@ -472,6 +472,9 @@ export default function SettingsPage() {
   const [deepgramKeyMasked, setDeepgramKeyMasked] = useState<string | null>(null);
   const [wisprApiKey, setWisprApiKey] = useState('');
   const [wisprKeyMasked, setWisprKeyMasked] = useState<string | null>(null);
+  const [elevenlabsApiKey, setElevenlabsApiKey] = useState('');
+  const [elevenlabsKeyMasked, setElevenlabsKeyMasked] = useState<string | null>(null);
+  const [medicalKeyterms, setMedicalKeyterms] = useState('');
 
   // VCH config loading state
   const [vchConfigLoaded, setVchConfigLoaded] = useState(false);
@@ -707,6 +710,8 @@ export default function SettingsPage() {
           setOpenaiKeyMasked(data.openaiApiKeyMasked || null);
           setDeepgramKeyMasked(data.deepgramApiKeyMasked || null);
           setWisprKeyMasked(data.wisprApiKeyMasked || null);
+          setElevenlabsKeyMasked(data.elevenlabsApiKeyMasked || null);
+          setMedicalKeyterms(data.medicalKeyterms || '');
         }
       } catch {}
       setPrivacyLoading(false);
@@ -726,7 +731,7 @@ export default function SettingsPage() {
     } catch {}
   };
 
-  const saveApiKey = async (key: 'claudeApiKey' | 'openaiApiKey' | 'deepgramApiKey' | 'wisprApiKey', value: string) => {
+  const saveApiKey = async (key: 'claudeApiKey' | 'openaiApiKey' | 'deepgramApiKey' | 'wisprApiKey' | 'elevenlabsApiKey', value: string) => {
     setSavingKey(true);
     try {
       await fetch('/api/privacy-settings', {
@@ -741,13 +746,25 @@ export default function SettingsPage() {
         setOpenaiKeyMasked(data.openaiApiKeyMasked || null);
         setDeepgramKeyMasked(data.deepgramApiKeyMasked || null);
         setWisprKeyMasked(data.wisprApiKeyMasked || null);
+        setElevenlabsKeyMasked(data.elevenlabsApiKeyMasked || null);
       }
       if (key === 'claudeApiKey') setClaudeApiKey('');
       if (key === 'openaiApiKey') setOpenaiApiKey('');
       if (key === 'deepgramApiKey') setDeepgramApiKey('');
       if (key === 'wisprApiKey') setWisprApiKey('');
+      if (key === 'elevenlabsApiKey') setElevenlabsApiKey('');
     } catch {}
     setSavingKey(false);
+  };
+
+  const saveMedicalKeyterms = async (value: string) => {
+    try {
+      await fetch('/api/privacy-settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ medicalKeyterms: value }),
+      });
+    } catch {}
   };
 
   // Load saved parse formats from Google Sheet
@@ -1386,6 +1403,7 @@ export default function SettingsPage() {
                 >
                   <option value="webspeech">Web Speech API (instant, browser-based)</option>
                   <option value="deepgram">Deepgram Nova-3 Medical</option>
+                  <option value="elevenlabs">ElevenLabs Scribe v2 (live text)</option>
                 </select>
               </div>
 
@@ -1399,6 +1417,7 @@ export default function SettingsPage() {
                 >
                   <option value="whisper">OpenAI Whisper + Claude</option>
                   <option value="deepgram">Deepgram Nova-3 Medical + Claude</option>
+                  <option value="elevenlabs">ElevenLabs Scribe v2 + Claude</option>
                 </select>
               </div>
 
@@ -1414,6 +1433,7 @@ export default function SettingsPage() {
                 >
                   <option value="whisper">OpenAI Whisper</option>
                   <option value="deepgram">Deepgram Nova-3 Medical</option>
+                  <option value="elevenlabs">ElevenLabs Scribe v2</option>
                 </select>
                 <p className="text-[10px] text-[var(--text-muted)] mt-0.5">Used for full encounter recordings in the Add Patient modal</p>
               </div>
@@ -1438,6 +1458,7 @@ export default function SettingsPage() {
                 >
                   <option value="whisper">OpenAI Whisper</option>
                   <option value="deepgram">Deepgram Nova-3 Medical</option>
+                  <option value="elevenlabs">ElevenLabs Scribe v2</option>
                 </select>
                 <p className="text-[10px] text-[var(--text-muted)] mt-0.5">Used for audio uploaded from the Watch app</p>
               </div>
@@ -2854,6 +2875,54 @@ export default function SettingsPage() {
                 <p className="text-[10px] text-[var(--text-muted)]">Optional. Enables Deepgram Nova-3 Medical as an alternate transcription engine.</p>
               </div>
 
+              {/* ElevenLabs API Key */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <label className="text-sm font-medium text-[var(--text-secondary)]">ElevenLabs API Key (Scribe v2)</label>
+                  <a href="https://elevenlabs.io/app/settings/api-keys" target="_blank" rel="noopener noreferrer"
+                    className="text-[10px] text-blue-500 hover:text-blue-600 dark:text-blue-400">Get key</a>
+                </div>
+                {elevenlabsKeyMasked ? (
+                  <div className="flex items-center gap-2">
+                    <code className="flex-1 p-2 bg-[var(--bg-tertiary)] rounded-lg text-xs font-mono text-[var(--text-muted)]">{elevenlabsKeyMasked}</code>
+                    <button onClick={() => saveApiKey('elevenlabsApiKey', '')} disabled={savingKey}
+                      className="px-3 py-1.5 text-xs font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg transition-colors">Remove</button>
+                  </div>
+                ) : (
+                  <div className="flex gap-2">
+                    <input type="password" value={elevenlabsApiKey} onChange={(e) => setElevenlabsApiKey(e.target.value)} placeholder="xi_..."
+                      className="flex-1 p-2 border border-[var(--input-border)] rounded-lg text-sm bg-[var(--input-bg)] text-[var(--text-primary)] focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono" />
+                    <button onClick={() => saveApiKey('elevenlabsApiKey', elevenlabsApiKey)} disabled={savingKey || !elevenlabsApiKey.trim()}
+                      className="px-3 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium disabled:opacity-40">Save</button>
+                  </div>
+                )}
+                <p className="text-[10px] text-[var(--text-muted)]">Real-time live text + high-accuracy batch transcription with medical keyterms.</p>
+              </div>
+
+            </div>
+
+            {/* Medical Keyterms */}
+            <div className="bg-[var(--card-bg)] rounded-2xl border border-[var(--card-border)] p-5 space-y-4" style={{ boxShadow: 'var(--card-shadow)' }}>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Brain className="w-5 h-5 text-[var(--text-secondary)]" />
+                  <h3 className="font-semibold text-[var(--text-primary)]">Medical Keyterms</h3>
+                </div>
+                <span className="text-xs text-[var(--text-muted)] bg-[var(--bg-tertiary)] px-2 py-0.5 rounded-full">
+                  {medicalKeyterms ? medicalKeyterms.split(/[,\n]+/).filter(t => t.trim()).length : 0} custom terms
+                </span>
+              </div>
+              <p className="text-xs text-[var(--text-muted)]">
+                Custom medical terms to boost speech-to-text accuracy. Comma or newline separated. These are added to the built-in dictionary (~200 terms).
+              </p>
+              <textarea
+                value={medicalKeyterms}
+                onChange={(e) => setMedicalKeyterms(e.target.value)}
+                onBlur={() => saveMedicalKeyterms(medicalKeyterms)}
+                placeholder="e.g., tPA, tenecteplase, ECMO, bronchiectasis, sarcoidosis..."
+                rows={4}
+                className="w-full p-3 border border-[var(--input-border)] rounded-lg text-sm bg-[var(--input-bg)] text-[var(--text-primary)] focus:ring-2 focus:ring-blue-500 resize-y font-mono"
+              />
             </div>
 
             {/* App Token */}

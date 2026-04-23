@@ -224,6 +224,20 @@ export async function getUserWisprApiKey(userId: string): Promise<string | null>
   return decryptSecret(val);
 }
 
+export async function setUserElevenlabsApiKey(userId: string, apiKey: string): Promise<void> {
+  await getRedis().set(`user:${userId}:elevenlabs-api-key`, encryptSecret(apiKey));
+}
+
+export async function getUserElevenlabsApiKey(userId: string): Promise<string | null> {
+  const val = await getRedis().get(`user:${userId}:elevenlabs-api-key`);
+  if (!val) return null;
+  return decryptSecret(val);
+}
+
+export async function deleteUserElevenlabsApiKey(userId: string): Promise<void> {
+  await getRedis().del(`user:${userId}:elevenlabs-api-key`);
+}
+
 // --- Storage mode (per-user) ---
 
 export type StorageMode = 'sheets' | 'dual' | 'drive';
