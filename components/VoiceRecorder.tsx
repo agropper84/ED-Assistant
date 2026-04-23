@@ -177,6 +177,8 @@ interface VoiceRecorderProps {
   showUpload?: boolean;
   /** Mic sensitivity: 1=low (close speaker), 2=medium (default), 3=high (room-wide), 4=max */
   sensitivity?: number;
+  /** Called when user enters medicalize mode (hold > 500ms) */
+  onMedicalizeStart?: () => void;
   /** Base64 encryption key for blob backup. If provided, encrypts audio before uploading. */
   encryptionKey?: string;
   /** Called with blob URL after successful backup upload */
@@ -198,7 +200,7 @@ async function encryptAudioBlob(audioBlob: Blob, keyBase64: string): Promise<{ e
 
 export function VoiceRecorder({
   onTranscript, onInterimTranscript, onRecordingStart, onRecordingStop, onProcessingChange, onAudioLevel,
-  disabled, mode = 'dictation', showUpload, sensitivity = 2, encryptionKey, onBlobBackup,
+  onMedicalizeStart, disabled, mode = 'dictation', showUpload, sensitivity = 2, encryptionKey, onBlobBackup,
 }: VoiceRecorderProps) {
   const [state, setState] = useState<RecorderState>('idle');
   const stateRef = useRef<RecorderState>('idle');
@@ -260,6 +262,8 @@ export function VoiceRecorder({
   onAudioLevelRef.current = onAudioLevel;
   const onRecordingStopRef = useRef(onRecordingStop);
   onRecordingStopRef.current = onRecordingStop;
+  const onMedicalizeStartRef = useRef(onMedicalizeStart);
+  onMedicalizeStartRef.current = onMedicalizeStart;
 
   const useStreaming = mode === 'dictation' && !!onInterimTranscript;
 
@@ -709,6 +713,16 @@ export function VoiceRecorder({
     });
   }, []);
 
+  // --- Backup dictation audio to server (fire-and-forget) ---
+  const backupDictationAudio = useCallback((blob: Blob, label: string) => {
+    if (!blob || blob.size < 2000) return;
+    const ext = getFileExtension(mimeTypeRef.current);
+    const formData = new FormData();
+    formData.append('audio', blob, `${label}-${Date.now()}.${ext}`);
+    formData.append('mode', label);
+    fetch('/api/backup-audio', { method: 'POST', body: formData }).catch(() => {});
+  }, []);
+
   // --- Flush current audio segment to Deepgram for refinement ---
   const flushSegmentForRefinement = useCallback(async () => {
     if (stoppingRef.current) return;
@@ -868,10 +882,15 @@ export function VoiceRecorder({
 
     cleanupResources();
 
+    // Backup dictation audio (fire-and-forget)
+    if (finalBlob) backupDictationAudio(finalBlob, 'dictation');
+
     // ElevenLabs realtime: show live text immediately, then re-transcribe
     // with medical keyterms in background for improved accuracy
     if (speechEngine === 'elevenlabs' && webSpeechText.length > 0) {
-      onInterimRef.current?.(webSpeechText);
+      // Commit final text via onTranscript
+      onTranscriptRef.current(webSpeechText);
+      onInterimRef.current?.('');
 
       // Background: re-transcribe with medical keyterms via batch endpoint
       if (finalBlob && finalBlob.size > 2000) {
@@ -884,7 +903,7 @@ export function VoiceRecorder({
             if (res.ok) {
               const { text } = await res.json();
               if (text?.trim() && text.trim() !== webSpeechText.trim()) {
-                onInterimRef.current?.(text.trim());
+                onTranscriptRef.current(text.trim());
               }
             }
           } catch {}
@@ -920,12 +939,14 @@ export function VoiceRecorder({
       } catch {}
     }
 
-    // Non-medicalize: the best text is already displayed via onInterimTranscript
+    // Determine best final text and commit via onTranscript
     const dgWsText = accumulatedTextRef.current?.trim() || '';
     const refined = refinedTextRef.current?.trim() || '';
+    const finalText = (refined && refined.length > dgWsText.length * 0.9) ? refined : dgWsText;
 
-    if (refined && refined.length > dgWsText.length * 0.9) {
-      onInterimRef.current?.(refined);
+    if (finalText) {
+      onTranscriptRef.current(finalText);
+      onInterimRef.current?.('');
     }
 
     onProcessingRef.current?.(false);
@@ -942,6 +963,9 @@ export function VoiceRecorder({
 
     const blob = await collectAudioBlob();
 
+    // Backup medicalize audio (fire-and-forget)
+    if (blob) backupDictationAudio(blob, 'medicalize');
+
     if (blob && blob.size > 2000) {
       try {
         const formData = new FormData();
@@ -951,6 +975,7 @@ export function VoiceRecorder({
         const transcribeEngine = getTranscribeAPI();
         const useExternalSTT = transcribeEngine === 'deepgram' || transcribeEngine === 'wispr' || transcribeEngine === 'elevenlabs';
 
+        let finalText = '';
         if (useExternalSTT) {
           const sttRes = await fetch(getTranscribeEndpoint(transcribeEngine), { method: 'POST', body: formData });
           if (sttRes.ok) {
@@ -963,9 +988,9 @@ export function VoiceRecorder({
               });
               if (medRes.ok) {
                 const { text: medText } = await medRes.json();
-                onInterimRef.current?.((medText?.trim()) || sttText.trim());
+                finalText = (medText?.trim()) || sttText.trim();
               } else {
-                onInterimRef.current?.(sttText.trim());
+                finalText = sttText.trim();
               }
             }
           }
@@ -973,15 +998,21 @@ export function VoiceRecorder({
           const res = await fetch('/api/transcribe', { method: 'POST', body: formData });
           if (res.ok) {
             const { text } = await res.json();
-            if (text?.trim()) onInterimRef.current?.(text.trim());
+            if (text?.trim()) finalText = text.trim();
           }
+        }
+
+        // Commit final medicalized text via onTranscript
+        if (finalText) {
+          onTranscriptRef.current(finalText);
+          onInterimRef.current?.('');
         }
       } catch {}
     }
 
-    onProcessingRef.current?.(false); // Medicalized text is already refined — never grey
+    onProcessingRef.current?.(false);
     setRecState('idle');
-  }, [cleanupResources, collectAudioBlob]);
+  }, [cleanupResources, collectAudioBlob, backupDictationAudio]);
 
   // =================================================================
   // ENCOUNTER MODE: Simple click toggle
@@ -1300,6 +1331,7 @@ export function VoiceRecorder({
         // Clear any text that Web Speech may have shown in the brief window
         accumulatedTextRef.current = '';
         onInterimRef.current?.('');
+        onMedicalizeStartRef.current?.();
       }
     }, 500);
   }, [mode, startEncounterRecording, startDictationRecording, stopNonMedicalize, stopWebSpeech]);

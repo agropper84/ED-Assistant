@@ -913,26 +913,34 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
                   </div>
                 );
               })() : null}
-              {/* Edit/clear bar for transcript — shown when transcript has content and not recording */}
+              {/* Edit/clear bar for transcript — above textarea, left-aligned */}
               {transcript && !isRecordingEncounter && !refiningFields.has('transcript') && (
-                <div className="flex items-center justify-end gap-2 mt-0.5 px-1">
+                <div className="flex items-center gap-3 mb-1 px-1">
                   <button
                     onClick={() => {
-                      const container = document.querySelector('.relative textarea[placeholder*="transcript"]') as HTMLTextAreaElement;
                       // Show the textarea for editing
-                      const coloredView = document.querySelector('.overflow-y-auto') as HTMLElement;
-                      if (coloredView) coloredView.style.display = 'none';
-                      if (container) { container.style.display = 'block'; container.focus(); }
+                      const textareas = document.querySelectorAll('textarea');
+                      textareas.forEach(ta => {
+                        if (ta.placeholder?.includes('transcript') || ta.placeholder?.includes('dictation')) {
+                          ta.style.display = 'block';
+                          ta.focus();
+                        }
+                      });
+                      // Hide the colored speaker view
+                      const coloredViews = document.querySelectorAll('.overflow-y-auto');
+                      coloredViews.forEach(v => {
+                        if ((v as HTMLElement).closest('.relative')) (v as HTMLElement).style.display = 'none';
+                      });
                     }}
-                    className="text-[8px] text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-colors"
+                    className="text-[9px] text-[var(--text-muted)] hover:text-[var(--accent)] transition-colors font-medium"
                   >
-                    edit raw
+                    Edit
                   </button>
                   <button
                     onClick={() => { if (confirm('Clear transcript?')) setTranscript(''); }}
-                    className="text-[8px] text-[var(--text-muted)] hover:text-red-400 transition-colors"
+                    className="text-[9px] text-[var(--text-muted)] hover:text-red-400 transition-colors font-medium"
                   >
-                    clear
+                    Clear
                   </button>
                 </div>
               )}
