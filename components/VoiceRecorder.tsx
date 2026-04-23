@@ -128,14 +128,25 @@ function createBoostedStream(stream: MediaStream, sensitivity: number): {
   boostedStream: MediaStream; ctx: AudioContext; gainNode: GainNode; compressor: DynamicsCompressorNode;
 } {
   const settings = sensitivitySettings(sensitivity);
-  const ctx = new AudioContext({ sampleRate: 48000 });
+  // Safari may not support sampleRate in constructor — use default if it fails
+  let ctx: AudioContext;
+  try {
+    ctx = new AudioContext({ sampleRate: 48000 });
+  } catch {
+    ctx = new AudioContext();
+  }
+  // Safari requires resume after user gesture
+  if (ctx.state === 'suspended') ctx.resume().catch(() => {});
+
+  console.log(`[Audio] Boost chain: gain=${settings.gain.toFixed(2)}, threshold=${settings.threshold.toFixed(0)}, ratio=${settings.ratio.toFixed(1)}, sampleRate=${ctx.sampleRate}`);
+
   const source = ctx.createMediaStreamSource(stream);
 
   const compressor = ctx.createDynamicsCompressor();
   compressor.threshold.value = settings.threshold;
   compressor.knee.value = settings.knee;
   compressor.ratio.value = settings.ratio;
-  compressor.attack.value = 0;        // Instant attack — no quiet speech lost
+  compressor.attack.value = 0;
   compressor.release.value = settings.release;
 
   const gainNode = ctx.createGain();
@@ -987,20 +998,25 @@ export function VoiceRecorder({
       startKeepalive();
 
       // Create gain-boosted stream for encounter recording.
-      // Sensitivity controls compression aggressiveness + gain level.
-      const { boostedStream, ctx: boostCtx, gainNode, compressor } = createBoostedStream(rawStream, sensitivity);
-      boostCtxRef.current = boostCtx;
-      boostGainRef.current = gainNode;
-      boostCompressorRef.current = compressor;
+      // Falls back to raw stream if AudioContext chain fails (Safari compatibility).
+      let recordStream = rawStream;
+      try {
+        const { boostedStream, ctx: boostCtx, gainNode, compressor } = createBoostedStream(rawStream, sensitivity);
+        boostCtxRef.current = boostCtx;
+        boostGainRef.current = gainNode;
+        boostCompressorRef.current = compressor;
+        recordStream = boostedStream;
+      } catch (e) {
+        console.warn('[Encounter] Boost chain failed, recording raw stream:', e);
+      }
 
-      // Record from the BOOSTED stream — the raw stream can't be shared between
-      // MediaRecorder and AudioContext on all browsers (Safari consumes the stream).
-      // With gentle compression (max 4:1) the audio quality is still good for Deepgram.
+      // Record from boosted stream (or raw if boost failed).
       const recorderOptions: MediaRecorderOptions = { mimeType };
       if (mimeType.includes('webm')) {
         recorderOptions.audioBitsPerSecond = 128000; // 128kbps for speech clarity
       }
-      const recorder = new MediaRecorder(boostedStream, recorderOptions);
+      console.log(`[Encounter] Recording from ${recordStream === rawStream ? 'RAW' : 'BOOSTED'} stream, mime=${mimeType}`);
+      const recorder = new MediaRecorder(recordStream, recorderOptions);
       mediaRecorderRef.current = recorder;
       chunksRef.current = [];
       recorder.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data); };
@@ -1176,7 +1192,7 @@ export function VoiceRecorder({
       // Visualize the BOOSTED stream (not raw) so quiet voices are visible
       try {
         const vizCtx = new AudioContext();
-        const vizSource = vizCtx.createMediaStreamSource(boostedStream);
+        const vizSource = vizCtx.createMediaStreamSource(recordStream);
         const vizAnalyser = vizCtx.createAnalyser();
         vizAnalyser.fftSize = 2048;
         vizAnalyser.smoothingTimeConstant = 0.3;
