@@ -905,54 +905,82 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
                   </div>
                 );
               })() : null}
-              {/* Recording waveform — compact, centered, full width */}
+              {/* Edit/clear bar for transcript — shown when transcript has content and not recording */}
+              {transcript && !isRecordingEncounter && !refiningFields.has('transcript') && (
+                <div className="flex items-center justify-end gap-2 mt-0.5 px-1">
+                  <button
+                    onClick={() => {
+                      const container = document.querySelector('.relative textarea[placeholder*="transcript"]') as HTMLTextAreaElement;
+                      // Show the textarea for editing
+                      const coloredView = document.querySelector('.overflow-y-auto') as HTMLElement;
+                      if (coloredView) coloredView.style.display = 'none';
+                      if (container) { container.style.display = 'block'; container.focus(); }
+                    }}
+                    className="text-[8px] text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-colors"
+                  >
+                    edit raw
+                  </button>
+                  <button
+                    onClick={() => { if (confirm('Clear transcript?')) setTranscript(''); }}
+                    className="text-[8px] text-[var(--text-muted)] hover:text-red-400 transition-colors"
+                  >
+                    clear
+                  </button>
+                </div>
+              )}
+              {/* Recording waveform — matches Hosp Workbook styling */}
               {isRecordingEncounter && !showLiveTranscript && (() => {
-                const vizGain = micSensitivity === 1 ? 24 : micSensitivity === 2 ? 36 : micSensitivity === 3 ? 50 : 64;
+                const vizGain = micSensitivity <= 1 ? 32 : micSensitivity <= 2 ? 48 : micSensitivity <= 3 ? 65 : 80;
                 const mins = Math.floor(recordingElapsed / 60);
                 const secs = recordingElapsed % 60;
                 const timeStr = `${mins}:${secs.toString().padStart(2, '0')}`;
+                // Dynamic glow from recent peaks
+                const recentPeak = waveHistory.slice(-10).reduce((max, s) => Math.max(max, s?.level || 0), 0);
+                const glowIntensity = Math.min(1, recentPeak * 2);
                 return (
-                  <div className="w-full rounded-xl relative overflow-hidden" style={{
-                    height: '72px',
-                    background: 'linear-gradient(180deg, rgba(15,23,42,0.6) 0%, rgba(15,23,42,0.8) 100%)',
-                    border: '1px solid rgba(96,165,250,0.12)',
+                  <div className="w-full rounded-lg relative overflow-hidden" style={{
+                    height: '84px',
+                    background: 'linear-gradient(160deg, rgba(8,11,20,0.95) 0%, rgba(13,18,30,0.98) 50%, rgba(8,11,20,0.95) 100%)',
+                    border: '1px solid rgba(96,165,250,0.15)',
+                    boxShadow: `0 0 ${12 + glowIntensity * 24}px rgba(96,165,250,${0.03 + glowIntensity * 0.08})`,
+                    transition: 'box-shadow 150ms ease-out',
                   }}>
-                    {/* Subtle center line — full width, true center */}
-                    <div className="absolute inset-x-0 top-[calc(50%-1px)] h-px" style={{ background: 'rgba(96,165,250,0.06)' }} />
-                    {/* Waveform bars — fill entire width, true vertical center */}
-                    <div className="absolute inset-0 flex items-center justify-between">
-                      {Array.from({ length: 140 }).map((_, i) => {
+                    {/* Center line */}
+                    <div className="absolute inset-x-0 top-[calc(50%-1px)] h-px" style={{ background: `rgba(96,165,250,${0.08 + glowIntensity * 0.15})` }} />
+                    {/* Waveform bars */}
+                    <div className="absolute inset-0 flex items-center justify-between px-px">
+                      {Array.from({ length: 120 }).map((_, i) => {
                         const sample = waveHistory[i];
                         const level = sample?.level || 0;
                         const barH = Math.max(1, level * vizGain);
-                        const totalH = barH * 2 + 1;
-                        const opacity = level > 0.03 ? 0.35 + Math.min(level * 1.2, 0.65) : 0.06;
+                        const intensity = level > 0.03 ? Math.min(1, level * 2) : 0;
                         return (
-                          <div
-                            key={i}
-                            className="rounded-full"
-                            style={{
-                              width: '1.5px',
-                              height: `${totalH}px`,
-                              background: level > 0.03
-                                ? `linear-gradient(180deg, rgba(96,165,250,${opacity * 0.5}) 0%, rgba(96,165,250,${opacity}) 50%, rgba(96,165,250,${opacity * 0.5}) 100%)`
-                                : 'rgba(148,163,184,0.05)',
-                              transition: 'height 60ms ease-out',
-                            }}
-                          />
+                          <div key={i} className="rounded-full" style={{
+                            width: '2px',
+                            height: `${barH * 2 + 1}px`,
+                            background: level > 0.03
+                              ? `linear-gradient(180deg, rgba(96,165,250,${intensity * 0.3}) 0%, rgba(96,165,250,${0.4 + intensity * 0.5}) 35%, rgba(147,197,253,${0.6 + intensity * 0.4}) 50%, rgba(96,165,250,${0.4 + intensity * 0.5}) 65%, rgba(96,165,250,${intensity * 0.3}) 100%)`
+                              : 'rgba(148,163,184,0.04)',
+                            transition: 'height 60ms ease-out',
+                            boxShadow: level > 0.15 ? `0 0 ${4 + level * 6}px rgba(96,165,250,${level * 0.3})` : 'none',
+                          }} />
                         );
                       })}
                     </div>
                     {/* Edge fades */}
-                    <div className="absolute left-0 top-0 bottom-0 w-10 z-10 pointer-events-none" style={{ background: 'linear-gradient(to right, rgba(15,23,42,0.85) 0%, transparent 100%)' }} />
-                    <div className="absolute right-0 top-0 bottom-0 w-10 z-10 pointer-events-none" style={{ background: 'linear-gradient(to left, rgba(15,23,42,0.85) 0%, transparent 100%)' }} />
-                    {/* Bottom bar: recording indicator + timer */}
-                    <div className="absolute bottom-2 left-0 right-0 flex items-center justify-center gap-3 z-20">
-                      <div className="flex items-center gap-1.5">
+                    <div className="absolute left-0 top-0 bottom-0 w-16 z-10 pointer-events-none" style={{ background: 'linear-gradient(to right, rgba(8,11,20,0.95) 0%, transparent 100%)' }} />
+                    <div className="absolute right-0 top-0 bottom-0 w-16 z-10 pointer-events-none" style={{ background: 'linear-gradient(to left, rgba(8,11,20,0.95) 0%, transparent 100%)' }} />
+                    {/* Bottom radial glow */}
+                    <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-3/4 h-6 pointer-events-none" style={{
+                      background: `radial-gradient(ellipse at bottom, rgba(96,165,250,${0.05 + glowIntensity * 0.1}) 0%, transparent 70%)`,
+                    }} />
+                    {/* Top: recording indicator + timer */}
+                    <div className="absolute top-1.5 left-0 right-0 flex items-center justify-center gap-2 z-20">
+                      <div className="flex items-center gap-1">
                         <div className="w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse" />
-                        <span className="text-[9px] text-white/40 font-medium tracking-widest uppercase">Recording</span>
+                        <span className="text-[8px] text-white/30 font-medium tracking-widest uppercase">Encounter</span>
                       </div>
-                      <span className="text-[10px] text-white/50 font-mono tabular-nums">{timeStr}</span>
+                      <span className="text-[9px] text-white/40 font-mono tabular-nums">{timeStr}</span>
                     </div>
                   </div>
                 );
@@ -1027,7 +1055,7 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
                     // Sample every 12th frame (~5Hz at 60fps) for visible scrolling
                     waveFrameCountRef.current++;
                     if (waveFrameCountRef.current % 6 === 0) {
-                      setWaveHistory(prev => [...prev.slice(-139), { level: data.level, speaker: data.speakerHint }]);
+                      setWaveHistory(prev => [...prev.slice(-119), { level: data.level, speaker: data.speakerHint }]);
                     }
                   }}
                 />
