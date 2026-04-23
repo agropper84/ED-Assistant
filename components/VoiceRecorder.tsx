@@ -164,6 +164,9 @@ interface VoiceRecorderProps {
   encryptionKey?: string;
   /** Called with blob URL after successful backup upload */
   onBlobBackup?: (blobUrl: string, iv: string, contentType: string) => void;
+  /** Patient context for ElevenLabs keyterm extraction */
+  sheetName?: string;
+  rowIndex?: number;
 }
 
 /** Encrypt binary data with AES-256-GCM using Web Crypto API (browser-native) */
@@ -181,7 +184,7 @@ async function encryptAudioBlob(audioBlob: Blob, keyBase64: string): Promise<{ e
 
 export function VoiceRecorder({
   onTranscript, onInterimTranscript, onRecordingStart, onRecordingStop, onProcessingChange, onAudioLevel,
-  disabled, mode = 'dictation', showUpload, sensitivity = 2, encryptionKey, onBlobBackup,
+  disabled, mode = 'dictation', showUpload, sensitivity = 2, encryptionKey, onBlobBackup, sheetName, rowIndex,
 }: VoiceRecorderProps) {
   const [state, setState] = useState<RecorderState>('idle');
   const stateRef = useRef<RecorderState>('idle');
@@ -863,6 +866,8 @@ export function VoiceRecorder({
             const fd = new FormData();
             fd.append('audio', finalBlob!, `recording.${getFileExtension(mimeTypeRef.current)}`);
             fd.append('mode', 'dictation');
+            if (sheetName) fd.append('sheetName', sheetName);
+            if (rowIndex !== undefined) fd.append('rowIndex', String(rowIndex));
             const res = await fetch('/api/transcribe-elevenlabs', { method: 'POST', body: fd });
             if (res.ok) {
               const { text } = await res.json();
@@ -1110,6 +1115,8 @@ export function VoiceRecorder({
                   const formData = new FormData();
                   formData.append('audio', segments[idx], `encounter-${idx}.${getFileExtension(mimeType)}`);
                   formData.append('mode', 'encounter');
+                  if (sheetName) formData.append('sheetName', sheetName);
+                  if (rowIndex !== undefined) formData.append('rowIndex', String(rowIndex));
                   const res = await fetch(getTranscribeEndpoint(webEngine), { method: 'POST', body: formData });
                   if (res.ok) {
                     const data = await res.json();
@@ -1123,6 +1130,8 @@ export function VoiceRecorder({
               const formData = new FormData();
               formData.append('audio', fullBlob, `encounter.${getFileExtension(mimeType)}`);
               formData.append('mode', 'encounter');
+              if (sheetName) formData.append('sheetName', sheetName);
+              if (rowIndex !== undefined) formData.append('rowIndex', String(rowIndex));
               try {
                 const res = await fetch(getTranscribeEndpoint(webEngine), { method: 'POST', body: formData });
                 if (res.ok) {

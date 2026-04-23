@@ -876,7 +876,8 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
                             placeholder="Speaker 2" className="text-[10px] bg-transparent border-none outline-none w-20 placeholder:text-amber-400/40 text-amber-400 font-medium" />
                         </div>
                         <button onClick={swapSpeakers} className="text-[8px] text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-colors" title="Swap speakers">⇄ swap</button>
-                        <button onClick={stripAll} className="text-[8px] text-[var(--text-muted)] hover:text-red-400 ml-auto transition-colors">remove labels</button>
+                        <span className="text-[var(--text-muted)] opacity-20">·</span>
+                        <button onClick={stripAll} className="text-[8px] text-[var(--text-muted)] hover:text-red-400 transition-colors">remove labels</button>
                       </div>
                     )}
                     <div className="w-full max-h-28 p-3 pr-10 border border-[var(--input-border)] rounded-xl text-xs overflow-y-auto bg-[var(--input-bg)]">
@@ -1045,6 +1046,8 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
                   showUpload
                   sensitivity={micSensitivity}
                   encryptionKey={encryptionKey || undefined}
+                  sheetName={patient.sheetName}
+                  rowIndex={patient.rowIndex}
                   onBlobBackup={(url, iv, ct) => {
                     const now = new Date().toISOString();
                     setAudioBlobUrl(url); setAudioBlobIv(iv); setAudioBlobContentType(ct); setAudioBlobCreatedAt(now);

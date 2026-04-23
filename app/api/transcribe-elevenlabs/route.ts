@@ -166,6 +166,32 @@ export async function POST(request: NextRequest) {
       extraKeyterms.push(...combined.split(/[,\n]+/).map(t => t.trim()).filter(t => t.length > 1));
     } catch {}
 
+    // Patient-specific terms — extract from patient data for better recognition
+    const sheetName = formData.get('sheetName') as string || '';
+    const rowIndex = formData.get('rowIndex') as string || '';
+    if (sheetName && rowIndex) {
+      try {
+        const { getDataContext, getPatient } = await import('@/lib/data-layer');
+        const ctx = await getDataContext();
+        const patient = await ctx ? await getPatient(ctx, parseInt(rowIndex), sheetName) : null;
+        if (patient) {
+          // Patient name
+          if (patient.name) extraKeyterms.push(patient.name);
+          // Diagnosis
+          if (patient.diagnosis) extraKeyterms.push(...patient.diagnosis.split(/[,;]+/).map(t => t.trim()).filter(t => t.length > 2));
+          // Profile: medications, allergies, PMHx
+          if (patient.profile) {
+            try {
+              const prof = JSON.parse(patient.profile);
+              if (prof.pmhx?.length) extraKeyterms.push(...prof.pmhx);
+              if (prof.medications?.length) extraKeyterms.push(...prof.medications);
+              if (prof.allergies?.length) extraKeyterms.push(...prof.allergies);
+            } catch {}
+          }
+        }
+      } catch {}
+    }
+
     const allKeyterms = Array.from(new Set([...BASE_MEDICAL_KEYTERMS, ...extraKeyterms]))
       .filter(t => t.length > 1 && t.length <= 50 && t.split(/\s+/).length <= 5)
       .slice(0, 1000);
