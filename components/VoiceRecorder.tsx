@@ -79,30 +79,23 @@ type RecorderState = 'idle' | 'recording' | 'transcribing' | 'error';
  * boost quiet patient speech. Echo cancellation ON with the gain chain works
  * well — the gain compensates for any AEC attenuation. */
 function buildAudioConstraints(mode: string, sensitivity: number): MediaTrackConstraints {
-  const isEncounter = mode === 'encounter';
-
-  if (isEncounter) {
-    // Encounter: capture ALL audio as cleanly as possible — like Voice Memos.
-    // Disable all browser processing that removes speech:
-    // - AGC ducks quiet speakers when loud ones talk
-    // - AEC removes patient voice (mistaken for echo in small rooms)
-    // - Noise suppression drops quiet speech classified as background
+  // Use plain booleans (not { ideal: ... }) for Safari/iPad compatibility
+  // Match Hosp Workbook's working constraints exactly
+  if (mode === 'encounter') {
     return {
-      sampleRate: { ideal: 48000 },
-      channelCount: { ideal: 1 },
-      autoGainControl: { ideal: false },
-      noiseSuppression: { ideal: false },
-      echoCancellation: { ideal: false },
+      autoGainControl: true,
+      noiseSuppression: false,
+      echoCancellation: true,
+      sampleRate: 48000,
     };
   }
 
-  // Dictation: single close speaker — some processing OK
+  // Dictation: single close speaker
   return {
-    sampleRate: { ideal: 48000 },
-    channelCount: { ideal: 1 },
-    echoCancellation: { ideal: false },
-    noiseSuppression: sensitivity <= 2,
     autoGainControl: sensitivity <= 2,
+    noiseSuppression: sensitivity <= 2,
+    echoCancellation: false,
+    sampleRate: 48000,
   };
 }
 
@@ -128,29 +121,19 @@ function createBoostedStream(stream: MediaStream, sensitivity: number): {
   boostedStream: MediaStream; ctx: AudioContext; gainNode: GainNode; compressor: DynamicsCompressorNode;
 } {
   const settings = sensitivitySettings(sensitivity);
-  // Safari may not support sampleRate in constructor — use default if it fails
-  let ctx: AudioContext;
-  try {
-    ctx = new AudioContext({ sampleRate: 48000 });
-  } catch {
-    ctx = new AudioContext();
-  }
-  // Safari requires resume after user gesture
-  if (ctx.state === 'suspended') ctx.resume().catch(() => {});
-
-  console.log(`[Audio] Boost chain: gain=${settings.gain.toFixed(2)}, threshold=${settings.threshold.toFixed(0)}, ratio=${settings.ratio.toFixed(1)}, sampleRate=${ctx.sampleRate}`);
-
+  // Match Hosp Workbook's working AudioContext setup for Safari/iPad
+  const ctx = new AudioContext({ sampleRate: 48000 });
   const source = ctx.createMediaStreamSource(stream);
 
   const compressor = ctx.createDynamicsCompressor();
-  compressor.threshold.value = settings.threshold;
-  compressor.knee.value = settings.knee;
-  compressor.ratio.value = settings.ratio;
+  compressor.threshold.value = -50;
+  compressor.knee.value = 40;
+  compressor.ratio.value = 12;
   compressor.attack.value = 0;
-  compressor.release.value = settings.release;
+  compressor.release.value = 0.25;
 
   const gainNode = ctx.createGain();
-  gainNode.gain.value = settings.gain;
+  gainNode.gain.value = sensitivity;
 
   source.connect(compressor);
   compressor.connect(gainNode);
@@ -1025,7 +1008,6 @@ export function VoiceRecorder({
       mimeTypeRef.current = mimeType;
 
       onRecordingStart?.();
-      onProcessingRef.current?.(true);
       startKeepalive();
 
       // Create gain-boosted stream for encounter recording.
