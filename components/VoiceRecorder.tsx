@@ -47,6 +47,22 @@ function convertSpokenPunctuation(text: string): string {
   t = t.replace(/\s*\b(?:number sign|hashtag|pound sign)\b\s*/gi, '#');
   t = t.replace(/\s*\b(?:percent sign|percent)\b(?!\s*(?:of|or|and|is|was|were|are|in|at|from))\s*/gi, '% ');
   t = t.replace(/\s*\b(?:degree|degrees)\b\s*/gi, '° ');
+  // Brackets & quotes
+  t = t.replace(/\s*\b(?:open bracket|left bracket)\b\s*/gi, ' [');
+  t = t.replace(/\s*\b(?:close bracket|right bracket|end bracket)\b\s*/gi, '] ');
+  t = t.replace(/\s*\b(?:open quote|begin quote)\b\s*/gi, ' "');
+  t = t.replace(/\s*\b(?:close quote|end quote|unquote)\b\s*/gi, '" ');
+  // Tab / indent
+  t = t.replace(/\s*\b(?:tab|indent)\b\s*/gi, '\t');
+  // Math & symbols
+  t = t.replace(/\s*\b(?:at sign)\b\s*/gi, '@');
+  t = t.replace(/\s*\b(?:ampersand|and sign)\b\s*/gi, ' & ');
+  t = t.replace(/\s*\b(?:plus sign)\b\s*/gi, ' + ');
+  t = t.replace(/\s*\b(?:minus sign)\b\s*/gi, ' - ');
+  t = t.replace(/\s*\b(?:equals sign|equal sign)\b\s*/gi, ' = ');
+  t = t.replace(/\s*\b(?:times sign|multiplication sign)\b\s*/gi, ' × ');
+  t = t.replace(/\s*\b(?:greater than sign|greater than)\b\s*/gi, ' > ');
+  t = t.replace(/\s*\b(?:less than sign|less than)\b\s*/gi, ' < ');
 
   // Step 4: Cleanup
   t = t.replace(/,\s*([.!?;:\n])/g, '$1');
@@ -94,10 +110,15 @@ function buildAudioConstraints(mode: string, sensitivity: number): MediaTrackCon
  * Gentle settings to boost quiet voices WITHOUT destroying dynamic range.
  * Max compression ratio 4:1 (broadcast standard) — never higher. */
 function sensitivitySettings(sensitivity: number): { gain: number; threshold: number; ratio: number; knee: number; release: number } {
-  if (sensitivity <= 1) return { gain: 1.0, threshold: -40, ratio: 2, knee: 40, release: 0.3 };    // Lo: minimal
-  if (sensitivity === 2) return { gain: 1.5, threshold: -45, ratio: 3, knee: 40, release: 0.25 };   // Mid: gentle
-  if (sensitivity === 3) return { gain: 2.0, threshold: -50, ratio: 3.5, knee: 35, release: 0.2 };  // Hi: moderate
-  return { gain: 2.5, threshold: -55, ratio: 4, knee: 30, release: 0.15 };                           // Max: broadcast-level
+  // Continuous 0.5-4x range — interpolate linearly
+  const t = Math.max(0, Math.min(1, (sensitivity - 0.5) / 3.5)); // 0-1 normalized
+  return {
+    gain: 0.5 + t * 2.0,         // 0.5x → 2.5x
+    threshold: -35 - t * 20,      // -35 → -55 dB
+    ratio: 1.5 + t * 2.5,         // 1.5:1 → 4:1
+    knee: 40 - t * 10,            // 40 → 30
+    release: 0.3 - t * 0.15,      // 0.3 → 0.15
+  };
 }
 
 /** Create a gain-boosted audio stream for recording.

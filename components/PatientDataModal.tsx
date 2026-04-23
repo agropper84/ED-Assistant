@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { Patient } from '@/lib/google-sheets';
 import { getMedicalSuggestions } from '@/lib/medical-suggestions';
-import { X, Loader2, Save, ExternalLink, RefreshCw, Check, Heart, ArrowUpCircle, FileText, Trash2, ListTree } from 'lucide-react';
+import { X, Loader2, Save, ExternalLink, RefreshCw, Check, Heart, ArrowUpCircle, FileText, Trash2, ListTree, Mic } from 'lucide-react';
 import { PatientProfile } from '@/components/PatientProfile';
 import type { PatientProfile as ProfileData } from '@/app/api/profile/route';
 import { ExamToggles } from '@/components/ExamToggles';
@@ -57,7 +57,8 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
   const [generating, setGenerating] = useState(false);
   const [userPhrases, setUserPhrases] = useState<string[]>([]);
   const [showLiveTranscript, setShowLiveTranscript] = useState(false);
-  const [micSensitivity, setMicSensitivity] = useState(3); // default high for encounters
+  const [micSensitivity, setMicSensitivity] = useState(2); // 0.5-4x range, default 2x
+  const [encounterDetail, setEncounterDetail] = useState(3); // 1-5: Minimal/Brief/Standard/Detailed/Comprehensive
   const [isRecordingEncounter, setIsRecordingEncounter] = useState(false);
   const [recordingStartTime, setRecordingStartTime] = useState<number | null>(null);
   const [recordingElapsed, setRecordingElapsed] = useState(0);
@@ -120,7 +121,12 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
 
   const confirmSubmit = async () => {
     if (!patient || !pendingSubmit) return;
-    const { field, content } = pendingSubmit;
+    let { field, content } = pendingSubmit;
+    // Replace canonical speaker labels with custom names before saving
+    if (field === 'transcript') {
+      if (speakerNames.s1) content = content.replace(/^Speaker 1:/gim, `${speakerNames.s1}:`);
+      if (speakerNames.s2) content = content.replace(/^Speaker 2:/gim, `${speakerNames.s2}:`);
+    }
     setSubmitting(field);
     setPendingSubmit(null);
     try {
@@ -790,18 +796,20 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
               </label>
               <div className="flex items-center gap-3">
                 <div className="flex items-center gap-1.5">
-                  <span className="text-[9px] text-[var(--text-muted)]">Mic</span>
-                  <input
-                    type="range"
-                    min="1"
-                    max="4"
-                    step="1"
-                    value={micSensitivity}
-                    onChange={(e) => setMicSensitivity(parseInt(e.target.value))}
-                    className="w-20 h-1.5 accent-blue-500 cursor-pointer"
-                    title={micSensitivity === 1 ? 'Low — close speaker' : micSensitivity === 2 ? 'Medium — balanced' : micSensitivity === 3 ? 'High — room-wide' : 'Max — maximum pickup'}
-                  />
-                  <span className="text-[9px] text-[var(--text-muted)] w-7 text-center font-medium">{micSensitivity === 1 ? 'Lo' : micSensitivity === 2 ? 'Mid' : micSensitivity === 3 ? 'Hi' : 'Max'}</span>
+                  <Mic className="w-3 h-3 flex-shrink-0" style={{ color: 'var(--accent)', opacity: 0.5 }} />
+                  <div className="flex-1" style={{ maxWidth: 80 }}>
+                    <input
+                      type="range"
+                      min={0.5}
+                      max={4}
+                      step={0.5}
+                      value={micSensitivity}
+                      onChange={(e) => setMicSensitivity(Number(e.target.value))}
+                      className="w-full h-1.5 rounded-full appearance-none cursor-pointer"
+                      style={{ background: `linear-gradient(to right, rgba(59,130,246,0.4) 0%, rgba(59,130,246,0.4) ${((micSensitivity - 0.5) / 3.5) * 100}%, var(--border) ${((micSensitivity - 0.5) / 3.5) * 100}%, var(--border) 100%)` }}
+                    />
+                  </div>
+                  <span className="text-[8px] tabular-nums font-medium w-5 text-right" style={{ color: 'var(--text-muted)' }}>{micSensitivity}x</span>
                 </div>
                 <span
                   onClick={() => setShowLiveTranscript(!showLiveTranscript)}
@@ -930,21 +938,23 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
               )}
               {/* Recording waveform — matches Hosp Workbook styling */}
               {isRecordingEncounter && !showLiveTranscript && (() => {
-                const vizGain = micSensitivity <= 1 ? 32 : micSensitivity <= 2 ? 48 : micSensitivity <= 3 ? 65 : 80;
+                const vizGain = micSensitivity <= 1 ? 32 : micSensitivity <= 2 ? 48 : micSensitivity <= 3 ? 65 : micSensitivity <= 3.5 ? 75 : 85;
                 const mins = Math.floor(recordingElapsed / 60);
                 const secs = recordingElapsed % 60;
                 const timeStr = `${mins}:${secs.toString().padStart(2, '0')}`;
                 // Dynamic glow from recent peaks
                 const recentPeak = waveHistory.slice(-10).reduce((max, s) => Math.max(max, s?.level || 0), 0);
-                const glowIntensity = Math.min(1, recentPeak * 2);
+                const glowIntensity = Math.min(1, recentPeak * 4);
                 return (
                   <div className="w-full rounded-lg relative overflow-hidden" style={{
                     height: '84px',
                     background: 'linear-gradient(160deg, rgba(8,11,20,0.95) 0%, rgba(13,18,30,0.98) 50%, rgba(8,11,20,0.95) 100%)',
                     border: '1px solid rgba(96,165,250,0.15)',
-                    boxShadow: `0 0 ${12 + glowIntensity * 24}px rgba(96,165,250,${0.03 + glowIntensity * 0.08})`,
+                    boxShadow: `inset 0 1px 0 rgba(255,255,255,0.02), 0 0 ${12 + glowIntensity * 24}px rgba(96,165,250,${0.05 + glowIntensity * 0.15})`,
                     transition: 'box-shadow 150ms ease-out',
                   }}>
+                    {/* Grid background */}
+                    <div className="absolute inset-0 pointer-events-none" style={{ opacity: 0.03, backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 14px, rgba(148,163,184,0.5) 14px, rgba(148,163,184,0.5) 15px), repeating-linear-gradient(90deg, transparent, transparent 14px, rgba(148,163,184,0.5) 14px, rgba(148,163,184,0.5) 15px)' }} />
                     {/* Center line */}
                     <div className="absolute inset-x-0 top-[calc(50%-1px)] h-px" style={{ background: `rgba(96,165,250,${0.08 + glowIntensity * 0.15})` }} />
                     {/* Waveform bars */}
@@ -970,17 +980,18 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
                     {/* Edge fades */}
                     <div className="absolute left-0 top-0 bottom-0 w-16 z-10 pointer-events-none" style={{ background: 'linear-gradient(to right, rgba(8,11,20,0.95) 0%, transparent 100%)' }} />
                     <div className="absolute right-0 top-0 bottom-0 w-16 z-10 pointer-events-none" style={{ background: 'linear-gradient(to left, rgba(8,11,20,0.95) 0%, transparent 100%)' }} />
-                    {/* Bottom radial glow */}
-                    <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-3/4 h-6 pointer-events-none" style={{
-                      background: `radial-gradient(ellipse at bottom, rgba(96,165,250,${0.05 + glowIntensity * 0.1}) 0%, transparent 70%)`,
+                    {/* Bottom ambient glow — reacts to audio */}
+                    <div className="absolute bottom-0 inset-x-0 h-8 pointer-events-none" style={{
+                      background: `radial-gradient(ellipse 60% 100% at 50% 100%, rgba(96,165,250,${0.03 + glowIntensity * 0.08}) 0%, transparent 100%)`,
+                      transition: 'background 150ms ease',
                     }} />
-                    {/* Top: recording indicator + timer */}
-                    <div className="absolute top-1.5 left-0 right-0 flex items-center justify-center gap-2 z-20">
-                      <div className="flex items-center gap-1">
-                        <div className="w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse" />
-                        <span className="text-[8px] text-white/30 font-medium tracking-widest uppercase">Encounter</span>
+                    {/* Top status bar */}
+                    <div className="absolute top-2.5 left-0 right-0 flex items-center px-4 z-20">
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+                        <span className="text-[9px] text-white/30 font-medium tracking-[0.15em] uppercase">Encounter</span>
+                        <span className="text-[10px] text-white/50 font-mono tabular-nums">{timeStr}</span>
                       </div>
-                      <span className="text-[9px] text-white/40 font-mono tabular-nums">{timeStr}</span>
                     </div>
                   </div>
                 );
@@ -1061,8 +1072,25 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
                 />
               </div>
             </div>
+            {/* Detail level for transcript extraction */}
+            {transcript.trim() && !isRecordingEncounter && (
+              <div className="flex items-center gap-2 mt-1 px-1">
+                <span className="text-[8px] text-[var(--text-muted)]">Detail</span>
+                <input type="range" min={1} max={5} value={encounterDetail} onChange={e => setEncounterDetail(Number(e.target.value))}
+                  className="flex-1 h-1 rounded-full appearance-none cursor-pointer" style={{ maxWidth: 100, background: `linear-gradient(to right, rgba(59,130,246,0.4) 0%, rgba(59,130,246,0.4) ${(encounterDetail - 1) * 25}%, var(--border) ${(encounterDetail - 1) * 25}%, var(--border) 100%)` }} />
+                <span className="text-[8px] tabular-nums font-medium w-[52px] text-right" style={{ color: 'var(--text-muted)' }}>
+                  {['Minimal', 'Brief', 'Standard', 'Detailed', 'Comprehensive'][encounterDetail - 1]}
+                </span>
+              </div>
+            )}
             <button
-              onClick={() => handleSectionSubmit('transcript', transcript)}
+              onClick={() => {
+                // Tag transcript with detail level metadata
+                const detailMap: Record<number, string> = { 1: 'concise', 2: 'concise', 3: 'standard', 4: 'comprehensive', 5: 'comprehensive' };
+                const detailTag = `[Detail: ${detailMap[encounterDetail] || 'standard'}]`;
+                const taggedContent = transcript.includes('[Detail:') ? transcript : `${detailTag}\n${transcript}`;
+                handleSectionSubmit('transcript', taggedContent);
+              }}
               disabled={!transcript.trim() || !!submitting}
               className={`mt-1.5 w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs font-medium transition-all duration-300 ${
                 submitted === 'transcript'
