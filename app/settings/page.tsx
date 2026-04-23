@@ -28,6 +28,7 @@ import {
   getTranscribeWatchAPI, saveTranscribeWatchAPI,
   MedicalizeDictationMode, getMedicalizeDictationMode, saveMedicalizeDictationMode,
 } from '@/lib/settings';
+import { MODEL_PRESETS } from '@/lib/config';
 import { getExamPresets, saveExamPresets, resetExamPresets, ExamPreset } from '@/lib/exam-presets';
 import {
   BillingCode, BillingGroup,
@@ -1256,14 +1257,27 @@ export default function SettingsPage() {
               <div>
                 <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Model</label>
                 <select
-                  value={settings.model}
-                  onChange={(e) => handleSettingChange('model', e.target.value)}
+                  value={MODEL_PRESETS.some(p => p.id === settings.model) ? settings.model : '__custom__'}
+                  onChange={(e) => {
+                    if (e.target.value !== '__custom__') handleSettingChange('model', e.target.value);
+                  }}
                   className="w-full p-3 border border-[var(--input-border)] rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)]"
                 >
-                  <option value="claude-sonnet-4-20250514">Claude Sonnet 4</option>
-                  <option value="claude-haiku-4-5-20251001">Claude Haiku 4.5</option>
-                  <option value="claude-opus-4-6">Claude Opus 4.6</option>
+                  {MODEL_PRESETS.map(p => (
+                    <option key={p.id} value={p.id}>{p.label}</option>
+                  ))}
+                  <option value="__custom__">Custom model ID...</option>
                 </select>
+                {!MODEL_PRESETS.some(p => p.id === settings.model) && (
+                  <input
+                    type="text"
+                    value={settings.model}
+                    onChange={(e) => handleSettingChange('model', e.target.value)}
+                    placeholder="claude-sonnet-4-6-20250627"
+                    className="w-full mt-2 p-2.5 border border-[var(--input-border)] rounded-lg text-sm bg-[var(--input-bg)] text-[var(--text-primary)] focus:ring-2 focus:ring-blue-500 font-mono"
+                  />
+                )}
+                <p className="text-[10px] text-[var(--text-muted)] mt-1">Select a preset or enter a custom model ID when new versions are released.</p>
               </div>
 
               <div>

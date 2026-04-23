@@ -69,7 +69,7 @@ export const DEFAULT_ADMISSION_INSTRUCTIONS = `Write a comprehensive admission n
 Use professional medical language. Be thorough and structured.`;
 
 export const DEFAULT_SETTINGS: AppSettings = {
-  model: 'claude-sonnet-4-20250514',
+  model: 'claude-sonnet-4-6-20250627',
   maxTokens: 4096,
   temperature: 0.3,
   fastDictation: false,
