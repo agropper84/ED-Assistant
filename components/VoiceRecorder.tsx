@@ -107,13 +107,12 @@ function buildAudioConstraints(mode: string, sensitivity: number): MediaTrackCon
 }
 
 /** Sensitivity → audio processing settings for the compressor/gain chain.
- * Gentle settings to boost quiet voices WITHOUT destroying dynamic range.
- * Max compression ratio 4:1 (broadcast standard) — never higher. */
+ * Matched to Hosp Workbook defaults: gain=2.0, ratio=12, threshold=-50 at default. */
 function sensitivitySettings(sensitivity: number): { gain: number; threshold: number; ratio: number; knee: number; release: number } {
-  if (sensitivity <= 1) return { gain: 1.0, threshold: -40, ratio: 2, knee: 40, release: 0.3 };    // Lo: minimal
-  if (sensitivity === 2) return { gain: 1.5, threshold: -45, ratio: 3, knee: 40, release: 0.25 };   // Mid: gentle
-  if (sensitivity === 3) return { gain: 2.0, threshold: -50, ratio: 3.5, knee: 35, release: 0.2 };  // Hi: moderate
-  return { gain: 2.5, threshold: -55, ratio: 4, knee: 30, release: 0.15 };                           // Max: broadcast-level
+  if (sensitivity <= 1) return { gain: 1.0, threshold: -40, ratio: 6, knee: 40, release: 0.3 };     // Lo: minimal
+  if (sensitivity === 2) return { gain: 2.0, threshold: -50, ratio: 12, knee: 40, release: 0.25 };   // Mid: matches Hosp Workbook default
+  if (sensitivity === 3) return { gain: 3.0, threshold: -55, ratio: 14, knee: 35, release: 0.2 };    // Hi: aggressive
+  return { gain: 4.0, threshold: -60, ratio: 16, knee: 30, release: 0.15 };                           // Max: very aggressive
 }
 
 /** Create a gain-boosted audio stream for recording.
@@ -329,7 +328,7 @@ export function VoiceRecorder({
       let sum = 0;
       for (let i = 0; i < timeData.length; i++) sum += timeData[i] * timeData[i];
       const rms = Math.sqrt(sum / timeData.length);
-      const level = Math.min(1, rms / 0.25);
+      const level = Math.min(1, rms / 0.12); // Match Hosp Workbook sensitivity
       setAudioLevel(level);
 
       // Frequency data (kept for future use)
