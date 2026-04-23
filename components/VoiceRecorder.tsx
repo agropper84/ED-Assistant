@@ -79,23 +79,30 @@ type RecorderState = 'idle' | 'recording' | 'transcribing' | 'error';
  * boost quiet patient speech. Echo cancellation ON with the gain chain works
  * well — the gain compensates for any AEC attenuation. */
 function buildAudioConstraints(mode: string, sensitivity: number): MediaTrackConstraints {
-  // Use plain booleans (not { ideal: ... }) for Safari/iPad compatibility
-  // Match Hosp Workbook's working constraints exactly
-  if (mode === 'encounter') {
+  const isEncounter = mode === 'encounter';
+
+  if (isEncounter) {
+    // Encounter: capture ALL audio as cleanly as possible — like Voice Memos.
+    // Disable all browser processing that removes speech:
+    // - AGC ducks quiet speakers when loud ones talk
+    // - AEC removes patient voice (mistaken for echo in small rooms)
+    // - Noise suppression drops quiet speech classified as background
     return {
-      autoGainControl: true,
-      noiseSuppression: false,
-      echoCancellation: true,
-      sampleRate: 48000,
+      sampleRate: { ideal: 48000 },
+      channelCount: { ideal: 1 },
+      autoGainControl: { ideal: false },
+      noiseSuppression: { ideal: false },
+      echoCancellation: { ideal: false },
     };
   }
 
-  // Dictation: single close speaker
+  // Dictation: single close speaker — some processing OK
   return {
-    autoGainControl: sensitivity <= 2,
+    sampleRate: { ideal: 48000 },
+    channelCount: { ideal: 1 },
+    echoCancellation: { ideal: false },
     noiseSuppression: sensitivity <= 2,
-    echoCancellation: false,
-    sampleRate: 48000,
+    autoGainControl: sensitivity <= 2,
   };
 }
 
@@ -103,15 +110,10 @@ function buildAudioConstraints(mode: string, sensitivity: number): MediaTrackCon
  * Gentle settings to boost quiet voices WITHOUT destroying dynamic range.
  * Max compression ratio 4:1 (broadcast standard) — never higher. */
 function sensitivitySettings(sensitivity: number): { gain: number; threshold: number; ratio: number; knee: number; release: number } {
-  // Continuous 0.5-4x range — interpolate linearly
-  const t = Math.max(0, Math.min(1, (sensitivity - 0.5) / 3.5)); // 0-1 normalized
-  return {
-    gain: 0.5 + t * 2.0,         // 0.5x → 2.5x
-    threshold: -35 - t * 20,      // -35 → -55 dB
-    ratio: 1.5 + t * 2.5,         // 1.5:1 → 4:1
-    knee: 40 - t * 10,            // 40 → 30
-    release: 0.3 - t * 0.15,      // 0.3 → 0.15
-  };
+  if (sensitivity <= 1) return { gain: 1.0, threshold: -40, ratio: 2, knee: 40, release: 0.3 };    // Lo: minimal
+  if (sensitivity === 2) return { gain: 1.5, threshold: -45, ratio: 3, knee: 40, release: 0.25 };   // Mid: gentle
+  if (sensitivity === 3) return { gain: 2.0, threshold: -50, ratio: 3.5, knee: 35, release: 0.2 };  // Hi: moderate
+  return { gain: 2.5, threshold: -55, ratio: 4, knee: 30, release: 0.15 };                           // Max: broadcast-level
 }
 
 /** Create a gain-boosted audio stream for recording.
@@ -121,19 +123,18 @@ function createBoostedStream(stream: MediaStream, sensitivity: number): {
   boostedStream: MediaStream; ctx: AudioContext; gainNode: GainNode; compressor: DynamicsCompressorNode;
 } {
   const settings = sensitivitySettings(sensitivity);
-  // Match Hosp Workbook's working AudioContext setup for Safari/iPad
   const ctx = new AudioContext({ sampleRate: 48000 });
   const source = ctx.createMediaStreamSource(stream);
 
   const compressor = ctx.createDynamicsCompressor();
-  compressor.threshold.value = -50;
-  compressor.knee.value = 40;
-  compressor.ratio.value = 12;
-  compressor.attack.value = 0;
-  compressor.release.value = 0.25;
+  compressor.threshold.value = settings.threshold;
+  compressor.knee.value = settings.knee;
+  compressor.ratio.value = settings.ratio;
+  compressor.attack.value = 0;        // Instant attack — no quiet speech lost
+  compressor.release.value = settings.release;
 
   const gainNode = ctx.createGain();
-  gainNode.gain.value = sensitivity;
+  gainNode.gain.value = settings.gain;
 
   source.connect(compressor);
   compressor.connect(gainNode);
@@ -160,8 +161,6 @@ interface VoiceRecorderProps {
   showUpload?: boolean;
   /** Mic sensitivity: 1=low (close speaker), 2=medium (default), 3=high (room-wide), 4=max */
   sensitivity?: number;
-  /** Called when user enters medicalize mode (hold > 500ms) */
-  onMedicalizeStart?: () => void;
   /** Base64 encryption key for blob backup. If provided, encrypts audio before uploading. */
   encryptionKey?: string;
   /** Called with blob URL after successful backup upload */
@@ -183,7 +182,7 @@ async function encryptAudioBlob(audioBlob: Blob, keyBase64: string): Promise<{ e
 
 export function VoiceRecorder({
   onTranscript, onInterimTranscript, onRecordingStart, onRecordingStop, onProcessingChange, onAudioLevel,
-  onMedicalizeStart, disabled, mode = 'dictation', showUpload, sensitivity = 2, encryptionKey, onBlobBackup,
+  disabled, mode = 'dictation', showUpload, sensitivity = 2, encryptionKey, onBlobBackup,
 }: VoiceRecorderProps) {
   const [state, setState] = useState<RecorderState>('idle');
   const stateRef = useRef<RecorderState>('idle');
@@ -245,8 +244,6 @@ export function VoiceRecorder({
   onAudioLevelRef.current = onAudioLevel;
   const onRecordingStopRef = useRef(onRecordingStop);
   onRecordingStopRef.current = onRecordingStop;
-  const onMedicalizeStartRef = useRef(onMedicalizeStart);
-  onMedicalizeStartRef.current = onMedicalizeStart;
 
   const useStreaming = mode === 'dictation' && !!onInterimTranscript;
 
@@ -696,16 +693,6 @@ export function VoiceRecorder({
     });
   }, []);
 
-  // --- Backup dictation audio to server (fire-and-forget) ---
-  const backupDictationAudio = useCallback((blob: Blob, label: string) => {
-    if (!blob || blob.size < 2000) return;
-    const ext = getFileExtension(mimeTypeRef.current);
-    const formData = new FormData();
-    formData.append('audio', blob, `${label}-${Date.now()}.${ext}`);
-    formData.append('mode', label);
-    fetch('/api/backup-audio', { method: 'POST', body: formData }).catch(() => {});
-  }, []);
-
   // --- Flush current audio segment to Deepgram for refinement ---
   const flushSegmentForRefinement = useCallback(async () => {
     if (stoppingRef.current) return;
@@ -865,15 +852,10 @@ export function VoiceRecorder({
 
     cleanupResources();
 
-    // Backup dictation audio (fire-and-forget)
-    if (finalBlob) backupDictationAudio(finalBlob, 'dictation');
-
     // ElevenLabs realtime: show live text immediately, then re-transcribe
     // with medical keyterms in background for improved accuracy
     if (speechEngine === 'elevenlabs' && webSpeechText.length > 0) {
-      // Commit final text via onTranscript
-      onTranscriptRef.current(webSpeechText);
-      onInterimRef.current?.('');
+      onInterimRef.current?.(webSpeechText);
 
       // Background: re-transcribe with medical keyterms via batch endpoint
       if (finalBlob && finalBlob.size > 2000) {
@@ -886,7 +868,7 @@ export function VoiceRecorder({
             if (res.ok) {
               const { text } = await res.json();
               if (text?.trim() && text.trim() !== webSpeechText.trim()) {
-                onTranscriptRef.current(text.trim());
+                onInterimRef.current?.(text.trim());
               }
             }
           } catch {}
@@ -922,14 +904,12 @@ export function VoiceRecorder({
       } catch {}
     }
 
-    // Determine best final text and commit via onTranscript
+    // Non-medicalize: the best text is already displayed via onInterimTranscript
     const dgWsText = accumulatedTextRef.current?.trim() || '';
     const refined = refinedTextRef.current?.trim() || '';
-    const finalText = (refined && refined.length > dgWsText.length * 0.9) ? refined : dgWsText;
 
-    if (finalText) {
-      onTranscriptRef.current(finalText);
-      onInterimRef.current?.('');
+    if (refined && refined.length > dgWsText.length * 0.9) {
+      onInterimRef.current?.(refined);
     }
 
     onProcessingRef.current?.(false);
@@ -946,9 +926,6 @@ export function VoiceRecorder({
 
     const blob = await collectAudioBlob();
 
-    // Backup medicalize audio (fire-and-forget)
-    if (blob) backupDictationAudio(blob, 'medicalize');
-
     if (blob && blob.size > 2000) {
       try {
         const formData = new FormData();
@@ -958,7 +935,6 @@ export function VoiceRecorder({
         const transcribeEngine = getTranscribeAPI();
         const useExternalSTT = transcribeEngine === 'deepgram' || transcribeEngine === 'wispr' || transcribeEngine === 'elevenlabs';
 
-        let finalText = '';
         if (useExternalSTT) {
           const sttRes = await fetch(getTranscribeEndpoint(transcribeEngine), { method: 'POST', body: formData });
           if (sttRes.ok) {
@@ -971,9 +947,9 @@ export function VoiceRecorder({
               });
               if (medRes.ok) {
                 const { text: medText } = await medRes.json();
-                finalText = (medText?.trim()) || sttText.trim();
+                onInterimRef.current?.((medText?.trim()) || sttText.trim());
               } else {
-                finalText = sttText.trim();
+                onInterimRef.current?.(sttText.trim());
               }
             }
           }
@@ -981,21 +957,15 @@ export function VoiceRecorder({
           const res = await fetch('/api/transcribe', { method: 'POST', body: formData });
           if (res.ok) {
             const { text } = await res.json();
-            if (text?.trim()) finalText = text.trim();
+            if (text?.trim()) onInterimRef.current?.(text.trim());
           }
-        }
-
-        // Commit final medicalized text via onTranscript
-        if (finalText) {
-          onTranscriptRef.current(finalText);
-          onInterimRef.current?.('');
         }
       } catch {}
     }
 
-    onProcessingRef.current?.(false);
+    onProcessingRef.current?.(false); // Medicalized text is already refined — never grey
     setRecState('idle');
-  }, [cleanupResources, collectAudioBlob, backupDictationAudio]);
+  }, [cleanupResources, collectAudioBlob]);
 
   // =================================================================
   // ENCOUNTER MODE: Simple click toggle
@@ -1008,28 +978,24 @@ export function VoiceRecorder({
       mimeTypeRef.current = mimeType;
 
       onRecordingStart?.();
+      onProcessingRef.current?.(true);
       startKeepalive();
 
       // Create gain-boosted stream for encounter recording.
-      // Falls back to raw stream if AudioContext chain fails (Safari compatibility).
-      let recordStream = rawStream;
-      try {
-        const { boostedStream, ctx: boostCtx, gainNode, compressor } = createBoostedStream(rawStream, sensitivity);
-        boostCtxRef.current = boostCtx;
-        boostGainRef.current = gainNode;
-        boostCompressorRef.current = compressor;
-        recordStream = boostedStream;
-      } catch (e) {
-        console.warn('[Encounter] Boost chain failed, recording raw stream:', e);
-      }
+      // Sensitivity controls compression aggressiveness + gain level.
+      const { boostedStream, ctx: boostCtx, gainNode, compressor } = createBoostedStream(rawStream, sensitivity);
+      boostCtxRef.current = boostCtx;
+      boostGainRef.current = gainNode;
+      boostCompressorRef.current = compressor;
 
-      // Record from boosted stream (or raw if boost failed).
+      // Record from the BOOSTED stream — the raw stream can't be shared between
+      // MediaRecorder and AudioContext on all browsers (Safari consumes the stream).
+      // With gentle compression (max 4:1) the audio quality is still good for Deepgram.
       const recorderOptions: MediaRecorderOptions = { mimeType };
       if (mimeType.includes('webm')) {
         recorderOptions.audioBitsPerSecond = 128000; // 128kbps for speech clarity
       }
-      console.log(`[Encounter] Recording from ${recordStream === rawStream ? 'RAW' : 'BOOSTED'} stream, mime=${mimeType}`);
-      const recorder = new MediaRecorder(recordStream, recorderOptions);
+      const recorder = new MediaRecorder(boostedStream, recorderOptions);
       mediaRecorderRef.current = recorder;
       chunksRef.current = [];
       recorder.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data); };
@@ -1205,7 +1171,7 @@ export function VoiceRecorder({
       // Visualize the BOOSTED stream (not raw) so quiet voices are visible
       try {
         const vizCtx = new AudioContext();
-        const vizSource = vizCtx.createMediaStreamSource(recordStream);
+        const vizSource = vizCtx.createMediaStreamSource(boostedStream);
         const vizAnalyser = vizCtx.createAnalyser();
         vizAnalyser.fftSize = 2048;
         vizAnalyser.smoothingTimeConstant = 0.3;
@@ -1313,7 +1279,6 @@ export function VoiceRecorder({
         // Clear any text that Web Speech may have shown in the brief window
         accumulatedTextRef.current = '';
         onInterimRef.current?.('');
-        onMedicalizeStartRef.current?.();
       }
     }, 500);
   }, [mode, startEncounterRecording, startDictationRecording, stopNonMedicalize, stopWebSpeech]);
