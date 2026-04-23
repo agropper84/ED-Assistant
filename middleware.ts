@@ -13,7 +13,7 @@ const CSP_DIRECTIVES = [
   "font-src 'self' https://fonts.gstatic.com",
   "img-src 'self' data: blob: https:",
   "media-src 'self' blob:",
-  "connect-src 'self' https://api.anthropic.com https://api.openai.com https://api.deepgram.com https://sheets.googleapis.com https://www.googleapis.com https://accounts.google.com https://blob.vercel-storage.com https://*.public.blob.vercel-storage.com",
+  "connect-src 'self' https://api.anthropic.com https://api.openai.com https://api.deepgram.com https://api.elevenlabs.io wss://api.elevenlabs.io https://sheets.googleapis.com https://www.googleapis.com https://accounts.google.com https://blob.vercel-storage.com https://*.public.blob.vercel-storage.com",
   "frame-ancestors 'self'",
   "base-uri 'self'",
   "form-action 'self'",
