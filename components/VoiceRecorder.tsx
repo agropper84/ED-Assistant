@@ -226,6 +226,9 @@ export function VoiceRecorder({
   const isHoldingRef = useRef(false);
   const holdTimerRef = useRef<NodeJS.Timeout | null>(null);
 
+  // WebSocket STT connection state
+  const [wsReady, setWsReady] = useState(false);
+
   // Audio level visualization
   const [audioLevel, setAudioLevel] = useState(0);
   const animFrameRef = useRef<number | null>(null);
@@ -731,6 +734,7 @@ export function VoiceRecorder({
   // --- Clean up mic/audio resources ---
   const cleanupResources = useCallback(() => {
     stoppingRef.current = true;
+    setWsReady(false);
     stopAudioLevelViz();
     stopKeepalive();
     stopWebSpeech();
@@ -852,21 +856,14 @@ export function VoiceRecorder({
       refineCountRef.current = 0;
       setRecState('recording');
 
-      // Start Web Speech immediately for instant text (no network delay)
-      startWebSpeech();
-
-      // Connect WebSocket STT in background — once connected, its results
-      // will be higher quality and replace Web Speech output via onInterim
+      // Connect WebSocket STT for live text
       const speechEngine = getSpeechAPI();
+      setWsReady(false);
 
       if (speechEngine === 'elevenlabs') {
-        startElevenLabsStream(rawStream).then(ok => {
-          if (ok) stopWebSpeech(); // WS connected — Web Speech no longer needed
-        });
+        startElevenLabsStream(rawStream).then(ok => { if (ok) setWsReady(true); });
       } else {
-        startDeepgramStream(rawStream, false).then(ok => {
-          if (ok) stopWebSpeech(); // WS connected — Web Speech no longer needed
-        });
+        startDeepgramStream(rawStream, false).then(ok => { if (ok) setWsReady(true); });
       }
 
       // Audio level visualization
@@ -1390,9 +1387,10 @@ export function VoiceRecorder({
 
   const recordingStyle = state === 'recording' ? (() => {
     const v = Math.pow(audioLevel, 0.6);
-    const r = Math.round(40 + v * 10);
-    const g = Math.round(140 + v * 80);
-    const b = Math.round(220 - v * 40);
+    // Amber pulsing while WS connecting, green-blue when ready
+    const r = wsReady ? Math.round(40 + v * 10) : Math.round(200 + v * 30);
+    const g = wsReady ? Math.round(140 + v * 80) : Math.round(150 + v * 40);
+    const b = wsReady ? Math.round(220 - v * 40) : Math.round(50);
     const c = `${r}, ${g}, ${b}`;
     return {
       backgroundColor: `rgba(${c}, ${0.10 + v * 0.08})`,
@@ -1416,7 +1414,7 @@ export function VoiceRecorder({
         disabled={disabled || state === 'transcribing'}
         className={`p-2.5 min-w-[44px] min-h-[44px] rounded-full select-none touch-none flex items-center justify-center ${
           state === 'recording'
-            ? 'text-red-500'
+            ? (wsReady ? 'text-red-500' : 'text-amber-500 animate-pulse')
             : state === 'transcribing'
             ? 'text-blue-500 animate-pulse'
             : state === 'error'
