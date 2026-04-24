@@ -514,14 +514,10 @@ export function VoiceRecorder({
 
   // --- Stop ElevenLabs WebSocket streaming ---
   const stopElevenLabsStream = useCallback(() => {
+    // Close without commit flush to avoid duplicate text
+    // (accumulatedTextRef already has the latest from partial_transcript)
     if (elWsRef.current) {
-      try {
-        if (elWsRef.current.readyState === WebSocket.OPEN) {
-          // Send commit to flush final transcript
-          elWsRef.current.send(JSON.stringify({ message_type: 'input_audio_chunk', audio_base_64: '', commit: true, sample_rate: 16000 }));
-        }
-        elWsRef.current.close();
-      } catch {}
+      try { elWsRef.current.close(); } catch {}
       elWsRef.current = null;
     }
     if (elProcessorRef.current) { try { elProcessorRef.current.disconnect(); } catch {} elProcessorRef.current = null; }
