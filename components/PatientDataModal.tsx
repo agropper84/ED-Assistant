@@ -602,7 +602,7 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
     <div className="fixed inset-0 modal-overlay z-50 flex items-end sm:items-center justify-center">
       <div className={`relative w-full animate-slideUp transition-all duration-400 ease-[cubic-bezier(0.4,0,0.2,1)] ${sidePanel ? 'sm:max-w-[780px]' : 'sm:max-w-lg'}`}>
       {/* Tabs anchored to the modal's right edge, protruding outward */}
-      <div className="hidden sm:flex flex-col absolute z-50 right-0 translate-x-full" style={{ top: '56px' }}>
+      <div className="hidden sm:flex flex-col absolute z-50 right-0 translate-x-full" style={{ top: '80px' }}>
         {/* PMHx tab */}
         <button
           onClick={() => {
@@ -938,7 +938,19 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
                     Edit
                   </button>
                   <button
-                    onClick={() => { if (confirm('Clear transcript?')) setTranscript(''); }}
+                    onClick={() => {
+                      if (confirm('Clear transcript?')) {
+                        setTranscript('');
+                        // Save empty transcript to patient data so it doesn't repopulate on reopen
+                        if (patient) {
+                          fetch(`/api/patients/${patient.rowIndex}`, {
+                            method: 'PATCH',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ transcript: '', _sheetName: patient.sheetName, _patientName: patient.name }),
+                          }).catch(() => {});
+                        }
+                      }
+                    }}
                     className="text-[9px] text-[var(--text-muted)] hover:text-red-400 transition-colors font-medium"
                   >
                     Clear
