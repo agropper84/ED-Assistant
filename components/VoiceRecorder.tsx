@@ -249,6 +249,22 @@ export function VoiceRecorder({
 
   const useStreaming = mode === 'dictation' && !!onInterimTranscript;
 
+  // Pre-fetch ElevenLabs token on mount so it's ready when user taps record
+  const prefetchedTokenRef = useRef<string | null>(null);
+  const prefetchTokenTimestamp = useRef(0);
+  useEffect(() => {
+    if (getSpeechAPI() !== 'elevenlabs') return;
+    fetch('/api/elevenlabs-token')
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (data?.token) {
+          prefetchedTokenRef.current = data.token;
+          prefetchTokenTimestamp.current = Date.now();
+        }
+      })
+      .catch(() => {});
+  }, []);
+
   // Live-update boost gain/compressor when sensitivity slider changes mid-recording
   useEffect(() => {
     if (boostGainRef.current && boostCompressorRef.current && state === 'recording') {
@@ -504,11 +520,29 @@ export function VoiceRecorder({
 
     const connect = (): Promise<boolean> => new Promise(async (resolve) => {
       try {
-        const tokenRes = await fetch('/api/elevenlabs-token');
-        if (!tokenRes.ok) { resolve(false); return; }
-        const tokenData = await tokenRes.json();
-        const token = tokenData.token;
+        // Use pre-fetched token if fresh (< 55s old), otherwise fetch new one
+        let token: string | null = null;
+        if (prefetchedTokenRef.current && Date.now() - prefetchTokenTimestamp.current < 55000) {
+          token = prefetchedTokenRef.current;
+          prefetchedTokenRef.current = null; // single-use — consume it
+        } else {
+          const tokenRes = await fetch('/api/elevenlabs-token');
+          if (!tokenRes.ok) { resolve(false); return; }
+          const tokenData = await tokenRes.json();
+          token = tokenData.token;
+        }
         if (!token) { resolve(false); return; }
+
+        // Pre-fetch next token in background for the next recording
+        fetch('/api/elevenlabs-token')
+          .then(r => r.ok ? r.json() : null)
+          .then(data => {
+            if (data?.token) {
+              prefetchedTokenRef.current = data.token;
+              prefetchTokenTimestamp.current = Date.now();
+            }
+          })
+          .catch(() => {});
 
         const wsParams = new URLSearchParams({
           model_id: 'scribe_v2_realtime',
