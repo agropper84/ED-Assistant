@@ -215,12 +215,12 @@ export function VoiceRecorder({
 
   // Deepgram WebSocket streaming refs
   const dgSocketRef = useRef<WebSocket | null>(null);
-  const dgProcessorRef = useRef<ScriptProcessorNode | null>(null);
+  const dgProcessorRef = useRef<AudioNode | null>(null);
   const dgContextRef = useRef<AudioContext | null>(null);
 
   // ElevenLabs WebSocket streaming refs
   const elWsRef = useRef<WebSocket | null>(null);
-  const elProcessorRef = useRef<ScriptProcessorNode | null>(null);
+  const elProcessorRef = useRef<AudioNode | null>(null);
 
   const [isHolding, setIsHolding] = useState(false);
   const isHoldingRef = useRef(false);
@@ -473,23 +473,34 @@ export function VoiceRecorder({
       const ctx = new AudioContext({ sampleRate: 16000 });
       dgContextRef.current = ctx;
       const source = ctx.createMediaStreamSource(audioStream);
-      const processor = ctx.createScriptProcessor(4096, 1, 1);
-      dgProcessorRef.current = processor;
 
-      processor.onaudioprocess = (e) => {
-        if (ws.readyState !== WebSocket.OPEN) return;
-        // Convert Float32 to Int16 PCM
-        const float32 = e.inputBuffer.getChannelData(0);
-        const int16 = new Int16Array(float32.length);
-        for (let i = 0; i < float32.length; i++) {
-          const s = Math.max(-1, Math.min(1, float32[i]));
-          int16[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
-        }
-        ws.send(int16.buffer);
-      };
-
-      source.connect(processor);
-      processor.connect(ctx.destination); // required for processing to run
+      // Use AudioWorklet (modern) with ScriptProcessor fallback
+      try {
+        await ctx.audioWorklet.addModule('/pcm-processor.js');
+        const workletNode = new AudioWorkletNode(ctx, 'pcm-processor');
+        workletNode.port.onmessage = (e) => {
+          if (ws.readyState === WebSocket.OPEN) ws.send(e.data);
+        };
+        source.connect(workletNode);
+        workletNode.connect(ctx.destination);
+        dgProcessorRef.current = workletNode;
+      } catch {
+        // Fallback: ScriptProcessor for older browsers
+        const processor = ctx.createScriptProcessor(4096, 1, 1);
+        processor.onaudioprocess = (e) => {
+          if (ws.readyState !== WebSocket.OPEN) return;
+          const float32 = e.inputBuffer.getChannelData(0);
+          const int16 = new Int16Array(float32.length);
+          for (let i = 0; i < float32.length; i++) {
+            const s = Math.max(-1, Math.min(1, float32[i]));
+            int16[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+          }
+          ws.send(int16.buffer);
+        };
+        source.connect(processor);
+        processor.connect(ctx.destination);
+        dgProcessorRef.current = processor;
+      }
 
       return true;
     } catch {
@@ -581,34 +592,49 @@ export function VoiceRecorder({
           } catch {}
         };
 
-        ws.onopen = () => {
+        ws.onopen = async () => {
           retryCount = 0;
           if (!audioStream.active) return;
           // Capture audio at 16kHz, convert to PCM16, send as base64 JSON chunks
           elAudioCtx = new AudioContext({ sampleRate: 16000 });
           const source = elAudioCtx.createMediaStreamSource(audioStream);
-          const processor = elAudioCtx.createScriptProcessor(4096, 1, 1);
-          elProcessorRef.current = processor;
-          processor.onaudioprocess = (e) => {
+
+          const sendPCM = (int16buf: ArrayBuffer) => {
             if (ws.readyState !== WebSocket.OPEN) return;
-            const input = e.inputBuffer.getChannelData(0);
-            const pcm = new Int16Array(input.length);
-            for (let i = 0; i < input.length; i++) {
-              pcm[i] = Math.max(-32768, Math.min(32767, Math.round(input[i] * 32767)));
-            }
-            const bytes = new Uint8Array(pcm.buffer);
+            const bytes = new Uint8Array(int16buf);
             let binary = '';
             for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
-            const base64 = btoa(binary);
             ws.send(JSON.stringify({
               message_type: 'input_audio_chunk',
-              audio_base_64: base64,
+              audio_base_64: btoa(binary),
               sample_rate: 16000,
               commit: false,
             }));
           };
-          source.connect(processor);
-          processor.connect(elAudioCtx.destination);
+
+          // Use AudioWorklet (modern) with ScriptProcessor fallback
+          try {
+            await elAudioCtx.audioWorklet.addModule('/pcm-processor.js');
+            const workletNode = new AudioWorkletNode(elAudioCtx, 'pcm-processor');
+            workletNode.port.onmessage = (e) => sendPCM(e.data);
+            source.connect(workletNode);
+            workletNode.connect(elAudioCtx.destination);
+            elProcessorRef.current = workletNode;
+          } catch {
+            const processor = elAudioCtx.createScriptProcessor(4096, 1, 1);
+            processor.onaudioprocess = (e) => {
+              const float32 = e.inputBuffer.getChannelData(0);
+              const int16 = new Int16Array(float32.length);
+              for (let i = 0; i < float32.length; i++) {
+                const s = Math.max(-1, Math.min(1, float32[i]));
+                int16[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+              }
+              sendPCM(int16.buffer);
+            };
+            source.connect(processor);
+            processor.connect(elAudioCtx.destination);
+            elProcessorRef.current = processor;
+          }
           if (!resolved) { resolved = true; resolve(true); }
         };
 
