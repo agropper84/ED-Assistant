@@ -965,31 +965,33 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
                     <div className="absolute inset-0 pointer-events-none" style={{ opacity: 0.02, backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(148,163,184,0.3) 2px, rgba(148,163,184,0.3) 3px)' }} />
                     {/* Center line — glows with audio */}
                     <div className="absolute left-0 top-[calc(50%-0.5px)] h-px z-[1] pointer-events-none" style={{ right: '48px', background: `linear-gradient(to right, rgba(96,165,250,${0.04 + glowIntensity * 0.12}), rgba(96,165,250,${0.1 + glowIntensity * 0.2}) 50%, rgba(96,165,250,${0.04 + glowIntensity * 0.08}))` }} />
-                    {/* Waveform bars — stop before mic icon */}
-                    <div className="absolute left-0 top-0 bottom-0 flex items-center justify-between px-1" style={{ right: '52px' }}>
+                    {/* Waveform bars — stop before mic icon, taper off on right */}
+                    <div className="absolute left-0 top-0 bottom-0 flex items-center justify-between px-1" style={{ right: '48px' }}>
                       {Array.from({ length: 100 }).map((_, i) => {
                         const sample = waveHistory[i];
                         const level = sample?.level || 0;
-                        const barH = Math.max(0.5, level * vizGain);
-                        const intensity = level > 0.02 ? Math.min(1, level * 2.5) : 0;
+                        // Taper: last 15 bars fade out gracefully
+                        const taperStart = 85;
+                        const taper = i >= taperStart ? 1 - ((i - taperStart) / (100 - taperStart)) : 1;
+                        const barH = Math.max(0.5, level * vizGain * taper);
+                        const intensity = level > 0.02 ? Math.min(1, level * 2.5) * taper : 0;
                         return (
                           <div key={i} style={{
                             width: '2px',
                             height: `${barH * 2 + 1}px`,
                             borderRadius: '1px',
+                            opacity: taper,
                             background: level > 0.02
                               ? `linear-gradient(180deg, rgba(59,130,246,${intensity * 0.15}) 0%, rgba(96,165,250,${0.3 + intensity * 0.5}) 30%, rgba(147,197,253,${0.5 + intensity * 0.5}) 50%, rgba(96,165,250,${0.3 + intensity * 0.5}) 70%, rgba(59,130,246,${intensity * 0.15}) 100%)`
-                              : `rgba(148,163,184,${0.03 + Math.sin(i * 0.3 + Date.now() * 0.001) * 0.01})`,
+                              : `rgba(148,163,184,${(0.03 + Math.sin(i * 0.3 + Date.now() * 0.001) * 0.01) * taper})`,
                             transition: 'height 50ms ease-out',
-                            boxShadow: level > 0.12 ? `0 0 ${3 + level * 8}px rgba(96,165,250,${level * 0.35})` : 'none',
+                            boxShadow: level > 0.12 && taper > 0.5 ? `0 0 ${3 + level * 8}px rgba(96,165,250,${level * 0.35 * taper})` : 'none',
                           }} />
                         );
                       })}
                     </div>
-                    {/* Left fade */}
+                    {/* Left fade only */}
                     <div className="absolute left-0 top-0 bottom-0 w-12 z-10 pointer-events-none" style={{ background: 'linear-gradient(to right, rgba(6,8,16,0.97) 0%, rgba(6,8,16,0.5) 40%, transparent 100%)' }} />
-                    {/* Right fade — wide, extends behind mic icon */}
-                    <div className="absolute top-0 bottom-0 z-10 pointer-events-none" style={{ right: '0', width: '80px', background: 'linear-gradient(to left, rgba(6,8,16,0.98) 0%, rgba(6,8,16,0.95) 30%, rgba(6,8,16,0.6) 60%, transparent 100%)' }} />
                     {/* Bottom glow */}
                     <div className="absolute bottom-0 inset-x-0 h-10 pointer-events-none" style={{
                       background: `radial-gradient(ellipse 50% 100% at 40% 100%, rgba(96,165,250,${0.02 + glowIntensity * 0.1}) 0%, transparent 100%)`,
