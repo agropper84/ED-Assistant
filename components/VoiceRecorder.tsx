@@ -594,9 +594,13 @@ export function VoiceRecorder({
         ws.onopen = async () => {
           retryCount = 0;
           if (!audioStream.active) return;
-          // Capture audio at 16kHz, convert to PCM16, send as base64 JSON chunks
+          // Capture audio at 16kHz with gain boost, convert to PCM16, send as base64
           elAudioCtx = new AudioContext({ sampleRate: 16000 });
           const source = elAudioCtx.createMediaStreamSource(audioStream);
+          // Apply mic sensitivity gain to ElevenLabs audio stream
+          const elGain = elAudioCtx.createGain();
+          elGain.gain.value = sensitivity;
+          source.connect(elGain);
 
           const sendPCM = (int16buf: ArrayBuffer) => {
             if (ws.readyState !== WebSocket.OPEN) return;
@@ -616,7 +620,7 @@ export function VoiceRecorder({
             await elAudioCtx.audioWorklet.addModule('/pcm-processor.js');
             const workletNode = new AudioWorkletNode(elAudioCtx, 'pcm-processor');
             workletNode.port.onmessage = (e) => sendPCM(e.data);
-            source.connect(workletNode);
+            elGain.connect(workletNode);
             workletNode.connect(elAudioCtx.destination);
             elProcessorRef.current = workletNode;
           } catch {
@@ -630,7 +634,7 @@ export function VoiceRecorder({
               }
               sendPCM(int16.buffer);
             };
-            source.connect(processor);
+            elGain.connect(processor);
             processor.connect(elAudioCtx.destination);
             elProcessorRef.current = processor;
           }
