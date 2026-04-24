@@ -792,27 +792,21 @@ export function VoiceRecorder({
       refineCountRef.current = 0;
       setRecState('recording');
 
-      // Try real-time WebSocket streaming for live text
+      // Start Web Speech immediately for instant text (no network delay)
+      startWebSpeech();
+
+      // Connect WebSocket STT in background — once connected, its results
+      // will be higher quality and replace Web Speech output via onInterim
       const speechEngine = getSpeechAPI();
-      let streamSuccess = false;
 
       if (speechEngine === 'elevenlabs') {
-        // ElevenLabs Scribe v2 realtime WebSocket
-        streamSuccess = await startElevenLabsStream(rawStream);
-      }
-
-      if (!streamSuccess && speechEngine !== 'elevenlabs') {
-        // Deepgram WebSocket streaming (~300ms latency, medical model)
-        streamSuccess = await startDeepgramStream(rawStream, false);
-      }
-
-      if (!streamSuccess) {
-        // Fallback: Web Speech for instant text + periodic REST refinement
-        startWebSpeech();
-        if (refineTimerRef.current) clearInterval(refineTimerRef.current);
-        refineTimerRef.current = setInterval(() => {
-          if (!stoppingRef.current && !isHoldingRef.current) flushSegmentForRefinement();
-        }, 3000);
+        startElevenLabsStream(rawStream).then(ok => {
+          if (ok) stopWebSpeech(); // WS connected — Web Speech no longer needed
+        });
+      } else {
+        startDeepgramStream(rawStream, false).then(ok => {
+          if (ok) stopWebSpeech(); // WS connected — Web Speech no longer needed
+        });
       }
 
       // Audio level visualization

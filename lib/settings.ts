@@ -369,8 +369,8 @@ const SPEECH_API_KEY = 'ed-app-speech-api';
 const TRANSCRIBE_API_KEY = 'ed-app-transcribe-api';
 
 export function getSpeechAPI(): SpeechAPI {
-  if (typeof window === 'undefined') return 'deepgram';
-  return (localStorage.getItem(SPEECH_API_KEY) as SpeechAPI) || 'deepgram';
+  if (typeof window === 'undefined') return 'elevenlabs';
+  return (localStorage.getItem(SPEECH_API_KEY) as SpeechAPI) || 'elevenlabs';
 }
 
 export function saveSpeechAPI(api: SpeechAPI): void {
@@ -379,8 +379,8 @@ export function saveSpeechAPI(api: SpeechAPI): void {
 }
 
 export function getTranscribeAPI(): TranscribeAPI {
-  if (typeof window === 'undefined') return 'deepgram';
-  return (localStorage.getItem(TRANSCRIBE_API_KEY) as TranscribeAPI) || 'deepgram';
+  if (typeof window === 'undefined') return 'elevenlabs';
+  return (localStorage.getItem(TRANSCRIBE_API_KEY) as TranscribeAPI) || 'elevenlabs';
 }
 
 export function saveTranscribeAPI(api: TranscribeAPI): void {
@@ -394,8 +394,8 @@ const TRANSCRIBE_WEB_KEY = 'ed-app-transcribe-web';
 const TRANSCRIBE_WATCH_KEY = 'ed-app-transcribe-watch';
 
 export function getTranscribeWebAPI(): TranscribeAPI {
-  if (typeof window === 'undefined') return 'deepgram';
-  return (localStorage.getItem(TRANSCRIBE_WEB_KEY) as TranscribeAPI) || 'deepgram';
+  if (typeof window === 'undefined') return 'elevenlabs';
+  return (localStorage.getItem(TRANSCRIBE_WEB_KEY) as TranscribeAPI) || 'elevenlabs';
 }
 
 export function saveTranscribeWebAPI(api: TranscribeAPI): void {
@@ -404,8 +404,8 @@ export function saveTranscribeWebAPI(api: TranscribeAPI): void {
 }
 
 export function getTranscribeWatchAPI(): TranscribeAPI {
-  if (typeof window === 'undefined') return 'deepgram';
-  return (localStorage.getItem(TRANSCRIBE_WATCH_KEY) as TranscribeAPI) || 'deepgram';
+  if (typeof window === 'undefined') return 'elevenlabs';
+  return (localStorage.getItem(TRANSCRIBE_WATCH_KEY) as TranscribeAPI) || 'elevenlabs';
 }
 
 export function saveTranscribeWatchAPI(api: TranscribeAPI): void {
