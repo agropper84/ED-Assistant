@@ -468,7 +468,7 @@ export function ParseModal({ isOpen, onClose, onSave, onQuickAdd, patientRef: ex
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
+        <div className="flex-1 overflow-y-auto px-5 py-5 space-y-5">
           {/* Tab bar: Quick Add / Parse Data */}
           {onQuickAdd && (
             <div className="flex" style={{ borderBottom: '1px solid var(--modal-divider)' }}>
@@ -512,12 +512,16 @@ export function ParseModal({ isOpen, onClose, onSave, onQuickAdd, patientRef: ex
                 onChange={(e) => setQuickName(e.target.value)}
                 placeholder="Patient Name / Identifier"
                 autoFocus
-                className="w-full px-3 py-2.5 border border-[var(--input-border)] rounded-xl text-sm bg-[var(--input-bg)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-4 py-3 text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none"
+                style={{ background: 'var(--modal-input-bg)', border: '1px solid var(--modal-input-border)', borderRadius: '14px', boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.04)' }}
+                onFocus={e => e.currentTarget.style.borderColor = 'var(--modal-input-focus)'}
+                onBlur={e => e.currentTarget.style.borderColor = 'var(--modal-input-border)'}
               />
               <button
                 type="submit"
                 disabled={!quickName.trim() || quickSaving}
-                className="w-full py-2.5 bg-[var(--accent-green)] text-white rounded-xl text-sm font-medium hover:brightness-110 active:scale-[0.97] transition-all disabled:opacity-40 flex items-center justify-center gap-1.5"
+                className="w-full py-2.5 text-white text-sm font-medium active:scale-[0.98] transition-all disabled:opacity-40 flex items-center justify-center gap-1.5"
+                style={{ background: 'linear-gradient(135deg, #d97706, #b45309)', borderRadius: '14px', boxShadow: '0 2px 8px rgba(217,119,6,0.2)' }}
               >
                 {quickSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Add Patient'}
               </button>

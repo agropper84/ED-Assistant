@@ -763,14 +763,11 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
           </button>
         </div>
 
-        {/* Thin separator */}
-        <div className="border-b border-[var(--border)]" />
-
         {/* Content area with optional side panel */}
         <div className="flex-1 overflow-hidden flex relative">
 
         {/* Clinical info — always visible */}
-        <div className="flex-1 min-w-0 overflow-y-auto px-5 py-4 space-y-4 transition-all duration-300">
+        <div className="flex-1 min-w-0 overflow-y-auto px-5 py-5 space-y-5 transition-all duration-300">
           {/* Triage Notes */}
           <div>
             <label className="block text-[10px] font-medium uppercase tracking-[0.12em] mb-1.5" style={{ color: 'var(--modal-label)' }}>
@@ -781,18 +778,20 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
               value={triageVitals}
               onChange={(e) => setTriageVitals(e.target.value)}
               placeholder="Chief complaint, vitals, triage assessment..."
-              className="w-full h-20 p-3 border border-[var(--input-border)] rounded-xl text-sm resize-y focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)]"
+              className="w-full h-20 p-3 text-sm resize-y focus:outline-none text-[var(--text-primary)] placeholder:text-[var(--text-muted)]"
+              style={{ background: 'var(--modal-input-bg)', border: '1px solid var(--modal-input-border)', borderRadius: '14px', boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.04)' }}
+              onFocus={e => e.currentTarget.style.borderColor = 'var(--modal-input-focus)'}
+              onBlur={e => e.currentTarget.style.borderColor = 'var(--modal-input-border)'}
             />
             <button
               onClick={() => handleSectionSubmit('triageVitals', triageVitals)}
               disabled={!triageVitals.trim() || !!submitting}
-              className={`mt-1.5 w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs font-medium transition-all duration-300 ${
-                submitted === 'triageVitals'
-                  ? 'bg-emerald-500/15 text-emerald-500'
-                  : triageVitals.trim()
-                    ? 'bg-[var(--accent)]/10 text-[var(--accent)] hover:bg-[var(--accent)]/20 active:scale-[0.98]'
-                    : 'bg-transparent text-[var(--text-muted)] opacity-0'
-              }`}
+              className="mt-1 w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-[10px] font-medium transition-all duration-200 active:scale-[0.98]"
+              style={{
+                background: submitted === 'triageVitals' ? 'var(--modal-accent-light)' : triageVitals.trim() ? 'var(--modal-accent-light)' : 'transparent',
+                color: submitted === 'triageVitals' ? 'var(--modal-accent)' : triageVitals.trim() ? 'var(--modal-accent)' : 'var(--modal-label)',
+                opacity: triageVitals.trim() || submitted === 'triageVitals' ? 1 : 0,
+              }}
             >
               {submitting === 'triageVitals' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : submitted === 'triageVitals' ? <Check className="w-3.5 h-3.5" /> : <ArrowUpCircle className="w-3.5 h-3.5" />}
               {submitted === 'triageVitals' ? 'Saved' : 'Submit'}
@@ -1136,9 +1135,9 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
               disabled={!transcript.trim() || !!submitting}
               className={`mt-1.5 w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs font-medium transition-all duration-300 ${
                 submitted === 'transcript'
-                  ? 'bg-emerald-500/15 text-emerald-500'
+                  ? 'bg-[var(--modal-accent-light)] text-[var(--modal-accent)]'
                   : transcript.trim()
-                    ? 'bg-[var(--accent)]/10 text-[var(--accent)] hover:bg-[var(--accent)]/20 active:scale-[0.98]'
+                    ? 'bg-[var(--modal-accent-light)] text-[var(--modal-accent)] active:scale-[0.98]'
                     : 'bg-transparent text-[var(--text-muted)] opacity-0'
               }`}
             >
@@ -1253,9 +1252,9 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
               disabled={!encounterNotes.trim() || !!submitting}
               className={`mt-1.5 w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs font-medium transition-all duration-300 ${
                 submitted === 'encounterNotes'
-                  ? 'bg-emerald-500/15 text-emerald-500'
+                  ? 'bg-[var(--modal-accent-light)] text-[var(--modal-accent)]'
                   : encounterNotes.trim()
-                    ? 'bg-[var(--accent)]/10 text-[var(--accent)] hover:bg-[var(--accent)]/20 active:scale-[0.98]'
+                    ? 'bg-[var(--modal-accent-light)] text-[var(--modal-accent)] active:scale-[0.98]'
                     : 'bg-transparent text-[var(--text-muted)] opacity-0'
               }`}
             >
@@ -1303,9 +1302,9 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
               disabled={!additional.trim() || !!submitting}
               className={`mt-1.5 w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs font-medium transition-all duration-300 ${
                 submitted === 'additional'
-                  ? 'bg-emerald-500/15 text-emerald-500'
+                  ? 'bg-[var(--modal-accent-light)] text-[var(--modal-accent)]'
                   : additional.trim()
-                    ? 'bg-[var(--accent)]/10 text-[var(--accent)] hover:bg-[var(--accent)]/20 active:scale-[0.98]'
+                    ? 'bg-[var(--modal-accent-light)] text-[var(--modal-accent)] active:scale-[0.98]'
                     : 'bg-transparent text-[var(--text-muted)] opacity-0'
               }`}
             >
@@ -1331,9 +1330,9 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
               disabled={!pastDocs.trim() || !!submitting}
               className={`mt-1.5 w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs font-medium transition-all duration-300 ${
                 submitted === 'pastDocs'
-                  ? 'bg-emerald-500/15 text-emerald-500'
+                  ? 'bg-[var(--modal-accent-light)] text-[var(--modal-accent)]'
                   : pastDocs.trim()
-                    ? 'bg-[var(--accent)]/10 text-[var(--accent)] hover:bg-[var(--accent)]/20 active:scale-[0.98]'
+                    ? 'bg-[var(--modal-accent-light)] text-[var(--modal-accent)] active:scale-[0.98]'
                     : 'bg-transparent text-[var(--text-muted)] opacity-0'
               }`}
             >
