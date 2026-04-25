@@ -2929,7 +2929,7 @@ export default function SettingsPage() {
               <div>
                 <h3 className="font-semibold text-[var(--text-primary)]">API Keys</h3>
                 <p className="text-xs text-[var(--text-muted)] mt-0.5">
-                  Add your API keys to use AI features. Keys are stored securely server-side.
+                  API keys are stored securely server-side. Anthropic is required for all AI features. ElevenLabs is recommended for high-quality voice transcription.
                 </p>
               </div>
 
@@ -2954,7 +2954,7 @@ export default function SettingsPage() {
                       className="px-3 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium disabled:opacity-40">Save</button>
                   </div>
                 )}
-                <p className="text-[10px] text-[var(--text-muted)]">Required. Powers note generation, clinical questions, and medical terminology.</p>
+                <p className="text-[10px] text-amber-600 dark:text-amber-400 font-medium">Required — powers all AI features including note generation, referrals, clinical questions, and medical terminology.</p>
               </div>
 
               {/* OpenAI API Key */}
@@ -3026,7 +3026,7 @@ export default function SettingsPage() {
                       className="px-3 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium disabled:opacity-40">Save</button>
                   </div>
                 )}
-                <p className="text-[10px] text-[var(--text-muted)]">Real-time live text + high-accuracy batch transcription with medical keyterms.</p>
+                <p className="text-[10px] text-blue-600 dark:text-blue-400 font-medium">Recommended — real-time live text and high-accuracy medical transcription for dictation and encounter recording.</p>
               </div>
 
             </div>

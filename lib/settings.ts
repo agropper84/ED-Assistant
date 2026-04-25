@@ -453,7 +453,7 @@ export interface EducationConfig {
 const EDUCATION_KEY = 'ed-app-education';
 
 export const DEFAULT_EDUCATION_CONFIG: EducationConfig = {
-  enabled: false,
+  enabled: true,
   sources: '',
 };
 
