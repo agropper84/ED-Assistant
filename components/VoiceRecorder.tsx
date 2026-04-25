@@ -16,9 +16,14 @@ const ENDPOINTS: SharedProps['endpoints'] = {
 };
 
 async function doUploadBlob(filename: string, blob: Blob): Promise<{ url: string }> {
-  const { upload } = await import('@vercel/blob/client');
-  const result = await upload(filename, blob, { access: 'public', handleUploadUrl: '/api/backup-audio' });
-  return { url: result.url };
+  // ED-Assistant uses server-side blob upload via FormData POST
+  const formData = new FormData();
+  const ext = filename.split('.').pop() || 'webm';
+  formData.append('audio', blob, `recording-${Date.now()}.${ext}`);
+  const res = await fetch('/api/backup-audio', { method: 'POST', body: formData });
+  if (!res.ok) throw new Error('Backup upload failed');
+  const data = await res.json();
+  return { url: data.url };
 }
 
 type VoiceRecorderProps = Omit<SharedProps, 'endpoints' | 'getSpeechEngine' | 'getTranscribeEngine' | 'getEncounterEngine' | 'nativeBridge' | 'uploadBlob'>;
