@@ -1079,13 +1079,82 @@ export default function SettingsPage() {
               </div>
             </div>
 
+            {/* Privacy & Security */}
+            <div className="bg-[var(--card-bg)] rounded-2xl border border-[var(--card-border)] p-5 space-y-4" style={{ boxShadow: 'var(--card-shadow)' }}>
+              <h3 className="font-semibold text-[var(--text-primary)]">Privacy & Data Security</h3>
+              <div className="space-y-3 text-sm text-[var(--text-secondary)]">
+                <div>
+                  <span className="font-medium text-[var(--text-primary)]">Patient anonymization</span>
+                  <p className="mt-0.5 leading-relaxed">All patient data is de-identified before being sent to AI. Names, dates of birth, health card numbers, and other PHI are replaced with placeholders during processing, then re-inserted into the output. The AI never sees real patient identifiers.</p>
+                </div>
+                <div>
+                  <span className="font-medium text-[var(--text-primary)]">Encrypted storage</span>
+                  <p className="mt-0.5 leading-relaxed">Patient data is stored in encrypted JSON files in your personal Google Drive using AES-256-GCM encryption. Only you can decrypt your data — encryption keys are tied to your account. Audio recordings are encrypted before upload.</p>
+                </div>
+                <div>
+                  <span className="font-medium text-[var(--text-primary)]">Local-first settings</span>
+                  <p className="mt-0.5 leading-relaxed">App settings, style guides, and preferences are stored locally in your browser. No patient data is stored on the server — your Google Drive is the sole data store.</p>
+                </div>
+              </div>
+            </div>
+
+            {/* AI Insights */}
+            <div className="bg-[var(--card-bg)] rounded-2xl border border-[var(--card-border)] p-5 space-y-4" style={{ boxShadow: 'var(--card-shadow)' }}>
+              <h3 className="font-semibold text-[var(--text-primary)]">AI Insights</h3>
+              <div className="space-y-3 text-sm text-[var(--text-secondary)]">
+                <div>
+                  <span className="font-medium text-[var(--text-primary)]">Insights panel</span>
+                  <p className="mt-0.5 leading-relaxed">Accessible from the full patient page, the collapsible Insights panel generates: Differential Diagnosis, Recommended Investigations, Management Plan, and Pertinent Evidence with cited guidelines and literature.</p>
+                </div>
+                <div>
+                  <span className="font-medium text-[var(--text-primary)]">Recommended reading</span>
+                  <p className="mt-0.5 leading-relaxed">When education mode is enabled (Processing tab), AI generates learning resources with textbook references, guidelines, and key literature for each case. You can narrow the scope of sources used (e.g., UpToDate, specific journals) in the Processing settings.</p>
+                </div>
+                <div>
+                  <span className="font-medium text-[var(--text-primary)]">Patient card access</span>
+                  <p className="mt-0.5 leading-relaxed">Insights are also accessible directly from the patient card icons on the dashboard — hover over the DDx icon for a quick summary, or click to generate/refresh.</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Clinical Question */}
+            <div className="bg-[var(--card-bg)] rounded-2xl border border-[var(--card-border)] p-5 space-y-4" style={{ boxShadow: 'var(--card-shadow)' }}>
+              <h3 className="font-semibold text-[var(--text-primary)]">Clinical Question</h3>
+              <div className="space-y-3 text-sm text-[var(--text-secondary)]">
+                <p className="leading-relaxed">Ask evidence-based clinical questions about any patient. The patient's profile (demographics, PMHx, medications, allergies, current presentation) is automatically included in the query for contextual answers.</p>
+                <div>
+                  <span className="font-medium text-[var(--text-primary)]">Evidence sources</span>
+                  <p className="mt-0.5 leading-relaxed">Optionally query OpenEvidence or UpToDate directly from the clinical question interface. Configure your preferred evidence sources and API keys in the Keys tab. Results include citations with links to primary sources.</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Clinical Calculator */}
+            <div className="bg-[var(--card-bg)] rounded-2xl border border-[var(--card-border)] p-5 space-y-4" style={{ boxShadow: 'var(--card-shadow)' }}>
+              <h3 className="font-semibold text-[var(--text-primary)]">Clinical Calculator</h3>
+              <div className="space-y-2 text-sm text-[var(--text-secondary)]">
+                <p className="leading-relaxed">Access common medical calculators (Wells score, HEART score, Ottawa rules, GCS, etc.) from the patient page. When a patient profile is available, relevant parameters (age, vitals, lab values) are pre-populated from the patient data, saving time and reducing errors.</p>
+              </div>
+            </div>
+
+            {/* Transcription Calibration */}
+            <div className="bg-[var(--card-bg)] rounded-2xl border border-[var(--card-border)] p-5 space-y-4" style={{ boxShadow: 'var(--card-shadow)' }}>
+              <h3 className="font-semibold text-[var(--text-primary)]">Transcription Calibration</h3>
+              <div className="space-y-3 text-sm text-[var(--text-secondary)]">
+                <p className="leading-relaxed">The dictation engine learns from your patient data to improve recognition of specialized terms. Physician names, medication names, and medical terminology from the patient profile are automatically extracted and used as keyword hints during transcription.</p>
+                <div>
+                  <span className="font-medium text-[var(--text-primary)]">Custom terms</span>
+                  <p className="mt-0.5 leading-relaxed">Add your own frequently used terms (colleague names, local facility names, specialty medications) in the Processing tab under "AI Transcription Learning" to further improve accuracy.</p>
+                </div>
+              </div>
+            </div>
+
             {/* Tips */}
             <div className="bg-[var(--card-bg)] rounded-2xl border border-[var(--card-border)] p-5 space-y-4" style={{ boxShadow: 'var(--card-shadow)' }}>
               <h3 className="font-semibold text-[var(--text-primary)]">Tips</h3>
               <div className="space-y-2 text-sm text-[var(--text-secondary)]">
                 <p><span className="font-medium text-[var(--text-primary)]">Style Guide</span> — Save examples of your preferred note style (Style tab). The AI learns to match your writing patterns over time.</p>
                 <p><span className="font-medium text-[var(--text-primary)]">Templates</span> — Create multiple referral and consult templates for different scenarios (Prompts tab). Select which template to use when generating.</p>
-                <p><span className="font-medium text-[var(--text-primary)]">Calibration</span> — Add frequently used medical terms to the transcription calibration list (Processing tab) for better voice recognition accuracy.</p>
                 <p><span className="font-medium text-[var(--text-primary)]">Keyboard shortcuts</span> — On the dashboard, hold H/O/P and click a patient's encounter note icon to copy just that section.</p>
               </div>
             </div>
