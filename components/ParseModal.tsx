@@ -449,12 +449,21 @@ export function ParseModal({ isOpen, onClose, onSave, onQuickAdd, patientRef: ex
 
   return (
     <div className="fixed inset-0 modal-overlay z-50 flex items-end sm:items-center justify-center">
-      <div className="bg-[var(--card-bg)] w-full sm:max-w-lg sm:rounded-3xl rounded-t-3xl max-h-[90vh] overflow-hidden flex flex-col animate-slideUp" style={{ boxShadow: 'var(--card-shadow-elevated)' }}>
-        {/* Header */}
-        <div className="dash-header flex items-center justify-between px-5 py-4 sm:rounded-t-3xl">
-          <h2 className="text-lg font-semibold" style={{ color: 'var(--dash-text)' }}>Add Patient</h2>
-          <button onClick={onClose} className="p-3 min-w-[44px] min-h-[44px] flex items-center justify-center hover:bg-white/10 rounded-full">
-            <X className="w-5 h-5" style={{ color: 'var(--dash-text-sub)' }} />
+      <div className="w-full sm:max-w-lg sm:rounded-2xl rounded-t-2xl max-h-[90vh] overflow-hidden flex flex-col animate-slideUp" style={{
+        background: 'var(--modal-bg)',
+        backdropFilter: 'blur(40px) saturate(1.2)',
+        WebkitBackdropFilter: 'blur(40px) saturate(1.2)',
+        boxShadow: '0 8px 32px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,0.06)',
+        border: '1px solid var(--modal-divider)',
+      }}>
+        {/* Header — warm dark */}
+        <div className="flex items-center justify-between px-5 py-4 sm:rounded-t-2xl" style={{
+          background: 'var(--modal-header)',
+          borderBottom: '1px solid rgba(120,113,108,0.1)',
+        }}>
+          <h2 className="text-[15px] font-semibold tracking-[-0.01em]" style={{ color: 'var(--modal-header-text)' }}>Add Patient</h2>
+          <button onClick={onClose} className="p-2 min-w-[40px] min-h-[40px] flex items-center justify-center hover:bg-white/[0.06] rounded-full transition-colors">
+            <X className="w-5 h-5" style={{ color: 'var(--modal-header-sub)' }} />
           </button>
         </div>
 
@@ -462,24 +471,24 @@ export function ParseModal({ isOpen, onClose, onSave, onQuickAdd, patientRef: ex
         <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
           {/* Tab bar: Quick Add / Parse Data */}
           {onQuickAdd && (
-            <div className="flex border-b" style={{ borderColor: 'var(--border-light)' }}>
+            <div className="flex" style={{ borderBottom: '1px solid var(--modal-divider)' }}>
               <button
                 onClick={() => setInputTab('quick')}
-                className={`px-4 py-2 text-xs font-semibold transition-colors relative ${
-                  inputTab === 'quick' ? 'text-[var(--accent)]' : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)]'
+                className={`px-4 py-2 text-[11px] font-semibold transition-colors relative ${
+                  inputTab === 'quick' ? '' : 'hover:text-[var(--text-secondary)]'
                 }`}
+                style={{ color: inputTab === 'quick' ? 'var(--modal-accent)' : 'var(--modal-label)' }}
               >
                 Quick Add
-                {inputTab === 'quick' && <div className="absolute bottom-0 left-1 right-1 h-0.5 bg-[var(--accent)] rounded-full" />}
+                {inputTab === 'quick' && <div className="absolute bottom-0 left-1 right-1 h-0.5 rounded-full" style={{ background: 'var(--modal-accent)' }} />}
               </button>
               <button
                 onClick={() => setInputTab('parse')}
-                className={`px-4 py-2 text-xs font-semibold transition-colors relative ${
-                  inputTab === 'parse' ? 'text-[var(--accent)]' : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)]'
-                }`}
+                className={`px-4 py-2 text-[11px] font-semibold transition-colors relative hover:text-[var(--text-secondary)]`}
+                style={{ color: inputTab === 'parse' ? 'var(--modal-accent)' : 'var(--modal-label)' }}
               >
                 Parse Data
-                {inputTab === 'parse' && <div className="absolute bottom-0 left-1 right-1 h-0.5 bg-[var(--accent)] rounded-full" />}
+                {inputTab === 'parse' && <div className="absolute bottom-0 left-1 right-1 h-0.5 rounded-full" style={{ background: 'var(--modal-accent)' }} />}
               </button>
             </div>
           )}

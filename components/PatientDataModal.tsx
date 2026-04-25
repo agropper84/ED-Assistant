@@ -727,28 +727,39 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
         </button>
       </div>
 
-      <div className="bg-[var(--card-bg)] w-full sm:rounded-3xl rounded-t-3xl max-h-[90vh] overflow-hidden flex flex-col" style={{ boxShadow: 'var(--card-shadow-elevated)' }}>
-        {/* Header */}
-        <div className="dash-header flex items-center gap-3 px-4 py-4 sm:rounded-t-3xl">
-          <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-full flex-shrink-0" title="Close">
-            <X className="w-5 h-5" style={{ color: 'var(--dash-text-sub)' }} />
+      <div className="w-full sm:rounded-2xl rounded-t-2xl max-h-[90vh] overflow-hidden flex flex-col" style={{
+        background: 'var(--modal-bg)',
+        backdropFilter: 'blur(40px) saturate(1.2)',
+        WebkitBackdropFilter: 'blur(40px) saturate(1.2)',
+        boxShadow: '0 8px 32px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,0.06)',
+        border: '1px solid var(--modal-divider)',
+      }}>
+        {/* Header — warm dark */}
+        <div className="flex items-center gap-3 px-5 py-4 sm:rounded-t-2xl" style={{
+          background: 'var(--modal-header)',
+          borderBottom: '1px solid rgba(120,113,108,0.1)',
+        }}>
+          <button onClick={onClose} className="p-2 hover:bg-white/[0.06] rounded-full flex-shrink-0 transition-colors" title="Close">
+            <X className="w-5 h-5" style={{ color: 'var(--modal-header-sub)' }} />
           </button>
           <div className="flex-1 min-w-0">
-            <h2 className="text-lg font-semibold truncate" style={{ color: 'var(--dash-text)' }}>
-              Add Clinical Information
+            <h2 className="text-[15px] font-semibold truncate tracking-[-0.01em]" style={{ color: 'var(--modal-header-text)' }}>
+              Clinical Information
             </h2>
-            <p className="text-sm" style={{ color: 'var(--dash-text-muted)' }}>
+            <p className="text-[12px] mt-0.5" style={{ color: 'var(--modal-header-sub)' }}>
               {patient.name || 'Unknown'}
-              {patient.age && ` • ${patient.age}`}{patient.gender && ` ${patient.gender}`}
-              {patient.timestamp && ` • ${patient.timestamp}`}
+              {patient.age && ` · ${patient.age}`}{patient.gender && ` ${patient.gender}`}
+              {patient.timestamp && (
+                <span style={{ color: 'var(--modal-accent)' }}> · {patient.timestamp}</span>
+              )}
             </p>
           </div>
           <button
             onClick={onNavigate}
-            className="p-2 hover:bg-white/10 rounded-full flex-shrink-0"
+            className="p-2 hover:bg-white/[0.06] rounded-full flex-shrink-0 transition-colors"
             title="Open full detail"
           >
-            <ExternalLink className="w-5 h-5" style={{ color: 'var(--dash-text-sub)' }} />
+            <ExternalLink className="w-4 h-4" style={{ color: 'var(--modal-header-sub)' }} />
           </button>
         </div>
 
@@ -762,7 +773,7 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
         <div className="flex-1 min-w-0 overflow-y-auto px-5 py-4 space-y-4 transition-all duration-300">
           {/* Triage Notes */}
           <div>
-            <label className="block text-xs font-semibold text-[var(--text-muted)] uppercase tracking-widest mb-1.5">
+            <label className="block text-[10px] font-medium uppercase tracking-[0.12em] mb-1.5" style={{ color: 'var(--modal-label)' }}>
               Triage Notes & Vitals
             </label>
             <SubmissionTags field="triageVitals" />
@@ -791,7 +802,7 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
           {/* Transcript */}
           <div>
             <div className="flex items-center justify-between mb-1.5">
-              <label className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-widest">
+              <label className="text-[10px] font-medium uppercase tracking-[0.12em]" style={{ color: 'var(--modal-label)' }}>
                 Transcript
               </label>
               <div className="flex items-center gap-3">
@@ -1206,7 +1217,7 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
 
           {/* Encounter Notes */}
           <div>
-            <label className="block text-xs font-semibold text-[var(--text-muted)] uppercase tracking-widest mb-1.5">
+            <label className="block text-[10px] font-medium uppercase tracking-[0.12em] mb-1.5" style={{ color: 'var(--modal-label)' }}>
               Encounter Notes
             </label>
             <SubmissionTags field="encounterNotes" />
@@ -1255,7 +1266,7 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
 
           {/* Additional Findings with Exam Toggles */}
           <div>
-            <label className="block text-xs font-semibold text-[var(--text-muted)] uppercase tracking-widest mb-1.5">
+            <label className="block text-[10px] font-medium uppercase tracking-[0.12em] mb-1.5" style={{ color: 'var(--modal-label)' }}>
               Additional Findings / Exam
             </label>
             <SubmissionTags field="additional" />
@@ -1305,7 +1316,7 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
 
           {/* Past Documentation */}
           <div>
-            <label className="block text-xs font-semibold text-[var(--text-muted)] uppercase tracking-widest mb-1.5">
+            <label className="block text-[10px] font-medium uppercase tracking-[0.12em] mb-1.5" style={{ color: 'var(--modal-label)' }}>
               Past Documentation
             </label>
             <SubmissionTags field="pastDocs" />
@@ -1407,7 +1418,7 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
         </div>
 
         {/* Footer */}
-        <div className="px-5 py-4 pb-safe border-t border-[var(--border)] bg-[var(--bg-tertiary)] sm:rounded-b-3xl space-y-3">
+        <div className="px-5 py-4 pb-safe sm:rounded-b-2xl space-y-3" style={{ borderTop: '1px solid var(--modal-divider)', background: 'var(--modal-section-bg)' }}>
           {showCustomInstructions && (
             <textarea
               value={customInstructions}
@@ -1482,7 +1493,8 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
                   }
                 }}
                 disabled={generating || saving}
-                className="flex-[2] py-3 bg-emerald-600 dark:bg-emerald-500 text-white rounded-xl font-medium disabled:opacity-40 flex flex-col items-center justify-center hover:bg-emerald-700 dark:hover:bg-emerald-600 hover:shadow-lg hover:shadow-emerald-500/20 active:scale-[0.97] transition-all"
+                className="flex-[2] py-3 text-white rounded-xl font-medium disabled:opacity-40 flex flex-col items-center justify-center active:scale-[0.98] transition-all"
+                style={{ background: 'linear-gradient(135deg, #d97706, #b45309)', boxShadow: '0 2px 8px rgba(217,119,6,0.25)' }}
               >
                 <span className="flex items-center gap-2 text-sm">
                   {generating ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
