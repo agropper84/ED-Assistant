@@ -680,7 +680,7 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
             <div className="flex flex-col items-center gap-2">
               <ListTree
                 className="w-3 h-3 transition-colors duration-200"
-                style={{ color: sidePanel === 'ddx' ? '#a78bfa' : 'var(--text-muted)' }}
+                style={{ color: sidePanel === 'ddx' ? 'var(--modal-accent)' : 'var(--modal-label)' }}
               />
               <span
                 className="font-semibold uppercase leading-none transition-colors duration-200"
@@ -688,7 +688,7 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
                   fontSize: '7px',
                   letterSpacing: '0.1em',
                   writingMode: 'vertical-rl',
-                  color: sidePanel === 'ddx' ? '#a78bfa' : 'var(--text-muted)',
+                  color: sidePanel === 'ddx' ? 'var(--modal-accent)' : 'var(--modal-label)',
                 }}
               >
                 DDx
@@ -696,7 +696,7 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
             </div>
           </div>
           {ddxData && sidePanel !== 'ddx' && (
-            <span className="absolute top-2 right-2 w-[5px] h-[5px] rounded-full bg-violet-400" />
+            <span className="absolute top-2 right-2 w-[5px] h-[5px] rounded-full" style={{ background: 'var(--modal-accent)' }} />
           )}
         </button>
       </div>
@@ -709,7 +709,7 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
             if (!profileData && !generatingProfile) handleGenerateProfile();
           }}
           className={`p-1.5 rounded-lg transition-all duration-200 ${
-            sidePanel === 'profile' ? 'text-blue-400' : 'text-[var(--text-muted)] opacity-50'
+            sidePanel === 'profile' ? 'text-[var(--modal-accent)]' : 'text-[var(--text-muted)] opacity-50'
           }`}
         >
           <Heart className="w-4 h-4" fill={sidePanel === 'profile' ? 'currentColor' : 'none'} />
@@ -720,7 +720,7 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
             if (!ddxData && !generatingDdx) handleGenerateDdx();
           }}
           className={`p-1.5 rounded-lg transition-all duration-200 ${
-            sidePanel === 'ddx' ? 'text-violet-400' : 'text-[var(--text-muted)] opacity-50'
+            sidePanel === 'ddx' ? 'text-[var(--modal-accent)]' : 'text-[var(--text-muted)] opacity-50'
           }`}
         >
           <ListTree className="w-4 h-4" />
