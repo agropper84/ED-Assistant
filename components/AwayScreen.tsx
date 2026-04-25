@@ -1,7 +1,9 @@
 'use client';
 
-import { X, Wind, Sparkles } from 'lucide-react';
+import { useState } from 'react';
+import { X, Wind, Sparkles, Gamepad2 } from 'lucide-react';
 import { AWAY_FUN, CALM_PHOTOS } from '@/lib/away-screen-data';
+import { ZeldaGame } from '@/components/ZeldaGame';
 
 interface AwayScreenProps {
   onClose: () => void;
@@ -34,9 +36,12 @@ export function AwayScreen({
   setCalmPhotoUrl,
   cyclePhoto,
 }: AwayScreenProps) {
+  const [showGame, setShowGame] = useState(false);
+
   const handleClose = () => {
     setAwayFunFact('');
     setAwayBreathing(false);
+    setShowGame(false);
     onClose();
   };
 
@@ -152,6 +157,19 @@ export function AwayScreen({
           className="cursor-pointer"
           onClick={(e) => {
             e.stopPropagation();
+            setShowGame(true);
+            setAwayBreathing(false);
+            setAwayFunFact('');
+          }}
+        >
+          <div className="p-3.5 rounded-full bg-white/15 hover:bg-white/25 active:scale-90 transition-all duration-200" style={{ backdropFilter: 'blur(8px)' }}>
+            <Gamepad2 className="w-6 h-6 text-white/80" />
+          </div>
+        </div>
+        <div
+          className="cursor-pointer"
+          onClick={(e) => {
+            e.stopPropagation();
             setCalmPhotoUrl(CALM_PHOTOS[Math.floor(Math.random() * CALM_PHOTOS.length)]);
             setAwayBreathing(true);
             setAwayFunFact('');
@@ -174,6 +192,9 @@ export function AwayScreen({
           </div>
         </div>
       </div>
+
+      {/* Game overlay */}
+      {showGame && <ZeldaGame onClose={() => setShowGame(false)} />}
     </div>
   );
 }

@@ -42,7 +42,7 @@ import {
   clearLocalBillingData,
 } from '@/lib/billing';
 
-type Tab = 'style' | 'settings' | 'billing' | 'prompts' | 'privacy' | 'keys';
+type Tab = 'guide' | 'style' | 'settings' | 'billing' | 'prompts' | 'privacy' | 'keys';
 
 /** PIN setup/change/remove component */
 function PinSetup() {
@@ -323,7 +323,7 @@ function TemplateManager({ label, templates, defaultInstructions, onChange }: {
 export default function SettingsPage() {
   const router = useRouter();
   const { mode, setMode } = useTheme();
-  const [activeTab, setActiveTab] = useState<Tab>('style');
+  const [activeTab, setActiveTab] = useState<Tab>('guide');
   const [styleGuide, setStyleGuide] = useState<StyleGuide | null>(null);
   const [styleLoading, setStyleLoading] = useState(true);
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
@@ -953,12 +953,13 @@ export default function SettingsPage() {
       <div className="bg-[var(--bg-primary)] border-b border-[var(--border)] sticky top-[60px] z-30">
         <div className="flex max-w-2xl mx-auto">
           {([
-            { id: 'style' as const, label: 'Style Guide' },
+            { id: 'guide' as const, label: 'Guide' },
+            { id: 'style' as const, label: 'Style' },
             { id: 'settings' as const, label: 'Processing' },
             { id: 'prompts' as const, label: 'Prompts' },
             { id: 'billing' as const, label: 'Billing' },
-            { id: 'privacy' as const, label: 'Privacy & Security' },
-            { id: 'keys' as const, label: 'API Keys' },
+            { id: 'privacy' as const, label: 'Security' },
+            { id: 'keys' as const, label: 'Keys' },
           ]).map(({ id, label }) => (
             <button
               key={id}
@@ -976,6 +977,121 @@ export default function SettingsPage() {
       </div>
 
       <main className="max-w-2xl mx-auto px-4 py-4 space-y-6 animate-fadeIn">
+        {/* Guide Tab */}
+        {activeTab === 'guide' && (
+          <>
+            {/* Overview */}
+            <div className="bg-[var(--card-bg)] rounded-2xl border border-[var(--card-border)] p-5 space-y-3" style={{ boxShadow: 'var(--card-shadow)' }}>
+              <h3 className="font-semibold text-[var(--text-primary)]">Patient Dashboard</h3>
+              <p className="text-sm text-[var(--text-secondary)] leading-relaxed">
+                AI-powered clinical documentation for emergency physicians. Record encounters, generate structured notes, manage billing, and create referrals — all from one interface.
+              </p>
+            </div>
+
+            {/* Quick Start */}
+            <div className="bg-[var(--card-bg)] rounded-2xl border border-[var(--card-border)] p-5 space-y-4" style={{ boxShadow: 'var(--card-shadow)' }}>
+              <h3 className="font-semibold text-[var(--text-primary)]">Quick Start</h3>
+              <div className="space-y-3 text-sm text-[var(--text-secondary)]">
+                <div>
+                  <span className="font-medium text-[var(--text-primary)]">1. Add a patient</span>
+                  <p className="mt-0.5 leading-relaxed">Tap the + button. Enter demographics manually or paste from your EMR using the Parse tab.</p>
+                </div>
+                <div>
+                  <span className="font-medium text-[var(--text-primary)]">2. Add clinical info</span>
+                  <p className="mt-0.5 leading-relaxed">Click the patient card to open the clinical info modal. Add triage notes, record an encounter, or dictate notes.</p>
+                </div>
+                <div>
+                  <span className="font-medium text-[var(--text-primary)]">3. Generate a note</span>
+                  <p className="mt-0.5 leading-relaxed">Click "Generate Note" at the bottom. Choose Standard, Detailed, or Complete Exam. Add custom instructions if needed.</p>
+                </div>
+                <div>
+                  <span className="font-medium text-[var(--text-primary)]">4. Review and copy</span>
+                  <p className="mt-0.5 leading-relaxed">Open the full patient page to review HPI, Objective, and A&P. Copy the full note or individual sections into your EMR.</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Dictation */}
+            <div className="bg-[var(--card-bg)] rounded-2xl border border-[var(--card-border)] p-5 space-y-4" style={{ boxShadow: 'var(--card-shadow)' }}>
+              <h3 className="font-semibold text-[var(--text-primary)]">Dictation</h3>
+              <div className="space-y-3 text-sm text-[var(--text-secondary)]">
+                <div>
+                  <span className="font-medium text-[var(--text-primary)]">Tap to dictate</span>
+                  <p className="mt-0.5 leading-relaxed">Tap the mic icon to start recording. Tap again to stop. Text appears verbatim — no AI modification. The mic pulses amber while connecting to the speech engine, then turns red when live.</p>
+                </div>
+                <div>
+                  <span className="font-medium text-[var(--text-primary)]">Hold to medicalize</span>
+                  <p className="mt-0.5 leading-relaxed">Press and hold the mic for 0.5s+ to enter medicalize mode (stethoscope icon appears). Speak naturally — on release, AI converts your speech into proper medical documentation language.</p>
+                </div>
+                <div>
+                  <span className="font-medium text-[var(--text-primary)]">Encounter recording</span>
+                  <p className="mt-0.5 leading-relaxed">In the Transcript section, tap the mic to record the full patient encounter. Adjust mic sensitivity with the slider. Toggle "Live text" to see real-time transcription or a waveform visualization.</p>
+                </div>
+                <div>
+                  <span className="font-medium text-[var(--text-primary)]">Spoken punctuation</span>
+                  <p className="mt-0.5 leading-relaxed">Say "period", "comma", "new line", "new paragraph", "question mark", "colon", "semicolon", "dash", "bullet point" and more during dictation. These are converted to actual punctuation automatically.</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Full Patient Page */}
+            <div className="bg-[var(--card-bg)] rounded-2xl border border-[var(--card-border)] p-5 space-y-4" style={{ boxShadow: 'var(--card-shadow)' }}>
+              <h3 className="font-semibold text-[var(--text-primary)]">Full Patient Page</h3>
+              <div className="space-y-3 text-sm text-[var(--text-secondary)]">
+                <div>
+                  <span className="font-medium text-[var(--text-primary)]">Tabs: Note, Consult, Referral, Education</span>
+                  <p className="mt-0.5 leading-relaxed">Each tab generates a different document type. Consult and Referral support multiple templates (configure in Prompts tab).</p>
+                </div>
+                <div>
+                  <span className="font-medium text-[var(--text-primary)]">Insights panel</span>
+                  <p className="mt-0.5 leading-relaxed">Collapsible section below the Patient Profile with DDx, Investigations, Management, and Evidence. Refresh all with the ↻ button.</p>
+                </div>
+                <div>
+                  <span className="font-medium text-[var(--text-primary)]">Interactive editing</span>
+                  <p className="mt-0.5 leading-relaxed">Click any sentence in HPI, Objective, or A&P to select it. Use the action bar to remove, add detail, or shorten the selected text with AI.</p>
+                </div>
+                <div>
+                  <span className="font-medium text-[var(--text-primary)]">Physician Notes</span>
+                  <p className="mt-0.5 leading-relaxed">Add corrections or additional observations below A&P. Click "Regenerate Note" to incorporate your notes into the generated output.</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Patient Card Icons */}
+            <div className="bg-[var(--card-bg)] rounded-2xl border border-[var(--card-border)] p-5 space-y-4" style={{ boxShadow: 'var(--card-shadow)' }}>
+              <h3 className="font-semibold text-[var(--text-primary)]">Patient Card Shortcuts</h3>
+              <div className="space-y-2 text-sm text-[var(--text-secondary)]">
+                <p><span className="font-medium text-[var(--text-primary)]">Encounter note icon</span> — Click to copy the full note. Hold H, O, or P while clicking to copy just the HPI, Objective, or A&P section. The icon changes to show which section will be copied.</p>
+                <p><span className="font-medium text-[var(--text-primary)]">PMHx icon</span> — Hover to see the extracted patient profile (medical history, medications, allergies).</p>
+                <p><span className="font-medium text-[var(--text-primary)]">Synopsis icon</span> — Hover to see a one-line clinical summary. Click to copy.</p>
+                <p><span className="font-medium text-[var(--text-primary)]">Clinical question icon</span> — Ask evidence-based clinical questions about the patient.</p>
+              </div>
+            </div>
+
+            {/* Billing */}
+            <div className="bg-[var(--card-bg)] rounded-2xl border border-[var(--card-border)] p-5 space-y-4" style={{ boxShadow: 'var(--card-shadow)' }}>
+              <h3 className="font-semibold text-[var(--text-primary)]">Billing</h3>
+              <div className="space-y-2 text-sm text-[var(--text-secondary)]">
+                <p>Configure your billing region in the Billing tab. Yukon and VCH codes are built in, with support for custom codes.</p>
+                <p><span className="font-medium text-[var(--text-primary)]">Auto-billing</span> — When a note is generated, billing codes are automatically assigned based on the visit type, time of day, and documented exam systems.</p>
+                <p><span className="font-medium text-[var(--text-primary)]">Manual billing</span> — Expand the billing section on the patient card or full page to add/remove codes, adjust units, and add comments.</p>
+                <p><span className="font-medium text-[var(--text-primary)]">Export</span> — Use the export button in the header to download billing data for a date range.</p>
+              </div>
+            </div>
+
+            {/* Tips */}
+            <div className="bg-[var(--card-bg)] rounded-2xl border border-[var(--card-border)] p-5 space-y-4" style={{ boxShadow: 'var(--card-shadow)' }}>
+              <h3 className="font-semibold text-[var(--text-primary)]">Tips</h3>
+              <div className="space-y-2 text-sm text-[var(--text-secondary)]">
+                <p><span className="font-medium text-[var(--text-primary)]">Style Guide</span> — Save examples of your preferred note style (Style tab). The AI learns to match your writing patterns over time.</p>
+                <p><span className="font-medium text-[var(--text-primary)]">Templates</span> — Create multiple referral and consult templates for different scenarios (Prompts tab). Select which template to use when generating.</p>
+                <p><span className="font-medium text-[var(--text-primary)]">Calibration</span> — Add frequently used medical terms to the transcription calibration list (Processing tab) for better voice recognition accuracy.</p>
+                <p><span className="font-medium text-[var(--text-primary)]">Keyboard shortcuts</span> — On the dashboard, hold H/O/P and click a patient's encounter note icon to copy just that section.</p>
+              </div>
+            </div>
+          </>
+        )}
+
         {/* Style Guide Tab */}
         {activeTab === 'style' && (
           <>
