@@ -767,42 +767,42 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
         <div className="flex-1 overflow-hidden flex relative">
 
         {/* Clinical info — always visible */}
-        <div className="flex-1 min-w-0 overflow-y-auto px-5 py-5 space-y-5 transition-all duration-300">
+        <div className="flex-1 min-w-0 overflow-y-auto px-4 py-4 transition-all duration-300">
           {/* Triage Notes */}
-          <div>
-            <label className="block text-[10px] font-medium uppercase tracking-[0.12em] mb-1.5" style={{ color: 'var(--modal-label)' }}>
-              Triage Notes & Vitals
-            </label>
-            <SubmissionTags field="triageVitals" />
+          <div className="p-3 rounded-xl mb-3" style={{ background: 'var(--modal-section-bg)' }}>
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-[10px] font-medium uppercase tracking-[0.12em]" style={{ color: 'var(--modal-label)' }}>
+                Presenting Complaint
+              </label>
+              <SubmissionTags field="triageVitals" />
+            </div>
             <textarea
               value={triageVitals}
               onChange={(e) => setTriageVitals(e.target.value)}
               placeholder="Chief complaint, vitals, triage assessment..."
-              className="w-full h-20 p-3 text-sm resize-y focus:outline-none text-[var(--text-primary)] placeholder:text-[var(--text-muted)]"
-              style={{ background: 'var(--modal-input-bg)', border: '1px solid var(--modal-input-border)', borderRadius: '14px', boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.04)' }}
+              className="w-full h-16 p-3 text-[13px] resize-none focus:outline-none text-[var(--text-primary)] placeholder:text-[var(--text-muted)]"
+              style={{ background: 'var(--modal-input-bg)', border: '1px solid var(--modal-input-border)', borderRadius: '12px' }}
               onFocus={e => e.currentTarget.style.borderColor = 'var(--modal-input-focus)'}
               onBlur={e => e.currentTarget.style.borderColor = 'var(--modal-input-border)'}
             />
-            <button
-              onClick={() => handleSectionSubmit('triageVitals', triageVitals)}
-              disabled={!triageVitals.trim() || !!submitting}
-              className="mt-1 w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-[10px] font-medium transition-all duration-200 active:scale-[0.98]"
-              style={{
-                background: submitted === 'triageVitals' ? 'var(--modal-accent-light)' : triageVitals.trim() ? 'var(--modal-accent-light)' : 'transparent',
-                color: submitted === 'triageVitals' ? 'var(--modal-accent)' : triageVitals.trim() ? 'var(--modal-accent)' : 'var(--modal-label)',
-                opacity: triageVitals.trim() || submitted === 'triageVitals' ? 1 : 0,
-              }}
-            >
-              {submitting === 'triageVitals' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : submitted === 'triageVitals' ? <Check className="w-3.5 h-3.5" /> : <ArrowUpCircle className="w-3.5 h-3.5" />}
-              {submitted === 'triageVitals' ? 'Saved' : 'Submit'}
-            </button>
+            {triageVitals.trim() && (
+              <button
+                onClick={() => handleSectionSubmit('triageVitals', triageVitals)}
+                disabled={!!submitting}
+                className="mt-1.5 flex items-center gap-1 px-2.5 py-1 rounded-md text-[9px] font-medium transition-all duration-200 active:scale-[0.98]"
+                style={{ color: 'var(--modal-accent)', background: 'var(--modal-accent-light)' }}
+              >
+                {submitting === 'triageVitals' ? <Loader2 className="w-3 h-3 animate-spin" /> : submitted === 'triageVitals' ? <Check className="w-3 h-3" /> : <ArrowUpCircle className="w-3 h-3" />}
+                {submitted === 'triageVitals' ? 'Saved' : 'Submit'}
+              </button>
+            )}
           </div>
 
           {/* Transcript */}
-          <div>
-            <div className="flex items-center justify-between mb-1.5">
+          <div className="p-3 rounded-xl mb-3" style={{ background: 'var(--modal-section-bg)' }}>
+            <div className="flex items-center justify-between mb-2">
               <label className="text-[10px] font-medium uppercase tracking-[0.12em]" style={{ color: 'var(--modal-label)' }}>
-                Transcript
+                Encounter Recording
               </label>
               <div className="flex items-center gap-3">
                 <div className="flex items-center gap-1.5">
@@ -1215,9 +1215,9 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
           </div>
 
           {/* Encounter Notes */}
-          <div>
-            <label className="block text-[10px] font-medium uppercase tracking-[0.12em] mb-1.5" style={{ color: 'var(--modal-label)' }}>
-              Encounter Notes
+          <div className="p-3 rounded-xl mb-3" style={{ background: 'var(--modal-section-bg)' }}>
+            <label className="block text-[10px] font-medium uppercase tracking-[0.12em] mb-2" style={{ color: 'var(--modal-label)' }}>
+              Physician Notes
             </label>
             <SubmissionTags field="encounterNotes" />
             <div className="relative">
@@ -1226,7 +1226,7 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
                 onChange={setEncounterNotes}
                 suggestions={allSuggestions}
                 placeholder="Physician notes, clinical observations, plan..."
-                textareaClassName={`w-full h-28 p-3 pr-10 border border-[var(--input-border)] rounded-xl text-sm resize-y focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] placeholder:text-[var(--text-muted)] transition-colors duration-300 ${refiningFields.has('encounterNotes') ? 'text-[var(--text-muted)] italic' : 'text-[var(--text-primary)]'}`}
+                textareaClassName={`w-full h-24 p-3 pr-10 text-[13px] resize-none focus:outline-none bg-[var(--modal-input-bg)] border border-[var(--modal-input-border)] rounded-xl placeholder:text-[var(--text-muted)] transition-colors duration-300 ${refiningFields.has('encounterNotes') ? 'text-[var(--text-muted)] italic' : 'text-[var(--text-primary)]'}`}
                 patientContext={patientContext}
               />
               {refiningFields.has('encounterNotes') && (
