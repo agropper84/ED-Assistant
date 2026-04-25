@@ -1169,7 +1169,7 @@ export default function HomePage() {
                   <circle cx="18" cy="18" r="2.2" fill="url(#ed-nub)" />
                 </svg>
               </button>
-              <h1 className="text-[17px] font-bold tracking-[-0.02em]" style={{ color: 'var(--dash-text)' }}>ER Dashboard</h1>
+              <h1 className="text-[17px] font-bold tracking-[-0.02em]" style={{ color: 'var(--dash-text)' }}>Patient Dashboard</h1>
             </div>
 
             {/* Right: date navigation */}
