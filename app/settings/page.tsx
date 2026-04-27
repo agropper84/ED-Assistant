@@ -1549,6 +1549,26 @@ export default function SettingsPage() {
               </label>
             </div>
 
+            {/* Generate note on add */}
+            <div className="bg-[var(--card-bg)] rounded-2xl border border-[var(--card-border)] p-5" style={{ boxShadow: 'var(--card-shadow)' }}>
+              <label className="flex items-center justify-between cursor-pointer">
+                <div>
+                  <span className="text-sm font-medium text-[var(--text-primary)] block">Show &quot;Generate Note&quot; on add patient</span>
+                  <span className="text-xs text-[var(--text-muted)]">
+                    {settings.showGenerateOnAdd
+                      ? 'The add-patient dialog shows a Generate Note button alongside Save'
+                      : 'The add-patient dialog only shows Save — generate notes from the patient card'}
+                  </span>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={settings.showGenerateOnAdd || false}
+                  onChange={(e) => handleSettingChange('showGenerateOnAdd', e.target.checked)}
+                  className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 accent-blue-600 flex-shrink-0 ml-3"
+                />
+              </label>
+            </div>
+
             {/* Dictation */}
             <div className="bg-[var(--card-bg)] rounded-2xl border border-[var(--card-border)] p-5 space-y-4" style={{ boxShadow: 'var(--card-shadow)' }}>
               <h3 className="font-semibold text-[var(--text-primary)]">Dictation</h3>

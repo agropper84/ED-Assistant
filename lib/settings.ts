@@ -26,6 +26,7 @@ export interface AppSettings {
   pinEnabled: boolean;
   totpEnabled: boolean;
   sheetsDevMirror: boolean;
+  showGenerateOnAdd: boolean;
 }
 
 export const DEFAULT_NOTE_STYLE_STANDARD = 'Write a concise, focused note. Include only clinically relevant findings. Use brief, direct language. Omit normal findings unless pertinent to the differential.';
@@ -90,6 +91,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   pinEnabled: false,
   totpEnabled: false,
   sheetsDevMirror: false,
+  showGenerateOnAdd: false,
 };
 
 const STORAGE_KEY = 'ed-app-settings';

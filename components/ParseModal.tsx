@@ -9,7 +9,7 @@ import { getMedicalSuggestions } from '@/lib/medical-suggestions';
 import { VoiceRecorder } from '@/components/VoiceRecorder';
 import { PatientProfile } from '@/components/PatientProfile';
 import type { PatientProfile as ProfileData } from '@/app/api/profile/route';
-import { getParseRules, saveParseRules, ParseRules, DEFAULT_PARSE_RULES, INPUT_HEALTH_PARSE_RULES, BUILT_IN_FORMATS } from '@/lib/settings';
+import { getParseRules, saveParseRules, ParseRules, DEFAULT_PARSE_RULES, INPUT_HEALTH_PARSE_RULES, BUILT_IN_FORMATS, getSettings } from '@/lib/settings';
 import { savePhrasesInBackground } from '@/lib/user-phrases';
 
 interface FieldSubmission {
@@ -1118,7 +1118,7 @@ export function ParseModal({ isOpen, onClose, onSave, onQuickAdd, patientRef: ex
                   {savingState === 'saving' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
                   {savingState === 'saving' ? 'Saving...' : 'Save'}
                 </button>
-                {(triageVitals.trim() || transcript.trim() || encounterNotes.trim() || additional.trim() || submissions.length > 0) && (
+                {getSettings().showGenerateOnAdd && (triageVitals.trim() || transcript.trim() || encounterNotes.trim() || additional.trim() || submissions.length > 0) && (
                   <button
                     onClick={() => handleSave(true)}
                     disabled={!parsedData || savingState !== 'idle'}
