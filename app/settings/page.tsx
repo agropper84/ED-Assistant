@@ -1983,6 +1983,43 @@ export default function SettingsPage() {
               )}
             </div>
 
+            {/* Grid Card Display */}
+            <div className="bg-[var(--card-bg)] rounded-2xl border border-[var(--card-border)] p-5 space-y-3" style={{ boxShadow: 'var(--card-shadow)' }}>
+              <div>
+                <h3 className="font-semibold text-[var(--text-primary)]">Grid Card Display</h3>
+                <p className="text-xs text-[var(--text-muted)] mt-0.5">Choose which extra fields to show on the compact grid view cards.</p>
+              </div>
+              <div className="space-y-2">
+                {[
+                  { id: 'age', label: 'Age & Gender' },
+                  { id: 'room', label: 'Room' },
+                  { id: 'hcn', label: 'Health Card Number' },
+                  { id: 'mrn', label: 'MRN' },
+                  { id: 'status', label: 'Status Badge (New / Pending / Done)' },
+                  { id: 'synopsis', label: 'Synopsis (one-line summary)' },
+                ].map(({ id, label }) => {
+                  const current = settings.gridCardFields || [];
+                  const checked = current.includes(id);
+                  return (
+                    <label key={id} className="flex items-center gap-2.5 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={() => {
+                          const updated = checked ? current.filter(f => f !== id) : [...current, id];
+                          const newSettings = { ...settings, gridCardFields: updated };
+                          setSettings(newSettings);
+                          saveSettings(newSettings);
+                        }}
+                        className="w-4 h-4 rounded border-[var(--input-border)] text-blue-600 focus:ring-blue-500 bg-[var(--input-bg)]"
+                      />
+                      <span className="text-sm text-[var(--text-secondary)]">{label}</span>
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
+
           </>
         )}
 

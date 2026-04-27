@@ -11,10 +11,11 @@ interface PatientGridCellProps {
   onTimeChange?: (time: string) => void;
   onUpdateFields?: (fields: Record<string, string>) => Promise<void>;
   onBillingSave?: (items: BillingItem[]) => void;
+  extraFields?: string[]; // configurable extra fields: 'age', 'room', 'hcn', 'mrn', 'status', 'synopsis'
 }
 
 export const PatientGridCell = memo(function PatientGridCell({
-  patient, onClick, onTimeChange, onUpdateFields, onBillingSave,
+  patient, onClick, onTimeChange, onUpdateFields, onBillingSave, extraFields = [],
 }: PatientGridCellProps) {
   const [editingTime, setEditingTime] = useState(false);
   const [timeValue, setTimeValue] = useState('');
@@ -121,6 +122,36 @@ export const PatientGridCell = memo(function PatientGridCell({
         >
           {patient.diagnosis || 'Add diagnosis'}
         </p>
+      )}
+
+      {/* Extra configurable fields */}
+      {extraFields.length > 0 && (
+        <div className="flex flex-wrap gap-x-2 gap-y-0.5">
+          {extraFields.includes('age') && patient.age && (
+            <span className="text-[10px] text-[var(--text-muted)]">{patient.age}{patient.gender ? ` ${patient.gender}` : ''}</span>
+          )}
+          {extraFields.includes('room') && patient.room && (
+            <span className="text-[10px] text-[var(--text-muted)]">Rm {patient.room}</span>
+          )}
+          {extraFields.includes('hcn') && patient.hcn && (
+            <span className="text-[10px] text-[var(--text-muted)] tabular-nums">{patient.hcn}</span>
+          )}
+          {extraFields.includes('mrn') && patient.mrn && (
+            <span className="text-[10px] text-[var(--text-muted)] tabular-nums">{patient.mrn}</span>
+          )}
+          {extraFields.includes('status') && (
+            <span className={`text-[9px] font-medium px-1.5 py-0.5 rounded-full ${
+              patient.hasOutput ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
+              : patient.transcript ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
+              : 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400'
+            }`}>
+              {patient.hasOutput ? 'Done' : patient.transcript ? 'Pending' : 'New'}
+            </span>
+          )}
+          {extraFields.includes('synopsis') && patient.synopsis && (
+            <p className="text-[9px] text-[var(--text-muted)] italic truncate w-full leading-snug">{patient.synopsis}</p>
+          )}
+        </div>
       )}
 
       {/* Spacer */}

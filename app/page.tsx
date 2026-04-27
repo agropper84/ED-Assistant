@@ -844,6 +844,7 @@ export default function HomePage() {
           fetchPatients();
         }}
         onBillingSave={(items) => handleDashboardBillingSave(patient, items)}
+        extraFields={getSettings().gridCardFields || []}
       />
     );
   };

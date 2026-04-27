@@ -27,6 +27,7 @@ export interface AppSettings {
   totpEnabled: boolean;
   sheetsDevMirror: boolean;
   showGenerateOnAdd: boolean;
+  gridCardFields?: string[]; // extra fields to show on grid cards: 'age', 'room', 'hcn', 'mrn', 'status', 'synopsis'
 }
 
 export const DEFAULT_NOTE_STYLE_STANDARD = 'Write a concise, focused note. Include only clinically relevant findings. Use brief, direct language. Omit normal findings unless pertinent to the differential.';
