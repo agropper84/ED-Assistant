@@ -418,22 +418,22 @@ export default function PatientPage() {
     <div className={isEmbed ? 'pb-8' : 'min-h-screen pb-24'}>
       {/* Header */}
       {!isEmbed ? (
-        <header className="warm-header px-4 py-3 sticky top-0 z-40" style={{ borderBottom: '1px solid rgba(120,113,108,0.12)' }}>
+        <header className="dash-header px-4 py-3 sticky top-0 z-40">
           <div className="flex items-center gap-3 max-w-2xl mx-auto">
             <button
               onClick={() => router.push('/')}
               className="p-2 hover:bg-white/10 rounded-full -ml-2"
             >
-              <ArrowLeft className="w-5 h-5" style={{ color: 'var(--page-header-sub)' }} />
+              <ArrowLeft className="w-5 h-5" style={{ color: 'var(--dash-text-sub)' }} />
             </button>
             <div className="flex-1 min-w-0">
-              <h1 className="font-semibold truncate" style={{ color: 'var(--page-header-text)' }}>
+              <h1 className="font-semibold truncate" style={{ color: 'var(--dash-text)' }}>
                 {patient.name || 'Unknown'}
               </h1>
-              <div className="flex items-center gap-2 text-xs mt-0.5 flex-wrap" style={{ color: 'var(--page-header-sub)' }}>
+              <div className="flex items-center gap-2 text-xs mt-0.5 flex-wrap" style={{ color: 'var(--dash-text-muted)' }}>
                 {patient.age && <span>{patient.age}</span>}
                 {patient.gender && <span>{patient.gender}</span>}
-                {patient.timestamp && <><span className="opacity-40">·</span><span style={{ color: 'var(--page-accent)' }}>{patient.timestamp}</span></>}
+                {patient.timestamp && <><span className="opacity-40">·</span><span>{patient.timestamp}</span></>}
                 {patient.birthday && <><span className="opacity-40">·</span><span>DOB {patient.birthday}</span></>}
                 {patient.hcn && <><span className="opacity-40">·</span><span>HCN {patient.hcn}</span></>}
                 {patient.mrn && <><span className="opacity-40">·</span><span>MRN {patient.mrn}</span></>}
@@ -576,9 +576,9 @@ export default function PatientPage() {
               onClick={() => setActiveTab(tab)}
               className={`flex-1 font-medium transition-all ${isEmbed ? 'py-1.5 text-[11px] rounded-lg' : 'py-2.5 text-xs sm:text-sm rounded-xl'}`}
               style={activeTab === tab ? {
-                background: 'linear-gradient(135deg, var(--page-accent), color-mix(in srgb, var(--page-accent) 80%, #000))',
-                color: '#fff',
-                boxShadow: '0 2px 8px var(--page-accent-glow)',
+                background: 'var(--page-tab-active)',
+                color: 'var(--page-tab-text)',
+                boxShadow: `0 2px 10px var(--page-tab-glow)`,
               } : {
                 color: 'var(--text-secondary)',
               }}

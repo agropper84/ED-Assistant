@@ -69,9 +69,12 @@
   --dash-text-muted: rgba(160,185,240,0.55);
 
   /* Warm page theme (patient detail page) */
-  --page-header: linear-gradient(160deg, #1c1917 0%, #292524 50%, #1c1917 100%);
-  --page-header-text: #faf8f5;
-  --page-header-sub: rgba(214,211,209,0.7);
+  --page-header: linear-gradient(160deg, var(--dash-header-from) 0%, var(--dash-header-via) 50%, var(--dash-header-to) 100%);
+  --page-header-text: var(--dash-text);
+  --page-header-sub: var(--dash-text-sub);
+  --page-tab-active: linear-gradient(135deg, #1e3a7a 0%, #152c5e 100%);
+  --page-tab-text: #d4dff5;
+  --page-tab-glow: rgba(30,58,122,0.35);
   --page-accent: #d97706;
   --page-accent-light: rgba(217,119,6,0.06);
   --page-accent-glow: rgba(217,119,6,0.12);
@@ -158,9 +161,12 @@
   --dash-text-muted: rgba(140,170,220,0.45);
 
   /* Warm page theme — dark */
-  --page-header: linear-gradient(160deg, #1c1917 0%, #292524 50%, #1c1917 100%);
-  --page-header-text: #faf8f5;
-  --page-header-sub: rgba(168,162,158,0.6);
+  --page-header: linear-gradient(160deg, var(--dash-header-from) 0%, var(--dash-header-via) 50%, var(--dash-header-to) 100%);
+  --page-header-text: var(--dash-text);
+  --page-header-sub: var(--dash-text-sub);
+  --page-tab-active: linear-gradient(135deg, #2a5caa 0%, #1d4280 100%);
+  --page-tab-text: #e0eaff;
+  --page-tab-glow: rgba(42,92,170,0.3);
   --page-accent: #f59e0b;
   --page-accent-light: rgba(245,158,11,0.06);
   --page-accent-glow: rgba(245,158,11,0.10);
