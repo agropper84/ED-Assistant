@@ -3075,11 +3075,12 @@ export default function SettingsPage() {
         {/* API Keys Tab */}
         {activeTab === 'keys' && (
           <>
+            {/* AI Key */}
             <div className="bg-[var(--card-bg)] rounded-2xl border border-[var(--card-border)] p-5 space-y-5" style={{ boxShadow: 'var(--card-shadow)' }}>
               <div>
-                <h3 className="font-semibold text-[var(--text-primary)]">API Keys</h3>
+                <h3 className="font-semibold text-[var(--text-primary)]">AI</h3>
                 <p className="text-xs text-[var(--text-muted)] mt-0.5">
-                  API keys are stored securely server-side. Anthropic is required for all AI features. ElevenLabs is recommended for high-quality voice transcription.
+                  All keys are stored encrypted server-side.
                 </p>
               </div>
 
@@ -3106,53 +3107,18 @@ export default function SettingsPage() {
                 )}
                 <p className="text-[10px] text-amber-600 dark:text-amber-400 font-medium">Required — powers all AI features including note generation, referrals, clinical questions, and medical terminology.</p>
               </div>
+            </div>
 
-              {/* OpenAI API Key */}
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <label className="text-sm font-medium text-[var(--text-secondary)]">OpenAI API Key (Whisper)</label>
-                  <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener noreferrer"
-                    className="text-[10px] text-blue-500 hover:text-blue-600 dark:text-blue-400">Get key</a>
-                </div>
-                {openaiKeyMasked ? (
-                  <div className="flex items-center gap-2">
-                    <code className="flex-1 p-2 bg-[var(--bg-tertiary)] rounded-lg text-xs font-mono text-[var(--text-muted)]">{openaiKeyMasked}</code>
-                    <button onClick={() => saveApiKey('openaiApiKey', '')} disabled={savingKey}
-                      className="px-3 py-1.5 text-xs font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg transition-colors">Remove</button>
-                  </div>
-                ) : (
-                  <div className="flex gap-2">
-                    <input type="password" value={openaiApiKey} onChange={(e) => setOpenaiApiKey(e.target.value)} placeholder="sk-..."
-                      className="flex-1 p-2 border border-[var(--input-border)] rounded-lg text-sm bg-[var(--input-bg)] text-[var(--text-primary)] focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono" />
-                    <button onClick={() => saveApiKey('openaiApiKey', openaiApiKey)} disabled={savingKey || !openaiApiKey.trim()}
-                      className="px-3 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium disabled:opacity-40">Save</button>
-                  </div>
-                )}
-                <p className="text-[10px] text-[var(--text-muted)]">Required for Whisper transcription engine. Not needed if using Deepgram only.</p>
-              </div>
-
-              {/* Deepgram API Key */}
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <label className="text-sm font-medium text-[var(--text-secondary)]">Deepgram API Key (Nova-3 Medical)</label>
-                  <a href="https://console.deepgram.com/api-keys" target="_blank" rel="noopener noreferrer"
-                    className="text-[10px] text-blue-500 hover:text-blue-600 dark:text-blue-400">Get key</a>
-                </div>
-                {deepgramKeyMasked ? (
-                  <div className="flex items-center gap-2">
-                    <code className="flex-1 p-2 bg-[var(--bg-tertiary)] rounded-lg text-xs font-mono text-[var(--text-muted)]">{deepgramKeyMasked}</code>
-                    <button onClick={() => saveApiKey('deepgramApiKey', '')} disabled={savingKey}
-                      className="px-3 py-1.5 text-xs font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg transition-colors">Remove</button>
-                  </div>
-                ) : (
-                  <div className="flex gap-2">
-                    <input type="password" value={deepgramApiKey} onChange={(e) => setDeepgramApiKey(e.target.value)} placeholder="Deepgram API key..."
-                      className="flex-1 p-2 border border-[var(--input-border)] rounded-lg text-sm bg-[var(--input-bg)] text-[var(--text-primary)] focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono" />
-                    <button onClick={() => saveApiKey('deepgramApiKey', deepgramApiKey)} disabled={savingKey || !deepgramApiKey.trim()}
-                      className="px-3 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium disabled:opacity-40">Save</button>
-                  </div>
-                )}
-                <p className="text-[10px] text-[var(--text-muted)]">Optional. Enables Deepgram Nova-3 Medical as an alternate transcription engine.</p>
+            {/* Transcription Keys */}
+            <div className="bg-[var(--card-bg)] rounded-2xl border border-[var(--card-border)] p-5 space-y-5" style={{ boxShadow: 'var(--card-shadow)' }}>
+              <div>
+                <h3 className="font-semibold text-[var(--text-primary)]">Transcription</h3>
+                <p className="text-xs text-[var(--text-muted)] mt-0.5">
+                  You only need <strong>one</strong> transcription engine. ElevenLabs Scribe is recommended for the best medical transcription accuracy and real-time live text.
+                </p>
+                <p className="text-[10px] text-[var(--text-muted)] mt-1">
+                  Adding multiple keys enables backup engines and lets you switch between them to find what works best for your workflow.
+                </p>
               </div>
 
               {/* ElevenLabs API Key */}
@@ -3176,7 +3142,55 @@ export default function SettingsPage() {
                       className="px-3 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium disabled:opacity-40">Save</button>
                   </div>
                 )}
-                <p className="text-[10px] text-blue-600 dark:text-blue-400 font-medium">Recommended — real-time live text and high-accuracy medical transcription for dictation and encounter recording.</p>
+                <p className="text-[10px] text-blue-600 dark:text-blue-400 font-medium">Recommended — real-time live text, highest medical accuracy, speaker diarization.</p>
+              </div>
+
+              {/* Deepgram API Key */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <label className="text-sm font-medium text-[var(--text-secondary)]">Deepgram API Key (Nova-3 Medical)</label>
+                  <a href="https://console.deepgram.com/api-keys" target="_blank" rel="noopener noreferrer"
+                    className="text-[10px] text-blue-500 hover:text-blue-600 dark:text-blue-400">Get key</a>
+                </div>
+                {deepgramKeyMasked ? (
+                  <div className="flex items-center gap-2">
+                    <code className="flex-1 p-2 bg-[var(--bg-tertiary)] rounded-lg text-xs font-mono text-[var(--text-muted)]">{deepgramKeyMasked}</code>
+                    <button onClick={() => saveApiKey('deepgramApiKey', '')} disabled={savingKey}
+                      className="px-3 py-1.5 text-xs font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg transition-colors">Remove</button>
+                  </div>
+                ) : (
+                  <div className="flex gap-2">
+                    <input type="password" value={deepgramApiKey} onChange={(e) => setDeepgramApiKey(e.target.value)} placeholder="Deepgram API key..."
+                      className="flex-1 p-2 border border-[var(--input-border)] rounded-lg text-sm bg-[var(--input-bg)] text-[var(--text-primary)] focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono" />
+                    <button onClick={() => saveApiKey('deepgramApiKey', deepgramApiKey)} disabled={savingKey || !deepgramApiKey.trim()}
+                      className="px-3 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium disabled:opacity-40">Save</button>
+                  </div>
+                )}
+                <p className="text-[10px] text-[var(--text-muted)]">Real-time streaming with Nova-3 Medical model. Good alternative to ElevenLabs.</p>
+              </div>
+
+              {/* OpenAI API Key (Whisper) */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <label className="text-sm font-medium text-[var(--text-secondary)]">OpenAI API Key (Whisper)</label>
+                  <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener noreferrer"
+                    className="text-[10px] text-blue-500 hover:text-blue-600 dark:text-blue-400">Get key</a>
+                </div>
+                {openaiKeyMasked ? (
+                  <div className="flex items-center gap-2">
+                    <code className="flex-1 p-2 bg-[var(--bg-tertiary)] rounded-lg text-xs font-mono text-[var(--text-muted)]">{openaiKeyMasked}</code>
+                    <button onClick={() => saveApiKey('openaiApiKey', '')} disabled={savingKey}
+                      className="px-3 py-1.5 text-xs font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg transition-colors">Remove</button>
+                  </div>
+                ) : (
+                  <div className="flex gap-2">
+                    <input type="password" value={openaiApiKey} onChange={(e) => setOpenaiApiKey(e.target.value)} placeholder="sk-..."
+                      className="flex-1 p-2 border border-[var(--input-border)] rounded-lg text-sm bg-[var(--input-bg)] text-[var(--text-primary)] focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono" />
+                    <button onClick={() => saveApiKey('openaiApiKey', openaiApiKey)} disabled={savingKey || !openaiApiKey.trim()}
+                      className="px-3 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium disabled:opacity-40">Save</button>
+                  </div>
+                )}
+                <p className="text-[10px] text-[var(--text-muted)]">Post-recording transcription via Whisper. Not real-time — uploads audio after recording completes.</p>
               </div>
 
             </div>
