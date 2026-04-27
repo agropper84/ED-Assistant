@@ -1,12 +1,14 @@
 'use client';
 
 import { useState, useRef, useEffect, useMemo } from 'react';
-import { X, Clipboard, Check, Loader2, Clock, Upload, Send, FileText, Trash2, ChevronDown } from 'lucide-react';
+import { X, Clipboard, Check, Loader2, Clock, Upload, Send, FileText, Trash2, ChevronDown, Heart, ListTree, RefreshCw } from 'lucide-react';
 import { ExamToggles } from '@/components/ExamToggles';
 import { generateId } from '@/lib/types-json';
 import { AutocompleteTextarea } from '@/components/AutocompleteTextarea';
 import { getMedicalSuggestions } from '@/lib/medical-suggestions';
 import { VoiceRecorder } from '@/components/VoiceRecorder';
+import { PatientProfile } from '@/components/PatientProfile';
+import type { PatientProfile as ProfileData } from '@/app/api/profile/route';
 import { getParseRules, saveParseRules, ParseRules, DEFAULT_PARSE_RULES, INPUT_HEALTH_PARSE_RULES, BUILT_IN_FORMATS } from '@/lib/settings';
 import { savePhrasesInBackground } from '@/lib/user-phrases';
 
@@ -97,6 +99,13 @@ export function ParseModal({ isOpen, onClose, onSave, onQuickAdd, patientRef: ex
   const [savingState, setSavingState] = useState<'idle' | 'saving' | 'generating'>('idle');
   const [showMoreFields, setShowMoreFields] = useState(false);
   const [inputTab, setInputTab] = useState<'quick' | 'parse'>('quick');
+
+  // Side panel (PMHx / DDx)
+  const [sidePanel, setSidePanel] = useState<'profile' | 'ddx' | null>(null);
+  const [profileData, setProfileData] = useState<ProfileData | null>(null);
+  const [generatingProfile, setGeneratingProfile] = useState(false);
+  const [ddxData, setDdxData] = useState<{ keyQuestions: string; ddx: string; investigations: string } | null>(null);
+  const [generatingDdx, setGeneratingDdx] = useState(false);
 
   // Per-field submissions
   const [submissions, setSubmissions] = useState<FieldSubmission[]>([]);
@@ -447,9 +456,90 @@ export function ParseModal({ isOpen, onClose, onSave, onQuickAdd, patientRef: ex
     chiefComplaint: triageVitals.split('\n')[0] || '',
   };
 
+  const handleGenerateProfile = async () => {
+    if (!patientRef) return;
+    setGeneratingProfile(true);
+    try {
+      const res = await fetch('/api/profile', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rowIndex: patientRef.rowIndex, sheetName: patientRef.sheetName }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setProfileData(data.profile);
+      }
+    } catch {} finally { setGeneratingProfile(false); }
+  };
+
+  const handleGenerateDdx = async () => {
+    if (!patientRef) return;
+    setGeneratingDdx(true);
+    try {
+      const res = await fetch('/api/analysis', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rowIndex: patientRef.rowIndex, sheetName: patientRef.sheetName }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setDdxData({ keyQuestions: data.keyQuestions || '', ddx: data.ddx || '', investigations: data.investigations || '' });
+      }
+    } catch {} finally { setGeneratingDdx(false); }
+  };
+
   return (
     <div className="fixed inset-0 modal-overlay z-50 flex items-end sm:items-center justify-center">
-      <div className="w-full sm:max-w-lg sm:rounded-2xl rounded-t-2xl max-h-[90vh] overflow-hidden flex flex-col animate-slideUp" style={{
+      <div className={`relative w-full flex animate-slideUp transition-all duration-400 ease-[cubic-bezier(0.4,0,0.2,1)] ${sidePanel ? 'sm:max-w-[780px]' : 'sm:max-w-lg'}`}>
+      {/* Binder tabs — only shown when patient exists */}
+      {patientRef && (
+        <>
+          <div className="hidden sm:flex flex-col absolute z-50 right-0 translate-x-full" style={{ top: '64px' }}>
+            <button onClick={() => { setSidePanel(sidePanel === 'profile' ? null : 'profile'); if (!profileData && !generatingProfile) handleGenerateProfile(); }} className="outline-none relative">
+              <div className="flex items-center justify-center transition-all duration-250 ease-out" style={{
+                width: sidePanel === 'profile' ? '30px' : '26px', height: '72px',
+                background: sidePanel === 'profile' ? 'var(--modal-accent-light)' : 'var(--modal-bg)',
+                border: '1px solid var(--modal-divider)', borderLeft: 'none',
+                borderTopRightRadius: '12px', borderBottomRightRadius: '12px',
+                boxShadow: sidePanel === 'profile' ? '4px 0 12px rgba(0,0,0,0.15)' : '2px 0 8px rgba(0,0,0,0.08)',
+              }}>
+                <div className="flex flex-col items-center gap-2">
+                  <Heart className="w-3 h-3 transition-colors duration-200" style={{ color: sidePanel === 'profile' ? 'var(--modal-accent)' : 'var(--modal-label)' }} fill={profileData ? 'currentColor' : 'none'} />
+                  <span className="font-semibold uppercase leading-none transition-colors duration-200" style={{ fontSize: '7px', letterSpacing: '0.1em', writingMode: 'vertical-rl', color: sidePanel === 'profile' ? 'var(--modal-accent)' : 'var(--modal-label)' }}>PMHx</span>
+                </div>
+              </div>
+              {profileData && sidePanel !== 'profile' && <span className="absolute top-2 right-2 w-[5px] h-[5px] rounded-full" style={{ background: 'var(--modal-accent)' }} />}
+            </button>
+            <button onClick={() => { setSidePanel(sidePanel === 'ddx' ? null : 'ddx'); if (!ddxData && !generatingDdx) handleGenerateDdx(); }} className="outline-none relative mt-px">
+              <div className="flex items-center justify-center transition-all duration-250 ease-out" style={{
+                width: sidePanel === 'ddx' ? '30px' : '26px', height: '64px',
+                background: sidePanel === 'ddx' ? 'var(--modal-accent-light)' : 'var(--modal-bg)',
+                border: '1px solid var(--modal-divider)', borderLeft: 'none',
+                borderTopRightRadius: '10px', borderBottomRightRadius: '10px',
+                boxShadow: sidePanel === 'ddx' ? '4px 0 12px rgba(0,0,0,0.15)' : '2px 0 8px rgba(0,0,0,0.08)',
+              }}>
+                <div className="flex flex-col items-center gap-2">
+                  <ListTree className="w-3 h-3 transition-colors duration-200" style={{ color: sidePanel === 'ddx' ? 'var(--modal-accent)' : 'var(--modal-label)' }} />
+                  <span className="font-semibold uppercase leading-none transition-colors duration-200" style={{ fontSize: '7px', letterSpacing: '0.1em', writingMode: 'vertical-rl', color: sidePanel === 'ddx' ? 'var(--modal-accent)' : 'var(--modal-label)' }}>DDx</span>
+                </div>
+              </div>
+              {ddxData && sidePanel !== 'ddx' && <span className="absolute top-2 right-2 w-[5px] h-[5px] rounded-full" style={{ background: 'var(--modal-accent)' }} />}
+            </button>
+          </div>
+          {/* Mobile: inline icons */}
+          <div className="sm:hidden absolute right-14 top-4 z-40 flex gap-1">
+            <button onClick={() => { setSidePanel(sidePanel === 'profile' ? null : 'profile'); if (!profileData && !generatingProfile) handleGenerateProfile(); }}
+              className={`p-1.5 rounded-lg transition-all duration-200 ${sidePanel === 'profile' ? 'text-[var(--modal-accent)]' : 'text-[var(--text-muted)] opacity-50'}`}>
+              <Heart className="w-4 h-4" fill={sidePanel === 'profile' ? 'currentColor' : 'none'} />
+            </button>
+            <button onClick={() => { setSidePanel(sidePanel === 'ddx' ? null : 'ddx'); if (!ddxData && !generatingDdx) handleGenerateDdx(); }}
+              className={`p-1.5 rounded-lg transition-all duration-200 ${sidePanel === 'ddx' ? 'text-[var(--modal-accent)]' : 'text-[var(--text-muted)] opacity-50'}`}>
+              <ListTree className="w-4 h-4" />
+            </button>
+          </div>
+        </>
+      )}
+      <div className={`flex-1 min-w-0 ${sidePanel ? 'sm:rounded-l-2xl sm:rounded-r-none' : 'sm:rounded-2xl'} rounded-t-2xl max-h-[90vh] overflow-hidden flex flex-col`} style={{
         background: 'var(--modal-bg)',
         backdropFilter: 'blur(40px) saturate(1.2)',
         WebkitBackdropFilter: 'blur(40px) saturate(1.2)',
@@ -1062,6 +1152,82 @@ export function ParseModal({ isOpen, onClose, onSave, onQuickAdd, patientRef: ex
             </div>
           )}
         </div>
+      </div>
+      {/* Side panel — slides in as sibling */}
+      {sidePanel && patientRef && (
+        <div className="w-[280px] flex-shrink-0 overflow-y-auto animate-sidePanelIn sm:rounded-r-2xl" style={{
+          borderLeft: '1px solid var(--modal-divider)',
+          background: 'var(--modal-section-bg)',
+          maxHeight: '90vh',
+        }}>
+          <div className="sticky top-0 z-10 flex items-center justify-between px-4 py-3" style={{
+            borderBottom: '1px solid var(--modal-divider)',
+            background: 'var(--modal-bg)',
+          }}>
+            <span className="text-[10px] font-medium uppercase tracking-[0.12em]" style={{ color: 'var(--modal-accent)' }}>
+              {sidePanel === 'profile' ? 'Medical Profile' : 'Differential Diagnosis'}
+            </span>
+            <button onClick={() => setSidePanel(null)} className="p-1 rounded hover:bg-white/[0.06] transition-colors">
+              <X className="w-3.5 h-3.5" style={{ color: 'var(--modal-label)' }} />
+            </button>
+          </div>
+          <div className="px-4 py-3">
+            {sidePanel === 'profile' ? (
+              <PatientProfile
+                profile={profileData}
+                age={parsedData?.age}
+                gender={parsedData?.gender}
+                onGenerate={handleGenerateProfile}
+                generating={generatingProfile}
+              />
+            ) : (
+              <div className="space-y-3">
+                {generatingDdx ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="w-5 h-5 animate-spin" style={{ color: 'var(--modal-accent)' }} />
+                    <span className="ml-2 text-xs text-[var(--text-muted)]">Generating...</span>
+                  </div>
+                ) : ddxData ? (
+                  <>
+                    {ddxData.keyQuestions && (
+                      <div className="rounded-lg p-3" style={{ background: 'var(--modal-accent-light)', border: '1px solid var(--modal-accent-glow)' }}>
+                        <h3 className="text-[9px] font-medium uppercase tracking-[0.12em] mb-1.5" style={{ color: 'var(--modal-accent)' }}>Key Questions</h3>
+                        <div className="text-xs text-[var(--text-primary)] whitespace-pre-wrap leading-relaxed">{ddxData.keyQuestions}</div>
+                      </div>
+                    )}
+                    {ddxData.ddx && (
+                      <div>
+                        <h3 className="text-[9px] font-medium uppercase tracking-[0.12em] mb-1.5" style={{ color: 'var(--modal-label)' }}>Differential</h3>
+                        <div className="text-xs text-[var(--text-primary)] whitespace-pre-wrap leading-relaxed rounded-lg p-3" style={{ background: 'var(--modal-input-bg)', border: '1px solid var(--modal-input-border)' }}>{ddxData.ddx}</div>
+                      </div>
+                    )}
+                    {ddxData.investigations && (
+                      <div>
+                        <h3 className="text-[9px] font-medium uppercase tracking-[0.12em] mb-1.5" style={{ color: 'var(--modal-label)' }}>Investigations</h3>
+                        <div className="text-xs text-[var(--text-primary)] whitespace-pre-wrap leading-relaxed rounded-lg p-3" style={{ background: 'var(--modal-input-bg)', border: '1px solid var(--modal-input-border)' }}>{ddxData.investigations}</div>
+                      </div>
+                    )}
+                    <button onClick={handleGenerateDdx} disabled={generatingDdx}
+                      className="flex items-center gap-1 px-2.5 py-1 rounded-md text-[9px] font-medium transition-colors active:scale-[0.98]"
+                      style={{ color: 'var(--modal-accent)', background: 'var(--modal-accent-light)' }}>
+                      <RefreshCw className="w-3 h-3" /> Update
+                    </button>
+                  </>
+                ) : (
+                  <div className="text-center py-8">
+                    <p className="text-xs mb-2" style={{ color: 'var(--modal-label)' }}>Add clinical info to generate DDx.</p>
+                    <button onClick={handleGenerateDdx} disabled={generatingDdx}
+                      className="px-3 py-1.5 text-xs font-medium text-white rounded-lg transition-colors active:scale-[0.98]"
+                      style={{ background: 'var(--modal-accent)' }}>
+                      Generate DDx
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
       </div>
     </div>
   );

@@ -68,6 +68,22 @@
   --dash-text-sub: rgba(200,215,255,0.85);
   --dash-text-muted: rgba(160,185,240,0.55);
 
+  /* Warm page theme (patient detail page) */
+  --page-header: linear-gradient(160deg, #1c1917 0%, #292524 50%, #1c1917 100%);
+  --page-header-text: #faf8f5;
+  --page-header-sub: rgba(214,211,209,0.7);
+  --page-accent: #d97706;
+  --page-accent-light: rgba(217,119,6,0.06);
+  --page-accent-glow: rgba(217,119,6,0.12);
+  --page-accent-border: rgba(217,119,6,0.25);
+  --page-card-bg: rgba(255,252,248,0.7);
+  --page-card-border: rgba(168,162,158,0.15);
+  --page-card-shadow: 0 1px 3px rgba(120,113,108,0.06), 0 1px 2px rgba(0,0,0,0.03);
+  --page-section-label: rgba(120,113,108,0.8);
+  --page-divider: rgba(168,162,158,0.12);
+  --page-select-bg: rgba(217,119,6,0.08);
+  --page-select-border: rgba(217,119,6,0.2);
+
 }
 
 @media (min-width: 640px) {
@@ -141,6 +157,22 @@
   --dash-text-sub: rgba(200,215,255,0.75);
   --dash-text-muted: rgba(140,170,220,0.45);
 
+  /* Warm page theme — dark */
+  --page-header: linear-gradient(160deg, #1c1917 0%, #292524 50%, #1c1917 100%);
+  --page-header-text: #faf8f5;
+  --page-header-sub: rgba(168,162,158,0.6);
+  --page-accent: #f59e0b;
+  --page-accent-light: rgba(245,158,11,0.06);
+  --page-accent-glow: rgba(245,158,11,0.10);
+  --page-accent-border: rgba(245,158,11,0.2);
+  --page-card-bg: rgba(255,252,248,0.03);
+  --page-card-border: rgba(120,113,108,0.12);
+  --page-card-shadow: 0 1px 4px rgba(0,0,0,0.25), 0 0 1px rgba(255,252,248,0.04) inset;
+  --page-section-label: rgba(168,162,158,0.6);
+  --page-divider: rgba(120,113,108,0.08);
+  --page-select-bg: rgba(245,158,11,0.08);
+  --page-select-border: rgba(245,158,11,0.15);
+
 }
 
 body {
@@ -181,6 +213,22 @@ button, .btn {
   background: linear-gradient(160deg, var(--dash-header-from) 0%, var(--dash-header-via) 50%, var(--dash-header-to) 100%);
   color: var(--dash-text);
   transition: background 0.4s ease;
+}
+
+/* Warm page header (patient detail) */
+.warm-header {
+  background: var(--page-header);
+  color: var(--page-header-text);
+  transition: background 0.4s ease;
+}
+
+/* Warm page card */
+.warm-card {
+  background: var(--page-card-bg);
+  border: 1px solid var(--page-card-border);
+  box-shadow: var(--page-card-shadow);
+  backdrop-filter: blur(20px) saturate(1.3);
+  -webkit-backdrop-filter: blur(20px) saturate(1.3);
 }
 
 /* Stethoscope icon — cascading highlight on hover */

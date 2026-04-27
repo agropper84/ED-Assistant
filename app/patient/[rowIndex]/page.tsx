@@ -401,7 +401,7 @@ export default function PatientPage() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-blue-600 dark:text-blue-400" />
+        <Loader2 className="w-8 h-8 animate-spin" style={{ color: 'var(--page-accent)' }} />
       </div>
     );
   }
@@ -418,22 +418,22 @@ export default function PatientPage() {
     <div className={isEmbed ? 'pb-8' : 'min-h-screen pb-24'}>
       {/* Header */}
       {!isEmbed ? (
-        <header className="dash-header px-4 py-3 sticky top-0 z-40">
+        <header className="warm-header px-4 py-3 sticky top-0 z-40" style={{ borderBottom: '1px solid rgba(120,113,108,0.12)' }}>
           <div className="flex items-center gap-3 max-w-2xl mx-auto">
             <button
               onClick={() => router.push('/')}
               className="p-2 hover:bg-white/10 rounded-full -ml-2"
             >
-              <ArrowLeft className="w-5 h-5" style={{ color: 'var(--dash-text-sub)' }} />
+              <ArrowLeft className="w-5 h-5" style={{ color: 'var(--page-header-sub)' }} />
             </button>
             <div className="flex-1 min-w-0">
-              <h1 className="font-semibold truncate" style={{ color: 'var(--dash-text)' }}>
+              <h1 className="font-semibold truncate" style={{ color: 'var(--page-header-text)' }}>
                 {patient.name || 'Unknown'}
               </h1>
-              <div className="flex items-center gap-2 text-xs mt-0.5 flex-wrap" style={{ color: 'var(--dash-text-muted)' }}>
+              <div className="flex items-center gap-2 text-xs mt-0.5 flex-wrap" style={{ color: 'var(--page-header-sub)' }}>
                 {patient.age && <span>{patient.age}</span>}
                 {patient.gender && <span>{patient.gender}</span>}
-                {patient.timestamp && <><span className="opacity-40">·</span><span>{patient.timestamp}</span></>}
+                {patient.timestamp && <><span className="opacity-40">·</span><span style={{ color: 'var(--page-accent)' }}>{patient.timestamp}</span></>}
                 {patient.birthday && <><span className="opacity-40">·</span><span>DOB {patient.birthday}</span></>}
                 {patient.hcn && <><span className="opacity-40">·</span><span>HCN {patient.hcn}</span></>}
                 {patient.mrn && <><span className="opacity-40">·</span><span>MRN {patient.mrn}</span></>}
@@ -464,14 +464,15 @@ export default function PatientPage() {
 
         {/* Insights Section (DDx, Investigations, Management, Evidence) */}
         {(patient.ddx || patient.investigations || patient.management || patient.evidence || patient.education) && (
-          <div className="bg-[var(--card-bg)] rounded-2xl border border-[var(--card-border)] border-l-2 border-l-blue-500/40 overflow-hidden hover:shadow-lg hover:-translate-y-px transition-all duration-200" style={{ boxShadow: 'var(--card-shadow)' }}>
+          <div className="warm-card rounded-2xl overflow-hidden hover:shadow-lg hover:-translate-y-px transition-all duration-200" style={{ borderLeft: '2px solid var(--page-accent-border)' }}>
             {/* Insights Header */}
             <div
-              className="flex items-center justify-between px-5 py-3.5 cursor-pointer select-none hover:bg-[var(--bg-tertiary)]/50 transition-colors"
+              className="flex items-center justify-between px-5 py-3.5 cursor-pointer select-none transition-colors"
+              style={{ borderBottom: insightsExpanded ? '1px solid var(--page-divider)' : 'none' }}
               onClick={() => setInsightsExpanded(!insightsExpanded)}
             >
               <div className="flex items-center gap-2.5">
-                <h3 className="text-xs font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-widest">Insights</h3>
+                <h3 className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--page-accent)' }}>Insights</h3>
                 {!insightsExpanded && (
                   <span className="text-[10px] text-[var(--text-muted)]">
                     {[patient.ddx && 'DDx', patient.investigations && 'Investigations', patient.management && 'Management', patient.evidence && 'Evidence'].filter(Boolean).join(' · ')}
@@ -501,7 +502,7 @@ export default function PatientPage() {
 
             {/* Insights Body */}
             {insightsExpanded && (
-              <div className="border-t border-[var(--card-border)] divide-y divide-[var(--card-border)]">
+              <div className="divide-y" style={{ borderColor: 'var(--page-divider)' }}>
                 {patient.ddx && (
                   <OutputSection
                     title="Differential Diagnosis"
@@ -561,23 +562,26 @@ export default function PatientPage() {
 
         {/* Process Error */}
         {processError && (
-          <div className="bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-800 rounded-xl p-4 text-red-700 dark:text-red-300 text-sm">
+          <div className="rounded-xl p-4 text-sm" style={{ background: 'rgba(220,38,38,0.05)', border: '1px solid rgba(220,38,38,0.15)', color: 'var(--accent-red)' }}>
             <p className="font-medium">Processing failed</p>
             <p className="mt-1">{processError}</p>
           </div>
         )}
 
         {/* Tab Bar */}
-        <div className={`flex gap-1 bg-[var(--bg-tertiary)] p-1 ${isEmbed ? 'rounded-xl' : 'rounded-2xl'}`} style={{ boxShadow: 'var(--card-shadow)' }}>
+        <div className={`flex gap-1 p-1 ${isEmbed ? 'rounded-xl' : 'rounded-2xl'}`} style={{ background: 'var(--page-card-bg)', border: '1px solid var(--page-card-border)', boxShadow: 'var(--page-card-shadow)', backdropFilter: 'blur(16px)' }}>
           {(['encounter', 'admission', 'referral', 'education'] as const).map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              className={`flex-1 font-medium transition-all ${isEmbed ? 'py-1.5 text-[11px] rounded-lg' : 'py-2.5 text-xs sm:text-sm rounded-xl'} ${
-                activeTab === tab
-                  ? 'bg-[var(--accent)] text-white shadow-md'
-                  : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
-              }`}
+              className={`flex-1 font-medium transition-all ${isEmbed ? 'py-1.5 text-[11px] rounded-lg' : 'py-2.5 text-xs sm:text-sm rounded-xl'}`}
+              style={activeTab === tab ? {
+                background: 'linear-gradient(135deg, var(--page-accent), color-mix(in srgb, var(--page-accent) 80%, #000))',
+                color: '#fff',
+                boxShadow: '0 2px 8px var(--page-accent-glow)',
+              } : {
+                color: 'var(--text-secondary)',
+              }}
             >
               {tab === 'encounter' ? 'Note' : tab === 'admission' ? 'Consult' : tab === 'referral' ? 'Referral' : 'Education'}
             </button>
@@ -593,14 +597,16 @@ export default function PatientPage() {
                 <div className="flex gap-2 justify-end">
                   <button
                     onClick={copyFullNote}
-                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-[var(--border)] text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] active:scale-[0.97] transition-all"
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg active:scale-[0.97] transition-all"
+                    style={{ border: '1px solid var(--page-card-border)', color: 'var(--text-secondary)' }}
                   >
                     {copied === 'full' ? <Check className="w-3 h-3 text-emerald-500" /> : <Copy className="w-3 h-3" />}
                     {copied === 'full' ? 'Copied' : 'Copy Note'}
                   </button>
                   <button
                     onClick={() => setShowModify(!showModify)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-[var(--border)] text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] active:scale-[0.97] transition-all"
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg active:scale-[0.97] transition-all"
+                    style={{ border: '1px solid var(--page-accent-border)', color: 'var(--page-accent)' }}
                   >
                     <Pencil className="w-3 h-3" />
                     Modify
@@ -609,19 +615,23 @@ export default function PatientPage() {
 
                 {/* Modification Panel */}
                 {showModify && (
-                  <div className="bg-[var(--card-bg)] border border-[var(--card-border)] rounded-2xl p-5 space-y-3 animate-slideUp" style={{ boxShadow: 'var(--card-shadow)' }}>
-                    <h3 className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-widest">Modifications</h3>
+                  <div className="warm-card rounded-2xl p-5 space-y-3 animate-slideUp">
+                    <h3 className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--page-section-label)', letterSpacing: '0.12em' }}>Modifications</h3>
                     <textarea
                       value={modifications}
                       onChange={(e) => setModifications(e.target.value)}
                       placeholder="Describe what changes you want (e.g., 'Add chest pain to HPI', 'Change diagnosis to pneumonia')..."
-                      className="w-full h-24 p-3 border border-[var(--input-border)] rounded-xl text-sm resize-y focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)]"
+                      className="w-full h-24 p-3 rounded-xl text-sm resize-y bg-[var(--input-bg)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)]"
+                      style={{ border: '0.5px solid var(--page-card-border)' }}
+                      onFocus={(e) => { e.target.style.outline = 'none'; e.target.style.boxShadow = '0 0 0 2px var(--page-accent-glow)'; e.target.style.borderColor = 'var(--page-accent-border)'; }}
+                      onBlur={(e) => { e.target.style.boxShadow = 'none'; e.target.style.borderColor = 'var(--page-card-border)'; }}
                     />
                     <div className="flex gap-2">
                       <button
                         onClick={() => handleProcess(modifications)}
                         disabled={processing || !modifications.trim()}
-                        className="flex-1 py-2.5 bg-[var(--accent)] text-white rounded-xl font-medium disabled:opacity-50 flex items-center justify-center gap-2 hover:brightness-110 active:scale-[0.97] transition-all"
+                        className="flex-1 py-2.5 text-white rounded-xl font-medium disabled:opacity-50 flex items-center justify-center gap-2 hover:brightness-110 active:scale-[0.97] transition-all"
+                        style={{ background: 'linear-gradient(135deg, var(--page-accent), color-mix(in srgb, var(--page-accent) 80%, #000))' }}
                       >
                         {processing ? (
                           <Loader2 className="w-4 h-4 animate-spin" />
@@ -632,7 +642,8 @@ export default function PatientPage() {
                       </button>
                       <button
                         onClick={() => { setShowModify(false); setModifications(''); }}
-                        className="py-2.5 px-4 border border-[var(--border)] text-[var(--text-secondary)] rounded-xl font-medium hover:bg-[var(--bg-tertiary)] active:scale-[0.97] transition-all"
+                        className="py-2.5 px-4 text-[var(--text-secondary)] rounded-xl font-medium active:scale-[0.97] transition-all"
+                        style={{ border: '1px solid var(--page-card-border)' }}
                       >
                         Cancel
                       </button>
@@ -653,7 +664,7 @@ export default function PatientPage() {
                   styleSaved={styleSaved === 'hpi'}
                   interactiveEdit
                   onRegenerate={(updates) => handleRegenerateSection('hpi', updates)}
-                  accentBorder="border-l-emerald-500/40"
+                  accentBorder="warm"
                 />
 
                 <OutputSection
@@ -670,7 +681,7 @@ export default function PatientPage() {
                   showExamToggles
                   interactiveEdit
                   onRegenerate={(updates) => handleRegenerateSection('objective', updates)}
-                  accentBorder="border-l-emerald-500/40"
+                  accentBorder="warm"
                 />
 
                 <OutputSection
@@ -686,13 +697,13 @@ export default function PatientPage() {
                   styleSaved={styleSaved === 'assessmentPlan'}
                   interactiveEdit
                   onRegenerate={(updates) => handleRegenerateSection('assessmentPlan', updates)}
-                  accentBorder="border-l-emerald-500/40"
+                  accentBorder="warm"
                 />
 
                 {/* Physician Notes */}
-                <div className="rounded-2xl border border-[var(--card-border)] border-l-2 border-l-amber-500/40 bg-[var(--card-bg)] overflow-hidden hover:shadow-lg hover:-translate-y-px transition-all duration-200" style={{ boxShadow: 'var(--card-shadow)' }}>
-                  <div className="px-4 py-3 border-b border-[var(--card-border)] flex items-center gap-2">
-                    <FileText className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                <div className="warm-card rounded-2xl overflow-hidden hover:shadow-lg hover:-translate-y-px transition-all duration-200" style={{ borderLeft: '2px solid var(--page-accent-border)' }}>
+                  <div className="px-4 py-3 flex items-center gap-2" style={{ borderBottom: '1px solid var(--page-divider)' }}>
+                    <FileText className="w-4 h-4" style={{ color: 'var(--page-accent)' }} />
                     <h3 className="font-semibold text-sm text-[var(--text-primary)]">Physician Notes</h3>
                   </div>
                   <div className="p-4 space-y-3">
@@ -702,7 +713,10 @@ export default function PatientPage() {
                         onChange={(e) => setApNotes(e.target.value)}
                         placeholder="Add physician notes, observations, or corrections to incorporate into the Assessment & Plan..."
                         rows={3}
-                        className="w-full rounded-lg border border-[var(--card-border)] bg-[var(--input-bg)] text-[var(--text-primary)] px-3 py-2 pr-10 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-y placeholder:text-[var(--text-muted)]"
+                        className="w-full rounded-lg bg-[var(--input-bg)] text-[var(--text-primary)] px-3 py-2 pr-10 text-sm resize-y placeholder:text-[var(--text-muted)]"
+                        style={{ border: '0.5px solid var(--page-card-border)' }}
+                        onFocus={(e) => { e.target.style.outline = 'none'; e.target.style.boxShadow = '0 0 0 2px var(--page-accent-glow)'; e.target.style.borderColor = 'var(--page-accent-border)'; }}
+                        onBlur={(e) => { e.target.style.boxShadow = 'none'; e.target.style.borderColor = 'var(--page-card-border)'; }}
                       />
                       <div className="absolute top-1.5 right-1.5">
                         <VoiceRecorder
@@ -726,7 +740,8 @@ export default function PatientPage() {
                           setSavingApNotes(false);
                         }}
                         disabled={savingApNotes}
-                        className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded-xl bg-[var(--accent)] text-white hover:brightness-110 disabled:opacity-50 active:scale-[0.97] transition-all"
+                        className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded-xl text-white hover:brightness-110 disabled:opacity-50 active:scale-[0.97] transition-all"
+                        style={{ background: 'linear-gradient(135deg, var(--page-accent), color-mix(in srgb, var(--page-accent) 80%, #000))' }}
                       >
                         {savingApNotes ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
                         Save Notes
@@ -744,7 +759,8 @@ export default function PatientPage() {
                           }
                         }}
                         disabled={regeneratingAp || processing || !apNotes.trim()}
-                        className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded-xl border border-[var(--border)] text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] disabled:opacity-50 active:scale-[0.97] transition-all"
+                        className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded-xl text-[var(--text-secondary)] disabled:opacity-50 active:scale-[0.97] transition-all"
+                        style={{ border: '1px solid var(--page-card-border)' }}
                       >
                         {regeneratingAp ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
                         Regenerate Note
@@ -774,7 +790,8 @@ export default function PatientPage() {
               <button
                 onClick={() => handleProcess()}
                 disabled={processing}
-                className="w-full py-3 bg-[var(--accent)] text-white rounded-2xl font-medium flex items-center justify-center gap-2 disabled:opacity-50 hover:brightness-110 active:scale-[0.97] transition-all"
+                className="w-full py-3 text-white rounded-2xl font-medium flex items-center justify-center gap-2 disabled:opacity-50 hover:brightness-110 active:scale-[0.97] transition-all"
+                style={{ background: 'linear-gradient(135deg, var(--page-accent), color-mix(in srgb, var(--page-accent) 80%, #000))' }}
               >
                 {processing ? (
                   <>
@@ -809,11 +826,12 @@ export default function PatientPage() {
                 styleSaved={styleSaved === 'referral'}
               />
             ) : (
-              <div className="bg-[var(--card-bg)] rounded-2xl border border-[var(--card-border)] p-6 text-center" style={{ boxShadow: 'var(--card-shadow)' }}>
+              <div className="warm-card rounded-2xl p-6 text-center">
                 <p className="text-[var(--text-muted)] mb-3">No referral generated yet</p>
                 <button
                   onClick={() => setShowReferralModal(true)}
-                  className="inline-flex items-center gap-2 px-5 py-2.5 bg-[var(--accent)] text-white rounded-xl font-medium hover:brightness-110 active:scale-[0.97] transition-all"
+                  className="inline-flex items-center gap-2 px-5 py-2.5 text-white rounded-xl font-medium hover:brightness-110 active:scale-[0.97] transition-all"
+                  style={{ background: 'linear-gradient(135deg, var(--page-accent), color-mix(in srgb, var(--page-accent) 80%, #000))' }}
                 >
                   <Send className="w-4 h-4" />
                   Generate Referral
