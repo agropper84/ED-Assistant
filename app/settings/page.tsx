@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Trash2, Plus, Pencil, RotateCcw, Loader2, X, Sun, Moon, Monitor, Search, ChevronRight, Check, Copy, Key, AlertCircle, Brain, Sparkles } from 'lucide-react';
+import { ArrowLeft, Trash2, Plus, Pencil, RotateCcw, Loader2, X, Sun, Moon, Monitor, Search, ChevronRight, ChevronDown, Check, Copy, Key, AlertCircle, Brain, Sparkles } from 'lucide-react';
 import { useTheme } from '@/lib/theme';
 import {
   StyleGuide,
@@ -41,6 +41,9 @@ import {
   resetBillingCodesAsync,
   clearLocalBillingData,
 } from '@/lib/billing';
+import { ED_TERMS } from '@/lib/whisper-prompts';
+
+const edTermsString = typeof ED_TERMS === 'string' ? ED_TERMS : (ED_TERMS as string[]).join(', ');
 
 type Tab = 'guide' | 'style' | 'settings' | 'billing' | 'prompts' | 'privacy' | 'keys';
 
@@ -3207,16 +3210,29 @@ export default function SettingsPage() {
                 </span>
               </div>
               <p className="text-xs text-[var(--text-muted)]">
-                Custom medical terms to boost speech-to-text accuracy. Comma or newline separated. These are added to the built-in dictionary (~200 terms).
+                Terms that boost speech-to-text accuracy. Your custom terms are added alongside the built-in medical dictionary.
               </p>
-              <textarea
-                value={medicalKeyterms}
-                onChange={(e) => setMedicalKeyterms(e.target.value)}
-                onBlur={() => saveMedicalKeyterms(medicalKeyterms)}
-                placeholder="e.g., tPA, tenecteplase, ECMO, bronchiectasis, sarcoidosis..."
-                rows={4}
-                className="w-full p-3 border border-[var(--input-border)] rounded-lg text-sm bg-[var(--input-bg)] text-[var(--text-primary)] focus:ring-2 focus:ring-blue-500 resize-y font-mono"
-              />
+              <details className="group">
+                <summary className="text-xs font-medium text-[var(--accent)] cursor-pointer hover:underline list-none flex items-center gap-1">
+                  <ChevronDown className="w-3 h-3 transition-transform group-open:rotate-180" />
+                  View built-in dictionary
+                </summary>
+                <div className="mt-2 p-3 rounded-lg bg-[var(--bg-tertiary)] text-[10px] text-[var(--text-muted)] leading-relaxed max-h-40 overflow-y-auto">
+                  {edTermsString}
+                </div>
+              </details>
+              <div>
+                <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">Your Custom Terms</label>
+                <textarea
+                  value={medicalKeyterms}
+                  onChange={(e) => setMedicalKeyterms(e.target.value)}
+                  onBlur={() => saveMedicalKeyterms(medicalKeyterms)}
+                  placeholder="e.g., tPA, tenecteplase, ECMO, Dr. Smith, Whitehorse General Hospital..."
+                  rows={4}
+                  className="w-full p-3 border border-[var(--input-border)] rounded-lg text-sm bg-[var(--input-bg)] text-[var(--text-primary)] focus:ring-2 focus:ring-blue-500 resize-y font-mono"
+                />
+                <p className="text-[10px] text-[var(--text-muted)] mt-1">Comma or newline separated. Add physician names, facility names, specialty medications, or any terms specific to your practice.</p>
+              </div>
             </div>
 
             {/* App Token */}
@@ -3226,7 +3242,7 @@ export default function SettingsPage() {
                 <h3 className="font-semibold text-[var(--text-primary)]">App Token</h3>
               </div>
               <p className="text-xs text-[var(--text-muted)]">
-                Token for Watch app and external integrations.
+                Authentication token for Apple Watch and iPhone app integrations. Required to connect the companion watch app for bedside dictation and the iOS Shortcuts for quick encounter recording.
               </p>
               <div className="space-y-3">
                 {shortcutToken ? (

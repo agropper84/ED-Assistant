@@ -2,7 +2,7 @@
 // Used by: /api/transcribe, /api/shortcuts/upload, /api/split-transcript
 
 // Comprehensive ED medical terminology for Whisper bias
-const ED_TERMS = [
+export const ED_TERMS = [
   // Vitals & Assessment
   'vitals', 'SpO2', 'GCS', 'LOC', 'ROS', 'HPI', 'PMH', 'PSH', 'FHx', 'SHx',
   'mmHg', 'mg', 'mL', 'mcg', 'kg', 'bpm', 'breaths per minute',
