@@ -858,11 +858,12 @@ export default function PatientPage() {
                 styleSaved={styleSaved === 'admission'}
               />
             ) : (
-              <div className="bg-[var(--card-bg)] rounded-2xl border border-[var(--card-border)] p-6 text-center" style={{ boxShadow: 'var(--card-shadow)' }}>
+              <div className="warm-card rounded-2xl p-6 text-center">
                 <p className="text-[var(--text-muted)] mb-3">No consult note generated yet</p>
                 <button
                   onClick={() => setShowAdmissionModal(true)}
-                  className="inline-flex items-center gap-2 px-5 py-2.5 bg-[var(--accent)] text-white rounded-xl font-medium hover:brightness-110 active:scale-[0.97] transition-all"
+                  className="inline-flex items-center gap-2 px-5 py-2.5 text-white rounded-xl font-medium hover:brightness-110 active:scale-[0.97] transition-all"
+                  style={{ background: 'linear-gradient(135deg, var(--page-accent), color-mix(in srgb, var(--page-accent) 80%, #000))' }}
                 >
                   <FilePlus className="w-4 h-4" />
                   Generate Consult Note
@@ -877,7 +878,7 @@ export default function PatientPage() {
           <>
             {patient.education ? (
               <>
-                <div className="bg-[var(--card-bg)] rounded-2xl border border-[var(--card-border)] overflow-hidden" style={{ boxShadow: 'var(--card-shadow)' }}>
+                <div className="warm-card rounded-2xl overflow-hidden">
                   <div className="flex items-center justify-between p-5">
                     <h3 className="font-semibold text-[var(--text-primary)]">Patient Education Handout</h3>
                     <div className="flex items-center gap-1">
@@ -921,53 +922,63 @@ export default function PatientPage() {
                     // Clear existing to show the form again
                     handleSaveField('education', '');
                   }}
-                  className="w-full py-2.5 border border-dashed border-[var(--border)] text-[var(--text-muted)] rounded-xl text-sm font-medium flex items-center justify-center gap-2 hover:bg-[var(--bg-tertiary)] active:scale-[0.99] transition-all"
+                  className="w-full py-2.5 border border-dashed rounded-xl text-sm font-medium flex items-center justify-center gap-2 active:scale-[0.99] transition-all"
+                  style={{ borderColor: 'var(--page-card-border)', color: 'var(--page-section-label)' }}
                 >
                   <RefreshCw className="w-3.5 h-3.5" />
                   Generate New Handout
                 </button>
               </>
             ) : (
-              <div className="bg-[var(--card-bg)] rounded-2xl border border-[var(--card-border)] p-5 space-y-4" style={{ boxShadow: 'var(--card-shadow)' }}>
+              <div className="warm-card rounded-2xl p-5 space-y-4">
                 <div className="flex items-center gap-2">
-                  <BookOpen className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                  <h3 className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 uppercase tracking-widest">Patient Education Handout</h3>
+                  <BookOpen className="w-4 h-4" style={{ color: 'var(--page-accent)' }} />
+                  <h3 className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--page-accent)', letterSpacing: '0.12em' }}>Patient Education Handout</h3>
                 </div>
 
                 <div className="space-y-3">
                   <div>
-                    <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">Topic / Diagnosis</label>
+                    <label className="block text-xs font-medium mb-1" style={{ color: 'var(--page-section-label)' }}>Topic / Diagnosis</label>
                     <input
                       type="text"
                       value={eduTopic || patient.diagnosis || ''}
                       onChange={(e) => setEduTopic(e.target.value)}
                       placeholder="e.g. Ankle sprain, Pneumonia, Laceration care..."
-                      className="w-full px-3 py-2 border border-[var(--input-border)] rounded-xl text-sm bg-[var(--input-bg)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      className="w-full px-3 py-2 rounded-xl text-sm bg-[var(--input-bg)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)]"
+                      style={{ border: '0.5px solid var(--page-card-border)' }}
+                      onFocus={(e) => { e.target.style.outline = 'none'; e.target.style.boxShadow = '0 0 0 2px var(--page-accent-glow)'; e.target.style.borderColor = 'var(--page-accent-border)'; }}
+                      onBlur={(e) => { e.target.style.boxShadow = 'none'; e.target.style.borderColor = 'var(--page-card-border)'; }}
                     />
                   </div>
 
                   <div>
-                    <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">
-                      Instructions <span className="text-[var(--text-muted)] font-normal">(optional)</span>
+                    <label className="block text-xs font-medium mb-1" style={{ color: 'var(--page-section-label)' }}>
+                      Instructions <span className="font-normal" style={{ color: 'var(--text-muted)' }}>(optional)</span>
                     </label>
                     <textarea
                       value={eduInstructions}
                       onChange={(e) => setEduInstructions(e.target.value)}
                       placeholder="e.g. Emphasize ice and elevation, include return precautions for compartment syndrome, mention follow-up with ortho in 1 week..."
-                      className="w-full h-20 px-3 py-2 border border-[var(--input-border)] rounded-lg text-sm resize-y bg-[var(--input-bg)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                      className="w-full h-20 px-3 py-2 rounded-lg text-sm resize-y bg-[var(--input-bg)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)]"
+                      style={{ border: '0.5px solid var(--page-card-border)' }}
+                      onFocus={(e) => { e.target.style.outline = 'none'; e.target.style.boxShadow = '0 0 0 2px var(--page-accent-glow)'; e.target.style.borderColor = 'var(--page-accent-border)'; }}
+                      onBlur={(e) => { e.target.style.boxShadow = 'none'; e.target.style.borderColor = 'var(--page-card-border)'; }}
                     />
                   </div>
 
                   <div>
-                    <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">
-                      Language <span className="text-[var(--text-muted)] font-normal">(optional)</span>
+                    <label className="block text-xs font-medium mb-1" style={{ color: 'var(--page-section-label)' }}>
+                      Language <span className="font-normal" style={{ color: 'var(--text-muted)' }}>(optional)</span>
                     </label>
                     <input
                       type="text"
                       value={eduLanguage}
                       onChange={(e) => setEduLanguage(e.target.value)}
                       placeholder="e.g. French, Spanish, Simplified Chinese..."
-                      className="w-full px-3 py-2 border border-[var(--input-border)] rounded-xl text-sm bg-[var(--input-bg)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      className="w-full px-3 py-2 rounded-xl text-sm bg-[var(--input-bg)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)]"
+                      style={{ border: '0.5px solid var(--page-card-border)' }}
+                      onFocus={(e) => { e.target.style.outline = 'none'; e.target.style.boxShadow = '0 0 0 2px var(--page-accent-glow)'; e.target.style.borderColor = 'var(--page-accent-border)'; }}
+                      onBlur={(e) => { e.target.style.boxShadow = 'none'; e.target.style.borderColor = 'var(--page-card-border)'; }}
                     />
                   </div>
                 </div>
@@ -1001,7 +1012,8 @@ export default function PatientPage() {
                     }
                   }}
                   disabled={generatingEdu || !(eduTopic?.trim() || patient.diagnosis?.trim())}
-                  className="w-full py-3 bg-emerald-600 dark:bg-emerald-500 text-white rounded-xl font-medium flex items-center justify-center gap-2 disabled:opacity-50 hover:bg-emerald-700 dark:hover:bg-emerald-600 active:scale-[0.97] transition-all"
+                  className="w-full py-3 text-white rounded-xl font-medium flex items-center justify-center gap-2 disabled:opacity-50 hover:brightness-110 active:scale-[0.97] transition-all"
+                  style={{ background: 'linear-gradient(135deg, var(--page-accent), color-mix(in srgb, var(--page-accent) 80%, #000))' }}
                 >
                   {generatingEdu ? (
                     <>
@@ -1033,12 +1045,12 @@ export default function PatientPage() {
         )}
 
         {/* Source Data — collapsible card */}
-        <div className="bg-[var(--card-bg)] rounded-2xl border border-[var(--card-border)] border-l-2 border-l-slate-400/40 overflow-hidden hover:shadow-lg hover:-translate-y-px transition-all duration-200" style={{ boxShadow: 'var(--card-shadow)' }}>
+        <div className="warm-card rounded-2xl overflow-hidden hover:shadow-lg hover:-translate-y-px transition-all duration-200" style={{ borderLeft: '2px solid var(--page-card-border)' }}>
           <div
-            className="flex items-center justify-between px-5 py-3.5 cursor-pointer select-none hover:bg-[var(--bg-tertiary)]/50 transition-colors"
+            className="flex items-center justify-between px-5 py-3.5 cursor-pointer select-none transition-colors"
             onClick={() => setSourceDataExpanded(!sourceDataExpanded)}
           >
-            <h3 className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-widest">Source Data</h3>
+            <h3 className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--page-section-label)', letterSpacing: '0.12em' }}>Source Data</h3>
             <div className="flex items-center gap-1">
               <VoiceRecorder
                 mode="encounter"
@@ -1057,7 +1069,7 @@ export default function PatientPage() {
           </div>
 
           {sourceDataExpanded && (
-            <div className="border-t border-[var(--card-border)] divide-y divide-[var(--card-border)]">
+            <div className="divide-y" style={{ borderTop: '1px solid var(--page-divider)', borderColor: 'var(--page-divider)' }}>
               {patient.triageVitals && (
                 <OutputSection
                   title="Triage Notes"
@@ -1101,7 +1113,8 @@ export default function PatientPage() {
                 {!showQuickAdd ? (
                   <button
                     onClick={() => setShowQuickAdd(true)}
-                    className="w-full py-2 border border-dashed border-[var(--border)] text-[var(--text-muted)] rounded-xl text-sm font-medium flex items-center justify-center gap-2 hover:bg-[var(--bg-tertiary)] active:scale-[0.99] transition-all"
+                    className="w-full py-2 border border-dashed rounded-xl text-sm font-medium flex items-center justify-center gap-2 active:scale-[0.99] transition-all"
+                    style={{ borderColor: 'var(--page-card-border)', color: 'var(--page-section-label)' }}
                   >
                     <Plus className="w-3.5 h-3.5" />
                     Add Note
@@ -1113,7 +1126,10 @@ export default function PatientPage() {
                         value={quickAddText}
                         onChange={(e) => setQuickAddText(e.target.value)}
                         placeholder="Add exam findings, investigation results, or clinical notes..."
-                        className="w-full h-24 p-3 pr-10 border border-[var(--input-border)] rounded-xl text-sm resize-y focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)]"
+                        className="w-full h-24 p-3 pr-10 rounded-xl text-sm resize-y bg-[var(--input-bg)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)]"
+                        style={{ border: '0.5px solid var(--page-card-border)' }}
+                        onFocus={(e) => { e.target.style.outline = 'none'; e.target.style.boxShadow = '0 0 0 2px var(--page-accent-glow)'; e.target.style.borderColor = 'var(--page-accent-border)'; }}
+                        onBlur={(e) => { e.target.style.boxShadow = 'none'; e.target.style.borderColor = 'var(--page-card-border)'; }}
                         autoFocus
                       />
                       <div className="absolute top-1.5 right-1.5">
@@ -1133,7 +1149,8 @@ export default function PatientPage() {
                       <button
                         onClick={handleQuickAddSave}
                         disabled={savingQuickAdd || !quickAddText.trim()}
-                        className="flex items-center gap-1.5 px-4 py-2 bg-[var(--accent)] text-white rounded-xl text-sm font-medium disabled:opacity-50 hover:brightness-110 active:scale-[0.97] transition-all"
+                        className="flex items-center gap-1.5 px-4 py-2 text-white rounded-xl text-sm font-medium disabled:opacity-50 hover:brightness-110 active:scale-[0.97] transition-all"
+                        style={{ background: 'linear-gradient(135deg, var(--page-accent), color-mix(in srgb, var(--page-accent) 80%, #000))' }}
                       >
                         {savingQuickAdd ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
                         Save
@@ -1249,8 +1266,9 @@ function OutputSection({
   if (!content && !editing && !onSave) return null;
 
   const isFlat = variant === 'flat';
-  const bgClass = isFlat ? '' : variant === 'muted' ? 'bg-[var(--bg-tertiary)]' : 'bg-[var(--card-bg)]';
-  const borderClass = isFlat ? 'border-none' : variant === 'muted' ? 'border-[var(--border-light)]' : 'border-[var(--card-border)]';
+  const isWarmAccent = accentBorder === 'warm';
+  const bgClass = isFlat ? '' : 'warm-card';
+  const borderClass = isFlat ? 'border-none' : '';
 
   const handleStartEdit = () => {
     setEditValue(content);
@@ -1287,7 +1305,7 @@ function OutputSection({
   };
 
   return (
-    <div className={`${bgClass} ${isFlat ? '' : 'rounded-2xl border hover:shadow-lg hover:-translate-y-px'} ${borderClass} ${accentBorder && !isFlat ? `border-l-2 ${accentBorder}` : ''} overflow-hidden transition-all duration-200`} style={{ boxShadow: isFlat || variant === 'muted' ? 'none' : 'var(--card-shadow)' }}>
+    <div className={`${bgClass} ${isFlat ? '' : 'rounded-2xl hover:shadow-lg hover:-translate-y-px'} ${borderClass} overflow-hidden transition-all duration-200`} style={isFlat ? {} : isWarmAccent ? { borderLeft: '2px solid var(--page-accent-border)' } : {}}>
       <div className={`flex items-center justify-between ${isFlat ? 'px-5 py-3' : 'p-5'} cursor-pointer`} onClick={onToggle}>
         <h3 className={`${isFlat ? 'text-sm' : ''} font-semibold text-[var(--text-primary)]`}>{title}</h3>
         <div className="flex items-center gap-1">
@@ -1352,7 +1370,10 @@ function OutputSection({
                 <textarea
                   value={editValue}
                   onChange={(e) => setEditValue(e.target.value)}
-                  className="w-full h-40 p-3 pr-10 border border-[var(--input-border)] rounded-lg text-sm resize-y focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)]"
+                  className="w-full h-40 p-3 pr-10 rounded-lg text-sm resize-y bg-[var(--input-bg)] text-[var(--text-primary)]"
+                  style={{ border: '0.5px solid var(--page-card-border)' }}
+                  onFocus={(e) => { e.target.style.outline = 'none'; e.target.style.boxShadow = '0 0 0 2px var(--page-accent-glow)'; e.target.style.borderColor = 'var(--page-accent-border)'; }}
+                  onBlur={(e) => { e.target.style.boxShadow = 'none'; e.target.style.borderColor = 'var(--page-card-border)'; }}
                 />
                 <div className="absolute top-1.5 right-1.5">
                   <VoiceRecorder
@@ -1372,7 +1393,8 @@ function OutputSection({
               <div className="flex gap-2">
                 <button
                   onClick={handleSaveEdit}
-                  className="flex items-center gap-1.5 px-4 py-2 bg-[var(--accent)] text-white rounded-xl text-sm font-medium hover:brightness-110 active:scale-[0.97] transition-all"
+                  className="flex items-center gap-1.5 px-4 py-2 text-white rounded-xl text-sm font-medium hover:brightness-110 active:scale-[0.97] transition-all"
+                  style={{ background: 'linear-gradient(135deg, var(--page-accent), color-mix(in srgb, var(--page-accent) 80%, #000))' }}
                 >
                   <Save className="w-3.5 h-3.5" />
                   Save
@@ -1381,7 +1403,8 @@ function OutputSection({
                   <button
                     onClick={handleSaveAndRegenerate}
                     disabled={regenerating}
-                    className="flex items-center gap-1.5 px-4 py-2 border border-[var(--border)] text-[var(--text-secondary)] rounded-xl text-sm font-medium disabled:opacity-50 hover:bg-[var(--bg-tertiary)] active:scale-[0.97] transition-all"
+                    className="flex items-center gap-1.5 px-4 py-2 text-[var(--text-secondary)] rounded-xl text-sm font-medium disabled:opacity-50 active:scale-[0.97] transition-all"
+                    style={{ border: '1px solid var(--page-card-border)' }}
                   >
                     {regenerating ? (
                       <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -1607,11 +1630,11 @@ function InteractiveContent({
         return (
           <span key={idx}>
             <span
-              className={`relative transition-colors duration-150 cursor-pointer rounded-sm px-0.5 -mx-0.5 ${
-                isSelected
-                  ? 'bg-violet-200 dark:bg-violet-800/50'
-                  : 'hover:bg-violet-100 dark:hover:bg-violet-900/30'
-              }`}
+              className="relative transition-colors duration-150 cursor-pointer rounded-sm px-0.5 -mx-0.5"
+              style={{
+                background: isSelected ? 'var(--page-select-bg)' : undefined,
+                border: isSelected ? '1px solid var(--page-select-border)' : '1px solid transparent',
+              }}
               onClick={(e) => { e.stopPropagation(); toggleSelect(idx); }}
             >
               {renderWithLinks(part.text)}
@@ -1623,16 +1646,16 @@ function InteractiveContent({
 
       {/* AI loading indicator */}
       {aiLoading && (
-        <div className="flex items-center gap-2 mt-3 p-2 bg-violet-50 dark:bg-violet-950/50 border border-violet-200 dark:border-violet-800 rounded-lg">
-          <Loader2 className="w-3.5 h-3.5 animate-spin text-violet-600 dark:text-violet-400" />
-          <span className="text-xs text-violet-700 dark:text-violet-300 font-medium">AI is editing...</span>
+        <div className="flex items-center gap-2 mt-3 p-2 rounded-lg" style={{ background: 'var(--page-accent-light)', border: '1px solid var(--page-accent-border)' }}>
+          <Loader2 className="w-3.5 h-3.5 animate-spin" style={{ color: 'var(--page-accent)' }} />
+          <span className="text-xs font-medium" style={{ color: 'var(--page-accent)' }}>AI is editing...</span>
         </div>
       )}
 
       {/* Selection action bar */}
       {hasSelection && !addingDetail && !aiLoading && (
-        <div className="flex items-center gap-2 mt-3 p-2 bg-violet-50 dark:bg-violet-950/50 border border-violet-200 dark:border-violet-800 rounded-lg">
-          <span className="text-xs text-violet-700 dark:text-violet-300 font-medium">
+        <div className="flex items-center gap-2 mt-3 p-2 rounded-lg" style={{ background: 'var(--page-accent-light)', border: '1px solid var(--page-accent-border)' }}>
+          <span className="text-xs font-medium" style={{ color: 'var(--page-accent)' }}>
             {selected.size} selected
           </span>
           <div className="flex-1" />
@@ -1645,7 +1668,8 @@ function InteractiveContent({
           </button>
           <button
             onClick={() => { setAddingDetail(true); setDetailText(''); }}
-            className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/50 rounded transition-colors"
+            className="flex items-center gap-1 px-2 py-1 text-xs font-medium rounded transition-colors"
+            style={{ color: 'var(--page-accent)' }}
           >
             <Plus className="w-3 h-3" />
             Add Detail
@@ -1668,7 +1692,7 @@ function InteractiveContent({
 
       {/* Add detail input */}
       {addingDetail && !aiLoading && (
-        <div className="flex items-center gap-1 mt-2 p-2 bg-blue-50 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-800 rounded-lg">
+        <div className="flex items-center gap-1 mt-2 p-2 rounded-lg" style={{ background: 'var(--page-accent-light)', border: '1px solid var(--page-accent-border)' }}>
           <input
             type="text"
             value={detailText}
@@ -1679,12 +1703,14 @@ function InteractiveContent({
             }}
             placeholder="What detail should AI add? (optional — leave blank for general expansion)"
             autoFocus
-            className="flex-1 p-1.5 border border-[var(--input-border)] rounded text-xs focus:ring-1 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)]"
+            className="flex-1 p-1.5 rounded text-xs bg-[var(--input-bg)] text-[var(--text-primary)]"
+            style={{ border: '0.5px solid var(--page-card-border)' }}
             onClick={(e) => e.stopPropagation()}
           />
           <button
             onClick={(e) => { e.stopPropagation(); handleAddDetailToSelection(); }}
-            className="text-xs text-blue-600 dark:text-blue-400 font-medium px-2.5 py-1.5 hover:bg-blue-100 dark:hover:bg-blue-900/50 rounded"
+            className="text-xs font-medium px-2.5 py-1.5 rounded"
+            style={{ color: 'var(--page-accent)' }}
           >
             Add
           </button>
