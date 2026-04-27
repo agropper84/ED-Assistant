@@ -118,6 +118,7 @@ export interface DataContext {
   drive?: DriveContext;
   sheets: import('./google-sheets').SheetsContext;
   mode: StorageMode;
+  sheetsDevMirror?: boolean;
 }
 
 // --- ID Generation ---

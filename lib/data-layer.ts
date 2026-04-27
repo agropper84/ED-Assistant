@@ -9,7 +9,7 @@
  */
 
 import { getSessionFromCookies } from './session';
-import { getUserStorageMode } from './kv';
+import { getUserStorageMode, getUserSettings } from './kv';
 import type { DataContext, StorageMode, PatientFields, SubmissionEntry } from './types-json';
 import type { SheetsContext, Patient } from './google-sheets';
 
@@ -17,28 +17,50 @@ import type { SheetsContext, Patient } from './google-sheets';
 // CONTEXT INITIALIZATION
 // ============================================================
 
+async function getSheetsDevMirror(userId: string): Promise<boolean> {
+  const settings = await getUserSettings(userId);
+  return !!(settings?.sheetsDevMirror);
+}
+
 export async function getDataContext(): Promise<DataContext> {
   const session = await getSessionFromCookies();
   if (!session.userId) throw new Error('Not authenticated');
 
   const mode: StorageMode = (await getUserStorageMode(session.userId)) || 'dual';
+  const sheetsDevMirror = mode !== 'sheets' ? await getSheetsDevMirror(session.userId) : false;
 
-  // Always init Sheets (needed for mirror and legacy mode)
-  const { getSheetsContext } = await import('./google-sheets');
-  const sheets = await getSheetsContext();
+  if (mode === 'sheets' || sheetsDevMirror) {
+    // Sheets needed as primary or as mirror
+    const { getSheetsContext } = await import('./google-sheets');
+    const sheets = await getSheetsContext();
 
-  if (mode === 'sheets') {
-    return { sheets, mode };
+    if (mode === 'sheets') {
+      return { sheets, mode };
+    }
+
+    // Init Drive for dual/drive modes with mirror enabled
+    try {
+      const { getDriveContext } = await import('./drive-json');
+      const drive = await getDriveContext();
+      return { drive, sheets, mode, sheetsDevMirror };
+    } catch (e) {
+      console.warn('Drive init failed, falling back to sheets:', (e as Error).message);
+      return { sheets, mode: 'sheets' };
+    }
   }
 
-  // Init Drive for dual/drive modes
+  // Drive-only (no Sheets init needed — mirror is off)
   try {
     const { getDriveContext } = await import('./drive-json');
     const drive = await getDriveContext();
-    return { drive, sheets, mode };
+    // Provide a dummy sheets context — won't be used for writes
+    const { getSheetsContext } = await import('./google-sheets');
+    const sheets = await getSheetsContext();
+    return { drive, sheets, mode, sheetsDevMirror: false };
   } catch (e) {
-    // Drive init failed — fall back to sheets
     console.warn('Drive init failed, falling back to sheets:', (e as Error).message);
+    const { getSheetsContext } = await import('./google-sheets');
+    const sheets = await getSheetsContext();
     return { sheets, mode: 'sheets' };
   }
 }
@@ -49,6 +71,7 @@ export async function getDataContext(): Promise<DataContext> {
  */
 export async function getDataContextForUser(userId: string): Promise<DataContext> {
   const mode: StorageMode = (await getUserStorageMode(userId)) || 'dual';
+  const sheetsDevMirror = mode !== 'sheets' ? await getSheetsDevMirror(userId) : false;
 
   const { getSheetsContextForUser } = await import('./google-sheets');
   const sheets = await getSheetsContextForUser(userId);
@@ -60,7 +83,7 @@ export async function getDataContextForUser(userId: string): Promise<DataContext
   try {
     const { getDriveContextForUser } = await import('./drive-json');
     const drive = await getDriveContextForUser(userId);
-    return { drive, sheets, mode };
+    return { drive, sheets, mode, sheetsDevMirror };
   } catch (e) {
     console.warn('Drive init failed for user, falling back to sheets:', (e as Error).message);
     return { sheets, mode: 'sheets' };
@@ -147,10 +170,12 @@ export async function updatePatientFields(
   const dj = await import('./drive-json');
   await dj.updatePatientInDrive(ctx.drive, sheetName, rowIndex, fields as Partial<PatientFields>, originalName);
 
-  // Sheets mirror — fire-and-forget (Sheets is a read-only mirror, not read by the app)
-  import('./google-sheets').then(gs =>
-    gs.updatePatientFields(ctx.sheets, rowIndex, fields, sheetName)
-  ).catch(() => {});
+  // Sheets mirror — fire-and-forget (optional dev feature)
+  if (ctx.sheetsDevMirror) {
+    import('./google-sheets').then(gs =>
+      gs.updatePatientFields(ctx.sheets, rowIndex, fields, sheetName)
+    ).catch(() => {});
+  }
 }
 
 // ============================================================
@@ -169,15 +194,17 @@ export async function addSubmission(
     ? `[${entry.title.toUpperCase()}]\n${entry.content}`
     : entry.content;
 
-  // Sheets mirror — fire-and-forget (append to flat field for dev visibility)
-  import('./google-sheets').then(async gs => {
-    const existingPatient = await gs.getPatient(ctx.sheets, rowIndex, sheetName);
-    const existingContent = existingPatient ? (existingPatient as any)[entry.field] || '' : '';
-    const combined = existingContent && labeledContent
-      ? `${existingContent}\n\n${labeledContent}`
-      : labeledContent || existingContent;
-    await gs.updatePatientFields(ctx.sheets, rowIndex, { [entry.field]: combined }, sheetName);
-  }).catch(e => console.warn('Sheets field update failed:', (e as Error).message));
+  // Sheets mirror — fire-and-forget (optional dev feature)
+  if (ctx.sheetsDevMirror) {
+    import('./google-sheets').then(async gs => {
+      const existingPatient = await gs.getPatient(ctx.sheets, rowIndex, sheetName);
+      const existingContent = existingPatient ? (existingPatient as any)[entry.field] || '' : '';
+      const combined = existingContent && labeledContent
+        ? `${existingContent}\n\n${labeledContent}`
+        : labeledContent || existingContent;
+      await gs.updatePatientFields(ctx.sheets, rowIndex, { [entry.field]: combined }, sheetName);
+    }).catch(e => console.warn('Sheets field update failed:', (e as Error).message));
+  }
 
   if (ctx.mode === 'sheets' || !ctx.drive) {
     return [entry]; // No Drive storage for submissions in sheets-only mode
@@ -438,10 +465,12 @@ export async function saveStyleGuide(ctx: DataContext, guide: any) {
     const dj = await import('./drive-json');
     await dj.saveStyleGuideToDrive(ctx.drive, { version: 1, lastModified: new Date().toISOString(), ...guide });
   }
-  // Sheets mirror (fire-and-forget)
-  import('./google-sheets').then(gs =>
-    gs.saveStyleGuideToSheet(ctx.sheets, guide)
-  ).catch(e => console.warn('Style guide Sheets mirror failed:', (e as Error).message));
+  // Sheets mirror (optional dev feature)
+  if (ctx.sheetsDevMirror || ctx.mode === 'sheets') {
+    import('./google-sheets').then(gs =>
+      gs.saveStyleGuideToSheet(ctx.sheets, guide)
+    ).catch(e => console.warn('Style guide Sheets mirror failed:', (e as Error).message));
+  }
 }
 
 // ============================================================
@@ -465,9 +494,11 @@ export async function saveBillingCodes(ctx: DataContext, codes: any[]) {
     const dj = await import('./drive-json');
     await dj.saveBillingCodesToDrive(ctx.drive, codes);
   }
-  import('./google-sheets').then(gs =>
-    gs.saveBillingCodesToSheet(ctx.sheets, codes)
-  ).catch(e => console.warn('Billing codes Sheets mirror failed:', (e as Error).message));
+  if (ctx.sheetsDevMirror || ctx.mode === 'sheets') {
+    import('./google-sheets').then(gs =>
+      gs.saveBillingCodesToSheet(ctx.sheets, codes)
+    ).catch(e => console.warn('Billing codes Sheets mirror failed:', (e as Error).message));
+  }
 }
 
 export async function addBillingCode(ctx: DataContext, code: any) {
@@ -529,10 +560,11 @@ export async function upsertDiagnosisCode(ctx: DataContext, entry: { diagnosis: 
     const dj = await import('./drive-json');
     await dj.saveDiagnosisCodesToDrive(ctx.drive, codes);
   }
-  // Sheets mirror
-  import('./google-sheets').then(gs =>
-    gs.upsertDiagnosisCode(ctx.sheets, entry)
-  ).catch(e => console.warn('Diagnosis code Sheets mirror failed:', (e as Error).message));
+  if (ctx.sheetsDevMirror || ctx.mode === 'sheets') {
+    import('./google-sheets').then(gs =>
+      gs.upsertDiagnosisCode(ctx.sheets, entry)
+    ).catch(e => console.warn('Diagnosis code Sheets mirror failed:', (e as Error).message));
+  }
 }
 
 // ============================================================
@@ -561,9 +593,11 @@ export async function saveParseFormat(ctx: DataContext, format: any) {
     const dj = await import('./drive-json');
     await dj.saveParseFormatsToDrive(ctx.drive, existing);
   }
-  import('./google-sheets').then(gs =>
-    gs.saveParseFormat(ctx.sheets, format)
-  ).catch(e => console.warn('Parse format Sheets mirror failed:', (e as Error).message));
+  if (ctx.sheetsDevMirror || ctx.mode === 'sheets') {
+    import('./google-sheets').then(gs =>
+      gs.saveParseFormat(ctx.sheets, format)
+    ).catch(e => console.warn('Parse format Sheets mirror failed:', (e as Error).message));
+  }
 }
 
 export async function deleteParseFormat(ctx: DataContext, name: string) {
@@ -574,9 +608,11 @@ export async function deleteParseFormat(ctx: DataContext, name: string) {
     const dj = await import('./drive-json');
     await dj.saveParseFormatsToDrive(ctx.drive, filtered);
   }
-  import('./google-sheets').then(gs =>
-    gs.deleteParseFormat(ctx.sheets, name)
-  ).catch(e => console.warn('Parse format Sheets mirror failed:', (e as Error).message));
+  if (ctx.sheetsDevMirror || ctx.mode === 'sheets') {
+    import('./google-sheets').then(gs =>
+      gs.deleteParseFormat(ctx.sheets, name)
+    ).catch(e => console.warn('Parse format Sheets mirror failed:', (e as Error).message));
+  }
 }
 
 // ============================================================
@@ -622,8 +658,9 @@ export async function saveUserPhrases(ctx: DataContext, newPhrases: string[]) {
     const dj = await import('./drive-json');
     await dj.saveUserPhrasesToDrive(ctx.drive, merged);
   }
-  // Sheets mirror
-  import('./google-sheets').then(gs =>
-    gs.saveUserPhrases(ctx.sheets, newPhrases)
-  ).catch(e => console.warn('User phrases Sheets mirror failed:', (e as Error).message));
+  if (ctx.sheetsDevMirror || ctx.mode === 'sheets') {
+    import('./google-sheets').then(gs =>
+      gs.saveUserPhrases(ctx.sheets, newPhrases)
+    ).catch(e => console.warn('User phrases Sheets mirror failed:', (e as Error).message));
+  }
 }

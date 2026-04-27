@@ -380,6 +380,7 @@ export default function SettingsPage() {
   // Privacy settings state
   const [phiProtection, setPhiProtection] = useState(false);
   const [encryptionEnabled, setEncryptionEnabled] = useState(false);
+  const [sheetsDevMirror, setSheetsDevMirror] = useState(false);
   const [privacyLoading, setPrivacyLoading] = useState(true);
 
   // API key state
@@ -713,6 +714,7 @@ export default function SettingsPage() {
           setWisprKeyMasked(data.wisprApiKeyMasked || null);
           setElevenlabsKeyMasked(data.elevenlabsApiKeyMasked || null);
           setMedicalKeyterms(data.medicalKeyterms || '');
+          setSheetsDevMirror(data.sheetsDevMirror || false);
         }
       } catch {}
       setPrivacyLoading(false);
@@ -2986,6 +2988,28 @@ export default function SettingsPage() {
                     Use an authenticator app (Google Authenticator, Authy) for an extra layer of security at login and session unlock.
                   </p>
                   <TotpSetup />
+                </div>
+
+                {/* Developer */}
+                <div className="bg-[var(--card-bg)] rounded-2xl border border-[var(--card-border)] p-5 space-y-3" style={{ boxShadow: 'var(--card-shadow)' }}>
+                  <h3 className="font-semibold text-[var(--text-primary)]">Developer</h3>
+                  <label className="flex items-center justify-between cursor-pointer">
+                    <div>
+                      <span className="text-sm font-medium text-[var(--text-primary)] block">Google Sheets mirror</span>
+                      <span className="text-[11px] text-[var(--text-muted)]">
+                        Mirror all data writes to Google Sheets (fire-and-forget). Useful for debugging — adds latency and API calls. Off by default.
+                      </span>
+                    </div>
+                    <input
+                      type="checkbox"
+                      checked={sheetsDevMirror}
+                      onChange={(e) => {
+                        setSheetsDevMirror(e.target.checked);
+                        updatePrivacySetting('sheetsDevMirror', e.target.checked);
+                      }}
+                      className="rounded w-4 h-4 flex-shrink-0 accent-blue-600"
+                    />
+                  </label>
                 </div>
               </>
             )}

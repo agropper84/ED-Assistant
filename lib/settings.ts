@@ -25,6 +25,7 @@ export interface AppSettings {
   fullLoginRequired24h: boolean;
   pinEnabled: boolean;
   totpEnabled: boolean;
+  sheetsDevMirror: boolean;
 }
 
 export const DEFAULT_NOTE_STYLE_STANDARD = 'Write a concise, focused note. Include only clinically relevant findings. Use brief, direct language. Omit normal findings unless pertinent to the differential.';
@@ -88,6 +89,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   fullLoginRequired24h: false,
   pinEnabled: false,
   totpEnabled: false,
+  sheetsDevMirror: false,
 };
 
 const STORAGE_KEY = 'ed-app-settings';
