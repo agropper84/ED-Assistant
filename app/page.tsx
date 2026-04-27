@@ -1213,16 +1213,6 @@ export default function HomePage() {
                   Today
                 </button>
               )}
-              {/* Sync Drive JSON → Google Sheets (Sheets is a read-only mirror) */}
-              <button
-                onClick={handleSyncToSheets}
-                disabled={syncing}
-                title="Sync patients to Google Sheets"
-                className="p-1 hover:bg-white/[0.07] rounded-full transition-colors disabled:opacity-50 ml-1"
-                style={{ color: 'var(--dash-text-sub)' }}
-              >
-                {syncing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
-              </button>
               <button
                 onClick={goToNextDay}
                 disabled={isToday}
@@ -1408,7 +1398,7 @@ export default function HomePage() {
                           className="w-full flex items-center gap-2 px-3 py-2.5 text-left text-gray-300 hover:bg-white/5 transition-colors"
                         >
                           <FileSpreadsheet className="w-3.5 h-3.5 text-gray-500" />
-                          Export billing...
+                          {isVchMode ? 'Export billing...' : 'Export to Sheets...'}
                         </button>
                       ) : (
                         <div className="px-3 py-2.5 space-y-2">
@@ -1432,18 +1422,47 @@ export default function HomePage() {
                               onClick={async () => {
                                 if (!exportStart || !exportEnd) return;
                                 try {
-                                  const billingFormat = isVchMode ? 'vch' : 'yukon';
-                                  const res = await fetch(`/api/export-billing?start=${exportStart}&end=${exportEnd}&format=${billingFormat}`);
-                                  if (!res.ok) throw new Error('Export failed');
-                                  const blob = await res.blob();
-                                  const url = URL.createObjectURL(blob);
-                                  const a = document.createElement('a');
-                                  a.href = url;
-                                  a.download = `billing-${billingFormat}-${exportStart}-to-${exportEnd}.xlsx`;
-                                  a.click();
-                                  URL.revokeObjectURL(url);
+                                  if (isVchMode) {
+                                    // VCH: download xlsx
+                                    const res = await fetch(`/api/export-billing?start=${exportStart}&end=${exportEnd}&format=vch`);
+                                    if (!res.ok) throw new Error('Export failed');
+                                    const blob = await res.blob();
+                                    const url = URL.createObjectURL(blob);
+                                    const a = document.createElement('a');
+                                    a.href = url;
+                                    a.download = `billing-vch-${exportStart}-to-${exportEnd}.xlsx`;
+                                    a.click();
+                                    URL.revokeObjectURL(url);
+                                  } else {
+                                    // Yukon: sync each date in range to Google Sheets
+                                    const start = new Date(exportStart + 'T00:00:00');
+                                    const end = new Date(exportEnd + 'T00:00:00');
+                                    const dates: string[] = [];
+                                    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+                                      dates.push(d.toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' }));
+                                    }
+                                    let synced = 0;
+                                    let errors: string[] = [];
+                                    for (const dateStr of dates) {
+                                      try {
+                                        const res = await fetch('/api/sync-to-sheets', {
+                                          method: 'POST',
+                                          headers: { 'Content-Type': 'application/json' },
+                                          body: JSON.stringify({ sheetName: dateStr }),
+                                        });
+                                        if (res.ok) {
+                                          const data = await res.json();
+                                          synced += data.synced || 0;
+                                        } else {
+                                          errors.push(dateStr);
+                                        }
+                                      } catch { errors.push(dateStr); }
+                                    }
+                                    alert(`Synced ${synced} patients across ${dates.length} date(s) to Google Sheets${errors.length ? `\n\nFailed dates: ${errors.join(', ')}` : ''}`);
+                                  }
                                 } catch (err) {
                                   console.error('Export error:', err);
+                                  alert(`Export failed: ${(err as Error).message}`);
                                 }
                                 setExportingBilling(false);
                                 setBillingMenuOpen(false);
@@ -1451,7 +1470,7 @@ export default function HomePage() {
                               disabled={!exportStart || !exportEnd}
                               className="flex-1 py-1.5 bg-teal-600 hover:bg-teal-500 text-white rounded-lg text-xs font-medium disabled:opacity-30 transition-colors"
                             >
-                              Download
+                              {isVchMode ? 'Download' : 'Export to Sheets'}
                             </button>
                             <button
                               onClick={() => setExportingBilling(false)}
