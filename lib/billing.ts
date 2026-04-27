@@ -26,6 +26,12 @@ export const BILLING_REGIONS: BillingRegion[] = [
   { id: 'vch', label: 'VCH - Time Based' },
 ];
 
+/** Check if a region has been selected */
+export function hasRegion(): boolean {
+  if (typeof window === 'undefined') return false;
+  return !!localStorage.getItem(REGION_KEY);
+}
+
 /** Check if the current region is VCH */
 export function isTimeBased(region?: string): boolean {
   const r = region || getRegion();
@@ -229,8 +235,8 @@ const DELETED_KEY = 'ed-app-billing-deleted';
 // --- Region persistence ---
 
 export function getRegion(): string {
-  if (typeof window === 'undefined') return 'yukon';
-  return localStorage.getItem(REGION_KEY) || 'yukon';
+  if (typeof window === 'undefined') return '';
+  return localStorage.getItem(REGION_KEY) || '';
 }
 
 export function saveRegion(region: string): void {

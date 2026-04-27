@@ -24,6 +24,7 @@ import {
   parseBillingItems,
   serializeBillingItems,
   isTimeBased,
+  hasRegion,
   TimeSegment,
   BILLING_REGIONS,
   getDayRegion,
@@ -1303,9 +1304,9 @@ export default function HomePage() {
               </button>
             </div>
 
-            {/* Shift times / VCH controls */}
+            {/* Shift times / VCH controls — only shown when region is selected */}
             <div className="flex items-center gap-1.5">
-              {isVchMode ? (
+              {!hasRegion() ? null : isVchMode ? (
                 <button
                   onClick={() => setShowShiftPanel(!showShiftPanel)}
                   className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium transition-colors ${
@@ -1379,6 +1380,7 @@ export default function HomePage() {
                           key={r.id}
                           onClick={() => {
                             saveDayRegion(sheetName, r.id);
+                            saveRegion(r.id); // persist as global default for future sessions
                             setIsVchMode(r.id === 'vch');
                             setBillingMenuOpen(false);
                           }}
