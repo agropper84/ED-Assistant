@@ -472,7 +472,7 @@ export default function PatientPage() {
               onClick={() => setInsightsExpanded(!insightsExpanded)}
             >
               <div className="flex items-center gap-2.5">
-                <h3 className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--page-accent)' }}>Insights</h3>
+                <h3 className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--page-insights-text)' }}>Insights</h3>
                 {!insightsExpanded && (
                   <span className="text-[10px] text-[var(--text-muted)]">
                     {[patient.ddx && 'DDx', patient.investigations && 'Investigations', patient.management && 'Management', patient.evidence && 'Evidence'].filter(Boolean).join(' · ')}

@@ -87,6 +87,7 @@
   --page-select-bg: rgba(217,119,6,0.08);
   --page-select-border: rgba(217,119,6,0.2);
   --page-insights-border: rgba(30,58,122,0.45);
+  --page-insights-text: #1e3a7a;
 
 }
 
@@ -180,6 +181,7 @@
   --page-select-bg: rgba(245,158,11,0.08);
   --page-select-border: rgba(245,158,11,0.15);
   --page-insights-border: rgba(60,130,220,0.4);
+  --page-insights-text: #5b9de0;
 
 }
 
