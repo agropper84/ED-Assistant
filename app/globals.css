@@ -86,6 +86,7 @@
   --page-divider: rgba(168,162,158,0.12);
   --page-select-bg: rgba(217,119,6,0.08);
   --page-select-border: rgba(217,119,6,0.2);
+  --page-insights-border: rgba(30,58,122,0.45);
 
 }
 
@@ -178,6 +179,7 @@
   --page-divider: rgba(120,113,108,0.08);
   --page-select-bg: rgba(245,158,11,0.08);
   --page-select-border: rgba(245,158,11,0.15);
+  --page-insights-border: rgba(60,130,220,0.4);
 
 }
 

@@ -464,7 +464,7 @@ export default function PatientPage() {
 
         {/* Insights Section (DDx, Investigations, Management, Evidence) */}
         {(patient.ddx || patient.investigations || patient.management || patient.evidence || patient.education) && (
-          <div className="warm-card rounded-2xl overflow-hidden hover:shadow-lg hover:-translate-y-px transition-all duration-200" style={{ borderLeft: '2px solid var(--page-accent-border)' }}>
+          <div className="warm-card rounded-2xl overflow-hidden hover:shadow-lg hover:-translate-y-px transition-all duration-200" style={{ borderLeft: '2px solid var(--page-insights-border)' }}>
             {/* Insights Header */}
             <div
               className="flex items-center justify-between px-5 py-3.5 cursor-pointer select-none transition-colors"
