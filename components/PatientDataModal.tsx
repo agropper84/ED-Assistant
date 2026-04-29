@@ -8,6 +8,7 @@ import { PatientProfile } from '@/components/PatientProfile';
 import type { PatientProfile as ProfileData } from '@/app/api/profile/route';
 import { ExamToggles } from '@/components/ExamToggles';
 import { VoiceRecorder } from '@/components/VoiceRecorder';
+import RecordingBubble from '@/components/RecordingBubble';
 import { AutocompleteTextarea } from '@/components/AutocompleteTextarea';
 import { getEffectivePromptTemplates, getSettings } from '@/lib/settings';
 import { savePhrasesInBackground } from '@/lib/user-phrases';
@@ -65,6 +66,9 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
   const [audioData, setAudioData] = useState({ level: 0, lowFreq: 0, highFreq: 0, speakerHint: 'silent' as 'near' | 'far' | 'silent' });
   const [waveHistory, setWaveHistory] = useState<Array<{ level: number; speaker: 'near' | 'far' | 'silent' }>>([]);
   const waveFrameCountRef = useRef(0);
+  const audioLevelRef = useRef(0);
+  const audioLowRef = useRef(0);
+  const audioHighRef = useRef(0);
   const [processingWord, setProcessingWord] = useState(0);
   const [speakerNames, setSpeakerNames] = useState({ s1: '', s2: '' });
   const [encryptionKey, setEncryptionKey] = useState<string | null>(null);
@@ -967,74 +971,10 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
                   </button>
                 </div>
               )}
-              {/* Recording waveform */}
-              {isRecordingEncounter && !showLiveTranscript && (() => {
-                const vizGain = micSensitivity <= 1 ? 32 : micSensitivity <= 2 ? 48 : micSensitivity <= 3 ? 65 : 85;
-                const mins = Math.floor(recordingElapsed / 60);
-                const secs = recordingElapsed % 60;
-                const timeStr = `${mins}:${secs.toString().padStart(2, '0')}`;
-                const recentPeak = waveHistory.slice(-10).reduce((max, s) => Math.max(max, s?.level || 0), 0);
-                const glowIntensity = Math.min(1, recentPeak * 4);
-                return (
-                  <div className="w-full rounded-lg relative overflow-hidden" style={{
-                    height: '84px',
-                    background: 'linear-gradient(160deg, rgba(6,8,16,0.97) 0%, rgba(10,14,26,0.99) 50%, rgba(6,8,16,0.97) 100%)',
-                    border: `1px solid rgba(96,165,250,${0.1 + glowIntensity * 0.12})`,
-                    boxShadow: `inset 0 1px 0 rgba(255,255,255,0.015), 0 0 ${14 + glowIntensity * 30}px rgba(96,165,250,${0.04 + glowIntensity * 0.18}), inset 0 0 ${20 + glowIntensity * 20}px rgba(96,165,250,${glowIntensity * 0.04})`,
-                    transition: 'box-shadow 120ms ease-out, border-color 120ms ease-out',
-                  }}>
-                    {/* Scan lines */}
-                    <div className="absolute inset-0 pointer-events-none" style={{ opacity: 0.02, backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(148,163,184,0.3) 2px, rgba(148,163,184,0.3) 3px)' }} />
-                    {/* Center line — glows with audio */}
-                    <div className="absolute left-0 top-[calc(50%-0.5px)] h-px z-[1] pointer-events-none" style={{ right: '48px', background: `linear-gradient(to right, rgba(96,165,250,${0.04 + glowIntensity * 0.12}), rgba(96,165,250,${0.1 + glowIntensity * 0.2}) 50%, rgba(96,165,250,${0.04 + glowIntensity * 0.08}))` }} />
-                    {/* Waveform bars — stop before mic icon, taper off on right */}
-                    <div className="absolute left-0 top-0 bottom-0 flex items-center justify-between px-1" style={{ right: '48px' }}>
-                      {Array.from({ length: 100 }).map((_, i) => {
-                        const sample = waveHistory[i];
-                        const level = sample?.level || 0;
-                        // Taper: last 15 bars fade out gracefully
-                        const taperStart = 85;
-                        const taper = i >= taperStart ? 1 - ((i - taperStart) / (100 - taperStart)) : 1;
-                        const barH = Math.max(0.5, level * vizGain * taper);
-                        const intensity = level > 0.02 ? Math.min(1, level * 2.5) * taper : 0;
-                        return (
-                          <div key={i} style={{
-                            width: '2px',
-                            height: `${barH * 2 + 1}px`,
-                            borderRadius: '1px',
-                            opacity: taper,
-                            background: level > 0.02
-                              ? `linear-gradient(180deg, rgba(59,130,246,${intensity * 0.15}) 0%, rgba(96,165,250,${0.3 + intensity * 0.5}) 30%, rgba(147,197,253,${0.5 + intensity * 0.5}) 50%, rgba(96,165,250,${0.3 + intensity * 0.5}) 70%, rgba(59,130,246,${intensity * 0.15}) 100%)`
-                              : `rgba(148,163,184,${(0.03 + Math.sin(i * 0.3 + Date.now() * 0.001) * 0.01) * taper})`,
-                            transition: 'height 50ms ease-out',
-                            boxShadow: level > 0.12 && taper > 0.5 ? `0 0 ${3 + level * 8}px rgba(96,165,250,${level * 0.35 * taper})` : 'none',
-                          }} />
-                        );
-                      })}
-                    </div>
-                    {/* Left fade only */}
-                    <div className="absolute left-0 top-0 bottom-0 w-12 z-10 pointer-events-none" style={{ background: 'linear-gradient(to right, rgba(6,8,16,0.97) 0%, rgba(6,8,16,0.5) 40%, transparent 100%)' }} />
-                    {/* Bottom glow */}
-                    <div className="absolute bottom-0 inset-x-0 h-10 pointer-events-none" style={{
-                      background: `radial-gradient(ellipse 50% 100% at 40% 100%, rgba(96,165,250,${0.02 + glowIntensity * 0.1}) 0%, transparent 100%)`,
-                      transition: 'background 120ms ease',
-                    }} />
-                    {/* Top glow pulse */}
-                    <div className="absolute top-0 inset-x-0 h-6 pointer-events-none" style={{
-                      background: `radial-gradient(ellipse 40% 100% at 40% 0%, rgba(96,165,250,${glowIntensity * 0.06}) 0%, transparent 100%)`,
-                    }} />
-                    {/* Top-left status */}
-                    <div className="absolute top-2 left-3 flex items-center gap-2 z-20">
-                      <div className="w-[6px] h-[6px] rounded-full bg-red-500" style={{
-                        boxShadow: `0 0 4px rgba(239,68,68,0.6), 0 0 8px rgba(239,68,68,0.3)`,
-                        animation: 'pulse 1.5s ease-in-out infinite',
-                      }} />
-                      <span className="text-[8px] text-white/25 font-medium tracking-[0.2em] uppercase">Encounter</span>
-                      <span className="text-[9px] text-white/40 font-mono tabular-nums tracking-wide">{timeStr}</span>
-                    </div>
-                  </div>
-                );
-              })()}
+              {/* Recording bubble visualization */}
+              {isRecordingEncounter && !showLiveTranscript && (
+                <RecordingBubble audioLevelRef={audioLevelRef} audioLowRef={audioLowRef} audioHighRef={audioHighRef} elapsed={recordingElapsed} height={84} />
+              )}
               {/* Draft text indicator when live text is on during recording */}
               {isRecordingEncounter && showLiveTranscript && (
                 <div className="absolute bottom-1 left-3 z-10 flex items-center gap-1.5">
@@ -1104,7 +1044,9 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
                   } : undefined}
                   onProcessingChange={(p) => setFieldRefining('transcript', p)}
                   onAudioLevel={(data) => {
-                    // Sample every 12th frame (~5Hz at 60fps) for visible scrolling
+                    audioLevelRef.current = data.level;
+                    audioLowRef.current = data.lowFreq;
+                    audioHighRef.current = data.highFreq;
                     waveFrameCountRef.current++;
                     if (waveFrameCountRef.current % 6 === 0) {
                       setWaveHistory(prev => [...prev.slice(-99), { level: data.level, speaker: data.speakerHint }]);
