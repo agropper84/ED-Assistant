@@ -19,7 +19,7 @@ export async function POST(request: NextRequest) {
         // Validate the upload is from an authenticated user
         return {
           maximumSizeInBytes: 100 * 1024 * 1024, // 100MB max
-          allowedContentTypes: ['application/octet-stream', 'audio/webm', 'audio/mp4', 'audio/ogg'],
+          allowedContentTypes: ['application/octet-stream', 'audio/webm', 'audio/webm;codecs=opus', 'audio/mp4', 'audio/ogg', 'video/webm'],
           tokenPayload: JSON.stringify({ userId: session.userId }),
         };
       },
