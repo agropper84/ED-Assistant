@@ -1055,6 +1055,14 @@ export function VoiceRecorder({
       chunksRef.current = [];
       recorder.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data); };
 
+      // Use ondataavailable to collect blob (fires before onstop with no-timeslice mode)
+      let encounterBlob: Blob | null = null;
+      recorder.addEventListener('dataavailable', (e) => {
+        if (e.data.size > 0) {
+          encounterBlob = new Blob([...chunksRef.current], { type: mimeType });
+        }
+      });
+
       recorder.onstop = async () => {
         onRecordingStopRef.current?.();
         stopAudioLevelViz(); stopKeepalive(); stopWebSpeech(); stopDeepgramStream();
@@ -1070,7 +1078,8 @@ export function VoiceRecorder({
         if (encounterTimerRef.current) { clearInterval(encounterTimerRef.current); encounterTimerRef.current = null; }
         nativeBridge?.stopLiveActivity?.({ type: 'encounter', elapsedSeconds: encounterSecondsRef.current });
 
-        const blob = new Blob(chunksRef.current, { type: mimeType });
+        // Use pre-assembled blob or assemble from chunks
+        const blob = encounterBlob || new Blob(chunksRef.current, { type: mimeType });
         console.log(`[VR] encounter stop: ${blob.size} bytes, ${chunksRef.current.length} chunks, type=${mimeType}`);
         if (blob.size === 0) { console.warn('[VR] encounter: empty blob, aborting'); setRecState('idle'); onProcessingRef.current?.(false); return; }
 
@@ -1142,18 +1151,26 @@ export function VoiceRecorder({
                 if (medRes.ok) {
                   const { text } = await medRes.json();
                   if (text?.trim()) { onTranscript(text.trim()); } else { onTranscript(finalText); }
-                } else { onTranscript(finalText); }
-              } catch { onTranscript(finalText); }
+                } else {
+                  console.error(`[VR] encounter medicalize failed: ${medRes.status}`);
+                  onTranscript(finalText);
+                }
+              } catch (medErr) { console.error('[VR] encounter medicalize error:', medErr); onTranscript(finalText); }
             } else {
               onTranscript(finalText);
             }
+          } else {
+            console.warn('[VR] encounter: no transcript produced');
+            // Try Web Speech fallback
+            const fallbackText = accumulatedTextRef.current?.trim();
+            if (fallbackText) { onTranscript(fallbackText); }
           }
         } catch (err: any) {
-          console.error('Transcription error:', err);
+          console.error('[VR] encounter transcription error:', err);
           // WiFi fallback: if transcription fails, use accumulated Web Speech text
           const fallbackText = accumulatedTextRef.current?.trim();
           if (fallbackText) {
-            console.log('Using Web Speech fallback text due to transcription failure');
+            console.log('[VR] Using Web Speech fallback text due to transcription failure');
             onTranscript(fallbackText);
           }
         }
