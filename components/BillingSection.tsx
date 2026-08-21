@@ -5,7 +5,7 @@ import { X, ChevronDown, ChevronUp, DollarSign, Search, Info, Plus, Trash2 } fro
 import {
   BillingItem, BillingCategory, BillingCode,
   addBillingCode, calculateTotal, getAdditionalCodes, filterAdditionalCodes,
-  getCategoryForCode, BILLING_CATEGORIES,
+  getCategoryForCode, BILLING_CATEGORIES, yukonFee,
 } from '@/lib/billing';
 
 /** Documentation requirements and billing tips per code, from the Yukon Fee Guide */
@@ -516,20 +516,20 @@ function PatientBasedBilling({
         <label className="block text-xs font-medium text-[var(--text-muted)] mb-1">Visit Type</label>
         <div className="flex gap-2">
           <button
-            onClick={() => setCategoryItem('visitType', currentVisit?.code === '1100' ? null : { code: '1100', description: 'ED Visit', fee: '50.90', unit: '1', category: 'visitType' })}
+            onClick={() => setCategoryItem('visitType', currentVisit?.code === '1100' ? null : { code: '1100', description: 'ED Visit', fee: yukonFee('1100'), unit: '1', category: 'visitType' })}
             className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
               currentVisit?.code === '1100' ? 'bg-blue-600 text-white' : 'bg-[var(--bg-tertiary)] text-[var(--text-secondary)] hover:bg-[var(--border)]'
             }`}
           >
-            ED Visit ($50.90)
+            ED Visit (${yukonFee('1100')})
           </button>
           <button
-            onClick={() => setCategoryItem('visitType', currentVisit?.code === '1101' ? null : { code: '1101', description: 'Complete Examination', fee: '111.50', unit: '1', category: 'visitType' })}
+            onClick={() => setCategoryItem('visitType', currentVisit?.code === '1101' ? null : { code: '1101', description: 'Complete Examination', fee: yukonFee('1101'), unit: '1', category: 'visitType' })}
             className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
               currentVisit?.code === '1101' ? 'bg-blue-600 text-white' : 'bg-[var(--bg-tertiary)] text-[var(--text-secondary)] hover:bg-[var(--border)]'
             }`}
           >
-            Complete Examination ($111.50)
+            Complete Examination (${yukonFee('1101')})
           </button>
         </div>
         <BillingHints code={currentVisit?.code} />
@@ -540,36 +540,36 @@ function PatientBasedBilling({
         <label className="block text-xs font-medium text-[var(--text-muted)] mb-1">Acute Care</label>
         <div className="grid grid-cols-2 gap-2">
           <button
-            onClick={() => handleAcuteCareSelect({ code: '0081', description: 'Prolonged ED care (day)', fee: '147.10', unit: '1', category: 'acuteCare' })}
+            onClick={() => handleAcuteCareSelect({ code: '0081', description: 'Prolonged ED care (day)', fee: yukonFee('0081'), unit: '1', category: 'acuteCare' })}
             className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
               currentAcuteCare?.code === '0081' ? 'bg-red-600 text-white' : 'bg-[var(--bg-tertiary)] text-[var(--text-secondary)] hover:bg-[var(--border)]'
             }`}
           >
-            Prolonged EC Day ($147.10)
+            Prolonged EC Day (${yukonFee('0081')})
           </button>
           <button
-            onClick={() => handleAcuteCareSelect({ code: '0080', description: 'Prolonged ED care (night)', fee: '230.60', unit: '1', category: 'acuteCare' })}
+            onClick={() => handleAcuteCareSelect({ code: '0080', description: 'Prolonged ED care (night)', fee: yukonFee('0080'), unit: '1', category: 'acuteCare' })}
             className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
               currentAcuteCare?.code === '0080' ? 'bg-red-600 text-white' : 'bg-[var(--bg-tertiary)] text-[var(--text-secondary)] hover:bg-[var(--border)]'
             }`}
           >
-            Prolonged EC Night ($230.60)
+            Prolonged EC Night (${yukonFee('0080')})
           </button>
           <button
-            onClick={() => handleAcuteCareSelect({ code: '0082', description: 'Acute Care Detention', fee: '118.50', unit: '1', category: 'acuteCare' })}
+            onClick={() => handleAcuteCareSelect({ code: '0082', description: 'Acute Care Detention', fee: yukonFee('0082'), unit: '1', category: 'acuteCare' })}
             className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
               currentAcuteCare?.code === '0082' ? 'bg-red-600 text-white' : 'bg-[var(--bg-tertiary)] text-[var(--text-secondary)] hover:bg-[var(--border)]'
             }`}
           >
-            Acute Care Detention ($118.50)
+            Acute Care Detention (${yukonFee('0082')})
           </button>
           <button
-            onClick={() => handleAcuteCareSelect({ code: '0083', description: 'Personal/Family Crisis', fee: '107.30', unit: '1', category: 'acuteCare' })}
+            onClick={() => handleAcuteCareSelect({ code: '0083', description: 'Personal/Family Crisis', fee: yukonFee('0083'), unit: '1', category: 'acuteCare' })}
             className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
               currentAcuteCare?.code === '0083' ? 'bg-red-600 text-white' : 'bg-[var(--bg-tertiary)] text-[var(--text-secondary)] hover:bg-[var(--border)]'
             }`}
           >
-            Crisis Intervention ($107.30)
+            Crisis Intervention (${yukonFee('0083')})
           </button>
         </div>
         <BillingHints code={currentAcuteCare?.code} />
@@ -588,20 +588,20 @@ function PatientBasedBilling({
             None
           </button>
           <button
-            onClick={() => setCategoryItem('premium', { code: '1153', description: 'Evening/Weekend premium', fee: '50.00', unit: '1', category: 'premium' })}
+            onClick={() => setCategoryItem('premium', { code: '1153', description: 'Evening/Weekend premium', fee: yukonFee('1153'), unit: '1', category: 'premium' })}
             className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
               currentPremium?.code === '1153' ? 'bg-blue-600 text-white' : 'bg-[var(--bg-tertiary)] text-[var(--text-secondary)] hover:bg-[var(--border)]'
             }`}
           >
-            Eve/Wknd ($50)
+            Eve/Wknd (${yukonFee('1153')})
           </button>
           <button
-            onClick={() => setCategoryItem('premium', { code: '1154', description: 'Night (2300-0759) premium', fee: '107.40', unit: '1', category: 'premium' })}
+            onClick={() => setCategoryItem('premium', { code: '1154', description: 'Night (2300-0759) premium', fee: yukonFee('1154'), unit: '1', category: 'premium' })}
             className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
               currentPremium?.code === '1154' ? 'bg-blue-600 text-white' : 'bg-[var(--bg-tertiary)] text-[var(--text-secondary)] hover:bg-[var(--border)]'
             }`}
           >
-            Night ($107.40)
+            Night (${yukonFee('1154')})
           </button>
         </div>
         <BillingHints code={currentPremium?.code} />

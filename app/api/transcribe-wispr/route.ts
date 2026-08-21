@@ -17,14 +17,21 @@ export async function POST(request: NextRequest) {
 
     const formData = await request.formData();
     const audioFile = formData.get('audio');
+    const blobUrl = formData.get('blobUrl') as string || '';
     const context = (formData.get('context') as string) || '';
 
-    if (!audioFile || !(audioFile instanceof File)) {
+    // Support both direct file upload and blob URL (for large files >4.5MB)
+    let buffer: Buffer;
+    if (blobUrl) {
+      const blobRes = await fetch(blobUrl);
+      if (!blobRes.ok) return NextResponse.json({ error: 'Failed to fetch audio from storage' }, { status: 500 });
+      buffer = Buffer.from(await blobRes.arrayBuffer());
+      import('@vercel/blob').then(({ del }) => del(blobUrl).catch(() => {}));
+    } else if (audioFile && audioFile instanceof File) {
+      buffer = Buffer.from(await audioFile.arrayBuffer());
+    } else {
       return NextResponse.json({ error: 'No audio file provided' }, { status: 400 });
     }
-
-    // Convert audio to base64
-    const buffer = Buffer.from(await audioFile.arrayBuffer());
     const base64Audio = buffer.toString('base64');
 
     // Build context for Wispr

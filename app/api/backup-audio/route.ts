@@ -26,10 +26,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Blob storage not configured' }, { status: 500 });
     }
 
+    // Explicitly set contentType — Vercel Blob infers video/webm from .webm extension
+    const contentType = audioFile.type || 'audio/webm';
     const blob = await put(
       `encounter-audio/${session.userId}/${audioFile.name}`,
       audioFile,
-      { access: 'public', addRandomSuffix: true, token }
+      { access: 'public', addRandomSuffix: true, token, contentType }
     );
 
     console.log(`[backup-audio] Stored: ${blob.url}`);

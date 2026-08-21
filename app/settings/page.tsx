@@ -330,6 +330,7 @@ export default function SettingsPage() {
   const [styleGuide, setStyleGuide] = useState<StyleGuide | null>(null);
   const [styleLoading, setStyleLoading] = useState(true);
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
+  const [modelTestStatus, setModelTestStatus] = useState<string>('');
   const [addingTo, setAddingTo] = useState<'hpi' | 'objective' | 'assessmentPlan' | 'referral' | 'admission' | null>(null);
   const [newExample, setNewExample] = useState('');
   const [examPresets, setExamPresets] = useState<ExamPreset[]>([]);
@@ -1446,24 +1447,59 @@ export default function SettingsPage() {
             <div className="bg-[var(--card-bg)] rounded-2xl border border-[var(--card-border)] p-5 space-y-4" style={{ boxShadow: 'var(--card-shadow)' }}>
               <div>
                 <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Model</label>
-                <select
-                  value={MODEL_PRESETS.some(p => p.id === settings.model) ? settings.model : '__custom__'}
-                  onChange={(e) => {
-                    if (e.target.value !== '__custom__') handleSettingChange('model', e.target.value);
-                  }}
-                  className="w-full p-3 border border-[var(--input-border)] rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)]"
-                >
-                  {MODEL_PRESETS.map(p => (
-                    <option key={p.id} value={p.id}>{p.label}</option>
-                  ))}
-                  <option value="__custom__">Custom model ID...</option>
-                </select>
+                <div className="flex gap-2">
+                  <select
+                    value={MODEL_PRESETS.some(p => p.id === settings.model) ? settings.model : '__custom__'}
+                    onChange={(e) => {
+                      if (e.target.value !== '__custom__') handleSettingChange('model', e.target.value);
+                    }}
+                    className="flex-1 p-3 border border-[var(--input-border)] rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)]"
+                  >
+                    {MODEL_PRESETS.map(p => (
+                      <option key={p.id} value={p.id}>{p.label}</option>
+                    ))}
+                    <option value="__custom__">Custom model ID...</option>
+                  </select>
+                  <button
+                    onClick={async () => {
+                      setModelTestStatus('testing');
+                      const start = Date.now();
+                      try {
+                        const res = await fetch('/api/test-model', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ model: settings.model }),
+                        });
+                        const data = await res.json();
+                        const elapsed = ((Date.now() - start) / 1000).toFixed(1);
+                        if (data.success) {
+                          setModelTestStatus(`ok_${elapsed}s`);
+                        } else {
+                          setModelTestStatus(`error_${data.error || 'Unknown error'}`);
+                        }
+                      } catch (err: any) {
+                        setModelTestStatus(`error_${err.message || 'Network error'}`);
+                      }
+                    }}
+                    disabled={modelTestStatus === 'testing'}
+                    className="px-4 py-2 text-sm font-medium rounded-lg border border-[var(--input-border)] bg-[var(--input-bg)] text-[var(--text-primary)] hover:bg-[var(--hover-bg)] disabled:opacity-50 whitespace-nowrap"
+                  >
+                    {modelTestStatus === 'testing' ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : 'Test'}
+                  </button>
+                </div>
+                {modelTestStatus && modelTestStatus !== 'testing' && (
+                  <p className={`text-xs mt-1 ${modelTestStatus.startsWith('ok_') ? 'text-green-600' : 'text-red-500'}`}>
+                    {modelTestStatus.startsWith('ok_') ? `✓ OK (${modelTestStatus.slice(3)})` : `✗ ${modelTestStatus.slice(6)}`}
+                  </p>
+                )}
                 {!MODEL_PRESETS.some(p => p.id === settings.model) && (
                   <input
                     type="text"
                     value={settings.model}
                     onChange={(e) => handleSettingChange('model', e.target.value)}
-                    placeholder="claude-sonnet-4-6-20250627"
+                    placeholder="claude-sonnet-4-6-20250514"
                     className="w-full mt-2 p-2.5 border border-[var(--input-border)] rounded-lg text-sm bg-[var(--input-bg)] text-[var(--text-primary)] focus:ring-2 focus:ring-blue-500 font-mono"
                   />
                 )}

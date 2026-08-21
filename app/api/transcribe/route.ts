@@ -5,7 +5,7 @@ import { getSessionFromCookies } from '@/lib/session';
 import { getUserSettings } from '@/lib/kv';
 import { MODELS } from '@/lib/config';
 
-export const maxDuration = 60;
+export const maxDuration = 120;
 
 /**
  * Convert spoken punctuation commands to actual punctuation.
@@ -179,11 +179,24 @@ export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData();
     const audioFile = formData.get('audio');
+    const blobUrl = formData.get('blobUrl') as string || '';
     const mode = (formData.get('mode') as string) || 'dictation';
     const context = (formData.get('context') as string) || '';
     const skipMedicalize = (formData.get('skipMedicalize') as string) === 'true';
 
-    if (!audioFile || !(audioFile instanceof File)) {
+    // Support both direct file upload and blob URL (for large files >4.5MB)
+    let whisperFile: File;
+    if (blobUrl) {
+      const blobRes = await fetch(blobUrl);
+      if (!blobRes.ok) return NextResponse.json({ error: 'Failed to fetch audio from storage' }, { status: 500 });
+      const buf = await blobRes.arrayBuffer();
+      const ct = blobRes.headers.get('content-type') || 'audio/webm';
+      const ext = ct.includes('mp4') ? 'mp4' : 'webm';
+      whisperFile = new File([buf], `recording.${ext}`, { type: ct });
+      import('@vercel/blob').then(({ del }) => del(blobUrl).catch(() => {}));
+    } else if (audioFile && audioFile instanceof File) {
+      whisperFile = audioFile;
+    } else {
       return NextResponse.json({ error: 'No audio file provided' }, { status: 400 });
     }
 
@@ -202,7 +215,7 @@ export async function POST(request: NextRequest) {
 
     const openai = await getOpenAIClient();
     const transcription = await openai.audio.transcriptions.create({
-      file: audioFile,
+      file: whisperFile,
       model: 'whisper-1',
       prompt: whisperPrompt,
       language: 'en',

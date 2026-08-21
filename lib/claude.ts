@@ -444,7 +444,7 @@ ${options?.coreOnly ? '' : `
 [${pt.diagnosis}]
 
 ===ICD9===
-[ICD-9 code for the primary diagnosis. Prefer general/unspecified codes unless the clinical description clearly specifies a more precise diagnosis. Code only, no description]
+[ICD-9 code for the primary diagnosis. Use BROAD, general category codes only — never use subcategory specificity. Use the shortest/most general code that applies (e.g. 786.50 for any chest pain, 493.90 for asthma, 486 for pneumonia, 789.00 for abdominal pain). Do NOT add decimal subcategories that specify mechanism, laterality, or organism unless the diagnosis is unambiguously specific. Code only, no description]
 
 ===ICD10===
 [ICD-10 code for the primary diagnosis. Prefer general/unspecified codes unless the clinical description clearly specifies a more precise diagnosis (e.g., prefer J02.9 over J02.0 unless the organism is explicitly named). Code only, no description]`;
@@ -604,10 +604,10 @@ export async function lookupICDCodes(diagnosisText: string): Promise<{
   const result = await callWithPHIProtection(
     `You are a medical coding assistant. Given the following diagnosis or clinical description, provide:
 1. A clean, standard diagnosis name (use common/general terms)
-2. The most appropriate ICD-9 code
+2. The most appropriate ICD-9 code — use BROAD category codes only (e.g. 786.50 chest pain, 493.90 asthma, 486 pneumonia). Never add subcategory specificity for mechanism, laterality, or organism.
 3. The most appropriate ICD-10 code
 
-IMPORTANT: Prefer general/unspecified ICD codes unless the clinical description clearly specifies a more precise diagnosis. For example, prefer J02.9 (Pharyngitis, unspecified) over J02.0 (Streptococcal pharyngitis) unless the diagnosis explicitly names the organism or specific variant.
+IMPORTANT: For ICD-9, always use the shortest/most general code. For ICD-10, prefer general/unspecified codes (e.g. J02.9 over J02.0 unless the organism is explicitly named).
 
 Diagnosis/Description: ${diagnosisText}
 

@@ -18,6 +18,16 @@ function nativeRedirect(url: string): Response {
   );
 }
 
+// Wraps a KV call so Redis failures don't crash the entire callback
+async function tryKV<T>(fn: () => Promise<T>, fallback: T, label: string): Promise<T> {
+  try {
+    return await fn();
+  } catch (e: any) {
+    console.error(`KV error (${label}):`, e?.message || e);
+    return fallback;
+  }
+}
+
 export async function GET(request: NextRequest) {
   const url = request.nextUrl;
   const code = url.searchParams.get('code');
@@ -37,7 +47,7 @@ export async function GET(request: NextRequest) {
   console.log('OAuth callback: state =', state?.slice(0, 10) + '...', 'isNative =', isNative);
 
   if (isNative) {
-    const valid = await consumeNativeAuthState(state);
+    const valid = await tryKV(() => consumeNativeAuthState(state), false, 'consumeNativeAuthState');
     if (!valid) {
       console.error('Native auth: state not found in KV for state:', state);
       return nativeRedirect('edassistant://auth-error?error=native_state_expired');
@@ -52,14 +62,14 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    // Exchange code for tokens
+    // Exchange code for tokens — no KV involved, must succeed
     const tokens = await exchangeCode(code);
     if (!tokens.access_token || !tokens.refresh_token) {
       if (isNative) return nativeRedirect('edassistant://auth-error?error=no_tokens');
       return NextResponse.redirect(new URL('/login?error=no_tokens', url.origin));
     }
 
-    // Get user profile
+    // Get user profile — no KV involved, must succeed
     const oauth2Client = getOAuth2Client();
     oauth2Client.setCredentials(tokens);
     const oauth2 = google.oauth2({ version: 'v2', auth: oauth2Client });
@@ -72,9 +82,12 @@ export async function GET(request: NextRequest) {
     }
 
     const adminEmail = process.env.ADMIN_EMAIL || '';
-    const userStatus = await getUserStatus(userId);
+    const isAdmin = email.toLowerCase() === adminEmail.toLowerCase();
 
-    // Build session data (used for both web session and native exchange token)
+    // KV reads — degrade gracefully if Redis is down
+    const userStatus = await tryKV(() => getUserStatus(userId), null, 'getUserStatus');
+
+    // Build session data
     const sessionData = {
       userId,
       email,
@@ -86,29 +99,49 @@ export async function GET(request: NextRequest) {
     };
 
     // Determine approval status and ensure spreadsheet exists
-    let isApproved = userStatus === 'approved';
+    let isApproved = false;
 
     if (userStatus === 'approved') {
-      let spreadsheetId = await getUserSpreadsheetId(userId);
-      if (!spreadsheetId) {
-        spreadsheetId = await createUserSpreadsheet(oauth2Client, email);
-        await setUserSpreadsheetId(userId, spreadsheetId);
-      }
       isApproved = true;
-    } else if (!userStatus && email.toLowerCase() === adminEmail.toLowerCase()) {
+      let spreadsheetId = await tryKV(() => getUserSpreadsheetId(userId), null, 'getUserSpreadsheetId');
+      if (!spreadsheetId) {
+        try {
+          const driveClient = google.drive({ version: 'v3', auth: oauth2Client });
+          const searchRes = await driveClient.files.list({
+            q: `name = 'ED Assistant - ${email}' and mimeType = 'application/vnd.google-apps.spreadsheet' and trashed = false`,
+            fields: 'files(id)',
+            pageSize: 1,
+          });
+          spreadsheetId = searchRes.data.files?.[0]?.id || await createUserSpreadsheet(oauth2Client, email);
+        } catch {
+          spreadsheetId = await createUserSpreadsheet(oauth2Client, email);
+        }
+        await tryKV(() => setUserSpreadsheetId(userId, spreadsheetId!), undefined, 'setUserSpreadsheetId');
+      }
+    } else if (!userStatus && isAdmin) {
       // Admin auto-approved on first login
-      await setUserStatus(userId, 'approved');
-      await setUserInfo(userId, { email, name: name || email });
-      let spreadsheetId = await getUserSpreadsheetId(userId);
-      if (!spreadsheetId) {
-        spreadsheetId = await createUserSpreadsheet(oauth2Client, email);
-        await setUserSpreadsheetId(userId, spreadsheetId);
-      }
       isApproved = true;
+      await tryKV(() => setUserStatus(userId, 'approved'), undefined, 'setUserStatus:admin');
+      await tryKV(() => setUserInfo(userId, { email, name: name || email }), undefined, 'setUserInfo:admin');
+      let spreadsheetId = await tryKV(() => getUserSpreadsheetId(userId), null, 'getUserSpreadsheetId:admin');
+      if (!spreadsheetId) {
+        try {
+          const driveClient = google.drive({ version: 'v3', auth: oauth2Client });
+          const searchRes = await driveClient.files.list({
+            q: `name = 'ED Assistant - ${email}' and mimeType = 'application/vnd.google-apps.spreadsheet' and trashed = false`,
+            fields: 'files(id)',
+            pageSize: 1,
+          });
+          spreadsheetId = searchRes.data.files?.[0]?.id || await createUserSpreadsheet(oauth2Client, email);
+        } catch {
+          spreadsheetId = await createUserSpreadsheet(oauth2Client, email);
+        }
+        await tryKV(() => setUserSpreadsheetId(userId, spreadsheetId!), undefined, 'setUserSpreadsheetId:admin');
+      }
     } else if (!userStatus) {
       // New non-admin user — set pending & notify admin
-      await setUserStatus(userId, 'pending');
-      await setUserInfo(userId, { email, name: name || email });
+      await tryKV(() => setUserStatus(userId, 'pending'), undefined, 'setUserStatus:pending');
+      await tryKV(() => setUserInfo(userId, { email, name: name || email }), undefined, 'setUserInfo:pending');
       if (adminEmail) {
         try {
           const approveUrl = generateApproveUrl(userId);
@@ -124,11 +157,12 @@ export async function GET(request: NextRequest) {
     // --- Native flow: store session as exchange token, redirect to custom scheme ---
     if (isNative) {
       const exchangeToken = crypto.randomBytes(32).toString('hex');
-      await setAuthExchangeToken(exchangeToken, JSON.stringify(sessionData));
+      await tryKV(() => setAuthExchangeToken(exchangeToken, JSON.stringify(sessionData)), undefined, 'setAuthExchangeToken');
       return nativeRedirect(`edassistant://auth-complete?token=${exchangeToken}`);
     }
 
     // --- Web flow: set session cookie and redirect ---
+    // Session cookie is iron-session (no Redis) — always works
     const session = await getSessionFromCookies();
     session.userId = sessionData.userId;
     session.email = sessionData.email;
@@ -144,9 +178,9 @@ export async function GET(request: NextRequest) {
 
     if (isApproved) {
       // Check if terms accepted (skip for admin)
-      if (email.toLowerCase() !== adminEmail.toLowerCase()) {
-        const settings = await getUserSettings(userId) || {};
-        if (!settings.termsAccepted) {
+      if (!isAdmin) {
+        const settings = await tryKV(() => getUserSettings(userId), null, 'getUserSettings:terms');
+        if (!settings?.termsAccepted) {
           return NextResponse.redirect(new URL('/terms', url.origin));
         }
       }

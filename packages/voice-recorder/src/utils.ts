@@ -20,6 +20,8 @@ export function buildAudioConstraints(mode: string, sensitivity: number, pocketM
 
 export function getMimeType(): string {
   if (typeof MediaRecorder !== 'undefined') {
+    // Prefer opus codec — produces cleaner files that transcription APIs handle reliably
+    if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) return 'audio/webm;codecs=opus';
     if (MediaRecorder.isTypeSupported('audio/webm')) return 'audio/webm';
     if (MediaRecorder.isTypeSupported('audio/mp4')) return 'audio/mp4';
   }

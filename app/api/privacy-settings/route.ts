@@ -111,6 +111,7 @@ export async function PUT(request: NextRequest) {
       'dictationCustomTerms', 'encounterCustomTerms',
       'medicalKeyterms', 'showSttEngine',
       'speechAPI', 'transcribeAPI', 'transcribeWebAPI', 'transcribeWatchAPI',
+      'sheetsDevMirror',
     ]);
     const filtered = Object.fromEntries(
       Object.entries(body).filter(([key]) => ALLOWED_SETTINGS.has(key))

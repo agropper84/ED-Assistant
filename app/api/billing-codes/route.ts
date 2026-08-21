@@ -7,7 +7,9 @@ import {
   updateBillingCode,
   deleteBillingCode,
 } from '@/lib/data-layer';
-import { getDefaultCodesForRegion } from '@/lib/billing';
+import { getDefaultCodesForRegion, BILLING_FEE_VERSION } from '@/lib/billing';
+import { getUserSettings, setUserSettings } from '@/lib/kv';
+import { getSessionFromCookies } from '@/lib/session';
 
 export const dynamic = 'force-dynamic';
 
@@ -25,11 +27,26 @@ function authError(error: any) {
 export async function GET(request: NextRequest) {
   try {
     const ctx = await getDataContext();
+    const region = request.nextUrl.searchParams.get('region') || 'yukon';
     let codes = await getBillingCodes(ctx);
 
-    // Auto-populate if sheet is empty
-    if (codes.length === 0) {
-      const region = request.nextUrl.searchParams.get('region') || 'yukon';
+    // Auto-refresh if fee schedule version changed (e.g. new fee guide year)
+    let needsRefresh = codes.length === 0;
+    if (!needsRefresh) {
+      try {
+        const session = await getSessionFromCookies();
+        if (session.userId) {
+          const settings = await getUserSettings(session.userId);
+          const storedVersion = (settings?.billingFeeVersion as string) || '';
+          if (storedVersion !== BILLING_FEE_VERSION) {
+            needsRefresh = true;
+            await setUserSettings(session.userId, { ...settings, billingFeeVersion: BILLING_FEE_VERSION });
+          }
+        }
+      } catch {}
+    }
+
+    if (needsRefresh) {
       const defaults = getDefaultCodesForRegion(region);
       await saveBillingCodes(ctx, defaults);
       codes = await getBillingCodes(ctx);

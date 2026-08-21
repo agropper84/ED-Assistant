@@ -124,24 +124,24 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No audio provided' }, { status: 400 });
     }
 
-    // Step 1: Audio Isolation — clean background noise before transcription
-    let cleanedAudio = audioBuffer;
-    try {
-      const isoForm = new FormData();
-      isoForm.append('audio', new Blob([new Uint8Array(audioBuffer)], { type: contentType }), 'recording.webm');
-      const isoRes = await fetch('https://api.elevenlabs.io/v1/audio-isolation', {
-        method: 'POST',
-        headers: { 'xi-api-key': apiKey },
-        body: isoForm,
-      });
-      if (isoRes.ok) {
-        cleanedAudio = Buffer.from(await isoRes.arrayBuffer());
-      } else {
-        console.warn('Audio isolation failed, using original audio:', isoRes.status);
-      }
-    } catch (e) {
-      console.warn('Audio isolation error, using original:', e);
+    // Use base MIME type (strip codec params like ";codecs=opus" which some APIs reject)
+    const baseMime = contentType.split(';')[0].trim();
+    const ext = baseMime.includes('mp4') ? 'mp4' : 'webm';
+
+    console.log(`ElevenLabs transcribe: ${audioBuffer.length} bytes, type=${contentType}, baseMime=${baseMime}, source=${blobUrl ? 'blob' : 'direct'}`);
+
+    // Validate audio: check for WebM magic bytes (0x1A45DFA3) or MP4/ftyp
+    const header = audioBuffer.slice(0, 4);
+    const isWebM = header[0] === 0x1A && header[1] === 0x45 && header[2] === 0xDF && header[3] === 0xA3;
+    const isMp4 = audioBuffer.length > 8 && audioBuffer.slice(4, 8).toString() === 'ftyp';
+    if (!isWebM && !isMp4) {
+      console.error(`Audio file has unexpected header: ${Array.from(header).map(b => b.toString(16).padStart(2, '0')).join(' ')}. May not be valid audio.`);
     }
+
+    // Step 1: Skip audio isolation (causes 400 errors, marginal benefit for medical dictation)
+    // Go directly to Scribe which is more tolerant of raw browser audio
+    const cleanedAudio = audioBuffer;
+    const cleanedMime = baseMime;
 
     // Step 2: Build keyterms — base medical + client-provided + user calibration
     const extraKeyterms: string[] = [];
@@ -198,15 +198,20 @@ export async function POST(request: NextRequest) {
 
     // Step 3: Call Scribe v2 with medical keyterms
     const fd = new FormData();
-    const ext = contentType.includes('mp4') ? 'mp4' : 'webm';
-    fd.append('file', new Blob([new Uint8Array(cleanedAudio)], { type: contentType }), `recording.${ext}`);
+    const scribeExt = cleanedMime.includes('mp4') ? 'mp4' : 'webm';
+    // Create a clean Uint8Array copy to avoid Node.js Buffer offset/SharedArrayBuffer issues
+    const cleanBytes = new Uint8Array(cleanedAudio.buffer.slice(
+      cleanedAudio.byteOffset,
+      cleanedAudio.byteOffset + cleanedAudio.byteLength
+    ) as ArrayBuffer);
+    fd.append('file', new Blob([cleanBytes], { type: cleanedMime }), `recording.${scribeExt}`);
     fd.append('model_id', 'scribe_v2');
     fd.append('language_code', 'en');
     if (mode === 'encounter') {
       fd.append('diarize', 'true');
     }
-    // Medical keyterms boost accuracy for clinical terminology (+20% cost)
-    for (const term of allKeyterms) {
+    // Medical keyterms — cap at 100 to avoid oversized FormData
+    for (const term of allKeyterms.slice(0, 100)) {
       fd.append('keyterms[]', term);
     }
 
@@ -218,7 +223,38 @@ export async function POST(request: NextRequest) {
 
     if (!elResponse.ok) {
       const err = await elResponse.text().catch(() => 'Unknown error');
-      console.error('ElevenLabs Scribe error:', elResponse.status, err);
+      console.error(`ElevenLabs Scribe error: ${elResponse.status} ${err} (${audioBuffer.length} bytes, ${cleanedMime})`);
+
+      // Fallback: try Deepgram nova-3-medical if ElevenLabs rejects the audio
+      try {
+        const { getDeepgramApiKey } = await import('@/lib/api-keys');
+        const dgKey = await getDeepgramApiKey();
+        if (dgKey) {
+          console.log('Falling back to Deepgram nova-3-medical...');
+          const dgParams = new URLSearchParams({
+            model: 'nova-3-medical',
+            smart_format: 'true',
+            punctuate: 'true',
+            language: 'en',
+            ...(mode === 'encounter' ? { diarize: 'true', utterances: 'true' } : {}),
+          });
+          const dgRes = await fetch(`https://api.deepgram.com/v1/listen?${dgParams}`, {
+            method: 'POST',
+            headers: { 'Authorization': `Token ${dgKey}`, 'Content-Type': baseMime },
+            body: new Uint8Array(audioBuffer) as any,
+          });
+          if (dgRes.ok) {
+            const dgData = await dgRes.json();
+            const dgText = dgData?.results?.channels?.[0]?.alternatives?.[0]?.transcript || '';
+            if (dgText.trim()) {
+              return NextResponse.json({ text: dgText.trim(), fallback: 'deepgram' });
+            }
+          }
+        }
+      } catch (fallbackErr) {
+        console.error('Deepgram fallback also failed:', fallbackErr);
+      }
+
       return NextResponse.json({ error: `ElevenLabs error: ${elResponse.status}: ${err.substring(0, 200)}` }, { status: 500 });
     }
 

@@ -64,7 +64,7 @@ function fixCommonMedicalErrors(text: string): string {
     .trim();
 }
 
-export const maxDuration = 60;
+export const maxDuration = 120;
 
 /** Extract calibration terminology as keyword boost list */
 async function getCalibrationKeywords(mode: string): Promise<string[]> {
@@ -130,14 +130,24 @@ export async function POST(request: NextRequest) {
 
     const formData = await request.formData();
     const audioFile = formData.get('audio');
+    const blobUrl = formData.get('blobUrl') as string || '';
     const mode = (formData.get('mode') as string) || 'dictation';
     const context = (formData.get('context') as string) || '';
 
-    if (!audioFile || !(audioFile instanceof File)) {
+    let buffer: Buffer;
+    let contentType = 'audio/webm';
+    if (blobUrl) {
+      const blobRes = await fetch(blobUrl);
+      if (!blobRes.ok) return NextResponse.json({ error: 'Failed to fetch audio from storage' }, { status: 500 });
+      buffer = Buffer.from(await blobRes.arrayBuffer());
+      contentType = blobRes.headers.get('content-type') || 'audio/webm';
+      import('@vercel/blob').then(({ del }) => del(blobUrl).catch(() => {}));
+    } else if (audioFile && audioFile instanceof File) {
+      buffer = Buffer.from(await audioFile.arrayBuffer());
+      contentType = audioFile.type || 'audio/webm';
+    } else {
       return NextResponse.json({ error: 'No audio file provided' }, { status: 400 });
     }
-
-    const buffer = Buffer.from(await audioFile.arrayBuffer());
     const isEncounter = mode === 'encounter';
 
     // Build Deepgram query params
@@ -175,9 +185,9 @@ export async function POST(request: NextRequest) {
       method: 'POST',
       headers: {
         'Authorization': `Token ${apiKey}`,
-        'Content-Type': audioFile.type || 'audio/webm',
+        'Content-Type': contentType,
       },
-      body: buffer,
+      body: new Uint8Array(buffer) as any,
     });
 
     if (!dgRes.ok) {

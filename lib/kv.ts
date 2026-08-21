@@ -5,7 +5,7 @@ let redis: Redis | null = null;
 
 function getRedis(): Redis {
   if (!redis) {
-    const url = process.env.REDIS_URL || process.env.edassistantkv_REDIS_URL;
+    const url = process.env.REDIS_URL || process.env.STORAGE_REDIS_URL || process.env.edassistantkv_REDIS_URL;
     if (!url) {
       throw new Error('REDIS_URL environment variable is not set');
     }

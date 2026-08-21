@@ -80,16 +80,55 @@ export async function getDriveContext(): Promise<DriveContext> {
     await setUserPatientsFolderId(session.userId, sheetsFolderId);
   }
 
-  // Resolve encryption key
+  // Resolve encryption key — check KV cache, then Drive backup, then generate new
   let encryptionKey: string;
   if (cachedKey && isValidEncryptionKey(cachedKey)) {
     encryptionKey = cachedKey;
   } else {
-    encryptionKey = generateEncryptionKey();
+    // Try to recover key from Drive backup before generating a new one
+    const backupKey = await recoverEncryptionKeyFromDrive(drive, folderId);
+    if (backupKey && isValidEncryptionKey(backupKey)) {
+      encryptionKey = backupKey;
+      console.log('Recovered encryption key from Drive backup');
+    } else {
+      encryptionKey = generateEncryptionKey();
+      // Backup new key to Drive for future recovery
+      await backupEncryptionKeyToDrive(drive, folderId, encryptionKey).catch(
+        (e) => console.warn('Failed to backup encryption key to Drive:', (e as Error).message)
+      );
+    }
     await setUserEncryptionKey(session.userId, encryptionKey);
   }
 
   return { drive, folderId, sheetsFolderId, encryptionKey };
+}
+
+const ENCRYPTION_KEY_BACKUP_FILE = '.encryption-key-backup';
+
+async function backupEncryptionKeyToDrive(drive: drive_v3.Drive, folderId: string, key: string): Promise<void> {
+  const existingId = await findFileByName(drive, ENCRYPTION_KEY_BACKUP_FILE, folderId);
+  const media = { mimeType: 'text/plain', body: Readable.from([key]) };
+  if (existingId) {
+    await drive.files.update({ fileId: existingId, media });
+  } else {
+    await drive.files.create({
+      requestBody: { name: ENCRYPTION_KEY_BACKUP_FILE, parents: [folderId] },
+      media,
+      fields: 'id',
+    });
+  }
+}
+
+async function recoverEncryptionKeyFromDrive(drive: drive_v3.Drive, folderId: string): Promise<string | null> {
+  try {
+    const fileId = await findFileByName(drive, ENCRYPTION_KEY_BACKUP_FILE, folderId);
+    if (!fileId) return null;
+    const res = await drive.files.get({ fileId, alt: 'media' }, { responseType: 'text' });
+    const key = (res.data as string)?.trim();
+    return key || null;
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -135,7 +174,16 @@ export async function getDriveContextForUser(userId: string): Promise<DriveConte
   if (cachedKey && isValidEncryptionKey(cachedKey)) {
     encryptionKey = cachedKey;
   } else {
-    encryptionKey = generateEncryptionKey();
+    const backupKey = await recoverEncryptionKeyFromDrive(drive, folderId);
+    if (backupKey && isValidEncryptionKey(backupKey)) {
+      encryptionKey = backupKey;
+      console.log('Recovered encryption key from Drive backup (bearer-token path)');
+    } else {
+      encryptionKey = generateEncryptionKey();
+      await backupEncryptionKeyToDrive(drive, folderId, encryptionKey).catch(
+        (e) => console.warn('Failed to backup encryption key to Drive:', (e as Error).message)
+      );
+    }
     await setUserEncryptionKey(userId, encryptionKey);
   }
 
@@ -217,8 +265,15 @@ export async function readDriveFile<T>(
   const raw = res.data as string;
   if (!raw || raw.trim() === '') return null;
 
-  const decrypted = decryptValue(raw, ctx.encryptionKey);
-  return JSON.parse(decrypted) as T;
+  try {
+    const decrypted = decryptValue(raw, ctx.encryptionKey);
+    return JSON.parse(decrypted) as T;
+  } catch (e) {
+    console.warn(`readDriveFile: decryption failed for "${fileName}" — deleting stale file so it can be re-created with current key.`);
+    // Delete the stale file so the next write re-creates it with the correct encryption key
+    try { await ctx.drive.files.delete({ fileId }); } catch {}
+    return null;
+  }
 }
 
 /**
@@ -447,7 +502,6 @@ export async function getPatientFromDrive(
  *  1. Exact rowIndex match (Number coercion for type safety)
  *  2. Name match (stable identifier within a date sheet)
  *  3. Loose rowIndex match (string comparison — handles edge cases)
- *  4. Single patient fallback
  */
 function findPatientInSheet(
   dateSheet: DateSheetFile,
@@ -467,11 +521,6 @@ function findPatientInSheet(
   // 3. Loose string comparison (catches NaN, weird types)
   file = dateSheet.patients.find(p => String(p.rowIndex) === String(rowIndex));
   if (file) return file;
-
-  // 4. Single patient fallback
-  if (dateSheet.patients.length === 1) {
-    return dateSheet.patients[0];
-  }
 
   return undefined;
 }

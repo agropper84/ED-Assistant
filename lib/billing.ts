@@ -105,111 +105,114 @@ export interface BillingCodeEntry {
   group: BillingGroup;
 }
 
-// --- Yukon 2024 Fee Guide codes ---
+/** Bump this when fee schedule changes — triggers auto-refresh of persisted billing codes */
+export const BILLING_FEE_VERSION = '2026-04-01';
+
+// --- Yukon 2026 Fee Guide codes (effective April 1, 2026) ---
 
 const YUKON_CODES: Record<string, BillingCodeEntry> = {
   // ED Visits
-  '1100': { description: 'ED Visit', fee: '50.90', group: 'ED Visits' },
-  '1101': { description: 'Complete examination', fee: '111.50', group: 'ED Visits' },
-  '0081': { description: 'Prolonged ED care (0800-2259)', fee: '147.10', group: 'ED Visits' },
-  '0080': { description: 'Prolonged ED care (2300-0800)', fee: '230.60', group: 'ED Visits' },
-  '0082': { description: 'Acute Care Detention', fee: '118.50', group: 'ED Visits' },
-  '0116': { description: 'ICU Admission', fee: '193.40', group: 'ED Visits' },
+  '1100': { description: 'ED Visit', fee: '58.70', group: 'ED Visits' },
+  '1101': { description: 'Complete examination', fee: '116.60', group: 'ED Visits' },
+  '0081': { description: 'Prolonged ED care (0800-2259)', fee: '153.80', group: 'ED Visits' },
+  '0080': { description: 'Prolonged ED care (2300-0800)', fee: '241.10', group: 'ED Visits' },
+  '0082': { description: 'Acute Care Detention', fee: '123.90', group: 'ED Visits' },
+  '0116': { description: 'ICU Admission', fee: '202.20', group: 'ED Visits' },
 
   // GP Visits
-  '0100': { description: 'Visit', fee: '56.10', group: 'GP Visits' },
-  '0101': { description: 'Complete Exam', fee: '111.50', group: 'GP Visits' },
-  '0102': { description: 'Post Cancer Surveillance', fee: '148.30', group: 'GP Visits' },
-  '0107': { description: 'Limited GP Consult', fee: '129.50', group: 'GP Visits' },
-  '0110': { description: 'Second extensive exam', fee: '129.50', group: 'GP Visits' },
-  '1102': { description: 'Acute care admission', fee: '115.40', group: 'GP Visits' },
+  '0100': { description: 'Visit', fee: '58.70', group: 'GP Visits' },
+  '0101': { description: 'Complete Exam', fee: '116.60', group: 'GP Visits' },
+  '0102': { description: 'Post Cancer Surveillance', fee: '155.10', group: 'GP Visits' },
+  '0107': { description: 'Limited GP Consult', fee: '135.40', group: 'GP Visits' },
+  '0110': { description: 'Consultation', fee: '172.10', group: 'GP Visits' },
+  '1102': { description: 'Acute care admission', fee: '120.70', group: 'GP Visits' },
 
   // Premiums
-  '0150': { description: 'Daytime premium', fee: '51.70', group: 'Premiums' },
-  '0151': { description: 'Evening premium', fee: '152.80', group: 'Premiums' },
-  '0152': { description: 'Night premium', fee: '177.00', group: 'Premiums' },
-  '0153': { description: 'WL/DC Evening premium', fee: '24.50', group: 'Premiums' },
-  '0154': { description: 'WL/DC Night premium', fee: '107.40', group: 'Premiums' },
-  '1153': { description: 'WGH Evening/Weekend premium', fee: '50.00', group: 'Premiums' },
-  '1154': { description: 'WGH Night premium', fee: '107.40', group: 'Premiums' },
+  '0150': { description: 'Daytime premium', fee: '54.10', group: 'Premiums' },
+  '0151': { description: 'Evening premium', fee: '159.80', group: 'Premiums' },
+  '0152': { description: 'Night premium', fee: '185.00', group: 'Premiums' },
+  '0153': { description: 'WL/DC Evening premium', fee: '50.80', group: 'Premiums' },
+  '0154': { description: 'WL/DC Night premium', fee: '112.30', group: 'Premiums' },
+  '1153': { description: 'WGH Evening/Weekend premium', fee: '50.80', group: 'Premiums' },
+  '1154': { description: 'WGH Night premium', fee: '112.30', group: 'Premiums' },
 
   // Communication
-  '0044': { description: 'GP Specialty Phone Advice', fee: '86.20', group: 'Communication' },
-  '0048': { description: 'Prescription Renewal', fee: '7.20', group: 'Communication' },
-  '0049': { description: 'Community Nurse Calls', fee: '43.20', group: 'Communication' },
-  '0050': { description: 'Allied HCW Communication', fee: '42.30', group: 'Communication' },
-  '14015': { description: 'Conference fee', fee: '57.50', group: 'Communication' },
-  '14016': { description: 'Conference fee', fee: '57.50', group: 'Communication' },
-  '14017': { description: 'Conference fee', fee: '57.50', group: 'Communication' },
-  '14018': { description: 'Conference fee', fee: '57.50', group: 'Communication' },
-  '14019': { description: 'Conference fee', fee: '57.50', group: 'Communication' },
+  '0044': { description: 'Urgent Specialist Phone Advice', fee: '60.10', group: 'Communication' },
+  '0048': { description: 'Prescription Renewal', fee: '7.50', group: 'Communication' },
+  '0049': { description: 'Community Nurse Calls', fee: '45.20', group: 'Communication' },
+  '0050': { description: 'Allied HCW Communication', fee: '44.30', group: 'Communication' },
+  '14015': { description: 'Conference fee', fee: '60.10', group: 'Communication' },
+  '14016': { description: 'Conference fee', fee: '60.10', group: 'Communication' },
+  '14017': { description: 'Conference fee', fee: '75.20', group: 'Communication' },
+  '14018': { description: 'Conference fee', fee: '60.10', group: 'Communication' },
+  '14019': { description: 'Conference fee', fee: '60.10', group: 'Communication' },
 
   // Procedures
-  '7020': { description: 'Biopsy', fee: '59.60', group: 'Procedures' },
-  '7021': { description: 'Biopsy skin/mucosa', fee: '89.40', group: 'Procedures' },
-  '7026': { description: 'Superficial abscess', fee: '50.00', group: 'Procedures' },
-  '7027': { description: 'Deep abscess (GA)', fee: '148.60', group: 'Procedures' },
-  '7029': { description: 'Complex abscess', fee: '115.10', group: 'Procedures' },
-  '7030': { description: 'Minor lac / FB', fee: '99.20', group: 'Procedures' },
-  '7032': { description: 'Extensive/complex laceration', fee: '213.10', group: 'Procedures' },
-  '0215': { description: 'Dermatological biopsy', fee: '47.50', group: 'Procedures' },
-  '0750': { description: 'Lumbar Puncture', fee: '59.60', group: 'Procedures' },
-  '0751': { description: 'Thoracentesis', fee: '59.60', group: 'Procedures' },
-  '0752': { description: 'Paracentesis', fee: '59.60', group: 'Procedures' },
-  '0753': { description: 'Joint aspiration', fee: '59.60', group: 'Procedures' },
-  '0754': { description: 'Puncture - other', fee: '59.60', group: 'Procedures' },
-  '0755': { description: 'Puncture - other', fee: '59.60', group: 'Procedures' },
-  '0756': { description: 'Puncture - other', fee: '59.60', group: 'Procedures' },
-  '0757': { description: 'Puncture - other', fee: '59.60', group: 'Procedures' },
-  '0758': { description: 'Puncture - other', fee: '59.60', group: 'Procedures' },
-  '0759': { description: 'Puncture - other', fee: '59.60', group: 'Procedures' },
-  '0760': { description: 'Puncture - other', fee: '59.60', group: 'Procedures' },
-  '0761': { description: 'Puncture - other', fee: '59.60', group: 'Procedures' },
+  '7020': { description: 'Biopsy', fee: '124.90', group: 'Procedures' },
+  '7021': { description: 'Biopsy skin/mucosa', fee: '93.50', group: 'Procedures' },
+  '7026': { description: 'Superficial abscess', fee: '52.30', group: 'Procedures' },
+  '7027': { description: 'Deep abscess (GA)', fee: '155.40', group: 'Procedures' },
+  '7029': { description: 'Complex abscess', fee: '120.40', group: 'Procedures' },
+  '7030': { description: 'Minor lac / FB', fee: '103.70', group: 'Procedures' },
+  '7032': { description: 'Extensive/complex laceration', fee: '222.80', group: 'Procedures' },
+  '0215': { description: 'Dermatological biopsy', fee: '49.60', group: 'Procedures' },
+  '0750': { description: 'Lumbar Puncture', fee: '69.70', group: 'Procedures' },
+  '0751': { description: 'Pericardial puncture', fee: '125.80', group: 'Procedures' },
+  '0752': { description: 'Cisternal puncture', fee: '94.60', group: 'Procedures' },
+  '0753': { description: 'Marrow aspiration', fee: '94.60', group: 'Procedures' },
+  '0754': { description: 'Subdural tapping', fee: '66.10', group: 'Procedures' },
+  '0755': { description: 'Artery puncture', fee: '18.40', group: 'Procedures' },
+  '0756': { description: 'Joint aspiration - hip', fee: '47.10', group: 'Procedures' },
+  '0757': { description: 'Joint aspiration - other', fee: '32.10', group: 'Procedures' },
+  '0758': { description: 'Pneumoperitoneum', fee: '62.30', group: 'Procedures' },
+  '0759': { description: 'Paracentesis (thoracic)', fee: '62.30', group: 'Procedures' },
+  '0760': { description: 'Paracentesis (abdominal)', fee: '62.30', group: 'Procedures' },
+  '0761': { description: 'Cyst/bursa aspiration', fee: '32.10', group: 'Procedures' },
 
   // Casts & Splints
-  '5580': { description: 'Finger/toe cast', fee: '29.70', group: 'Casts & Splints' },
-  '5581': { description: 'Short arm / thumb spica', fee: '45.20', group: 'Casts & Splints' },
-  '5582': { description: 'Long arm cast', fee: '59.10', group: 'Casts & Splints' },
-  '5583': { description: 'Shoulder spica', fee: '148.60', group: 'Casts & Splints' },
-  '5584': { description: 'Ankle cast', fee: '59.10', group: 'Casts & Splints' },
-  '5585': { description: 'Knee cast', fee: '59.10', group: 'Casts & Splints' },
-  '5586': { description: 'Walking cast', fee: '59.10', group: 'Casts & Splints' },
-  '5587': { description: 'Hip spica', fee: '148.60', group: 'Casts & Splints' },
-  '5588': { description: 'Body cast', fee: '148.60', group: 'Casts & Splints' },
-  '5589': { description: 'Cast - other', fee: '59.10', group: 'Casts & Splints' },
-  '5590': { description: 'Cast - other', fee: '59.10', group: 'Casts & Splints' },
-  '5591': { description: 'Cast - other', fee: '59.10', group: 'Casts & Splints' },
-  '5592': { description: 'Cast - other', fee: '59.10', group: 'Casts & Splints' },
+  '5580': { description: 'Finger/toe cast', fee: '31.10', group: 'Casts & Splints' },
+  '5581': { description: 'Short arm (elbow to hand)', fee: '47.30', group: 'Casts & Splints' },
+  '5583': { description: 'Long arm (axilla to hand)', fee: '61.80', group: 'Casts & Splints' },
+  '5584': { description: 'Shoulder spica', fee: '155.40', group: 'Casts & Splints' },
+  '5585': { description: 'Ankle cast', fee: '61.80', group: 'Casts & Splints' },
+  '5586': { description: 'Knee cast', fee: '61.80', group: 'Casts & Splints' },
+  '5587': { description: 'Walking cast', fee: '61.80', group: 'Casts & Splints' },
+  '5588': { description: 'Hip spica - unilateral', fee: '155.40', group: 'Casts & Splints' },
+  '5589': { description: 'Hip spica - bilateral', fee: '186.80', group: 'Casts & Splints' },
+  '5590': { description: 'Body - shoulder to hips', fee: '155.40', group: 'Casts & Splints' },
+  '5591': { description: 'Body - including head (Minerva)', fee: '217.80', group: 'Casts & Splints' },
+  '5592': { description: 'Petrie abduction cast', fee: '186.80', group: 'Casts & Splints' },
+  '5593': { description: 'Cast brace for fractured femur', fee: '574.30', group: 'Casts & Splints' },
 
   // Counselling
-  '0109': { description: 'Psychiatric counselling', fee: '111.40', group: 'Counselling' },
-  '0120': { description: 'Prolonged counselling', fee: '111.40', group: 'Counselling' },
-  '0121': { description: 'Psych 16+ min', fee: '119.60', group: 'Counselling' },
-  '0122': { description: 'Psych 31-45 min', fee: '143.40', group: 'Counselling' },
-  '0123': { description: 'Psych 45+ min', fee: '191.20', group: 'Counselling' },
-  '0083': { description: 'Crisis Intervention', fee: '107.30', group: 'Counselling' },
+  '0109': { description: 'Second extensive exam', fee: '71.90', group: 'Counselling' },
+  '0120': { description: 'Prolonged counselling', fee: '116.40', group: 'Counselling' },
+  '0121': { description: 'Psych 16+ min', fee: '125.10', group: 'Counselling' },
+  '0122': { description: 'Psych 31-45 min', fee: '149.90', group: 'Counselling' },
+  '0123': { description: 'Psych 45+ min', fee: '199.90', group: 'Counselling' },
+  '0083': { description: 'Crisis Intervention', fee: '112.20', group: 'Counselling' },
 
   // Hospital
-  '0108': { description: 'Subsequent hospital visit', fee: '65.30', group: 'Hospital' },
-  '0128': { description: 'Supportive care', fee: '60.90', group: 'Hospital' },
-  '0138': { description: 'ICU visit', fee: '72.60', group: 'Hospital' },
-  '0119': { description: 'Newborn care', fee: '93.00', group: 'Hospital' },
-  '0103': { description: 'Home visit first', fee: '158.00', group: 'Hospital' },
-  '0104': { description: 'Home visit extra', fee: '57.20', group: 'Hospital' },
-  '0124': { description: 'Nurse-referred GP Consult', fee: '164.70', group: 'Hospital' },
+  '0108': { description: 'Subsequent hospital visit', fee: '68.30', group: 'Hospital' },
+  '0128': { description: 'Supportive care', fee: '63.60', group: 'Hospital' },
+  '0138': { description: 'ICU visit', fee: '75.90', group: 'Hospital' },
+  '0119': { description: 'Newborn care', fee: '97.20', group: 'Hospital' },
+  '0103': { description: 'Home visit first', fee: '165.10', group: 'Hospital' },
+  '0104': { description: 'Home visit extra', fee: '59.80', group: 'Hospital' },
+  '0124': { description: 'Nurse-referred GP Consult', fee: '172.10', group: 'Hospital' },
 
   // Telehealth
-  '26100': { description: 'Phone/video assessment (single dx)', fee: '56.00', group: 'Telehealth' },
-  '26109': { description: 'Phone/video assessment (multiple dx)', fee: '64.60', group: 'Telehealth' },
+  '26100': { description: 'Phone/video assessment (single dx)', fee: '58.60', group: 'Telehealth' },
+  '26109': { description: 'Phone/video assessment (multiple dx)', fee: '67.50', group: 'Telehealth' },
 
   // Other
-  '0089': { description: 'POCUS', fee: '31.10', group: 'Other' },
-  '0117': { description: 'ECG', fee: '6.50', group: 'Other' },
-  '0046': { description: 'Major tray', fee: '43.70', group: 'Other' },
-  '0047': { description: 'Minor tray', fee: '14.70', group: 'Other' },
-  '0113': { description: 'Professional conference', fee: '60.40', group: 'Other' },
-  '0115': { description: 'Complex lab/x-ray review', fee: '49.60', group: 'Other' },
-  '0084': { description: 'In-territory medevac', fee: '915.40', group: 'Other' },
+  '0089': { description: 'POCUS', fee: '32.50', group: 'Other' },
+  '0117': { description: 'ECG', fee: '6.80', group: 'Other' },
+  '0046': { description: 'Major tray', fee: '45.70', group: 'Other' },
+  '0047': { description: 'Minor tray', fee: '15.30', group: 'Other' },
+  '0113': { description: 'Professional conference', fee: '63.10', group: 'Other' },
+  '0115': { description: 'Complex lab/x-ray review', fee: '51.90', group: 'Other' },
+  '0084': { description: 'In-territory medevac', fee: '957.00', group: 'Other' },
   '0900': { description: 'WCB 1st report', fee: '', group: 'Other' },
   'M0915': { description: 'WCB FAF', fee: '', group: 'Other' },
 };
@@ -218,6 +221,11 @@ const YUKON_CODES: Record<string, BillingCodeEntry> = {
 const REGION_CODES: Record<string, Record<string, BillingCodeEntry>> = {
   yukon: YUKON_CODES,
 };
+
+/** Look up fee from YUKON_CODES by code (single source of truth) */
+export function yukonFee(code: string): string {
+  return YUKON_CODES[code]?.fee || '';
+}
 
 // Category definitions for UI grouping (patient billing page)
 export const BILLING_CATEGORIES: Record<BillingCategory, { label: string; codes: string[] }> = {
@@ -403,9 +411,9 @@ export function getAutoBilling(timestamp: string, isWeekend: boolean): BillingIt
   // Time premium
   if (hour >= 0) {
     if ((hour >= 18 && hour < 23) || isWeekend) {
-      items.push({ code: '1153', description: 'WGH Evening/Weekend premium', fee: '50.00', unit: '1', category: 'premium' });
+      items.push({ code: '1153', description: 'WGH Evening/Weekend premium', fee: yukonFee('1153'), unit: '1', category: 'premium' });
     } else if (hour >= 23 || hour < 8) {
-      items.push({ code: '1154', description: 'WGH Night premium', fee: '107.40', unit: '1', category: 'premium' });
+      items.push({ code: '1154', description: 'WGH Night premium', fee: yukonFee('1154'), unit: '1', category: 'premium' });
     }
   }
 
@@ -427,16 +435,16 @@ const BODY_SYSTEMS: { name: string; keywords: RegExp }[] = [
 ];
 
 /** Procedure keyword → billing code mapping */
-const PROCEDURE_KEYWORDS: { keywords: RegExp; code: string; description: string; fee: string }[] = [
-  { keywords: /\b(ecg|ekg|electrocardiogram|12[- ]?lead)\b/i, code: '0117', description: 'ECG', fee: '6.50' },
-  { keywords: /\b(pocus|point[- ]?of[- ]?care\s*ultrasound|bedside\s*ultrasound)\b/i, code: '0089', description: 'POCUS', fee: '31.10' },
-  { keywords: /\b(lacerat|sutur(?:e[ds]?|ing)|repair(?:ed)?\s*(?:wound|lac))\b/i, code: '7030', description: 'Minor lac / FB', fee: '99.20' },
-  { keywords: /\b(abscess|incision\s*(?:and|&)\s*drainage|i\s*(?:&|and)\s*d)\b/i, code: '7026', description: 'Superficial abscess', fee: '50.00' },
-  { keywords: /\b(lumbar\s*puncture|\blp\b|spinal\s*tap)\b/i, code: '0750', description: 'Lumbar Puncture', fee: '59.60' },
-  { keywords: /\b(thoracentesis|pleural\s*tap)\b/i, code: '0751', description: 'Thoracentesis', fee: '59.60' },
-  { keywords: /\b(paracentesis|ascitic\s*tap)\b/i, code: '0752', description: 'Paracentesis', fee: '59.60' },
-  { keywords: /\b(joint\s*aspiration|arthrocentesis)\b/i, code: '0753', description: 'Joint aspiration', fee: '59.60' },
-  { keywords: /\b(splint|cast|immobili[sz])\b/i, code: '5581', description: 'Short arm / thumb spica', fee: '45.20' },
+const PROCEDURE_KEYWORDS: { keywords: RegExp; code: string }[] = [
+  { keywords: /\b(ecg|ekg|electrocardiogram|12[- ]?lead)\b/i, code: '0117' },
+  { keywords: /\b(pocus|point[- ]?of[- ]?care\s*ultrasound|bedside\s*ultrasound)\b/i, code: '0089' },
+  { keywords: /\b(lacerat|sutur(?:e[ds]?|ing)|repair(?:ed)?\s*(?:wound|lac))\b/i, code: '7030' },
+  { keywords: /\b(abscess|incision\s*(?:and|&)\s*drainage|i\s*(?:&|and)\s*d)\b/i, code: '7026' },
+  { keywords: /\b(lumbar\s*puncture|\blp\b|spinal\s*tap)\b/i, code: '0750' },
+  { keywords: /\b(thoracentesis|pleural\s*tap)\b/i, code: '0759' },
+  { keywords: /\b(paracentesis|ascitic\s*tap)\b/i, code: '0760' },
+  { keywords: /\b(joint\s*aspiration|arthrocentesis)\b/i, code: '0757' },
+  { keywords: /\b(splint|cast|immobili[sz])\b/i, code: '5581' },
 ];
 
 /**
@@ -454,13 +462,13 @@ export function getSmartBilling(
 
   // 1. Visit type: complete exam if forced or ≥4 body systems examined
   if (forceCompleteExam) {
-    items.push({ code: '1101', description: 'Complete examination', fee: '111.50', unit: '1', category: 'visitType' });
+    items.push({ code: '1101', description: 'Complete examination', fee: yukonFee('1101'), unit: '1', category: 'visitType' });
   } else {
     const systemsFound = BODY_SYSTEMS.filter(s => s.keywords.test(result.objective)).length;
     if (systemsFound >= 4) {
-      items.push({ code: '1101', description: 'Complete examination', fee: '111.50', unit: '1', category: 'visitType' });
+      items.push({ code: '1101', description: 'Complete examination', fee: yukonFee('1101'), unit: '1', category: 'visitType' });
     } else {
-      items.push({ code: '1100', description: 'ED Visit', fee: '50.90', unit: '1', category: 'visitType' });
+      items.push({ code: '1100', description: 'ED Visit', fee: yukonFee('1100'), unit: '1', category: 'visitType' });
     }
   }
 
@@ -468,12 +476,13 @@ export function getSmartBilling(
   const timePremiums = getAutoBilling(timestamp, isWeekend);
   items.push(...timePremiums);
 
-  // 3. Procedure/ECG detection
+  // 3. Procedure/ECG detection — fees looked up from YUKON_CODES
   const addedCodes = new Set<string>();
   for (const proc of PROCEDURE_KEYWORDS) {
     if (proc.keywords.test(noteText) && !addedCodes.has(proc.code)) {
       addedCodes.add(proc.code);
-      items.push({ code: proc.code, description: proc.description, fee: proc.fee, unit: '1', category: 'additional' });
+      const entry = YUKON_CODES[proc.code];
+      items.push({ code: proc.code, description: entry?.description || proc.code, fee: entry?.fee || '', unit: '1', category: 'additional' });
     }
   }
 

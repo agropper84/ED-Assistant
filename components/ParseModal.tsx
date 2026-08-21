@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect, useMemo } from 'react';
+import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { X, Clipboard, Check, Loader2, Clock, Upload, Send, FileText, Trash2, ChevronDown, Heart, ListTree, RefreshCw } from 'lucide-react';
 import { ExamToggles } from '@/components/ExamToggles';
 import { generateId } from '@/lib/types-json';
@@ -193,6 +193,11 @@ export function ParseModal({ isOpen, onClose, onSave, onQuickAdd, patientRef: ex
   const [daySheetError, setDaySheetError] = useState('');
   const [showLiveTranscript, setShowLiveTranscript] = useState(true);
   const [micSensitivity, setMicSensitivity] = useState(3); // 1=low, 2=medium, 3=high — default high for encounters
+  const [transcribeWarning, setTranscribeWarning] = useState('');
+  const handleTranscribeWarning = useCallback((msg: string) => {
+    setTranscribeWarning(msg);
+    setTimeout(() => setTranscribeWarning(''), 8000);
+  }, []);
   const daySheetInputRef = useRef<HTMLInputElement>(null);
   const timeScrollRef = useRef<HTMLDivElement>(null);
 
@@ -559,6 +564,11 @@ export function ParseModal({ isOpen, onClose, onSave, onQuickAdd, patientRef: ex
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto px-5 py-5 space-y-5">
+          {transcribeWarning && (
+            <div className="px-3 py-2 rounded-lg text-xs font-medium bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+              {transcribeWarning}
+            </div>
+          )}
           {/* Tab bar: Quick Add / Parse Data */}
           {onQuickAdd && (
             <div className="flex" style={{ borderBottom: '1px solid var(--modal-divider)' }}>
@@ -960,6 +970,7 @@ export function ParseModal({ isOpen, onClose, onSave, onQuickAdd, patientRef: ex
                     <VoiceRecorder
                       mode="encounter"
                       showUpload
+                      onWarning={handleTranscribeWarning}
                       sensitivity={micSensitivity}
                       onTranscript={(text) => {
                         const base = preRecordTranscript || '';
@@ -997,6 +1008,7 @@ export function ParseModal({ isOpen, onClose, onSave, onQuickAdd, patientRef: ex
                   <div className="absolute top-1.5 right-1.5 z-10">
                     <VoiceRecorder
                       mode="dictation"
+                      onWarning={handleTranscribeWarning}
                       onTranscript={(text) => {
                         const base = preRecordEncounter || encounterNotes;
                         setEncounterNotes(base ? `${base}\n${text}` : text);
@@ -1032,6 +1044,7 @@ export function ParseModal({ isOpen, onClose, onSave, onQuickAdd, patientRef: ex
                   <div className="absolute top-1.5 right-1.5 z-10">
                     <VoiceRecorder
                       mode="dictation"
+                      onWarning={handleTranscribeWarning}
                       onTranscript={(text) => {
                         const base = preRecordAdditional || additional;
                         setAdditional(base ? `${base}\n${text}` : text);

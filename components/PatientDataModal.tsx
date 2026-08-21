@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { Patient } from '@/lib/google-sheets';
 import { getMedicalSuggestions } from '@/lib/medical-suggestions';
 import { X, Loader2, Save, ExternalLink, RefreshCw, Check, Heart, ArrowUpCircle, FileText, Trash2, ListTree, Mic } from 'lucide-react';
@@ -59,6 +59,11 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
   const [userPhrases, setUserPhrases] = useState<string[]>([]);
   const [showLiveTranscript, setShowLiveTranscript] = useState(false);
   const [micSensitivity, setMicSensitivity] = useState(2); // 0.5-4x range, default 2x
+  const [transcribeWarning, setTranscribeWarning] = useState('');
+  const handleTranscribeWarning = useCallback((msg: string) => {
+    setTranscribeWarning(msg);
+    setTimeout(() => setTranscribeWarning(''), 8000);
+  }, []);
   const [encounterDetail, setEncounterDetail] = useState(3); // 1-5: Minimal/Brief/Standard/Detailed/Comprehensive
   const [isRecordingEncounter, setIsRecordingEncounter] = useState(false);
   const [recordingStartTime, setRecordingStartTime] = useState<number | null>(null);
@@ -772,6 +777,11 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
 
         {/* Clinical info — always visible */}
         <div className="flex-1 min-w-0 overflow-y-auto px-4 py-4 transition-all duration-300">
+          {transcribeWarning && (
+            <div className="mb-3 px-3 py-2 rounded-lg text-xs font-medium bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+              {transcribeWarning}
+            </div>
+          )}
           {/* Triage Notes */}
           <div className="p-3 rounded-xl mb-3" style={{ background: 'var(--modal-section-bg)' }}>
             <div className="flex items-center justify-between mb-2">
@@ -1014,6 +1024,7 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
                 <VoiceRecorder
                   mode="encounter"
                   showUpload
+                  onWarning={handleTranscribeWarning}
                   sensitivity={micSensitivity}
                   encryptionKey={encryptionKey || undefined}
                   sheetName={patient.sheetName}
@@ -1176,6 +1187,7 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
               )}
               <div className="absolute top-1.5 right-1.5 z-10">
                 <VoiceRecorder
+                  onWarning={handleTranscribeWarning}
                   onTranscript={(text) => {
                     const base = preRecordEncounterNotes || encounterNotes;
                     setEncounterNotes(base ? `${base}\n${text}` : text);
@@ -1226,6 +1238,7 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
               )}
               <div className="absolute top-1.5 right-1.5 z-10">
                 <VoiceRecorder
+                  onWarning={handleTranscribeWarning}
                   onTranscript={(text) => {
                     const base = preRecordAdditional || additional;
                     setAdditional(base ? `${base}\n${text}` : text);
@@ -1410,6 +1423,7 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
                         });
                       }
                     }
+                    const currentSettings = getSettings();
                     const res = await fetch('/api/process', {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
@@ -1419,7 +1433,8 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
                         patientName: patient.name,
                         promptTemplates: getEffectivePromptTemplates(),
                         noteStyle,
-                        noteStyleInstructions: noteStyle === 'standard' ? getSettings().noteStyleStandard : noteStyle === 'comprehensive' ? getSettings().noteStyleDetailed : getSettings().noteStyleCompleteExam,
+                        noteStyleInstructions: noteStyle === 'standard' ? currentSettings.noteStyleStandard : noteStyle === 'comprehensive' ? currentSettings.noteStyleDetailed : currentSettings.noteStyleCompleteExam,
+                        settings: { model: currentSettings.model, maxTokens: currentSettings.maxTokens, temperature: currentSettings.temperature },
                         ...(customInstructions.trim() ? { customInstructions: customInstructions.trim() } : {}),
                       }),
                     });

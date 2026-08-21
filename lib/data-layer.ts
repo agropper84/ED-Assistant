@@ -378,8 +378,22 @@ export async function setShiftTimes(ctx: DataContext, sheetName: string, start: 
 // ============================================================
 
 export async function getNextRowIndex(ctx: DataContext, sheetName: string): Promise<number> {
-  // Always use Sheets for row index — Sheets is the source of truth for row layout
-  // because billing continuation rows shift row positions and Drive doesn't track those
+  // In dual/drive mode, use Drive patient count to avoid collisions
+  // (Sheets may not have the latest data if mirror is off)
+  if (ctx.mode !== 'sheets' && ctx.drive) {
+    try {
+      const dj = await import('./drive-json');
+      const dateSheet = await dj.getDateSheetFromDrive(ctx.drive, sheetName);
+      if (dateSheet && dateSheet.patients.length > 0) {
+        // Use max rowIndex + 1 from Drive to avoid overwriting
+        const maxRow = Math.max(...dateSheet.patients.map((p: { rowIndex: number }) => Number(p.rowIndex) || 0));
+        const gs = await import('./google-sheets');
+        const sheetsNext = await gs.getNextEmptyRow(ctx.sheets, sheetName);
+        // Take the higher of Drive max+1 and Sheets next empty to be safe
+        return Math.max(maxRow + 1, sheetsNext);
+      }
+    } catch {}
+  }
   const gs = await import('./google-sheets');
   return gs.getNextEmptyRow(ctx.sheets, sheetName);
 }
