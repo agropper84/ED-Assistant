@@ -1,6 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSessionFromCookies } from '@/lib/session';
-import { getDriveContextForUser } from '@/lib/drive-json';
 import { yukonFee } from '@/lib/billing';
 
 export const maxDuration = 120;
@@ -12,19 +10,12 @@ export const maxDuration = 120;
  */
 export async function POST(request: NextRequest) {
   try {
-    const session = await getSessionFromCookies();
-    if (!session.userId || !session.accessToken) {
-      return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
-    }
-
     const body = await request.json().catch(() => ({}));
     const sinceDate = body.since || '2026-04-01';
 
+    // Use session-based getDriveContext (uses iron-session cookie, not KV refresh token)
     const dj = await import('@/lib/drive-json');
-    const ctx = await getDriveContextForUser(session.userId);
-    if (!ctx) {
-      return NextResponse.json({ error: 'Drive not available' }, { status: 500 });
-    }
+    const ctx = await dj.getDriveContext();
 
     // Get master index to find all date sheets
     const masterIndex = await dj.getMasterIndex(ctx);
