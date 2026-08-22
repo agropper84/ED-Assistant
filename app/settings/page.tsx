@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Trash2, Plus, Pencil, RotateCcw, Loader2, X, Sun, Moon, Monitor, Search, ChevronRight, ChevronDown, Check, Copy, Key, AlertCircle, Brain, Sparkles } from 'lucide-react';
+import { ArrowLeft, Trash2, Plus, Pencil, RotateCcw, Loader2, X, Sun, Moon, Monitor, Search, ChevronRight, ChevronDown, Check, Copy, Key, AlertCircle, Brain, Sparkles, DollarSign } from 'lucide-react';
 import { useTheme } from '@/lib/theme';
 import {
   StyleGuide,
@@ -2615,6 +2615,36 @@ export default function SettingsPage() {
                     Reset
                   </button>
                 )}
+                <button
+                  onClick={async () => {
+                    if (!confirm('Update all patient billing fees from Apr 1, 2026 to current fee schedule?')) return;
+                    setBillingLoading(true);
+                    try {
+                      const res = await fetch('/api/update-billing-rates', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ since: '2026-04-01' }),
+                      });
+                      const data = await res.json();
+                      if (res.ok) {
+                        alert(data.summary);
+                      } else {
+                        alert(`Error: ${data.error}`);
+                      }
+                    } catch (err) {
+                      console.error('Failed to update rates:', err);
+                      alert('Failed to update rates');
+                    } finally {
+                      setBillingLoading(false);
+                    }
+                  }}
+                  disabled={billingLoading}
+                  className="flex items-center gap-1 px-2.5 py-1.5 text-[var(--text-muted)] hover:text-amber-500 hover:bg-[var(--bg-tertiary)] rounded-lg text-xs font-medium transition-colors disabled:opacity-50"
+                  title="Update all patient fees from Apr 2026 to current schedule"
+                >
+                  <DollarSign className="w-3.5 h-3.5" />
+                  Update Historical Rates
+                </button>
               </div>
               <select
                 value={billingRegion}
