@@ -1084,7 +1084,7 @@ export function VoiceRecorder({
         // Use pre-assembled blob or assemble from chunks
         const blob = encounterBlob || new Blob(chunksRef.current, { type: mimeType });
         console.log(`[VR] encounter stop: ${blob.size} bytes, ${chunksRef.current.length} chunks, type=${mimeType}`);
-        if (blob.size === 0) { console.warn('[VR] encounter: empty blob, aborting'); setRecState('idle'); onProcessingRef.current?.(false); return; }
+        if (blob.size === 0) { console.warn('[VR] encounter: empty blob, aborting'); onTranscript(''); setRecState('idle'); onProcessingRef.current?.(false); return; }
 
         // Backup to blob storage (separate from transcription blob, persists on failure)
         backupToBlob(blob, 'encounter');
@@ -1166,7 +1166,11 @@ export function VoiceRecorder({
             console.warn('[VR] encounter: no transcript produced');
             onWarning?.('Transcription returned empty — audio saved locally as backup');
             const fallbackText = accumulatedTextRef.current?.trim();
-            if (fallbackText) { onTranscript(fallbackText); }
+            if (fallbackText) {
+              onTranscript(fallbackText);
+            } else {
+              onTranscript(''); // always signal completion to parent
+            }
           }
         } catch (err: any) {
           console.error('[VR] encounter transcription error:', err);
@@ -1175,6 +1179,8 @@ export function VoiceRecorder({
           if (fallbackText) {
             console.log('[VR] Using Web Speech fallback text due to transcription failure');
             onTranscript(fallbackText);
+          } else {
+            onTranscript(''); // always signal completion to parent
           }
         }
         onProcessingRef.current?.(false);
