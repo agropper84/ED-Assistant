@@ -1017,7 +1017,10 @@ export function VoiceRecorder({
 
     // Always call onTranscript — even empty string clears processing state in parent
     console.log(`[VR] stopMedicalizeHold result: ${finalMedText ? `${finalMedText.length} chars` : 'EMPTY'}`);
-    if (!finalMedText) console.warn('[VR] stopMedicalizeHold produced no text — check STT/medicalize logs above');
+    if (!finalMedText) {
+      console.warn('[VR] stopMedicalizeHold produced no text');
+      onWarning?.('Transcription returned empty — audio saved locally as backup');
+    }
     if (finalMedText) {
       onTranscriptRef.current(finalMedText);
     } else {
@@ -1161,13 +1164,13 @@ export function VoiceRecorder({
             }
           } else {
             console.warn('[VR] encounter: no transcript produced');
-            // Try Web Speech fallback
+            onWarning?.('Transcription returned empty — audio saved locally as backup');
             const fallbackText = accumulatedTextRef.current?.trim();
             if (fallbackText) { onTranscript(fallbackText); }
           }
         } catch (err: any) {
           console.error('[VR] encounter transcription error:', err);
-          // WiFi fallback: if transcription fails, use accumulated Web Speech text
+          onWarning?.(`Transcription failed: ${err?.message || 'unknown error'}. Audio saved locally as backup.`);
           const fallbackText = accumulatedTextRef.current?.trim();
           if (fallbackText) {
             console.log('[VR] Using Web Speech fallback text due to transcription failure');
