@@ -16,14 +16,22 @@ const ENDPOINTS: SharedProps['endpoints'] = {
 };
 
 async function doUploadBlob(filename: string, blob: Blob): Promise<{ url: string }> {
-  // Client-side Vercel Blob upload — bypasses 4.5MB serverless body limit (up to 100MB)
-  const { upload } = await import('@vercel/blob/client');
-  const result = await upload(filename, blob, {
-    access: 'public',
-    handleUploadUrl: '/api/blob-upload-token',
+  console.log(`[VR] doUploadBlob: uploading ${(blob.size / 1024).toFixed(0)}KB...`);
+  // Stream raw audio body to server — bypasses FormData parsing and 4.5MB limit
+  // Server streams directly to Vercel Blob via put(request.body)
+  const contentType = blob.type || 'audio/webm';
+  const res = await fetch('/api/backup-audio', {
+    method: 'POST',
+    headers: { 'Content-Type': contentType },
+    body: blob,
   });
-  console.log(`[VR] doUploadBlob: ${(blob.size / 1024).toFixed(0)}KB → ${result.url}`);
-  return { url: result.url };
+  if (!res.ok) {
+    const err = await res.text().catch(() => '');
+    throw new Error(`Upload failed: ${res.status} ${err.substring(0, 100)}`);
+  }
+  const data = await res.json();
+  console.log(`[VR] doUploadBlob: ${(blob.size / 1024).toFixed(0)}KB → ${data.url}`);
+  return { url: data.url };
 }
 
 type VoiceRecorderProps = Omit<SharedProps, 'endpoints' | 'getSpeechEngine' | 'getTranscribeEngine' | 'getEncounterEngine' | 'nativeBridge' | 'uploadBlob'>;
