@@ -43,11 +43,13 @@ async function removeLocalBackup(key: string): Promise<void> {
       const tx = req.result.transaction(IDB_STORE, 'readwrite');
       tx.objectStore(IDB_STORE).delete(key);
       tx.oncomplete = () => resolve();
-      tx.onerror = () => resolve(); // non-critical
+      tx.onerror = () => resolve();
     };
     req.onerror = () => resolve();
   });
 }
+
+const FORMDATA_LIMIT = 4 * 1024 * 1024; // 4MB — stay under Vercel Hobby 4.5MB limit
 
 async function doUploadBlob(filename: string, blob: Blob): Promise<{ url: string }> {
   const sizeKB = (blob.size / 1024).toFixed(0);
@@ -61,28 +63,36 @@ async function doUploadBlob(filename: string, blob: Blob): Promise<{ url: string
     console.warn('[VR] Local backup failed (continuing with upload):', e);
   }
 
-  // Upload via FormData to /api/backup-audio (Pro plan supports up to 100MB body)
-  const formData = new FormData();
-  const ext = filename.split('.').pop() || 'webm';
-  const contentType = blob.type || 'audio/webm';
-  formData.append('audio', new File([blob], `${filename.replace(/\//g, '-')}-${Date.now()}.${ext}`, { type: contentType }));
+  let url = '';
 
-  const res = await fetch('/api/backup-audio', { method: 'POST', body: formData });
-
-  if (!res.ok) {
-    const errText = await res.text().catch(() => '');
-    console.error(`[VR] doUploadBlob FAILED: ${res.status} ${errText.substring(0, 200)}`);
-    // DON'T remove local backup on failure — keep it as safety net
-    throw new Error(`Upload failed: ${res.status}`);
+  if (blob.size > FORMDATA_LIMIT) {
+    // Large files: client-side Vercel Blob upload (bypasses serverless body limit)
+    console.log(`[VR] doUploadBlob: using client-side upload (${sizeKB}KB > 4MB limit)`);
+    const { upload } = await import('@vercel/blob/client');
+    const result = await upload(filename, blob, {
+      access: 'public',
+      handleUploadUrl: '/api/blob-upload-token',
+    });
+    url = result.url;
+  } else {
+    // Small files: FormData to serverless function (simpler, no CORS)
+    const formData = new FormData();
+    const ext = filename.split('.').pop() || 'webm';
+    const contentType = blob.type || 'audio/webm';
+    formData.append('audio', new File([blob], `recording-${Date.now()}.${ext}`, { type: contentType }));
+    const res = await fetch('/api/backup-audio', { method: 'POST', body: formData });
+    if (!res.ok) {
+      const errText = await res.text().catch(() => '');
+      console.error(`[VR] doUploadBlob server FAILED: ${res.status} ${errText.substring(0, 200)}`);
+      throw new Error(`Upload failed: ${res.status}`);
+    }
+    const data = await res.json();
+    url = data.url;
   }
 
-  const data = await res.json();
-  console.log(`[VR] doUploadBlob: ${sizeKB}KB → ${data.url}`);
-
-  // Upload succeeded — remove local backup (it's in Vercel Blob now)
+  console.log(`[VR] doUploadBlob: ${sizeKB}KB → ${url}`);
   if (localKey) removeLocalBackup(localKey).catch(() => {});
-
-  return { url: data.url };
+  return { url };
 }
 
 type VoiceRecorderProps = Omit<SharedProps, 'endpoints' | 'getSpeechEngine' | 'getTranscribeEngine' | 'getEncounterEngine' | 'nativeBridge' | 'uploadBlob'>;
