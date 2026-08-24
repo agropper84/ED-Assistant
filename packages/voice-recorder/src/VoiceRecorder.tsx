@@ -12,12 +12,9 @@ function getTranscribeEndpoint(endpoints: EndpointConfig, api: string): string {
   return endpoints.transcribeDefault;
 }
 
-// Vercel serverless body limit is 4.5 MB — upload larger files to Blob first
-const BLOB_THRESHOLD = 3.5 * 1024 * 1024; // 3.5 MB (leave margin)
-
 export function VoiceRecorder({
   onTranscript, onInterimTranscript, onRecordingStart, onRecordingStop, onProcessingChange, onAudioLevel,
-  onMedicalizeStart, onBackupSaved, onBlobBackup, onWarning, encryptionKey,
+  onMedicalizeStart, onBackupSaved, onBlobBackup, encryptionKey,
   disabled, mode = 'dictation', compact, showUpload, sheetName, sensitivity: sensitivityProp, micGain, pocketMode, medicalizeGesture = 'hold',
   patientName,
   endpoints, getSpeechEngine, getTranscribeEngine, getEncounterEngine,
@@ -621,22 +618,9 @@ export function VoiceRecorder({
   // --- Collect audio blob from MediaRecorder ---
   const collectAudioBlob = useCallback(async (): Promise<Blob | null> => {
     const recorder = mediaRecorderRef.current;
-    if (!recorder || recorder.state === 'inactive') {
-      console.warn('[VR] collectAudioBlob: recorder inactive/null, chunks:', chunksRef.current.length);
-      // Still try to assemble from any existing chunks
-      if (chunksRef.current.length > 0) {
-        const blob = new Blob(chunksRef.current, { type: mimeTypeRef.current });
-        console.log(`[VR] collectAudioBlob: assembled ${blob.size} bytes from ${chunksRef.current.length} leftover chunks`);
-        return blob;
-      }
-      return null;
-    }
+    if (!recorder || recorder.state === 'inactive') return null;
     return new Promise<Blob>((resolve) => {
-      recorder.onstop = () => {
-        const blob = new Blob(chunksRef.current, { type: mimeTypeRef.current });
-        console.log(`[VR] collectAudioBlob: ${blob.size} bytes, ${chunksRef.current.length} chunks, type=${mimeTypeRef.current}`);
-        resolve(blob);
-      };
+      recorder.onstop = () => resolve(new Blob(chunksRef.current, { type: mimeTypeRef.current }));
       recorder.stop();
     });
   }, []);
@@ -833,15 +817,9 @@ export function VoiceRecorder({
     let finalBlob: Blob | null = null;
     if (recorder && recorder.state === 'recording') {
       finalBlob = await new Promise<Blob>((resolve) => {
-        recorder.onstop = () => {
-          const blob = new Blob(chunksRef.current, { type: mimeTypeRef.current });
-          console.log(`[VR] stopNonMedicalize: ${blob.size} bytes, ${chunksRef.current.length} chunks, type=${mimeTypeRef.current}`);
-          resolve(blob);
-        };
+        recorder.onstop = () => resolve(new Blob(chunksRef.current, { type: mimeTypeRef.current }));
         recorder.stop();
       });
-    } else {
-      console.warn(`[VR] stopNonMedicalize: recorder state=${recorder?.state || 'null'}, chunks=${chunksRef.current.length}`);
     }
 
     const webSpeechText = accumulatedTextRef.current || '';
@@ -859,28 +837,17 @@ export function VoiceRecorder({
         (async () => {
           try {
             const fd = new FormData();
-            // Large files: upload to Blob first to bypass 4.5MB serverless limit
-            if (finalBlob!.size > BLOB_THRESHOLD && uploadBlob) {
-              const ext = getFileExtension(mimeTypeRef.current);
-              const result = await uploadBlob(`audio-tmp/dictation-${Date.now()}.${ext}`, finalBlob!);
-              fd.append('blobUrl', result.url);
-            } else {
-              fd.append('audio', finalBlob!, `recording.${getFileExtension(mimeTypeRef.current)}`);
-            }
+            fd.append('audio', finalBlob!, `recording.${getFileExtension(mimeTypeRef.current)}`);
             fd.append('mode', 'dictation');
             if (sheetName) fd.append('sheetName', sheetName);
             const res = await fetch(endpoints.transcribeElevenlabs, { method: 'POST', body: fd });
             if (res.ok) {
-              const data = await res.json();
-              if (data.fallback) onWarning?.(`Transcription used ${data.fallback} fallback (ElevenLabs unavailable)`);
-              if (data.text?.trim() && data.text.trim() !== webSpeechText.trim()) {
-                onInterimRef.current?.(data.text.trim());
+              const { text } = await res.json();
+              if (text?.trim() && text.trim() !== webSpeechText.trim()) {
+                onInterimRef.current?.(text.trim());
               }
-            } else {
-              const errText = await res.text().catch(() => '');
-              console.error(`[VR] ElevenLabs re-transcribe failed: ${res.status} ${errText.substring(0, 200)}`);
             }
-          } catch (err) { console.error('[VR] ElevenLabs re-transcribe error:', err); }
+          } catch {}
         })();
       }
 
@@ -898,14 +865,7 @@ export function VoiceRecorder({
       onProcessingRef.current?.(true);
       try {
         const formData = new FormData();
-        // Large files: upload to Blob first to bypass 4.5MB serverless limit
-        if (finalBlob.size > BLOB_THRESHOLD && uploadBlob) {
-          const ext = getFileExtension(mimeTypeRef.current);
-          const blobResult = await uploadBlob(`audio-tmp/refine-${Date.now()}.${ext}`, finalBlob);
-          formData.append('blobUrl', blobResult.url);
-        } else {
-          formData.append('audio', finalBlob, `segment.${getFileExtension(mimeTypeRef.current)}`);
-        }
+        formData.append('audio', finalBlob, `segment.${getFileExtension(mimeTypeRef.current)}`);
         formData.append('mode', 'dictation');
         formData.append('skipMedicalize', 'true');
         const endpoint = transcribeEngine === 'deepgram' ? endpoints.transcribeDeepgram : endpoints.transcribeWispr;
@@ -915,11 +875,8 @@ export function VoiceRecorder({
           if (text?.trim()) {
             refinedTextRef.current = refinedTextRef.current ? `${refinedTextRef.current} ${text.trim()}` : text.trim();
           }
-        } else {
-          const errText = await res.text().catch(() => '');
-          console.error(`[VR] STT-refine failed: ${res.status} ${errText.substring(0, 200)}`);
         }
-      } catch (err) { console.error('[VR] STT-refine error:', err); }
+      } catch {}
     }
 
     // Backup to blob storage
@@ -943,13 +900,10 @@ export function VoiceRecorder({
 
   // --- Stop medicalize (hold release) → single-shot transcribe + medicalize ---
   const stopMedicalizeHold = useCallback(async () => {
-    // Collect blob BEFORE cleanup — cleanup kills the stream which can
-    // cause MediaRecorder to fire onstop prematurely
-    const blob = await collectAudioBlob();
     cleanupResources();
     setRecState('transcribing');
 
-    console.log(`[VR] stopMedicalizeHold: blob=${blob ? `${blob.size} bytes` : 'null'}, engine=${getTranscribeEngine()}`);
+    const blob = await collectAudioBlob();
 
     // Backup to blob storage (fire-and-forget)
     if (blob && blob.size > 2000) backupToBlob(blob, 'medicalize');
@@ -959,14 +913,7 @@ export function VoiceRecorder({
     if (blob && blob.size > 2000) {
       try {
         const formData = new FormData();
-        // Large files: upload to Blob first to bypass 4.5MB serverless limit
-        if (blob.size > BLOB_THRESHOLD && uploadBlob) {
-          const ext = getFileExtension(mimeTypeRef.current);
-          const blobResult = await uploadBlob(`audio-tmp/medicalize-${Date.now()}.${ext}`, blob);
-          formData.append('blobUrl', blobResult.url);
-        } else {
-          formData.append('audio', blob, `recording.${getFileExtension(mimeTypeRef.current)}`);
-        }
+        formData.append('audio', blob, `recording.${getFileExtension(mimeTypeRef.current)}`);
         formData.append('mode', 'dictation');
         if (sheetName) formData.append('sheetName', sheetName);
 
@@ -974,14 +921,9 @@ export function VoiceRecorder({
         const useExternalSTT = transcribeEngine === 'deepgram' || transcribeEngine === 'wispr' || transcribeEngine === 'elevenlabs';
 
         if (useExternalSTT) {
-          const sttEndpoint = getTranscribeEndpoint(endpoints, transcribeEngine);
-          console.log(`[VR] medicalize: sending to ${transcribeEngine}, size=${blob.size}`);
-          const sttRes = await fetch(sttEndpoint, { method: 'POST', body: formData });
+          const sttRes = await fetch(getTranscribeEndpoint(endpoints, transcribeEngine), { method: 'POST', body: formData });
           if (sttRes.ok) {
-            const sttData = await sttRes.json();
-            if (sttData.fallback) onWarning?.(`Transcription used ${sttData.fallback} fallback (ElevenLabs unavailable)`);
-            const sttText = sttData.text;
-            console.log(`[VR] medicalize: STT returned ${sttText?.length || 0} chars`);
+            const { text: sttText } = await sttRes.json();
             if (sttText?.trim()) {
               const medRes = await fetch(endpoints.medicalize, {
                 method: 'POST',
@@ -992,13 +934,9 @@ export function VoiceRecorder({
                 const { text: medText } = await medRes.json();
                 finalMedText = (medText?.trim()) || sttText.trim();
               } else {
-                console.error(`[VR] medicalize API failed: ${medRes.status}`);
                 finalMedText = sttText.trim();
               }
             }
-          } else {
-            const errText = await sttRes.text().catch(() => '');
-            console.error(`[VR] STT failed: ${sttRes.status} ${errText.substring(0, 200)}`);
           }
         } else {
           // Whisper transcribe + medicalize
@@ -1006,21 +944,12 @@ export function VoiceRecorder({
           if (res.ok) {
             const { text } = await res.json();
             if (text?.trim()) finalMedText = text.trim();
-          } else {
-            console.error(`[VR] Whisper failed: ${res.status}`);
           }
         }
-      } catch (err) {
-        console.error('[VR] Transcription failed:', err);
-      }
+      } catch {}
     }
 
     // Always call onTranscript — even empty string clears processing state in parent
-    console.log(`[VR] stopMedicalizeHold result: ${finalMedText ? `${finalMedText.length} chars` : 'EMPTY'}`);
-    if (!finalMedText) {
-      console.warn('[VR] stopMedicalizeHold produced no text');
-      onWarning?.('Transcription returned empty — audio saved locally as backup');
-    }
     if (finalMedText) {
       onTranscriptRef.current(finalMedText);
     } else {
@@ -1058,14 +987,6 @@ export function VoiceRecorder({
       chunksRef.current = [];
       recorder.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data); };
 
-      // Use ondataavailable to collect blob (fires before onstop with no-timeslice mode)
-      let encounterBlob: Blob | null = null;
-      recorder.addEventListener('dataavailable', (e) => {
-        if (e.data.size > 0) {
-          encounterBlob = new Blob([...chunksRef.current], { type: mimeType });
-        }
-      });
-
       recorder.onstop = async () => {
         onRecordingStopRef.current?.();
         stopAudioLevelViz(); stopKeepalive(); stopWebSpeech(); stopDeepgramStream();
@@ -1081,10 +1002,8 @@ export function VoiceRecorder({
         if (encounterTimerRef.current) { clearInterval(encounterTimerRef.current); encounterTimerRef.current = null; }
         nativeBridge?.stopLiveActivity?.({ type: 'encounter', elapsedSeconds: encounterSecondsRef.current });
 
-        // Use pre-assembled blob or assemble from chunks
-        const blob = encounterBlob || new Blob(chunksRef.current, { type: mimeType });
-        console.log(`[VR] encounter stop: ${blob.size} bytes, ${chunksRef.current.length} chunks, type=${mimeType}`);
-        if (blob.size === 0) { console.warn('[VR] encounter: empty blob, aborting'); onTranscript(''); setRecState('idle'); onProcessingRef.current?.(false); return; }
+        const blob = new Blob(chunksRef.current, { type: mimeType });
+        if (blob.size === 0) { setRecState('idle'); onProcessingRef.current?.(false); return; }
 
         // Backup to blob storage (separate from transcription blob, persists on failure)
         backupToBlob(blob, 'encounter');
@@ -1094,12 +1013,10 @@ export function VoiceRecorder({
         try {
           // Upload encounter recordings to Vercel Blob, then route to user's selected engine.
           const webEngine = getEncounterEngine();
-          console.log(`[VR] encounter: engine=${webEngine}, uploading ${blob.size} bytes`);
           const transcribeViaBlob = async (audioBlob: Blob): Promise<string> => {
             const ext = mimeType.includes('mp4') ? 'mp4' : 'webm';
-            if (!uploadBlob) { console.error('[VR] encounter: uploadBlob not available'); return ''; }
+            if (!uploadBlob) return '';
             const blobResult = await uploadBlob(`audio/enc-${Date.now()}.${ext}`, audioBlob);
-            console.log(`[VR] encounter: uploaded to ${blobResult.url}`);
 
             if (webEngine === 'elevenlabs') {
               // ElevenLabs: send blob URL via FormData (supports audio isolation + keyterms)
@@ -1108,15 +1025,9 @@ export function VoiceRecorder({
               fd.append('mode', mode);
               if (sheetName) fd.append('sheetName', sheetName);
               const res = await fetch(endpoints.transcribeElevenlabs, { method: 'POST', body: fd });
-              if (!res.ok) {
-                const errText = await res.text().catch(() => '');
-                console.error(`[VR] encounter ElevenLabs error: ${res.status} ${errText.substring(0, 200)}`);
-                return '';
-              }
-              const elData = await res.json();
-              console.log(`[VR] encounter ElevenLabs: ${elData.text?.length || 0} chars, fallback=${elData.fallback || 'none'}`);
-              if (elData.fallback) onWarning?.(`Transcription used ${elData.fallback} fallback (ElevenLabs unavailable)`);
-              return elData.text?.trim() || '';
+              if (!res.ok) { console.error('ElevenLabs error:', res.status); return ''; }
+              const { text } = await res.json();
+              return text?.trim() || '';
             }
 
             // Route via transcribe-async with API selection
@@ -1127,18 +1038,30 @@ export function VoiceRecorder({
             });
             if (!res.ok) {
               const err = await res.json().catch(() => ({ error: 'Transcription failed' }));
-              console.error(`[VR] encounter transcribe-async error: ${res.status}`, err);
+              console.error('Transcribe-async error:', res.status, err);
               return '';
             }
             const { text } = await res.json();
-            console.log(`[VR] encounter transcribe-async: ${text?.length || 0} chars`);
             return text?.trim() || '';
           };
 
-          // Send the complete blob — splitting by chunk index creates invalid
-          // WebM files because only chunk 0 has the EBML header
-          const finalText = await transcribeViaBlob(blob);
-          console.log(`[VR] encounter finalText: ${finalText ? `${finalText.length} chars` : 'EMPTY'}`);
+          let finalText = '';
+          if (chunksRef.current.length > 30) {
+            // Chunk long recordings into ~5 min segments for parallel transcription
+            const CHUNK_GROUP = 30;
+            const groups: Blob[][] = [];
+            for (let i = 0; i < chunksRef.current.length; i += CHUNK_GROUP) {
+              groups.push(chunksRef.current.slice(i, i + CHUNK_GROUP));
+            }
+            const results: string[] = new Array(groups.length).fill('');
+            await Promise.all(groups.map(async (group, idx) => {
+              const segBlob = new Blob(group, { type: mimeType });
+              results[idx] = await transcribeViaBlob(segBlob);
+            }));
+            finalText = results.filter(Boolean).join(' ');
+          } else {
+            finalText = await transcribeViaBlob(blob);
+          }
 
           if (finalText) {
             // Optional medicalize pass — pass mode so encounter gets speaker labels
@@ -1154,40 +1077,26 @@ export function VoiceRecorder({
                 if (medRes.ok) {
                   const { text } = await medRes.json();
                   if (text?.trim()) { onTranscript(text.trim()); } else { onTranscript(finalText); }
-                } else {
-                  console.error(`[VR] encounter medicalize failed: ${medRes.status}`);
-                  onTranscript(finalText);
-                }
-              } catch (medErr) { console.error('[VR] encounter medicalize error:', medErr); onTranscript(finalText); }
+                } else { onTranscript(finalText); }
+              } catch { onTranscript(finalText); }
             } else {
               onTranscript(finalText);
             }
-          } else {
-            console.warn('[VR] encounter: no transcript produced');
-            onWarning?.('Transcription returned empty — audio saved locally as backup');
-            const fallbackText = accumulatedTextRef.current?.trim();
-            if (fallbackText) {
-              onTranscript(fallbackText);
-            } else {
-              onTranscript(''); // always signal completion to parent
-            }
           }
         } catch (err: any) {
-          console.error('[VR] encounter transcription error:', err);
-          onWarning?.(`Transcription failed: ${err?.message || 'unknown error'}. Audio saved locally as backup.`);
+          console.error('Transcription error:', err);
+          // WiFi fallback: if transcription fails, use accumulated Web Speech text
           const fallbackText = accumulatedTextRef.current?.trim();
           if (fallbackText) {
-            console.log('[VR] Using Web Speech fallback text due to transcription failure');
+            console.log('Using Web Speech fallback text due to transcription failure');
             onTranscript(fallbackText);
-          } else {
-            onTranscript(''); // always signal completion to parent
           }
         }
         onProcessingRef.current?.(false);
         setRecState('idle');
       };
 
-      recorder.start(); // No timeslice — single chunk with complete WebM header
+      recorder.start(10000); // 10s timeslice for chunked transcription of long recordings
       setRecState('recording');
 
       // Notify native iOS app
