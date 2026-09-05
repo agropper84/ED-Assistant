@@ -49,6 +49,8 @@ function decryptSecret(value: string): string {
   try {
     return decryptValue(value, key);
   } catch {
+    // If value starts with ENC: it was encrypted with a different key — can't recover
+    if (value.startsWith('ENC:')) throw new Error('Encrypted with unknown key');
     return value; // Fallback for pre-migration plaintext
   }
 }
@@ -158,8 +160,15 @@ export async function getUserRefreshToken(userId: string): Promise<string | null
 export async function getUserSettings(userId: string): Promise<Record<string, unknown> | null> {
   const val = await getRedis().get(`user:${userId}:settings`);
   if (!val) return null;
-  const decrypted = decryptSecret(val);
-  return JSON.parse(decrypted);
+  try {
+    const decrypted = decryptSecret(val);
+    return JSON.parse(decrypted);
+  } catch {
+    // Encrypted with old key or corrupted — clear stale data
+    console.warn(`getUserSettings: failed to decrypt/parse for ${userId}, clearing stale data`);
+    try { await getRedis().del(`user:${userId}:settings`); } catch {}
+    return null;
+  }
 }
 
 export async function setUserSettings(userId: string, settings: Record<string, unknown>): Promise<void> {
@@ -323,7 +332,11 @@ export async function getPendingAudioIds(userId: string): Promise<string[]> {
 export async function getPendingAudio(id: string): Promise<PendingAudio | null> {
   const val = await getRedis().get(`pending-audio:${id}`);
   if (!val) return null;
-  return JSON.parse(decryptSecret(val));
+  try {
+    return JSON.parse(decryptSecret(val));
+  } catch {
+    return null;
+  }
 }
 
 export async function deletePendingAudio(id: string, userId: string): Promise<void> {
