@@ -269,9 +269,9 @@ export async function readDriveFile<T>(
     const decrypted = decryptValue(raw, ctx.encryptionKey);
     return JSON.parse(decrypted) as T;
   } catch (e) {
-    console.warn(`readDriveFile: decryption failed for "${fileName}" — deleting stale file so it can be re-created with current key.`);
-    // Delete the stale file so the next write re-creates it with the correct encryption key
-    try { await ctx.drive.files.delete({ fileId }); } catch {}
+    console.warn(`readDriveFile: decryption failed for "${fileName}" — falling back to Sheets. File preserved on Drive.`);
+    // NEVER delete files that fail decryption — they contain patient data
+    // encrypted with a previous key. Fall back to Sheets data instead.
     return null;
   }
 }
