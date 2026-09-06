@@ -197,40 +197,56 @@ export async function setUserClaudeApiKey(userId: string, apiKey: string): Promi
   await getRedis().set(`user:${userId}:claude-api-key`, encryptSecret(apiKey));
 }
 
+export async function deleteUserClaudeApiKey(userId: string): Promise<void> {
+  await getRedis().del(`user:${userId}:claude-api-key`);
+}
+
 export async function getUserClaudeApiKey(userId: string): Promise<string | null> {
   const val = await getRedis().get(`user:${userId}:claude-api-key`);
   if (!val) return null;
-  return decryptSecret(val);
+  try { return decryptSecret(val); } catch { await getRedis().del(`user:${userId}:claude-api-key`); return null; }
 }
 
 export async function setUserOpenAIApiKey(userId: string, apiKey: string): Promise<void> {
   await getRedis().set(`user:${userId}:openai-api-key`, encryptSecret(apiKey));
 }
 
+export async function deleteUserOpenAIApiKey(userId: string): Promise<void> {
+  await getRedis().del(`user:${userId}:openai-api-key`);
+}
+
 export async function getUserOpenAIApiKey(userId: string): Promise<string | null> {
   const val = await getRedis().get(`user:${userId}:openai-api-key`);
   if (!val) return null;
-  return decryptSecret(val);
+  try { return decryptSecret(val); } catch { await getRedis().del(`user:${userId}:openai-api-key`); return null; }
 }
 
 export async function setUserDeepgramApiKey(userId: string, apiKey: string): Promise<void> {
   await getRedis().set(`user:${userId}:deepgram-api-key`, encryptSecret(apiKey));
 }
 
+export async function deleteUserDeepgramApiKey(userId: string): Promise<void> {
+  await getRedis().del(`user:${userId}:deepgram-api-key`);
+}
+
 export async function getUserDeepgramApiKey(userId: string): Promise<string | null> {
   const val = await getRedis().get(`user:${userId}:deepgram-api-key`);
   if (!val) return null;
-  return decryptSecret(val);
+  try { return decryptSecret(val); } catch { await getRedis().del(`user:${userId}:deepgram-api-key`); return null; }
 }
 
 export async function setUserWisprApiKey(userId: string, apiKey: string): Promise<void> {
   await getRedis().set(`user:${userId}:wispr-api-key`, encryptSecret(apiKey));
 }
 
+export async function deleteUserWisprApiKey(userId: string): Promise<void> {
+  await getRedis().del(`user:${userId}:wispr-api-key`);
+}
+
 export async function getUserWisprApiKey(userId: string): Promise<string | null> {
   const val = await getRedis().get(`user:${userId}:wispr-api-key`);
   if (!val) return null;
-  return decryptSecret(val);
+  try { return decryptSecret(val); } catch { await getRedis().del(`user:${userId}:wispr-api-key`); return null; }
 }
 
 export async function setUserElevenlabsApiKey(userId: string, apiKey: string): Promise<void> {
@@ -240,7 +256,7 @@ export async function setUserElevenlabsApiKey(userId: string, apiKey: string): P
 export async function getUserElevenlabsApiKey(userId: string): Promise<string | null> {
   const val = await getRedis().get(`user:${userId}:elevenlabs-api-key`);
   if (!val) return null;
-  return decryptSecret(val);
+  try { return decryptSecret(val); } catch { await getRedis().del(`user:${userId}:elevenlabs-api-key`); return null; }
 }
 
 export async function deleteUserElevenlabsApiKey(userId: string): Promise<void> {

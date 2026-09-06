@@ -8,6 +8,10 @@ import {
   getUserElevenlabsApiKey, setUserElevenlabsApiKey,
   getUserSettings, setUserSettings,
   deleteUserElevenlabsApiKey,
+  deleteUserClaudeApiKey,
+  deleteUserOpenAIApiKey,
+  deleteUserDeepgramApiKey,
+  deleteUserWisprApiKey,
 } from '@/lib/kv';
 
 // GET /api/privacy-settings
@@ -72,7 +76,7 @@ export async function PUT(request: NextRequest) {
     if ('claudeApiKey' in body) {
       const key = body.claudeApiKey as string;
       if (key && isMaskedKey(key)) { /* skip — masked value, don't overwrite real key */ }
-      else if (!key || key.trim() === '') { return NextResponse.json({ success: true, hasClaudeApiKey: false }); }
+      else if (!key || key.trim() === '') { await deleteUserClaudeApiKey(session.userId); return NextResponse.json({ success: true, hasClaudeApiKey: false }); }
       else {
         if (!key.startsWith('sk-ant-')) return NextResponse.json({ error: 'Invalid API key format — should start with sk-ant-' }, { status: 400 });
         await setUserClaudeApiKey(session.userId, key.trim());
@@ -82,19 +86,19 @@ export async function PUT(request: NextRequest) {
     if ('openaiApiKey' in body) {
       const key = body.openaiApiKey as string;
       if (key && isMaskedKey(key)) { /* skip */ }
-      else if (!key || key.trim() === '') { return NextResponse.json({ success: true, hasOpenaiApiKey: false }); }
+      else if (!key || key.trim() === '') { await deleteUserOpenAIApiKey(session.userId); return NextResponse.json({ success: true, hasOpenaiApiKey: false }); }
       else { await setUserOpenAIApiKey(session.userId, key.trim()); return NextResponse.json({ success: true, hasOpenaiApiKey: true }); }
     }
     if ('deepgramApiKey' in body) {
       const key = body.deepgramApiKey as string;
       if (key && isMaskedKey(key)) { /* skip */ }
-      else if (!key || key.trim() === '') { return NextResponse.json({ success: true, hasDeepgramApiKey: false }); }
+      else if (!key || key.trim() === '') { await deleteUserDeepgramApiKey(session.userId); return NextResponse.json({ success: true, hasDeepgramApiKey: false }); }
       else { await setUserDeepgramApiKey(session.userId, key.trim()); return NextResponse.json({ success: true, hasDeepgramApiKey: true }); }
     }
     if ('wisprApiKey' in body) {
       const key = body.wisprApiKey as string;
       if (key && isMaskedKey(key)) { /* skip */ }
-      else if (!key || key.trim() === '') { return NextResponse.json({ success: true, hasWisprApiKey: false }); }
+      else if (!key || key.trim() === '') { await deleteUserWisprApiKey(session.userId); return NextResponse.json({ success: true, hasWisprApiKey: false }); }
       else { await setUserWisprApiKey(session.userId, key.trim()); return NextResponse.json({ success: true, hasWisprApiKey: true }); }
     }
     if ('elevenlabsApiKey' in body) {
