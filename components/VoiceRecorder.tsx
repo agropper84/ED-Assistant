@@ -10,7 +10,7 @@ const ENDPOINTS: SharedProps['endpoints'] = {
   transcribeDeepgram: '/api/transcribe-deepgram',
   transcribeWispr: '/api/transcribe-wispr',
   transcribeDefault: '/api/transcribe',
-  transcribeAsync: '/api/transcribe-server',
+  transcribeAsync: '/api/transcribe-async',
   medicalize: '/api/medicalize',
   uploadAudio: '/api/backup-audio',
 };
