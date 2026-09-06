@@ -460,13 +460,13 @@ ${options?.coreOnly ? '' : `
   })()}]
 
 ===DIAGNOSIS===
-[${pt.diagnosis}]
+[Simplified billing diagnosis — use the single broadest primary diagnosis suitable for billing. Strip qualifiers, secondary conditions, and clinical detail. Examples: "Failure to thrive with recurrent falls and epistaxis" → "Failure to thrive". "Chest pain, rule out ACS" → "Chest pain". "Acute exacerbation of COPD with pneumonia" → "COPD exacerbation". One diagnosis only, short and general.]
 
 ===ICD9===
-[ICD-9 code for the primary diagnosis. Use BROAD, general category codes only — never use subcategory specificity. Use the shortest/most general code that applies (e.g. 786.50 for any chest pain, 493.90 for asthma, 486 for pneumonia, 789.00 for abdominal pain). Do NOT add decimal subcategories that specify mechanism, laterality, or organism unless the diagnosis is unambiguously specific. Code only, no description]
+[ICD-9 code for the billing diagnosis above. Use BROAD, general category codes only — never use subcategory specificity. Use the shortest/most general code that applies (e.g. 786.50 for any chest pain, 493.90 for asthma, 486 for pneumonia, 789.00 for abdominal pain). Do NOT add decimal subcategories that specify mechanism, laterality, or organism unless the diagnosis is unambiguously specific. Code only, no description]
 
 ===ICD10===
-[ICD-10 code for the primary diagnosis. Prefer general/unspecified codes unless the clinical description clearly specifies a more precise diagnosis (e.g., prefer J02.9 over J02.0 unless the organism is explicitly named). Code only, no description]`;
+[ICD-10 code for the billing diagnosis above. Prefer general/unspecified codes unless the clinical description clearly specifies a more precise diagnosis (e.g., prefer J02.9 over J02.0 unless the organism is explicitly named). Code only, no description]`;
 }
 
 export function parseClaudeResponse(response: string): ProcessedNote {
@@ -621,8 +621,8 @@ export async function lookupICDCodes(diagnosisText: string): Promise<{
 }> {
   // ICD lookup has no PHI — just diagnosis text
   const result = await callWithPHIProtection(
-    `You are a medical coding assistant. Given the following diagnosis or clinical description, provide:
-1. A clean, standard diagnosis name (use common/general terms)
+    `You are a medical billing coding assistant. Given the following diagnosis or clinical description, provide:
+1. A simplified BILLING diagnosis — use the single broadest primary condition. Strip qualifiers, secondary conditions, and clinical detail. Examples: "Failure to thrive with recurrent falls and epistaxis" → "Failure to thrive". "Chest pain, rule out ACS" → "Chest pain". "Acute exacerbation of COPD with pneumonia" → "COPD exacerbation". One diagnosis only, short and general.
 2. The most appropriate ICD-9 code — use BROAD category codes only (e.g. 786.50 chest pain, 493.90 asthma, 486 pneumonia). Never add subcategory specificity for mechanism, laterality, or organism.
 3. The most appropriate ICD-10 code
 
@@ -631,7 +631,7 @@ IMPORTANT: For ICD-9, always use the shortest/most general code. For ICD-10, pre
 Diagnosis/Description: ${diagnosisText}
 
 Respond in EXACTLY this format (no extra text):
-DIAGNOSIS: [clean diagnosis name]
+DIAGNOSIS: [simplified billing diagnosis]
 ICD9: [code only, no description]
 ICD10: [code only, no description]`,
     null,
