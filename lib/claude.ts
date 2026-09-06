@@ -34,6 +34,8 @@ export interface ProcessOptions {
   styleGuidance?: string;
   styleExamples?: Record<string, string[]>;
   customGuidance?: string;
+  sectionInstructions?: Record<string, string>;
+  stylePreferences?: { tense?: string; person?: string; abbreviations?: string; detailLevel?: string };
   settings?: {
     model?: string;
     maxTokens?: number;
@@ -69,8 +71,6 @@ export async function processEncounter(
 
   const model = options?.settings?.model || MODELS.default;
   const maxTokens = options?.settings?.maxTokens || 4096;
-  const temperature = options?.settings?.temperature ?? 0.3;
-
   const anthropic = await getAnthropicClient();
 
   let lastError: any = null;
@@ -79,7 +79,6 @@ export async function processEncounter(
       const response = await anthropic.messages.create({
         model,
         max_tokens: maxTokens,
-        temperature,
         messages: [{ role: 'user', content: prompt }],
       });
 
@@ -120,7 +119,6 @@ export async function streamProcessEncounter(
 
   const model = options?.settings?.model || MODELS.default;
   const maxTokens = options?.settings?.maxTokens || 4096;
-  const temperature = options?.settings?.temperature ?? 0.3;
 
   const anthropic = await getAnthropicClient();
   const encoder = new TextEncoder();
@@ -129,7 +127,6 @@ export async function streamProcessEncounter(
   const stream = anthropic.messages.stream({
     model,
     max_tokens: maxTokens,
-    temperature,
     messages: [{ role: 'user', content: prompt }],
   });
 
@@ -177,7 +174,6 @@ export async function streamGenericPrompt(
 
   const model = settings?.model || MODELS.default;
   const maxTokens = settings?.maxTokens || 4096;
-  const temperature = settings?.temperature ?? 0.3;
 
   const anthropic = await getAnthropicClient();
   const encoder = new TextEncoder();
@@ -186,7 +182,6 @@ export async function streamGenericPrompt(
   const stream = anthropic.messages.stream({
     model,
     max_tokens: maxTokens,
-    temperature,
     messages: [{ role: 'user', content: finalPrompt }],
   });
 
@@ -233,7 +228,6 @@ export async function callWithPHIProtection(
 
   const model = settings?.model || MODELS.default;
   const maxTokens = settings?.maxTokens || 4096;
-  const temperature = settings?.temperature ?? 0.3;
 
   const anthropic = await getAnthropicClient();
 
@@ -243,7 +237,6 @@ export async function callWithPHIProtection(
       const response = await anthropic.messages.create({
         model,
         max_tokens: maxTokens,
-        temperature,
         messages: [{ role: 'user', content: finalPrompt }],
       });
 
@@ -342,6 +335,20 @@ Please regenerate the documentation incorporating these modifications. Preserve 
   let styleSection = '';
   const hasStyleExamples = options?.styleExamples && Object.values(options.styleExamples).some(arr => arr.length > 0);
   if (options?.styleGuidance || hasStyleExamples) {
+    // Build structured preferences block
+    const prefs = options?.stylePreferences;
+    const prefLines: string[] = [];
+    if (prefs?.tense === 'past') prefLines.push('- Write in PAST TENSE (e.g., "Patient presented with...", "Examination revealed...")');
+    if (prefs?.tense === 'present') prefLines.push('- Write in PRESENT TENSE (e.g., "Patient presents with...", "Examination reveals...")');
+    if (prefs?.person === 'first') prefLines.push('- Write in FIRST PERSON (e.g., "I examined the patient...", "I assessed...")');
+    if (prefs?.person === 'third') prefLines.push('- Write in THIRD PERSON (e.g., "The patient was examined...", "Patient assessed...")');
+    if (prefs?.abbreviations === 'full') prefLines.push('- Use FULL WORDS, avoid abbreviations (write "no acute distress" not "NAD")');
+    if (prefs?.abbreviations === 'standard') prefLines.push('- Use STANDARD medical abbreviations (NAD, HEENT, CVS, RRR, CTAB, etc.)');
+    if (prefs?.abbreviations === 'aggressive') prefLines.push('- Use MAXIMAL abbreviations — abbreviate everything possible (hx, dx, tx, sx, pt, c/o, w/o, b/l, etc.)');
+    if (prefs?.detailLevel === 'brief') prefLines.push('- Keep notes BRIEF — minimum necessary detail, concise sentences, no elaboration');
+    if (prefs?.detailLevel === 'standard') prefLines.push('- Use STANDARD level of detail — complete but not verbose');
+    if (prefs?.detailLevel === 'detailed') prefLines.push('- Write DETAILED notes — thorough documentation, include reasoning and clinical rationale');
+
     styleSection = `
 CRITICAL — STYLE MATCHING (this overrides default formatting instructions):
 You MUST write HPI, Objective, and Assessment & Plan in the EXACT style shown in the examples below. These examples are real notes written by this physician. Your output must read as if the same physician wrote it. Match:
@@ -355,7 +362,7 @@ You MUST write HPI, Objective, and Assessment & Plan in the EXACT style shown in
 - Punctuation style
 
 Do NOT add extra detail, formality, or structure beyond what the examples show. Less is more — match the examples exactly.
-${options?.customGuidance ? `\nPhysician's charting preferences:\n${options.customGuidance}\n` : ''}
+${prefLines.length > 0 ? `\nMANDATORY style rules:\n${prefLines.join('\n')}\n` : ''}${options?.customGuidance ? `\nAdditional physician instructions (follow these exactly):\n${options.customGuidance}\n` : ''}
 `;
   }
 
@@ -415,28 +422,40 @@ ${options?.coreOnly ? '' : `
 `}
 ===HPI===
 [${pt.hpi}${(() => {
+    const parts: string[] = [];
+    const si = options?.sectionInstructions?.hpi;
+    if (si) parts.push(`\n\nSECTION-SPECIFIC INSTRUCTIONS (follow exactly):\n${si}`);
     const ex = options?.styleExamples?.hpi;
     if (ex && ex.length > 0) {
-      return `\n\nYou MUST write the HPI in the same style as these examples from this physician:\n${ex.map((e, i) => `--- Example ${i + 1} ---\n${e}`).join('\n\n')}\n\nWrite the HPI as if you ARE this physician. Match their exact style, length, structure, and tone.`;
+      parts.push(`\n\nYou MUST write the HPI in the same style as these examples from this physician:\n${ex.map((e, i) => `--- Example ${i + 1} ---\n${e}`).join('\n\n')}\n\nWrite the HPI as if you ARE this physician. Match their exact style, length, structure, and tone.`);
     }
+    if (parts.length > 0) return parts.join('');
     return options?.styleGuidance ? ' Match the physician\'s charting style.' : '';
   })()}]
 
 ===OBJECTIVE===
 [${pt.objective}${verbatimExamFindings.length > 0 ? `\n\nCRITICAL — VERBATIM EXAM FINDINGS: The following exam findings were entered by the physician using standardized buttons and MUST be included word-for-word in the Objective section. Do NOT rephrase, summarize, or alter these findings:\n${verbatimExamFindings.join('\n')}` : ''}${(() => {
+    const parts: string[] = [];
+    const si = options?.sectionInstructions?.objective;
+    if (si) parts.push(`\n\nSECTION-SPECIFIC INSTRUCTIONS (follow exactly):\n${si}`);
     const ex = options?.styleExamples?.objective;
     if (ex && ex.length > 0) {
-      return `\n\nYou MUST write the Objective in the same style as these examples:\n${ex.map((e, i) => `--- Example ${i + 1} ---\n${e}`).join('\n\n')}\n\nMatch this physician's exact formatting, abbreviation use, and level of detail.`;
+      parts.push(`\n\nYou MUST write the Objective in the same style as these examples:\n${ex.map((e, i) => `--- Example ${i + 1} ---\n${e}`).join('\n\n')}\n\nMatch this physician's exact formatting, abbreviation use, and level of detail.`);
     }
+    if (parts.length > 0) return parts.join('');
     return options?.styleGuidance ? ' Match the physician\'s charting style.' : '';
   })()}]
 
 ===ASSESSMENT_PLAN===
 [${pt.assessmentPlan}${(() => {
+    const parts: string[] = [];
+    const si = options?.sectionInstructions?.assessmentPlan;
+    if (si) parts.push(`\n\nSECTION-SPECIFIC INSTRUCTIONS (follow exactly):\n${si}`);
     const ex = options?.styleExamples?.assessmentPlan;
     if (ex && ex.length > 0) {
-      return `\n\nYou MUST write the Assessment & Plan in the same style as these examples:\n${ex.map((e, i) => `--- Example ${i + 1} ---\n${e}`).join('\n\n')}\n\nMatch this physician's exact structure, phrasing patterns, and level of detail. Write as if you ARE this physician.`;
+      parts.push(`\n\nYou MUST write the Assessment & Plan in the same style as these examples:\n${ex.map((e, i) => `--- Example ${i + 1} ---\n${e}`).join('\n\n')}\n\nMatch this physician's exact structure, phrasing patterns, and level of detail. Write as if you ARE this physician.`);
     }
+    if (parts.length > 0) return parts.join('');
     return options?.styleGuidance ? ' Match the physician\'s charting style.' : '';
   })()}]
 
@@ -616,7 +635,7 @@ DIAGNOSIS: [clean diagnosis name]
 ICD9: [code only, no description]
 ICD10: [code only, no description]`,
     null,
-    { model: MODELS.default, maxTokens: 200, temperature: 0.1 },
+    { model: MODELS.default, maxTokens: 200 },
   );
 
   const diagMatch = result.match(/DIAGNOSIS:\s*(.+)/i);

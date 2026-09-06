@@ -1,3 +1,10 @@
+export interface StylePreferences {
+  tense?: '' | 'past' | 'present';
+  person?: '' | 'first' | 'third';
+  abbreviations?: '' | 'full' | 'standard' | 'aggressive';
+  detailLevel?: '' | 'brief' | 'standard' | 'detailed';
+}
+
 export interface StyleGuide {
   examples: {
     hpi: string[];
@@ -6,8 +13,16 @@ export interface StyleGuide {
     referral: string[];
     admission: string[];
   };
+  sectionInstructions?: {
+    hpi: string;
+    objective: string;
+    assessmentPlan: string;
+    referral: string;
+    admission: string;
+  };
   extractedFeatures: string[];
   customGuidance: string;
+  preferences?: StylePreferences;
 }
 
 const STORAGE_KEY = 'ed-app-style-guide';
@@ -15,8 +30,10 @@ const STORAGE_KEY = 'ed-app-style-guide';
 function getDefault(): StyleGuide {
   return {
     examples: { hpi: [], objective: [], assessmentPlan: [], referral: [], admission: [] },
+    sectionInstructions: { hpi: '', objective: '', assessmentPlan: '', referral: '', admission: '' },
     extractedFeatures: [],
     customGuidance: '',
+    preferences: { tense: '', person: '', abbreviations: '', detailLevel: '' },
   };
 }
 
@@ -28,11 +45,13 @@ export function getStyleGuide(): StyleGuide {
     const stored = localStorage.getItem(STORAGE_KEY);
     if (!stored) return getDefault();
     const parsed = JSON.parse(stored);
-    // Normalize legacy computedFeatures → extractedFeatures
+    // Normalize legacy data
     return {
       examples: parsed.examples || { hpi: [], objective: [], assessmentPlan: [], referral: [], admission: [] },
+      sectionInstructions: parsed.sectionInstructions || { hpi: '', objective: '', assessmentPlan: '', referral: '', admission: '' },
       extractedFeatures: parsed.extractedFeatures || [],
       customGuidance: parsed.customGuidance || '',
+      preferences: parsed.preferences || { tense: '', person: '', abbreviations: '', detailLevel: '' },
     };
   } catch {
     return getDefault();

@@ -143,8 +143,21 @@ export interface StyleGuideFile {
     referral: string[];
     admission: string[];
   };
+  sectionInstructions?: {
+    hpi: string;
+    objective: string;
+    assessmentPlan: string;
+    referral: string;
+    admission: string;
+  };
   extractedFeatures: string[];
   customGuidance: string;
+  preferences?: {
+    tense: string;
+    person: string;
+    abbreviations: string;
+    detailLevel: string;
+  };
 }
 
 export interface BillingCodeEntry {

@@ -1179,11 +1179,87 @@ export default function SettingsPage() {
               </div>
             ) : styleGuide && (
               <>
-                {/* Custom Guidance */}
+                {/* Style Preferences */}
+                <div className="bg-[var(--card-bg)] rounded-2xl border border-[var(--card-border)] p-5 space-y-4" style={{ boxShadow: 'var(--card-shadow)' }}>
+                  <div>
+                    <h3 className="font-semibold text-[var(--text-primary)]">Charting Preferences</h3>
+                    <p className="text-xs text-[var(--text-muted)] mt-0.5">These rules are enforced on every generated note.</p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[10px] font-medium uppercase tracking-wider text-[var(--text-muted)] mb-1">Tense</label>
+                      <select
+                        value={styleGuide.preferences?.tense || ''}
+                        onChange={(e) => {
+                          const updated = { ...styleGuide, preferences: { ...styleGuide.preferences, tense: e.target.value as any } };
+                          setStyleGuide(updated);
+                          debouncedSaveGuidance(updated);
+                        }}
+                        className="w-full p-2 border border-[var(--input-border)] rounded-lg text-sm bg-[var(--input-bg)] text-[var(--text-primary)]"
+                      >
+                        <option value="">Auto (match examples)</option>
+                        <option value="past">Past tense</option>
+                        <option value="present">Present tense</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-medium uppercase tracking-wider text-[var(--text-muted)] mb-1">Person</label>
+                      <select
+                        value={styleGuide.preferences?.person || ''}
+                        onChange={(e) => {
+                          const updated = { ...styleGuide, preferences: { ...styleGuide.preferences, person: e.target.value as any } };
+                          setStyleGuide(updated);
+                          debouncedSaveGuidance(updated);
+                        }}
+                        className="w-full p-2 border border-[var(--input-border)] rounded-lg text-sm bg-[var(--input-bg)] text-[var(--text-primary)]"
+                      >
+                        <option value="">Auto (match examples)</option>
+                        <option value="first">First person (I examined...)</option>
+                        <option value="third">Third person (Patient was examined...)</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-medium uppercase tracking-wider text-[var(--text-muted)] mb-1">Abbreviations</label>
+                      <select
+                        value={styleGuide.preferences?.abbreviations || ''}
+                        onChange={(e) => {
+                          const updated = { ...styleGuide, preferences: { ...styleGuide.preferences, abbreviations: e.target.value as any } };
+                          setStyleGuide(updated);
+                          debouncedSaveGuidance(updated);
+                        }}
+                        className="w-full p-2 border border-[var(--input-border)] rounded-lg text-sm bg-[var(--input-bg)] text-[var(--text-primary)]"
+                      >
+                        <option value="">Auto (match examples)</option>
+                        <option value="full">Full words (no abbreviations)</option>
+                        <option value="standard">Standard (NAD, HEENT, RRR)</option>
+                        <option value="aggressive">Maximal (hx, dx, tx, pt, c/o)</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-medium uppercase tracking-wider text-[var(--text-muted)] mb-1">Detail Level</label>
+                      <select
+                        value={styleGuide.preferences?.detailLevel || ''}
+                        onChange={(e) => {
+                          const updated = { ...styleGuide, preferences: { ...styleGuide.preferences, detailLevel: e.target.value as any } };
+                          setStyleGuide(updated);
+                          debouncedSaveGuidance(updated);
+                        }}
+                        className="w-full p-2 border border-[var(--input-border)] rounded-lg text-sm bg-[var(--input-bg)] text-[var(--text-primary)]"
+                      >
+                        <option value="">Auto (match examples)</option>
+                        <option value="brief">Brief (minimum detail)</option>
+                        <option value="standard">Standard (complete but concise)</option>
+                        <option value="detailed">Detailed (thorough with reasoning)</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Custom AI Instructions */}
                 <div className="bg-[var(--card-bg)] rounded-2xl border border-[var(--card-border)] p-5 space-y-2" style={{ boxShadow: 'var(--card-shadow)' }}>
-                  <h3 className="font-semibold text-[var(--text-primary)]">Charting Guidance</h3>
+                  <h3 className="font-semibold text-[var(--text-primary)]">Custom AI Instructions</h3>
                   <p className="text-xs text-[var(--text-muted)]">
-                    Specify preferences for voice, tone, language, formatting, abbreviations, level of detail, or any other charting conventions.
+                    These instructions are sent directly to the AI when generating notes. Be specific — the AI follows them literally. Anything written here overrides default behavior.
                   </p>
                   <textarea
                     value={styleGuide.customGuidance || ''}
@@ -1192,8 +1268,8 @@ export default function SettingsPage() {
                       setStyleGuide(updated);
                       debouncedSaveGuidance(updated);
                     }}
-                    placeholder="e.g. Use third-person, past tense. Keep sentences concise. Use standard medical abbreviations (pt, hx, dx). Avoid hedging language. Use bullet points for assessment & plan."
-                    className="w-full h-28 p-3 border border-[var(--input-border)] rounded-lg text-sm resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)]"
+                    placeholder={"Examples of effective instructions:\n- Always start HPI with chief complaint and duration\n- Use numbered problem list for A&P\n- Include disposition plan at end of every A&P\n- Never use the phrase 'denies' — use 'no' instead\n- Format vitals as: BP X/Y, HR X, RR X, SpO2 X% on RA"}
+                    className="w-full h-40 p-3 border border-[var(--input-border)] rounded-lg text-sm resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)]"
                   />
                 </div>
 
@@ -1348,39 +1424,52 @@ export default function SettingsPage() {
                   )}
                 </div>
 
-                {/* Extracted Features as deletable chips */}
-                {(styleGuide.extractedFeatures.length > 0 || extracting) && (
-                  <div className="bg-blue-50 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-800 rounded-xl p-4">
-                    <div className="flex items-center gap-2 mb-2">
-                      <h3 className="text-sm font-semibold text-blue-800 dark:text-blue-300">Style Features</h3>
-                      {extracting && (
-                        <Loader2 className="w-3.5 h-3.5 animate-spin text-blue-600 dark:text-blue-400" />
-                      )}
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      {styleGuide.extractedFeatures.map((feature, idx) => (
-                        <span
-                          key={idx}
-                          className="inline-flex items-center gap-1 px-2.5 py-1 bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-300 rounded-full text-xs font-medium group"
-                        >
-                          {feature}
-                          <button
-                            onClick={() => handleRemoveFeature(idx)}
-                            className="p-0.5 hover:bg-blue-200 dark:hover:bg-blue-800/50 rounded-full transition-colors opacity-60 group-hover:opacity-100"
-                          >
-                            <X className="w-3 h-3" />
-                          </button>
-                        </span>
-                      ))}
-                    </div>
+                {/* Style Features — auto-extracted + user-added */}
+                <div className="bg-blue-50 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-800 rounded-xl p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <h3 className="text-sm font-semibold text-blue-800 dark:text-blue-300">Style Features</h3>
+                    {extracting && (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin text-blue-600 dark:text-blue-400" />
+                    )}
+                    <p className="text-[10px] text-blue-600 dark:text-blue-400 ml-auto">Auto-extracted from examples + custom</p>
                   </div>
-                )}
+                  <div className="flex flex-wrap gap-2 mb-2">
+                    {styleGuide.extractedFeatures.map((feature, idx) => (
+                      <span
+                        key={idx}
+                        className="inline-flex items-center gap-1 px-2.5 py-1 bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-300 rounded-full text-xs font-medium group"
+                      >
+                        {feature}
+                        <button
+                          onClick={() => handleRemoveFeature(idx)}
+                          className="p-0.5 hover:bg-blue-200 dark:hover:bg-blue-800/50 rounded-full transition-colors opacity-60 group-hover:opacity-100"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                  <form className="flex gap-2" onSubmit={(e) => {
+                    e.preventDefault();
+                    const input = (e.target as HTMLFormElement).elements.namedItem('newFeature') as HTMLInputElement;
+                    const val = input?.value?.trim();
+                    if (!val || !styleGuide) return;
+                    const updated = { ...styleGuide, extractedFeatures: [...styleGuide.extractedFeatures, val] };
+                    setStyleGuide(updated);
+                    persistStyleGuide(updated);
+                    input.value = '';
+                  }}>
+                    <input name="newFeature" type="text" placeholder="Add custom feature (e.g. uses bullet points)"
+                      className="flex-1 p-2 border border-blue-200 dark:border-blue-700 rounded-lg text-xs bg-white dark:bg-blue-950/30 text-[var(--text-primary)] placeholder:text-blue-400 focus:ring-1 focus:ring-blue-400" />
+                    <button type="submit" className="px-3 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-medium">Add</button>
+                  </form>
+                </div>
 
                 {/* Sections */}
                 {(['hpi', 'objective', 'assessmentPlan', 'referral', 'admission'] as const).map((section) => (
                   <div key={section} className="bg-[var(--card-bg)] rounded-2xl border border-[var(--card-border)] p-5 space-y-3" style={{ boxShadow: 'var(--card-shadow)' }}>
                     <div className="flex items-center justify-between">
-                      <h3 className="font-semibold text-[var(--text-primary)]">{sectionLabels[section]} Examples</h3>
+                      <h3 className="font-semibold text-[var(--text-primary)]">{sectionLabels[section]}</h3>
                       <button
                         onClick={() => { setAddingTo(section); setNewExample(''); }}
                         className="flex items-center gap-1 px-3 py-1.5 bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 rounded-lg text-sm font-medium"
@@ -1414,7 +1503,7 @@ export default function SettingsPage() {
                         <textarea
                           value={newExample}
                           onChange={(e) => setNewExample(e.target.value)}
-                          placeholder={`Paste an example ${sectionLabels[section]} section...`}
+                          placeholder={`Paste a COMPLETE ${sectionLabels[section]} section from a real note you wrote. The AI will match this exact style.`}
                           className="w-full h-32 p-3 border border-[var(--input-border)] rounded-lg text-sm resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)]"
                           autoFocus
                         />
@@ -1436,6 +1525,30 @@ export default function SettingsPage() {
                         </div>
                       </div>
                     )}
+
+                    {/* Section-Specific Instructions */}
+                    <div className="border-t border-[var(--border)] pt-3">
+                      <label className="block text-[10px] font-medium uppercase tracking-wider text-[var(--text-muted)] mb-1">
+                        {sectionLabels[section]} Instructions
+                      </label>
+                      <textarea
+                        value={styleGuide.sectionInstructions?.[section] || ''}
+                        onChange={(e) => {
+                          const updated = {
+                            ...styleGuide,
+                            sectionInstructions: { ...(styleGuide.sectionInstructions || { hpi: '', objective: '', assessmentPlan: '', referral: '', admission: '' }), [section]: e.target.value },
+                          };
+                          setStyleGuide(updated);
+                          debouncedSaveGuidance(updated);
+                        }}
+                        placeholder={section === 'hpi' ? 'e.g. Always start with chief complaint and duration. Include pertinent negatives.' :
+                          section === 'objective' ? 'e.g. List vitals first. Use system-by-system format. Include pertinent negatives for each system examined.' :
+                          section === 'assessmentPlan' ? 'e.g. Use numbered problem list. Include disposition at end. State clinical reasoning for each problem.' :
+                          section === 'referral' ? 'e.g. Include reason for referral, relevant history, and specific question for consultant.' :
+                          'e.g. Include admission diagnosis, anticipated workup, and goals of care.'}
+                        className="w-full h-16 p-2 border border-[var(--input-border)] rounded-lg text-xs resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-[var(--input-bg)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)]"
+                      />
+                    </div>
                   </div>
                 ))}
               </>

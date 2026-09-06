@@ -40,13 +40,17 @@ export const POST = withApiHandler(
     let effectiveStyleGuidance = styleGuidance;
     let styleExamples: Record<string, string[]> = {};
     let customGuidance = '';
+    let sectionInstructions: Record<string, string> = {};
+    let stylePreferences: { tense?: string; person?: string; abbreviations?: string; detailLevel?: string } = {};
     if (!effectiveStyleGuidance) {
       try {
         const guide = await getStyleGuideFromSheet(ctx.sheets);
         const hasExamples = Object.values(guide.examples).some(arr => arr.length > 0);
-        if (hasExamples || guide.customGuidance || guide.extractedFeatures.length > 0) {
+        if (hasExamples || guide.customGuidance || guide.extractedFeatures.length > 0 || (guide as any).preferences || (guide as any).sectionInstructions) {
           styleExamples = guide.examples as Record<string, string[]>;
           customGuidance = guide.customGuidance || '';
+          sectionInstructions = (guide as any).sectionInstructions || {};
+          stylePreferences = (guide as any).preferences || {};
           const parts: string[] = [];
           if (guide.customGuidance) {
             parts.push(`Charting guidance from the physician:\n${guide.customGuidance}`);
@@ -87,6 +91,8 @@ export const POST = withApiHandler(
       styleGuidance: effectiveStyleGuidance,
       styleExamples,
       customGuidance,
+      sectionInstructions,
+      stylePreferences,
       settings,
       promptTemplates: promptTemplates as unknown as PromptTemplates | undefined,
       noteStyle: noteStyle as 'standard' | 'comprehensive' | 'complete-exam' | undefined,
