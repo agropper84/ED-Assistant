@@ -1363,6 +1363,23 @@ export default function HomePage() {
                       {showDayTotal ? `$${dayTotal.toFixed(2)}` : shiftCode}
                     </span>
                   )}
+                  {supplementalLines.length > 0 && (
+                    <>
+                      <span className="text-[9px]" style={{ color: 'var(--dash-text-muted)', opacity: 0.4 }}>│</span>
+                      {supplementalLines.map((line, idx) => (
+                        <span
+                          key={idx}
+                          className="text-[10px] font-mono flex-shrink-0 px-1 py-0.5 rounded"
+                          style={{ color: 'var(--dash-text-muted)', background: 'rgba(255,255,255,0.04)' }}
+                          title={`${line.code}: ${line.start}–${line.end} (${line.hours}h) = $${line.total}`}
+                        >
+                          <span style={{ color: 'rgb(94,234,212)' }}>{line.code}</span>
+                          <span className="mx-0.5" style={{ opacity: 0.5 }}>{line.start}–{line.end}</span>
+                          <span style={{ opacity: 0.7 }}>${line.total}</span>
+                        </span>
+                      ))}
+                    </>
+                  )}
                 </>
               )}
               {/* Billing settings (per-day) */}
@@ -1458,7 +1475,7 @@ export default function HomePage() {
                           className="w-full flex items-center gap-2 px-3 py-2.5 text-left text-gray-300 hover:bg-white/5 transition-colors"
                         >
                           <FileSpreadsheet className="w-3.5 h-3.5 text-gray-500" />
-                          {isVchMode ? 'Export billing...' : 'Export to Sheets...'}
+                          Export Billing...
                         </button>
                       ) : (
                         <div className="px-3 py-2.5 space-y-2">
@@ -1494,31 +1511,16 @@ export default function HomePage() {
                                     a.click();
                                     URL.revokeObjectURL(url);
                                   } else {
-                                    // Yukon: sync each date in range to Google Sheets
-                                    const start = new Date(exportStart + 'T00:00:00');
-                                    const end = new Date(exportEnd + 'T00:00:00');
-                                    const dates: string[] = [];
-                                    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-                                      dates.push(d.toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' }));
-                                    }
-                                    let synced = 0;
-                                    let errors: string[] = [];
-                                    for (const dateStr of dates) {
-                                      try {
-                                        const res = await fetch('/api/sync-to-sheets', {
-                                          method: 'POST',
-                                          headers: { 'Content-Type': 'application/json' },
-                                          body: JSON.stringify({ sheetName: dateStr }),
-                                        });
-                                        if (res.ok) {
-                                          const data = await res.json();
-                                          synced += data.synced || 0;
-                                        } else {
-                                          errors.push(dateStr);
-                                        }
-                                      } catch { errors.push(dateStr); }
-                                    }
-                                    alert(`Synced ${synced} patients across ${dates.length} date(s) to Google Sheets${errors.length ? `\n\nFailed dates: ${errors.join(', ')}` : ''}`);
+                                    // Yukon: download xlsx
+                                    const res = await fetch(`/api/export-billing?start=${exportStart}&end=${exportEnd}&format=yukon`);
+                                    if (!res.ok) throw new Error('Export failed');
+                                    const blob = await res.blob();
+                                    const url = URL.createObjectURL(blob);
+                                    const a = document.createElement('a');
+                                    a.href = url;
+                                    a.download = `billing-yukon-${exportStart}-to-${exportEnd}.xlsx`;
+                                    a.click();
+                                    URL.revokeObjectURL(url);
                                   }
                                 } catch (err) {
                                   console.error('Export error:', err);
