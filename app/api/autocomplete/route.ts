@@ -53,7 +53,7 @@ Output ONLY the remaining text to complete this sentence. Rules:
     const message = await anthropic.messages.create({
       model: MODELS.fast,
       max_tokens: 60,
-      temperature: 0.3,
+
       messages: [{ role: 'user', content: prompt }],
     });
 

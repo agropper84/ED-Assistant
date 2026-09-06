@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
     const response = await anthropic.messages.create({
       model: MODELS.fast,
       max_tokens: 1024,
-      temperature: 0.1,
+
       messages: [{
         role: 'user',
         content: `Extract a structured patient profile from the following clinical documentation. Return ONLY valid JSON matching this exact format — no markdown, no explanation:

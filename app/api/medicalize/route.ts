@@ -80,7 +80,7 @@ Rules:
     const response = await anthropic.messages.create({
       model: MODELS.fast,
       max_tokens: 2048,
-      temperature: 0,
+
       system: systemPrompt,
       messages: [{ role: 'user', content: userMessage }],
     });

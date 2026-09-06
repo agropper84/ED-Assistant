@@ -58,7 +58,7 @@ Respond in this format for each topic:
     let education = await callWithPHIProtection(
       prompt,
       { name: patient.name, age: patient.age, gender: patient.gender, birthday: patient.birthday, triageVitals: patient.triageVitals, transcript: patient.transcript, additional: patient.additional, pastDocs: patient.pastDocs },
-      { model: MODELS.default, maxTokens: 2048, temperature: 0.3 },
+      { model: MODELS.default, maxTokens: 2048, },
     );
 
     education = await verifyLinks(education);

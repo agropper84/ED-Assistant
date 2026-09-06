@@ -61,7 +61,7 @@ async function parseWithAI(
   const response = await anthropic.messages.create({
     model: MODELS.fast,
     max_tokens: 256,
-    temperature: 0,
+
     messages: [{
       role: 'user',
       content: `Extract patient demographics from EMR text. I'll show you an example of the format first, then the actual text to parse.

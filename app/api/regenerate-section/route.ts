@@ -73,7 +73,7 @@ Respond with ONLY the regenerated section content. No headers, labels, or extra 
     const regenerated = await callWithPHIProtection(
       prompt,
       { name: patient.name, age: patient.age, gender: patient.gender, birthday: patient.birthday, triageVitals: patient.triageVitals, transcript: patient.transcript, additional: patient.additional, pastDocs: patient.pastDocs },
-      { model: MODELS.default, maxTokens: 2048, temperature: 0.3 },
+      { model: MODELS.default, maxTokens: 2048, },
     );
 
     await updatePatientFields(ctx, rowIndex, { [section]: regenerated.trim() }, sheetName, patient.name);

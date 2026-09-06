@@ -101,7 +101,7 @@ Original question: "${question.trim()}"
 
 Output ONLY the reframed question, nothing else.`,
         patientDataForPHI,
-        { model: MODELS.fast, maxTokens: 200, temperature: 0 },
+        { model: MODELS.fast, maxTokens: 200, },
       );
       oeQuery = oeQuery.trim();
     }
@@ -123,7 +123,7 @@ Output ONLY the reframed question, nothing else.`,
       {
         model: useOpenEvidence ? MODELS.default : MODELS.fast,
         maxTokens: useOpenEvidence ? 2048 : 1024,
-        temperature: 0.2,
+
       },
     );
 

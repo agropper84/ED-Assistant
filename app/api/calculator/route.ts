@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
       const response = await anthropic.messages.create({
         model: MODELS.fast,
         max_tokens: 1024,
-        temperature: 0,
+
         messages: [{
           role: 'user',
           content: `For the medical calculation "${query}", return a JSON object with the required variables.
@@ -78,7 +78,7 @@ Return ONLY valid JSON.`,
       const response = await anthropic.messages.create({
         model: MODELS.fast,
         max_tokens: 1024,
-        temperature: 0,
+
         messages: [{
           role: 'user',
           content: `Calculate "${query}" with these values:
@@ -105,7 +105,7 @@ Be concise. Use markdown.`,
     const response = await anthropic.messages.create({
       model: MODELS.fast,
       max_tokens: 1024,
-      temperature: 0,
+
       system: `You are a medical calculator assistant with access to patient data.
 
 PATIENT DATA:

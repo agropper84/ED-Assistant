@@ -117,7 +117,7 @@ Be specific. Only include well-supported patterns from the data.`;
   const response = await client.messages.create({
     model: MODELS.default,
     max_tokens: 2048,
-    temperature: 0.2,
+
     messages: [{ role: 'user', content: prompt }],
   });
 

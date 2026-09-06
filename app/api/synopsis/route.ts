@@ -44,7 +44,7 @@ Write ONLY the synopsis, no headers or labels.`;
     const synopsis = await callWithPHIProtection(
       prompt,
       { name: patient.name, age: patient.age, gender: patient.gender, birthday: patient.birthday, triageVitals: patient.triageVitals, transcript: patient.transcript, additional: patient.additional, pastDocs: patient.pastDocs },
-      { model: MODELS.fast, maxTokens: 512, temperature: 0.2 },
+      { model: MODELS.fast, maxTokens: 512, },
     );
 
     await updatePatientFields(ctx, rowIndex, { synopsis: synopsis.trim() }, sheetName, patient.name);

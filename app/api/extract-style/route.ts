@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
     const response = await anthropic.messages.create({
       model: MODELS.fast,
       max_tokens: 512,
-      temperature: 0.2,
+
       messages: [{
         role: 'user',
         content: `Analyze this emergency department ${section} documentation example and extract 3-6 key charting style features. Focus on:

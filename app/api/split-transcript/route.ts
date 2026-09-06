@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
     const response = await anthropic.messages.create({
       model: MODELS.fast,
       max_tokens: 4096,
-      temperature: 0,
+
       messages: [{
         role: 'user',
         content: `You are helping split a multi-patient medical dictation transcript into segments, one per patient.

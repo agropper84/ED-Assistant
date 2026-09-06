@@ -39,7 +39,7 @@ ${context ? `Surrounding context from the same section:\n${context}\n` : ''}${in
     const result = await callWithPHIProtection(
       prompt,
       null,
-      { model: MODELS.default, maxTokens: 1024, temperature: 0.2 },
+      { model: MODELS.default, maxTokens: 1024, },
     );
 
     return NextResponse.json({ success: true, result: result.trim() });

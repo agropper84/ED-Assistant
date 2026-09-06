@@ -106,7 +106,7 @@ Cite pertinent evidence, guidelines, or clinical decision rules relevant to this
     let text = await callWithPHIProtection(
       prompt,
       { name: patient.name, age: patient.age, gender: patient.gender, birthday: patient.birthday, triageVitals: patient.triageVitals, transcript: patient.transcript, additional: patient.additional, pastDocs: patient.pastDocs },
-      { model: MODELS.fast, maxTokens: 2048, temperature: 0.3 },
+      { model: MODELS.fast, maxTokens: 2048, },
     );
 
     text = await verifyLinks(text);

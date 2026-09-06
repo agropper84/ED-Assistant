@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
       const response = await anthropic.messages.create({
         model: MODELS.fast,
         max_tokens: 1024,
-        temperature: 0,
+
         messages: [{
           role: 'user',
           content: `You are analyzing a sample of patient data from a hospital EMR system. The user has identified specific field values within the sample text. Your job is to create JavaScript regex patterns that will reliably extract these fields from similar text.
@@ -71,7 +71,7 @@ Return ONLY valid JSON, no explanation or markdown.`,
     const response = await anthropic.messages.create({
       model: MODELS.fast,
       max_tokens: 512,
-      temperature: 0,
+
       messages: [{
         role: 'user',
         content: `You are analyzing a sample of patient data from a hospital EMR system. Your job is to figure out the format and produce regex patterns that can extract patient demographics.
