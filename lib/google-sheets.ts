@@ -580,11 +580,51 @@ export interface ShiftTimes {
   total: string;
 }
 
-/** Fee type definitions for time-based billing */
+/** Fee type definitions for time-based billing (2026 rates) */
 const SHIFT_FEE_TYPES = {
-  day:   { name: 'Base Fee 0800-2300', code: '0145', rate: 81.80 },
-  night: { name: 'Base Fee 2300-0800', code: '0146', rate: 119.60 },
+  day:   { name: 'Base Fee 0800-2259', code: '0145', rate: 85.60 },
+  night: { name: 'Base Fee 2300-0759', code: '0146', rate: 125.10 },
 } as const;
+
+/** Supplemental billing code definitions */
+export const SUPPLEMENTAL_CODES: Record<string, { label: string; rate: number }> = {
+  '0140': { label: 'Emergency 2nd On-Call', rate: 26.30 },
+  '0145': { label: 'Supplemental 0800-2259', rate: 85.60 },
+  '0146': { label: 'Supplemental 2300-0759', rate: 125.10 },
+};
+
+export interface SupplementalLine {
+  start: string;
+  end: string;
+  code: string;
+  hours: string;
+  fee: string;
+  total: string;
+}
+
+/** Get supplemental billing lines from row 6 (stored as JSON in A6) */
+export async function getSupplementalLines(ctx: SheetsContext, sheetName: string): Promise<SupplementalLine[]> {
+  try {
+    const { sheets, spreadsheetId } = ctx;
+    const res = await sheets.spreadsheets.values.get({
+      spreadsheetId, range: `'${sheetName}'!A6:A6`,
+    });
+    const val = res.data.values?.[0]?.[0]?.toString() || '';
+    if (!val) return [];
+    return JSON.parse(val);
+  } catch { return []; }
+}
+
+/** Save supplemental billing lines to row 6 (as JSON in A6) */
+export async function setSupplementalLines(ctx: SheetsContext, sheetName: string, lines: SupplementalLine[]): Promise<void> {
+  const { sheets, spreadsheetId } = ctx;
+  await sheets.spreadsheets.values.update({
+    spreadsheetId,
+    range: `'${sheetName}'!A6:A6`,
+    valueInputOption: 'RAW',
+    requestBody: { values: [[JSON.stringify(lines)]] },
+  });
+}
 
 /** Determine fee type from shift start time */
 function getShiftFeeType(start: string): typeof SHIFT_FEE_TYPES['day'] | typeof SHIFT_FEE_TYPES['night'] {

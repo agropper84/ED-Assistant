@@ -36,11 +36,13 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ patients: results, searchQuery: search });
     }
 
-    const [patients, shiftTimes] = await Promise.all([
+    const gs = await import('@/lib/google-sheets');
+    const [patients, shiftTimes, supplementalLines] = await Promise.all([
       getPatients(ctx, sheetName || ''),
       getShiftTimes(ctx, sheetName || ''),
+      gs.getSupplementalLines(ctx.sheets, sheetName || gs.getTodaySheetName()),
     ]);
-    return NextResponse.json({ patients, sheetName, shiftTimes });
+    return NextResponse.json({ patients, sheetName, shiftTimes, supplementalLines });
   } catch (error: any) {
     console.error('Error fetching patients:', error);
     if (error?.message?.includes('Not approved')) {
@@ -93,16 +95,29 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// PATCH /api/patients - Update shift times
+// PATCH /api/patients - Update shift times and supplemental billing lines
 export async function PATCH(request: NextRequest) {
   try {
     const ctx = await getDataContext();
-    const { sheetName, shiftStart, shiftEnd } = await request.json();
+    const body = await request.json();
+    const { sheetName, shiftStart, shiftEnd, supplementalLines } = body;
     if (!sheetName) {
       return NextResponse.json({ error: 'sheetName required' }, { status: 400 });
     }
+
+    // Update supplemental lines if provided
+    if (supplementalLines !== undefined) {
+      const gs = await import('@/lib/google-sheets');
+      await gs.setSupplementalLines(ctx.sheets, sheetName, supplementalLines);
+      const lines = await gs.getSupplementalLines(ctx.sheets, sheetName);
+      return NextResponse.json({ supplementalLines: lines });
+    }
+
     const shiftTimes = await setShiftTimes(ctx, sheetName, shiftStart || '', shiftEnd || '');
-    return NextResponse.json({ shiftTimes });
+    // Also return supplemental lines
+    const gs = await import('@/lib/google-sheets');
+    const supLines = await gs.getSupplementalLines(ctx.sheets, sheetName);
+    return NextResponse.json({ shiftTimes, supplementalLines: supLines });
   } catch (error: any) {
     console.error('Error updating shift times:', error);
     if (error?.message?.includes('Not approved')) {

@@ -263,6 +263,34 @@ async function exportYukonExcel(
           row5.getCell(i + 1).value = val;
           row5.getCell(i + 1).font = { name: 'Calibri', size: 10 };
         });
+
+        // Supplemental billing lines (row 6 stores JSON)
+        const supRaw = headerRows[5]?.[0]?.toString() || '';
+        if (supRaw) {
+          try {
+            const supLines = JSON.parse(supRaw) as { start: string; end: string; code: string; hours: string; fee: string; total: string }[];
+            if (supLines.length > 0) {
+              const row6Label = ws.getRow(6);
+              row6Label.getCell(1).value = 'SUPPLEMENTAL';
+              row6Label.getCell(1).font = { name: 'Calibri', size: 10, bold: true, color: { argb: 'FF0070C0' } };
+              // Write each supplemental line as additional rows after row 6
+              let supRow = 6;
+              for (const sl of supLines) {
+                const r = ws.getRow(supRow);
+                if (supRow > 6) r.getCell(1).value = '';
+                r.getCell(supRow === 6 ? 1 : 1).value = supRow === 6 ? 'SUPPLEMENTAL' : '';
+                r.getCell(2).value = `${sl.start}–${sl.end}`;
+                r.getCell(3).value = parseFloat(sl.hours) || 0;
+                r.getCell(4).value = sl.code;
+                r.getCell(5).value = `$${sl.fee}/hr`;
+                r.getCell(6).value = parseFloat(sl.total) || 0;
+                r.getCell(6).numFmt = '$#,##0.00';
+                r.font = { name: 'Calibri', size: 10, color: { argb: 'FF0070C0' } };
+                supRow++;
+              }
+            }
+          } catch {}
+        }
       }
 
       // Column headers row (row 7)

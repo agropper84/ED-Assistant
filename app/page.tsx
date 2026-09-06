@@ -96,6 +96,7 @@ export default function HomePage() {
   const [shiftFee, setShiftFee] = useState('');
   const [shiftTotal, setShiftTotal] = useState('');
   const [showDayTotal, setShowDayTotal] = useState(false);
+  const [supplementalLines, setSupplementalLines] = useState<{ start: string; end: string; code: string; hours: string; fee: string; total: string }[]>([]);
 
   // Patient data modal
   const [dataModalPatient, setDataModalPatient] = useState<Patient | null>(null);
@@ -280,6 +281,9 @@ export default function HomePage() {
         setShiftCode(data.shiftTimes.code || '');
         setShiftFee(data.shiftTimes.fee || '');
         setShiftTotal(data.shiftTimes.total || '');
+      }
+      if (data.supplementalLines) {
+        setSupplementalLines(data.supplementalLines);
       }
     } catch (error) {
       console.error('Failed to fetch patients:', error);
@@ -666,14 +670,15 @@ export default function HomePage() {
     });
   }, [activePatients, sortBy, pinnedRowIndex, isSearching, parseTimeToMin]);
 
-  // Day total: sum of all patient visit fees + time-based shift fee
+  // Day total: sum of all patient visit fees + time-based shift fee + supplemental lines
   const dayTotal = useMemo(() => {
     const visitFeesTotal = patients.reduce((sum, p) => {
       const items = parseBillingItems(p.visitProcedure || '', p.procCode || '', p.fee || '', p.unit || '');
       return sum + items.reduce((s, item) => s + (parseFloat(item.fee) || 0) * (parseInt(item.unit) || 1), 0);
     }, 0);
-    return visitFeesTotal + (parseFloat(shiftTotal) || 0);
-  }, [patients, shiftTotal]);
+    const supTotal = supplementalLines.reduce((sum, l) => sum + (parseFloat(l.total) || 0), 0);
+    return visitFeesTotal + (parseFloat(shiftTotal) || 0) + supTotal;
+  }, [patients, shiftTotal, supplementalLines]);
 
   // Batch processing — derived from sortedPatients
   const { pendingPatients, processedPatients, newPatients } = useMemo(() => ({
@@ -1328,6 +1333,7 @@ export default function HomePage() {
                     <option value="08:00">8:00 AM</option>
                     <option value="11:00">11:00 AM</option>
                     <option value="13:00">1:00 PM</option>
+                    <option value="16:00">4:00 PM</option>
                     <option value="18:00">6:00 PM</option>
                     <option value="23:00">11:00 PM</option>
                   </select>
@@ -1393,6 +1399,57 @@ export default function HomePage() {
                         </button>
                       );
                     })}
+                    {/* Supplemental Billing Lines */}
+                    <div className="border-t border-white/8 mt-1">
+                      <div className="px-3 pt-2.5 pb-1 text-[9px] uppercase tracking-widest text-gray-500 font-semibold">Supplemental Fees</div>
+                      {supplementalLines.map((line, idx) => (
+                        <div key={idx} className="px-3 py-1.5 flex items-center gap-1.5 text-xs text-gray-300">
+                          <span className="font-mono text-[10px] text-teal-400">{line.code}</span>
+                          <span className="text-gray-500">{line.start}–{line.end}</span>
+                          <span className="text-gray-400 ml-auto">${line.total}</span>
+                          <button onClick={async () => {
+                            const updated = supplementalLines.filter((_, i) => i !== idx);
+                            setSupplementalLines(updated);
+                            await fetch('/api/patients', { method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ sheetName, supplementalLines: updated }) });
+                          }} className="text-red-400 hover:text-red-300 p-0.5"><X className="w-3 h-3" /></button>
+                        </div>
+                      ))}
+                      <div className="px-3 py-2 space-y-1.5">
+                        <div className="flex gap-1.5">
+                          <input type="time" id="sup-start" className="flex-1 px-1.5 py-1 bg-gray-800/80 border border-gray-700/50 rounded text-[10px] text-gray-200 focus:border-teal-500/50 focus:outline-none" />
+                          <input type="time" id="sup-end" className="flex-1 px-1.5 py-1 bg-gray-800/80 border border-gray-700/50 rounded text-[10px] text-gray-200 focus:border-teal-500/50 focus:outline-none" />
+                        </div>
+                        <div className="flex gap-1.5">
+                          <select id="sup-code" className="flex-1 px-1.5 py-1 bg-gray-800/80 border border-gray-700/50 rounded text-[10px] text-gray-200 focus:outline-none">
+                            <option value="0140">0140 – 2nd On-Call ($26.30/hr)</option>
+                            <option value="0145">0145 – Day Supp ($85.60/hr)</option>
+                            <option value="0146">0146 – Night Supp ($125.10/hr)</option>
+                          </select>
+                          <button onClick={async () => {
+                            const startEl = document.getElementById('sup-start') as HTMLInputElement;
+                            const endEl = document.getElementById('sup-end') as HTMLInputElement;
+                            const codeEl = document.getElementById('sup-code') as HTMLSelectElement;
+                            if (!startEl?.value || !endEl?.value) return;
+                            const code = codeEl.value;
+                            const rates: Record<string, number> = { '0140': 26.30, '0145': 85.60, '0146': 125.10 };
+                            const rate = rates[code] || 0;
+                            const [sh, sm] = startEl.value.split(':').map(Number);
+                            const [eh, em] = endEl.value.split(':').map(Number);
+                            let diff = (eh * 60 + em) - (sh * 60 + sm);
+                            if (diff <= 0) diff += 24 * 60;
+                            const hours = diff / 60;
+                            const newLine = { start: startEl.value, end: endEl.value, code, hours: hours.toFixed(1), fee: rate.toFixed(2), total: (hours * rate).toFixed(2) };
+                            const updated = [...supplementalLines, newLine];
+                            setSupplementalLines(updated);
+                            startEl.value = ''; endEl.value = '';
+                            await fetch('/api/patients', { method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ sheetName, supplementalLines: updated }) });
+                          }} className="px-2 py-1 bg-teal-600 text-white rounded text-[10px] font-medium hover:bg-teal-500">Add</button>
+                        </div>
+                      </div>
+                    </div>
+
                     {/* Export */}
                     <div className="border-t border-white/8 mt-1">
                       {!exportingBilling ? (
