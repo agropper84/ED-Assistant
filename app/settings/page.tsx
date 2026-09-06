@@ -393,6 +393,8 @@ export default function SettingsPage() {
   const [claudeKeyMasked, setClaudeKeyMasked] = useState<string | null>(null);
   const [openaiKeyMasked, setOpenaiKeyMasked] = useState<string | null>(null);
   const [savingKey, setSavingKey] = useState(false);
+  const [keyTestResults, setKeyTestResults] = useState<{ key: string; label: string; status: string; latency?: number; detail?: string }[] | null>(null);
+  const [keyTestLoading, setKeyTestLoading] = useState(false);
 
   // Prompt templates state
   const [promptTemplates, setPromptTemplates] = useState<PromptTemplates>(DEFAULT_PROMPT_TEMPLATES);
@@ -3147,10 +3149,55 @@ export default function SettingsPage() {
             {/* AI Key */}
             <div className="bg-[var(--card-bg)] rounded-2xl border border-[var(--card-border)] p-5 space-y-5" style={{ boxShadow: 'var(--card-shadow)' }}>
               <div>
-                <h3 className="font-semibold text-[var(--text-primary)]">AI</h3>
-                <p className="text-xs text-[var(--text-muted)] mt-0.5">
-                  All keys are stored encrypted server-side.
-                </p>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="font-semibold text-[var(--text-primary)]">AI</h3>
+                    <p className="text-xs text-[var(--text-muted)] mt-0.5">
+                      All keys are stored encrypted server-side.
+                    </p>
+                  </div>
+                  <button
+                    onClick={async () => {
+                      setKeyTestLoading(true);
+                      setKeyTestResults(null);
+                      try {
+                        const res = await fetch('/api/test-keys', { method: 'POST' });
+                        if (res.ok) {
+                          const data = await res.json();
+                          setKeyTestResults(data.results);
+                        } else {
+                          setKeyTestResults([{ key: 'error', label: 'Test', status: 'error', detail: 'Failed to run tests' }]);
+                        }
+                      } catch {
+                        setKeyTestResults([{ key: 'error', label: 'Test', status: 'error', detail: 'Network error' }]);
+                      }
+                      setKeyTestLoading(false);
+                    }}
+                    disabled={keyTestLoading}
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors bg-[var(--bg-tertiary)] text-[var(--text-secondary)] hover:bg-[var(--border)] disabled:opacity-50"
+                  >
+                    {keyTestLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Key className="w-3.5 h-3.5" />}
+                    Test All Keys
+                  </button>
+                </div>
+                {keyTestResults && (
+                  <div className="mt-3 space-y-1.5">
+                    {keyTestResults.map((r) => (
+                      <div key={r.key} className="flex items-center justify-between px-3 py-2 rounded-lg bg-[var(--bg-tertiary)]">
+                        <div className="flex items-center gap-2">
+                          <span className={`w-2 h-2 rounded-full ${r.status === 'ok' ? 'bg-green-500' : r.status === 'missing' ? 'bg-gray-400' : 'bg-red-500'}`} />
+                          <span className="text-xs font-medium text-[var(--text-primary)]">{r.label}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {r.latency && <span className="text-[10px] text-[var(--text-muted)]">{r.latency}ms</span>}
+                          <span className={`text-[10px] font-medium ${r.status === 'ok' ? 'text-green-600 dark:text-green-400' : r.status === 'missing' ? 'text-[var(--text-muted)]' : 'text-red-500'}`}>
+                            {r.status === 'ok' ? r.detail || 'OK' : r.status === 'missing' ? 'Not set' : r.detail || 'Error'}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               {/* Anthropic API Key */}
