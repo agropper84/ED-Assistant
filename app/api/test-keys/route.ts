@@ -52,24 +52,17 @@ async function testDeepgram(apiKey: string): Promise<{ ok: boolean; detail: stri
 
 async function testElevenLabs(apiKey: string): Promise<{ ok: boolean; detail: string; ms: number }> {
   const start = Date.now();
-  // Try /v1/user/subscription first, then /v1/models as fallback
-  for (const endpoint of ['https://api.elevenlabs.io/v1/user/subscription', 'https://api.elevenlabs.io/v1/models']) {
-    const res = await fetch(endpoint, {
+  // Try /v1/models first (doesn't require user_read permission)
+  try {
+    const modelsRes = await fetch('https://api.elevenlabs.io/v1/models', {
       headers: { 'xi-api-key': apiKey },
     });
     const ms = Date.now() - start;
-    if (res.ok) {
-      const data = await res.json().catch(() => ({}));
-      const detail = data.tier || data.character_count !== undefined
-        ? `Active (${data.tier || `${data.character_count} chars used`})`
-        : 'Active';
-      return { ok: true, detail, ms };
-    }
-    if (res.status === 401) return { ok: false, detail: 'Invalid API key', ms };
-  }
-  // If we get here, try a minimal Scribe call to verify the key works for transcription
+    if (modelsRes.ok) return { ok: true, detail: 'Active', ms };
+    if (modelsRes.status === 401) return { ok: false, detail: 'Invalid API key', ms };
+  } catch {}
+  // Fallback: try a minimal Scribe call to verify the key works for transcription
   const fd = new FormData();
-  // Create a tiny valid WAV file (44 bytes header + 0 data = silence)
   const wavHeader = new Uint8Array([
     0x52,0x49,0x46,0x46, 0x24,0x00,0x00,0x00, 0x57,0x41,0x56,0x45,
     0x66,0x6D,0x74,0x20, 0x10,0x00,0x00,0x00, 0x01,0x00,0x01,0x00,
@@ -84,7 +77,6 @@ async function testElevenLabs(apiKey: string): Promise<{ ok: boolean; detail: st
   });
   const ms = Date.now() - start;
   if (scribeRes.status === 401) return { ok: false, detail: 'Invalid API key', ms };
-  // Any non-401 response means the key is valid (even 400 = key works, audio was just empty)
   return { ok: true, detail: 'Active (Scribe verified)', ms };
 }
 
