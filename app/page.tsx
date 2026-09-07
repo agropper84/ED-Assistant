@@ -1327,17 +1327,21 @@ export default function HomePage() {
                   <input
                     type="time"
                     value={shiftStart}
-                    onChange={(e) => { setShiftStart(e.target.value); handleShiftTimeSave({ start: e.target.value }); }}
-                    className="shift-select-header"
-                    placeholder="Start"
+                    onChange={(e) => setShiftStart(e.target.value)}
+                    onBlur={(e) => { if (e.target.value) handleShiftTimeSave({ start: e.target.value }); }}
+                    onKeyDown={(e) => { if (e.key === 'Enter') { e.currentTarget.blur(); } }}
+                    className="shift-time-input"
+                    step="1800"
                   />
                   <span className="text-[10px]" style={{ color: 'var(--dash-text-muted)' }}>–</span>
                   <input
                     type="time"
                     value={shiftEnd}
-                    onChange={(e) => { setShiftEnd(e.target.value); handleShiftTimeSave({ end: e.target.value }); }}
-                    className="shift-select-header"
-                    placeholder="End"
+                    onChange={(e) => setShiftEnd(e.target.value)}
+                    onBlur={(e) => { if (e.target.value) handleShiftTimeSave({ end: e.target.value }); }}
+                    onKeyDown={(e) => { if (e.key === 'Enter') { e.currentTarget.blur(); } }}
+                    className="shift-time-input"
+                    step="1800"
                   />
                   {shiftHours && (
                     <span className="text-xs font-medium flex-shrink-0" style={{ color: 'var(--dash-text-sub)' }}>{shiftHours}h</span>
