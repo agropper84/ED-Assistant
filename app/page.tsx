@@ -1312,7 +1312,7 @@ export default function HomePage() {
             </div>
 
             {/* Shift times / VCH controls — only shown when region is selected */}
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-end gap-1.5">
               {!hasRegion() ? null : isVchMode ? (
                 <button
                   onClick={() => setShowShiftPanel(!showShiftPanel)}
@@ -1325,67 +1325,70 @@ export default function HomePage() {
                   Log Time{shiftSegments.length > 0 ? ` (${shiftSegments.length})` : ''}
                 </button>
               ) : (
-                <>
-                  <input
-                    type="time"
-                    value={shiftStart}
-                    onChange={(e) => setShiftStart(e.target.value)}
-                    onBlur={(e) => { if (e.target.value) handleShiftTimeSave({ start: e.target.value }); }}
-                    onKeyDown={(e) => { if (e.key === 'Enter') { e.currentTarget.blur(); } }}
-                    className="shift-time-input"
-                    step="1800"
-                  />
-                  <span className="text-[10px]" style={{ color: 'var(--dash-text-muted)' }}>–</span>
-                  <input
-                    type="time"
-                    value={shiftEnd}
-                    onChange={(e) => setShiftEnd(e.target.value)}
-                    onBlur={(e) => { if (e.target.value) handleShiftTimeSave({ end: e.target.value }); }}
-                    onKeyDown={(e) => { if (e.key === 'Enter') { e.currentTarget.blur(); } }}
-                    className="shift-time-input"
-                    step="1800"
-                  />
-                  {shiftHours && (
-                    <span className="text-xs font-medium flex-shrink-0" style={{ color: 'var(--dash-text-sub)' }}>{shiftHours}h</span>
+                <div className="flex flex-col items-end gap-0.5">
+                  {/* Main shift row */}
+                  <div className="flex items-center gap-1.5">
+                    <input
+                      type="time"
+                      value={shiftStart}
+                      onChange={(e) => setShiftStart(e.target.value)}
+                      onBlur={(e) => { if (e.target.value) handleShiftTimeSave({ start: e.target.value }); }}
+                      onKeyDown={(e) => { if (e.key === 'Enter') { e.currentTarget.blur(); } }}
+                      className="shift-time-input"
+                      step="1800"
+                    />
+                    <span className="text-[10px]" style={{ color: 'var(--dash-text-muted)' }}>–</span>
+                    <input
+                      type="time"
+                      value={shiftEnd}
+                      onChange={(e) => setShiftEnd(e.target.value)}
+                      onBlur={(e) => { if (e.target.value) handleShiftTimeSave({ end: e.target.value }); }}
+                      onKeyDown={(e) => { if (e.key === 'Enter') { e.currentTarget.blur(); } }}
+                      className="shift-time-input"
+                      step="1800"
+                    />
+                    {shiftHours && (
+                      <span className="text-[10px] font-mono flex-shrink-0" style={{ color: 'var(--dash-text-muted)' }}>{shiftHours}h</span>
+                    )}
+                    {shiftStart && (
+                      <select
+                        value={shiftCode || ''}
+                        onChange={(e) => {
+                          setShiftCode(e.target.value);
+                          handleShiftTimeSave({ code: e.target.value });
+                        }}
+                        className="shift-select-header"
+                        style={{ width: 'auto', minWidth: '48px', fontSize: '10px', fontFamily: 'var(--font-mono, monospace)' }}
+                        title="Billing code"
+                      >
+                        <option value="0145">0145</option>
+                        <option value="0146">0146</option>
+                        <option value="0140">0140</option>
+                      </select>
+                    )}
+                    {shiftTotal && (
+                      <span className="text-[10px] font-mono flex-shrink-0" style={{ color: 'var(--dash-text-sub)' }}>${shiftTotal}</span>
+                    )}
+                  </div>
+                  {/* Supplemental fee rows — same layout as shift row */}
+                  {supplementalLines.map((line, idx) => (
+                    <div key={idx} className="flex items-center gap-1.5">
+                      <span className="shift-time-input" style={{ cursor: 'default', opacity: 0.8 }}>{line.start}</span>
+                      <span className="text-[10px]" style={{ color: 'var(--dash-text-muted)' }}>–</span>
+                      <span className="shift-time-input" style={{ cursor: 'default', opacity: 0.8 }}>{line.end}</span>
+                      <span className="text-[10px] font-mono flex-shrink-0" style={{ color: 'var(--dash-text-muted)' }}>{line.hours}h</span>
+                      <span className="text-[10px] font-mono flex-shrink-0 px-1.5 py-0.5 rounded" style={{ color: 'rgb(94,234,212)', background: 'rgba(94,234,212,0.06)' }}>{line.code}</span>
+                      <span className="text-[10px] font-mono flex-shrink-0" style={{ color: 'var(--dash-text-sub)' }}>${line.total}</span>
+                    </div>
+                  ))}
+                  {/* Day total */}
+                  {(shiftTotal || supplementalLines.length > 0) && supplementalLines.length > 0 && (
+                    <div className="flex items-center gap-1 pt-0.5" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+                      <span className="text-[9px] uppercase tracking-wider" style={{ color: 'var(--dash-text-muted)' }}>Total</span>
+                      <span className="text-[11px] font-mono font-medium" style={{ color: 'var(--dash-text)' }}>${dayTotal.toFixed(2)}</span>
+                    </div>
                   )}
-                  {shiftStart && (
-                    <select
-                      value={shiftCode || ''}
-                      onChange={(e) => {
-                        setShiftCode(e.target.value);
-                        handleShiftTimeSave({ code: e.target.value });
-                      }}
-                      className="shift-select-header"
-                      style={{ width: 'auto', minWidth: '52px', fontSize: '10px', fontFamily: 'var(--font-mono, monospace)' }}
-                      title="Billing code"
-                    >
-                      <option value="0145">0145</option>
-                      <option value="0146">0146</option>
-                      <option value="0140">0140</option>
-                    </select>
-                  )}
-                  {(shiftTotal || supplementalLines.length > 0) && (
-                    <span
-                      onClick={() => setShowDayTotal(!showDayTotal)}
-                      className="text-[11px] font-mono font-medium flex-shrink-0 cursor-pointer hover:bg-white/[0.07] px-1.5 py-0.5 rounded transition-colors"
-                      style={{ color: 'var(--dash-text-sub)' }}
-                      title={showDayTotal
-                        ? `Day total: shift $${shiftTotal || '0'}${supplementalLines.length > 0 ? ` + ${supplementalLines.length} supp` : ''}`
-                        : 'Click for day total'}
-                    >
-                      ${showDayTotal ? dayTotal.toFixed(2) : shiftTotal || '0'}
-                    </span>
-                  )}
-                  {supplementalLines.length > 0 && (
-                    <span
-                      className="text-[10px] flex-shrink-0 px-1.5 py-0.5 rounded font-medium"
-                      style={{ color: 'rgb(94,234,212)', background: 'rgba(94,234,212,0.08)', border: '1px solid rgba(94,234,212,0.15)' }}
-                      title={supplementalLines.map(l => `${l.code} ${l.start}–${l.end} (${l.hours}h) $${l.total}`).join('\n')}
-                    >
-                      +{supplementalLines.length} supp
-                    </span>
-                  )}
-                </>
+                </div>
               )}
               {/* Billing settings (per-day) */}
               <div className="relative" ref={billingMenuRef}>
