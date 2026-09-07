@@ -1,6 +1,7 @@
 'use client';
 
-import { ChevronLeft, Mic, Sparkles } from 'lucide-react';
+import { useState } from 'react';
+import { ChevronLeft, Mic, Sparkles, Loader2 } from 'lucide-react';
 import { StatusBadge } from '../primitives/StatusBadge';
 import { Button } from '../primitives/Button';
 import type { Patient } from '@/lib/google-sheets';
@@ -26,10 +27,12 @@ function formatTime(ts: string): string {
 interface ChartHeaderProps {
   patient: Patient;
   onBack: () => void;
+  onGenerate?: () => void;
+  generating?: boolean;
   showBack?: boolean;
 }
 
-export function ChartHeader({ patient, onBack, showBack = false }: ChartHeaderProps) {
+export function ChartHeader({ patient, onBack, onGenerate, generating, showBack = false }: ChartHeaderProps) {
   const status = getStatus(patient);
 
   return (
@@ -93,8 +96,14 @@ export function ChartHeader({ patient, onBack, showBack = false }: ChartHeaderPr
       <Button variant="secondary" size="sm" icon={<Mic size={14} />}>
         Dictate
       </Button>
-      <Button variant="primary" size="sm" icon={<Sparkles size={14} />}>
-        Generate
+      <Button
+        variant="primary"
+        size="sm"
+        icon={generating ? <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> : <Sparkles size={14} />}
+        onClick={onGenerate}
+        disabled={generating}
+      >
+        {generating ? 'Generating…' : 'Generate'}
       </Button>
     </div>
   );

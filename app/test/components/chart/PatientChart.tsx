@@ -1,11 +1,15 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import type { Patient } from '@/lib/google-sheets';
 import { ChartHeader } from './ChartHeader';
 import { ChartTabs, type ChartTab } from './ChartTabs';
 import { EncounterTab } from './EncounterTab';
+import { TranscriptTab } from './TranscriptTab';
+import { BillingTab } from './BillingTab';
+import { AskTab } from './AskTab';
 import { DataTab } from './DataTab';
+import { useBoard, useShell } from '../../providers';
 
 interface PatientChartProps {
   patient: Patient;
@@ -15,6 +19,37 @@ interface PatientChartProps {
 
 export function PatientChart({ patient, onBack, showBack }: PatientChartProps) {
   const [tab, setTab] = useState<ChartTab>('encounter');
+  const [generating, setGenerating] = useState(false);
+  const { refreshPatients, sheetName } = useBoard();
+  const { showToast } = useShell();
+
+  const handleGenerate = useCallback(async () => {
+    if (generating) return;
+    setGenerating(true);
+    try {
+      const res = await fetch('/api/process', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          rowIndex: patient.rowIndex,
+          sheetName: patient.sheetName || sheetName,
+          patientName: patient.name,
+        }),
+      });
+      if (res.ok) {
+        showToast('Encounter note generated');
+        refreshPatients();
+        setTab('encounter');
+      } else {
+        const err = await res.json().catch(() => ({ error: 'Unknown error' }));
+        showToast(`Generation failed: ${err.error || res.status}`);
+      }
+    } catch (e: any) {
+      showToast(`Generation failed: ${e.message || 'Network error'}`);
+    } finally {
+      setGenerating(false);
+    }
+  }, [generating, patient, sheetName, refreshPatients, showToast]);
 
   return (
     <div style={{
@@ -24,7 +59,13 @@ export function PatientChart({ patient, onBack, showBack }: PatientChartProps) {
       overflow: 'hidden',
       background: 'var(--warm-bg)',
     }}>
-      <ChartHeader patient={patient} onBack={onBack} showBack={showBack} />
+      <ChartHeader
+        patient={patient}
+        onBack={onBack}
+        showBack={showBack}
+        onGenerate={handleGenerate}
+        generating={generating}
+      />
       <ChartTabs active={tab} onChange={setTab} />
 
       <div style={{
@@ -35,35 +76,10 @@ export function PatientChart({ patient, onBack, showBack }: PatientChartProps) {
         width: '100%',
       }}>
         {tab === 'encounter' && <EncounterTab patient={patient} />}
-        {tab === 'transcript' && (
-          <PlaceholderTab label="Transcript" detail="Transcript display and editing will appear here." />
-        )}
-        {tab === 'billing' && (
-          <PlaceholderTab label="Billing" detail="Billing codes, premiums, and totals will appear here." />
-        )}
-        {tab === 'ask' && (
-          <PlaceholderTab label="Ask" detail="Clinical Q&A scoped to this patient will appear here." />
-        )}
+        {tab === 'transcript' && <TranscriptTab patient={patient} />}
+        {tab === 'billing' && <BillingTab patient={patient} />}
+        {tab === 'ask' && <AskTab patient={patient} />}
         {tab === 'data' && <DataTab patient={patient} />}
-      </div>
-    </div>
-  );
-}
-
-function PlaceholderTab({ label, detail }: { label: string; detail: string }) {
-  return (
-    <div style={{
-      background: 'var(--warm-surface)',
-      border: '1px solid var(--warm-border)',
-      borderRadius: 'var(--warm-radius-card)',
-      padding: '40px 20px',
-      textAlign: 'center' as const,
-    }}>
-      <div style={{ fontSize: '15px', fontWeight: 600, color: 'var(--warm-text-2)', marginBottom: '6px' }}>
-        {label}
-      </div>
-      <div style={{ fontSize: '13px', color: 'var(--warm-text-3)' }}>
-        {detail}
       </div>
     </div>
   );
