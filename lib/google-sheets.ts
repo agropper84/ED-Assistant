@@ -602,27 +602,66 @@ export interface SupplementalLine {
   total: string;
 }
 
-/** Get supplemental billing lines from row 6 (stored as JSON in A6) */
+/** Get supplemental billing lines from row 6+ (each line in columns A-G, JSON backup in H6) */
 export async function getSupplementalLines(ctx: SheetsContext, sheetName: string): Promise<SupplementalLine[]> {
   try {
     const { sheets, spreadsheetId } = ctx;
+    // Read H6 first (JSON backup) for reliable parsing
     const res = await sheets.spreadsheets.values.get({
+      spreadsheetId, range: `'${sheetName}'!H6:H6`,
+    });
+    const jsonVal = res.data.values?.[0]?.[0]?.toString() || '';
+    if (jsonVal) {
+      try { return JSON.parse(jsonVal); } catch {}
+    }
+    // Fallback: try legacy A6 JSON format
+    const legacyRes = await sheets.spreadsheets.values.get({
       spreadsheetId, range: `'${sheetName}'!A6:A6`,
     });
-    const val = res.data.values?.[0]?.[0]?.toString() || '';
-    if (!val) return [];
-    return JSON.parse(val);
+    const legacyVal = legacyRes.data.values?.[0]?.[0]?.toString() || '';
+    if (legacyVal) {
+      try { return JSON.parse(legacyVal); } catch {}
+    }
+    return [];
   } catch { return []; }
 }
 
-/** Save supplemental billing lines to row 6 (as JSON in A6) */
+/** Save supplemental billing lines — readable columns A-G in row 6+ and JSON backup in H6 */
 export async function setSupplementalLines(ctx: SheetsContext, sheetName: string, lines: SupplementalLine[]): Promise<void> {
   const { sheets, spreadsheetId } = ctx;
+  if (lines.length === 0) {
+    // Clear row 6
+    await sheets.spreadsheets.values.update({
+      spreadsheetId,
+      range: `'${sheetName}'!A6:H6`,
+      valueInputOption: 'RAW',
+      requestBody: { values: [['', '', '', '', '', '', '', '']] },
+    });
+    return;
+  }
+  // Write supplemental lines in same column layout as row 5: START, END, HOURS, FEE TYPE, CODE, FEE, TOTAL
+  // First line goes in A6:G6, JSON backup of all lines in H6
+  // Multiple lines: show first line in columns, note count in D6
+  const first = lines[0];
+  const feeTypeLabel = lines.length === 1
+    ? (SUPPLEMENTAL_CODES[first.code]?.label || first.code)
+    : `${SUPPLEMENTAL_CODES[first.code]?.label || first.code} (+${lines.length - 1} more)`;
+  const totalAll = lines.reduce((sum, l) => sum + (parseFloat(l.total) || 0), 0);
+  const row: string[] = [
+    first.start,                          // A6: START
+    first.end,                            // B6: END
+    first.hours,                          // C6: HOURS
+    feeTypeLabel,                         // D6: FEE TYPE (with count if multiple)
+    first.code,                           // E6: CODE
+    first.fee,                            // F6: FEE (rate)
+    lines.length === 1 ? first.total : totalAll.toFixed(2), // G6: TOTAL (sum of all if multiple)
+    JSON.stringify(lines),                // H6: JSON backup
+  ];
   await sheets.spreadsheets.values.update({
     spreadsheetId,
-    range: `'${sheetName}'!A6:A6`,
+    range: `'${sheetName}'!A6:H6`,
     valueInputOption: 'RAW',
-    requestBody: { values: [[JSON.stringify(lines)]] },
+    requestBody: { values: [row] },
   });
 }
 

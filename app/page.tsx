@@ -1324,32 +1324,21 @@ export default function HomePage() {
                 </button>
               ) : (
                 <>
-                  <select
+                  <input
+                    type="time"
                     value={shiftStart}
                     onChange={(e) => { setShiftStart(e.target.value); handleShiftTimeSave({ start: e.target.value }); }}
                     className="shift-select-header"
-                  >
-                    <option value="">Start</option>
-                    <option value="08:00">8:00 AM</option>
-                    <option value="11:00">11:00 AM</option>
-                    <option value="13:00">1:00 PM</option>
-                    <option value="16:00">4:00 PM</option>
-                    <option value="18:00">6:00 PM</option>
-                    <option value="23:00">11:00 PM</option>
-                  </select>
+                    placeholder="Start"
+                  />
                   <span className="text-[10px]" style={{ color: 'var(--dash-text-muted)' }}>–</span>
-                  <select
+                  <input
+                    type="time"
                     value={shiftEnd}
                     onChange={(e) => { setShiftEnd(e.target.value); handleShiftTimeSave({ end: e.target.value }); }}
                     className="shift-select-header"
-                  >
-                    <option value="">End</option>
-                    <option value="15:00">3:00 PM</option>
-                    <option value="18:00">6:00 PM</option>
-                    <option value="21:00">9:00 PM</option>
-                    <option value="01:00">1:00 AM</option>
-                    <option value="08:00">8:00 AM</option>
-                  </select>
+                    placeholder="End"
+                  />
                   {shiftHours && (
                     <span className="text-xs font-medium flex-shrink-0" style={{ color: 'var(--dash-text-sub)' }}>{shiftHours}h</span>
                   )}
@@ -1438,10 +1427,10 @@ export default function HomePage() {
                           <input type="time" id="sup-end" className="flex-1 px-1.5 py-1 bg-gray-800/80 border border-gray-700/50 rounded text-[10px] text-gray-200 focus:border-teal-500/50 focus:outline-none" />
                         </div>
                         <div className="flex gap-1.5">
-                          <select id="sup-code" className="flex-1 px-1.5 py-1 bg-gray-800/80 border border-gray-700/50 rounded text-[10px] text-gray-200 focus:outline-none">
-                            <option value="0140">0140 – 2nd On-Call ($26.30/hr)</option>
+                          <select id="sup-code" defaultValue={(() => { if (!shiftStart) return '0145'; const h = parseInt(shiftStart.split(':')[0], 10); return (h >= 23 || h < 8) ? '0146' : '0145'; })()} className="flex-1 px-1.5 py-1 bg-gray-800/80 border border-gray-700/50 rounded text-[10px] text-gray-200 focus:outline-none">
                             <option value="0145">0145 – Day Supp ($85.60/hr)</option>
                             <option value="0146">0146 – Night Supp ($125.10/hr)</option>
+                            <option value="0140">0140 – 2nd On-Call ($26.30/hr)</option>
                           </select>
                           <button onClick={async () => {
                             const startEl = document.getElementById('sup-start') as HTMLInputElement;

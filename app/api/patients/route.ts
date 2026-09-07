@@ -108,6 +108,8 @@ export async function PATCH(request: NextRequest) {
     // Update supplemental lines if provided
     if (supplementalLines !== undefined) {
       const gs = await import('@/lib/google-sheets');
+      // Ensure sheet exists (creates from template if needed)
+      await gs.getOrCreateDateSheet(ctx.sheets, sheetName);
       await gs.setSupplementalLines(ctx.sheets, sheetName, supplementalLines);
       const lines = await gs.getSupplementalLines(ctx.sheets, sheetName);
       return NextResponse.json({ supplementalLines: lines });
