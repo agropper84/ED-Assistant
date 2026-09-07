@@ -1366,12 +1366,19 @@ export default function HomePage() {
                         <option value="0140">0140</option>
                       </select>
                     )}
-                    {shiftTotal && (
-                      <span className="text-[10px] font-mono flex-shrink-0" style={{ color: 'var(--dash-text-sub)' }}>${shiftTotal}</span>
+                    {supplementalLines.length > 0 && (
+                      <button
+                        onClick={() => setShowDayTotal(!showDayTotal)}
+                        className="text-[9px] font-medium flex-shrink-0 px-1 py-0.5 rounded transition-colors hover:bg-white/[0.07]"
+                        style={{ color: 'rgb(94,234,212)', opacity: showDayTotal ? 1 : 0.7 }}
+                        title={showDayTotal ? 'Collapse supplemental fees' : 'Expand supplemental fees'}
+                      >
+                        +{supplementalLines.length}{showDayTotal ? ' ▴' : ' ▾'}
+                      </button>
                     )}
                   </div>
-                  {/* Supplemental fee rows — same layout as shift row */}
-                  {supplementalLines.map((line, idx) => (
+                  {/* Supplemental fee rows — collapsed by default */}
+                  {showDayTotal && supplementalLines.map((line, idx) => (
                     <div key={idx} className="flex items-center gap-1.5">
                       <span className="shift-time-input" style={{ cursor: 'default', opacity: 0.8 }}>{line.start}</span>
                       <span className="text-[10px]" style={{ color: 'var(--dash-text-muted)' }}>–</span>
@@ -1381,8 +1388,8 @@ export default function HomePage() {
                       <span className="text-[10px] font-mono flex-shrink-0" style={{ color: 'var(--dash-text-sub)' }}>${line.total}</span>
                     </div>
                   ))}
-                  {/* Day total */}
-                  {(shiftTotal || supplementalLines.length > 0) && supplementalLines.length > 0 && (
+                  {/* Day total — only when expanded */}
+                  {showDayTotal && supplementalLines.length > 0 && (
                     <div className="flex items-center gap-1 pt-0.5" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
                       <span className="text-[9px] uppercase tracking-wider" style={{ color: 'var(--dash-text-muted)' }}>Total</span>
                       <span className="text-[11px] font-mono font-medium" style={{ color: 'var(--dash-text)' }}>${dayTotal.toFixed(2)}</span>
