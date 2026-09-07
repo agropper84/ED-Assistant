@@ -158,11 +158,28 @@ async function exportVchExcel(ctx: any, startDate: Date, endDate: Date): Promise
 
 import { COLUMNS, DATA_START_ROW } from '@/lib/google-sheets';
 
+// Styling constants
+const FONT = { name: 'Calibri', size: 10 };
+const FONT_BOLD = { ...FONT, bold: true };
+const FONT_TITLE = { name: 'Calibri', size: 13, bold: true };
+const HEADER_FILL: ExcelJS.Fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1F3864' } };
+const HEADER_FONT = { ...FONT, bold: true, color: { argb: 'FFFFFFFF' } };
+const ALT_ROW_FILL: ExcelJS.Fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF5F7FA' } };
+const TIME_LABEL_FILL: ExcelJS.Fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE8EEF7' } };
+const SUP_FONT = { ...FONT, color: { argb: 'FF2E5CB8' } };
+const BORDER_THIN: Partial<ExcelJS.Borders> = {
+  top: { style: 'thin', color: { argb: 'FFD0D5DD' } },
+  bottom: { style: 'thin', color: { argb: 'FFD0D5DD' } },
+  left: { style: 'thin', color: { argb: 'FFD0D5DD' } },
+  right: { style: 'thin', color: { argb: 'FFD0D5DD' } },
+};
+
 async function exportYukonExcel(
   ctx: any, startDate: Date, endDate: Date, months: string[]
 ): Promise<Buffer> {
   const { sheets, spreadsheetId } = ctx;
   const wb = new ExcelJS.Workbook();
+  wb.creator = 'ED Assistant';
 
   const d = new Date(startDate);
   while (d <= endDate) {
@@ -171,15 +188,13 @@ async function exportYukonExcel(
     try {
       // Read header rows (1-7) for shift time data
       const headerRes = await sheets.spreadsheets.values.get({
-        spreadsheetId,
-        range: `'${sheetName}'!A1:Q7`,
+        spreadsheetId, range: `'${sheetName}'!A1:Q7`,
       });
       const headerRows = headerRes.data.values || [];
 
-      // Read all patient data rows (raw, with continuation rows)
+      // Read all patient data rows
       const dataRes = await sheets.spreadsheets.values.get({
-        spreadsheetId,
-        range: `'${sheetName}'!A${DATA_START_ROW}:Q200`,
+        spreadsheetId, range: `'${sheetName}'!A${DATA_START_ROW}:Q200`,
       });
       const rawRows = dataRes.data.values || [];
 
@@ -188,162 +203,209 @@ async function exportYukonExcel(
         continue;
       }
 
-      // Group rows into patient blocks (patient row + continuation rows)
+      // Group rows into patient blocks
       const patientBlocks: { timestamp: string; rows: any[][] }[] = [];
       let currentBlock: any[][] = [];
-
       for (const row of rawRows) {
         const name = row[COLUMNS.PATIENT_NAME]?.toString().trim() || '';
         const procCode = row[COLUMNS.PROC_CODE]?.toString().trim() || '';
-
         if (name) {
-          // New patient — save previous block
-          if (currentBlock.length > 0) {
-            patientBlocks.push({
-              timestamp: currentBlock[0][COLUMNS.TIMESTAMP]?.toString() || '',
-              rows: currentBlock,
-            });
-          }
+          if (currentBlock.length > 0) patientBlocks.push({ timestamp: currentBlock[0][COLUMNS.TIMESTAMP]?.toString() || '', rows: currentBlock });
           currentBlock = [row];
         } else if (procCode) {
-          // Continuation row (billing data, no name)
           currentBlock.push(row);
         }
       }
-      // Don't forget the last block
-      if (currentBlock.length > 0) {
-        patientBlocks.push({
-          timestamp: currentBlock[0][COLUMNS.TIMESTAMP]?.toString() || '',
-          rows: currentBlock,
-        });
-      }
-
-      // Sort blocks by timestamp
+      if (currentBlock.length > 0) patientBlocks.push({ timestamp: currentBlock[0][COLUMNS.TIMESTAMP]?.toString() || '', rows: currentBlock });
       patientBlocks.sort((a, b) => a.timestamp.localeCompare(b.timestamp));
 
       // Create worksheet
       const ws = wb.addWorksheet(sheetName);
 
-      // Column headers (A-Q)
-      const colHeaders = [
-        '#', 'Time', 'Patient Name', 'Age', 'Gender', 'DOB', 'HCN', 'MRN',
-        'Diagnosis', 'ICD-9', 'ICD-10', 'Visit/Procedure', 'Proc Code',
-        'Fee', 'Units', 'Total', 'Comments',
+      // Column definitions — matching requested layout
+      const colDefs = [
+        { header: 'Time', key: 'time', width: 7 },
+        { header: 'Patient Name', key: 'name', width: 22 },
+        { header: 'Age', key: 'age', width: 5 },
+        { header: 'Gender', key: 'gender', width: 5 },
+        { header: 'DOB', key: 'dob', width: 11 },
+        { header: 'HCN', key: 'hcn', width: 13 },
+        { header: 'MRN', key: 'mrn', width: 10 },
+        { header: 'Diagnosis', key: 'diagnosis', width: 24 },
+        { header: 'ICD-9', key: 'icd9', width: 8 },
+        { header: 'Procedure', key: 'procedure', width: 22 },
+        { header: 'Code', key: 'code', width: 7 },
+        { header: 'Fee', key: 'fee', width: 9 },
+        { header: 'Unit', key: 'unit', width: 5 },
+        { header: 'Total', key: 'total', width: 10 },
+        { header: 'Comments', key: 'comments', width: 24 },
       ];
-      ws.columns = colHeaders.map((h, i) => ({
-        header: h,
-        key: `col${i}`,
-        width: [4, 6, 18, 5, 4, 10, 12, 10, 20, 8, 8, 20, 10, 8, 5, 8, 20][i] || 12,
-      }));
+      ws.columns = colDefs;
 
-      // Write shift time/fee header (rows 1-5 from original sheet)
-      // First, add the date
-      const dateRow = ws.getRow(1);
-      dateRow.getCell(1).value = sheetName;
-      dateRow.getCell(1).font = { name: 'Calibri', size: 12, bold: true };
+      // ===== ROW 1: Date title =====
+      let rowNum = 1;
+      const titleRow = ws.getRow(rowNum);
+      ws.mergeCells(rowNum, 1, rowNum, colDefs.length);
+      titleRow.getCell(1).value = sheetName;
+      titleRow.getCell(1).font = FONT_TITLE;
+      titleRow.getCell(1).alignment = { horizontal: 'left', vertical: 'middle' };
+      titleRow.height = 22;
+      rowNum++;
 
-      // Time-based fee header (if present)
+      // ===== ROW 2-4: Time-based fees =====
       if (headerRows.length >= 5) {
-        const row3 = ws.getRow(3);
-        row3.getCell(1).value = headerRows[2]?.[0] || 'TIME BASED FEE';
-        row3.getCell(1).font = { name: 'Calibri', size: 11, bold: true };
+        const shiftVals = headerRows[4] || [];
+        const shiftStart = shiftVals[0]?.toString() || '';
+        const shiftEnd = shiftVals[1]?.toString() || '';
+        const shiftHours = shiftVals[2]?.toString() || '';
+        const shiftFeeType = shiftVals[3]?.toString() || '';
+        const shiftCode = shiftVals[4]?.toString() || '';
+        const shiftFee = shiftVals[5]?.toString() || '';
+        const shiftTotal = shiftVals[6]?.toString() || '';
 
-        const row4 = ws.getRow(4);
-        const labels = headerRows[3] || ['START', 'END', 'HOURS', 'FEE TYPE', 'CODE', 'TOTAL'];
-        labels.forEach((val: string, i: number) => {
-          const cell = row4.getCell(i + 1);
-          cell.value = val;
-          cell.font = { name: 'Calibri', size: 10, bold: true };
-          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF2F2F2' } };
-        });
+        if (shiftStart) {
+          // Time-based fee label row
+          const labelRow = ws.getRow(rowNum);
+          labelRow.getCell(1).value = 'TIME BASED FEE';
+          labelRow.getCell(1).font = { ...FONT_BOLD, size: 11 };
+          rowNum++;
 
-        const row5 = ws.getRow(5);
-        const values = headerRows[4] || [];
-        values.forEach((val: string, i: number) => {
-          row5.getCell(i + 1).value = val;
-          row5.getCell(i + 1).font = { name: 'Calibri', size: 10 };
-        });
+          // Header row for time fees
+          const tfHeaderRow = ws.getRow(rowNum);
+          ['Start', 'End', 'Hours', 'Fee Type', 'Code', 'Rate', 'Total'].forEach((lbl, i) => {
+            const c = tfHeaderRow.getCell(i + 1);
+            c.value = lbl;
+            c.font = FONT_BOLD;
+            c.fill = TIME_LABEL_FILL;
+            c.border = BORDER_THIN;
+          });
+          rowNum++;
 
-        // Supplemental billing lines (row 6 stores JSON)
-        const supRaw = headerRows[5]?.[0]?.toString() || '';
-        if (supRaw) {
-          try {
-            const supLines = JSON.parse(supRaw) as { start: string; end: string; code: string; hours: string; fee: string; total: string }[];
-            if (supLines.length > 0) {
-              const row6Label = ws.getRow(6);
-              row6Label.getCell(1).value = 'SUPPLEMENTAL';
-              row6Label.getCell(1).font = { name: 'Calibri', size: 10, bold: true, color: { argb: 'FF0070C0' } };
-              // Write each supplemental line as additional rows after row 6
-              let supRow = 6;
+          // Values row
+          const tfValRow = ws.getRow(rowNum);
+          [shiftStart, shiftEnd, shiftHours, shiftFeeType, shiftCode, shiftFee, shiftTotal].forEach((val, i) => {
+            const c = tfValRow.getCell(i + 1);
+            if (i === 6) { const n = parseFloat(val); c.value = isNaN(n) ? val : n; c.numFmt = '$#,##0.00'; }
+            else if (i === 5) { const n = parseFloat(val); c.value = isNaN(n) ? val : n; c.numFmt = '$#,##0.00'; }
+            else if (i === 2) { const n = parseFloat(val); c.value = isNaN(n) ? val : n; }
+            else { c.value = val; }
+            c.font = FONT;
+            c.border = BORDER_THIN;
+          });
+          rowNum++;
+
+          // Supplemental lines
+          const supRaw = headerRows[5]?.[0]?.toString() || '';
+          if (supRaw) {
+            try {
+              const supLines = JSON.parse(supRaw) as { start: string; end: string; code: string; hours: string; fee: string; total: string }[];
               for (const sl of supLines) {
-                const r = ws.getRow(supRow);
-                if (supRow > 6) r.getCell(1).value = '';
-                r.getCell(supRow === 6 ? 1 : 1).value = supRow === 6 ? 'SUPPLEMENTAL' : '';
-                r.getCell(2).value = `${sl.start}–${sl.end}`;
-                r.getCell(3).value = parseFloat(sl.hours) || 0;
-                r.getCell(4).value = sl.code;
-                r.getCell(5).value = `$${sl.fee}/hr`;
-                r.getCell(6).value = parseFloat(sl.total) || 0;
-                r.getCell(6).numFmt = '$#,##0.00';
-                r.font = { name: 'Calibri', size: 10, color: { argb: 'FF0070C0' } };
-                supRow++;
+                const sr = ws.getRow(rowNum);
+                sr.getCell(1).value = sl.start;
+                sr.getCell(2).value = sl.end;
+                sr.getCell(3).value = parseFloat(sl.hours) || 0;
+                sr.getCell(4).value = 'Supplemental';
+                sr.getCell(5).value = sl.code;
+                sr.getCell(6).value = parseFloat(sl.fee) || 0; sr.getCell(6).numFmt = '$#,##0.00';
+                sr.getCell(7).value = parseFloat(sl.total) || 0; sr.getCell(7).numFmt = '$#,##0.00';
+                for (let ci = 1; ci <= 7; ci++) { sr.getCell(ci).font = SUP_FONT; sr.getCell(ci).border = BORDER_THIN; }
+                rowNum++;
               }
-            }
-          } catch {}
+            } catch {}
+          }
+
+          rowNum++; // blank spacer row
         }
       }
 
-      // Column headers row (row 7)
-      const hdrRow = ws.getRow(7);
-      colHeaders.forEach((h, i) => {
-        const cell = hdrRow.getCell(i + 1);
-        cell.value = h;
-        cell.font = { name: 'Calibri', size: 10, bold: true };
-        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE8EAED' } };
-        cell.alignment = { vertical: 'bottom' };
+      // ===== PATIENT DATA HEADER =====
+      const hdrRowNum = rowNum;
+      const hdrRow = ws.getRow(hdrRowNum);
+      colDefs.forEach((col, i) => {
+        const c = hdrRow.getCell(i + 1);
+        c.value = col.header;
+        c.font = HEADER_FONT;
+        c.fill = HEADER_FILL;
+        c.alignment = { horizontal: 'left', vertical: 'middle' };
+        c.border = BORDER_THIN;
       });
+      hdrRow.height = 18;
+      rowNum++;
 
-      // Write patient data (starting row 8), re-numbered
-      let currentRow = 8;
-      let patientNum = 1;
+      // ===== PATIENT DATA ROWS =====
+      let patientNum = 0;
+      let grandTotal = 0;
 
       for (const block of patientBlocks) {
         for (let i = 0; i < block.rows.length; i++) {
           const row = block.rows[i];
-          const wsRow = ws.getRow(currentRow);
+          const wsRow = ws.getRow(rowNum);
+          const isAlt = patientNum % 2 === 1;
 
-          // Column A: patient number (only on first row of block)
+          // Map columns
           if (i === 0) {
-            wsRow.getCell(1).value = patientNum;
+            wsRow.getCell(1).value = row[COLUMNS.TIMESTAMP]?.toString() || '';        // Time
+            wsRow.getCell(2).value = row[COLUMNS.PATIENT_NAME]?.toString() || '';      // Patient Name
+            wsRow.getCell(3).value = row[3]?.toString() || '';                          // Age
+            wsRow.getCell(4).value = row[4]?.toString() || '';                          // Gender
+            wsRow.getCell(5).value = row[5]?.toString() || '';                          // DOB
+            wsRow.getCell(6).value = row[6]?.toString() || '';                          // HCN
+            wsRow.getCell(7).value = row[7]?.toString() || '';                          // MRN
+            wsRow.getCell(8).value = row[COLUMNS.DIAGNOSIS]?.toString() || '';          // Diagnosis
+            wsRow.getCell(9).value = row[COLUMNS.ICD9]?.toString() || '';               // ICD-9
+            wsRow.getCell(15).value = row[COLUMNS.COMMENTS]?.toString() || '';          // Comments
           }
 
-          // Columns B-Q (indices 1-16 in the row array)
-          for (let col = 1; col <= 16; col++) {
-            const val = row[col]?.toString() || '';
-            if (!val) continue;
+          // Billing columns (present on all rows including continuation)
+          const procDesc = row[11]?.toString() || '';  // Visit/Procedure description
+          const procCode = row[COLUMNS.PROC_CODE]?.toString() || '';
+          const feeVal = row[COLUMNS.FEE]?.toString() || '';
+          const unitVal = row[COLUMNS.UNIT]?.toString() || '';
+          const totalVal = row[COLUMNS.TOTAL]?.toString() || '';
 
-            const cell = wsRow.getCell(col + 1);
-            // Fee/Total columns — numeric
-            if (col === COLUMNS.FEE || col === COLUMNS.TOTAL) {
-              const num = parseFloat(val);
-              cell.value = isNaN(num) ? val : num;
-              if (!isNaN(num)) cell.numFmt = '$#,##0.00';
-            } else if (col === COLUMNS.UNIT) {
-              const num = parseInt(val);
-              cell.value = isNaN(num) ? val : num;
-            } else {
-              cell.value = val;
-            }
-            cell.font = { name: 'Calibri', size: 10 };
+          wsRow.getCell(10).value = procDesc;                                           // Procedure
+          wsRow.getCell(11).value = procCode;                                           // Code
+          const feeNum = parseFloat(feeVal);
+          wsRow.getCell(12).value = isNaN(feeNum) ? feeVal : feeNum;                   // Fee
+          if (!isNaN(feeNum)) wsRow.getCell(12).numFmt = '$#,##0.00';
+          const unitNum = parseInt(unitVal);
+          wsRow.getCell(13).value = isNaN(unitNum) ? unitVal : unitNum;                 // Unit
+          const totalNum = parseFloat(totalVal);
+          wsRow.getCell(14).value = isNaN(totalNum) ? totalVal : totalNum;              // Total
+          if (!isNaN(totalNum)) { wsRow.getCell(14).numFmt = '$#,##0.00'; grandTotal += totalNum; }
+
+          // Apply styling
+          for (let ci = 1; ci <= colDefs.length; ci++) {
+            const c = wsRow.getCell(ci);
+            c.font = FONT;
+            c.border = BORDER_THIN;
+            c.alignment = { vertical: 'top', wrapText: ci === 8 || ci === 10 || ci === 15 };
+            if (isAlt) c.fill = ALT_ROW_FILL;
           }
 
-          currentRow++;
+          rowNum++;
         }
         patientNum++;
       }
 
-      // Freeze header
-      ws.views = [{ state: 'frozen', ySplit: 7 }];
+      // ===== GRAND TOTAL ROW =====
+      if (grandTotal > 0) {
+        rowNum++; // blank spacer
+        const totalRow = ws.getRow(rowNum);
+        totalRow.getCell(13).value = 'TOTAL';
+        totalRow.getCell(13).font = FONT_BOLD;
+        totalRow.getCell(13).alignment = { horizontal: 'right' };
+        totalRow.getCell(14).value = grandTotal;
+        totalRow.getCell(14).numFmt = '$#,##0.00';
+        totalRow.getCell(14).font = { ...FONT_BOLD, size: 11 };
+        totalRow.getCell(14).border = { top: { style: 'double', color: { argb: 'FF1F3864' } }, bottom: { style: 'double', color: { argb: 'FF1F3864' } } };
+      }
+
+      // Freeze below headers
+      ws.views = [{ state: 'frozen', ySplit: hdrRowNum }];
+
+      // Print settings
+      ws.pageSetup = { orientation: 'landscape', fitToPage: true, fitToWidth: 1, fitToHeight: 0 };
 
     } catch {
       // Sheet doesn't exist for this date — skip
@@ -353,7 +415,6 @@ async function exportYukonExcel(
   }
 
   if (wb.worksheets.length === 0) {
-    // Create an empty sheet so the file isn't invalid
     wb.addWorksheet('No Data');
   }
 
