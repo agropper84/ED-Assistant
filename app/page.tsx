@@ -1364,32 +1364,26 @@ export default function HomePage() {
                       <option value="0140">0140</option>
                     </select>
                   )}
-                  {shiftTotal && (
+                  {(shiftTotal || supplementalLines.length > 0) && (
                     <span
                       onClick={() => setShowDayTotal(!showDayTotal)}
                       className="text-[11px] font-mono font-medium flex-shrink-0 cursor-pointer hover:bg-white/[0.07] px-1.5 py-0.5 rounded transition-colors"
-                      style={{ color: showDayTotal ? 'var(--dash-text)' : 'var(--dash-text-sub)' }}
-                      title={showDayTotal ? 'Show shift total' : 'Show day total'}
+                      style={{ color: 'var(--dash-text-sub)' }}
+                      title={showDayTotal
+                        ? `Day total: shift $${shiftTotal || '0'}${supplementalLines.length > 0 ? ` + ${supplementalLines.length} supp` : ''}`
+                        : 'Click for day total'}
                     >
-                      {showDayTotal ? `$${dayTotal.toFixed(2)}` : `$${shiftTotal}`}
+                      ${showDayTotal ? dayTotal.toFixed(2) : shiftTotal || '0'}
                     </span>
                   )}
                   {supplementalLines.length > 0 && (
-                    <>
-                      <span className="text-[9px]" style={{ color: 'var(--dash-text-muted)', opacity: 0.4 }}>│</span>
-                      {supplementalLines.map((line, idx) => (
-                        <span
-                          key={idx}
-                          className="text-[10px] font-mono flex-shrink-0 px-1 py-0.5 rounded"
-                          style={{ color: 'var(--dash-text-muted)', background: 'rgba(255,255,255,0.04)' }}
-                          title={`${line.code}: ${line.start}–${line.end} (${line.hours}h) = $${line.total}`}
-                        >
-                          <span style={{ color: 'rgb(94,234,212)' }}>{line.code}</span>
-                          <span className="mx-0.5" style={{ opacity: 0.5 }}>{line.start}–{line.end}</span>
-                          <span style={{ opacity: 0.7 }}>${line.total}</span>
-                        </span>
-                      ))}
-                    </>
+                    <span
+                      className="text-[10px] flex-shrink-0 px-1.5 py-0.5 rounded font-medium"
+                      style={{ color: 'rgb(94,234,212)', background: 'rgba(94,234,212,0.08)', border: '1px solid rgba(94,234,212,0.15)' }}
+                      title={supplementalLines.map(l => `${l.code} ${l.start}–${l.end} (${l.hours}h) $${l.total}`).join('\n')}
+                    >
+                      +{supplementalLines.length} supp
+                    </span>
                   )}
                 </>
               )}
