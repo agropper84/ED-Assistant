@@ -10,7 +10,7 @@ const FILTERS: { key: BoardFilter; label: string }[] = [
   { key: 'done', label: 'DONE' },
 ];
 
-export function FilterRow() {
+export function FilterRow({ onAdd }: { onAdd?: () => void } = {}) {
   const { filter, setFilter, counts } = useBoard();
 
   const countMap: Record<BoardFilter, number> = {
@@ -65,6 +65,7 @@ export function FilterRow() {
 
       {/* Add Patient button */}
       <button
+        onClick={onAdd}
         style={{
           display: 'inline-flex',
           alignItems: 'center',

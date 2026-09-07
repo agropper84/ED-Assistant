@@ -1,6 +1,6 @@
 'use client';
 
-import { Sun, Moon, List, LayoutGrid, Columns2 } from 'lucide-react';
+import { Sun, Moon, List, LayoutGrid, Columns2, Search, SlidersHorizontal } from 'lucide-react';
 import { useBoard, type BoardNav } from '../../providers';
 
 const NAV_OPTIONS: { key: BoardNav; icon: typeof List; label: string }[] = [
@@ -9,7 +9,12 @@ const NAV_OPTIONS: { key: BoardNav; icon: typeof List; label: string }[] = [
   { key: 'grid', icon: LayoutGrid, label: 'Grid' },
 ];
 
-export function BoardHeader() {
+interface BoardHeaderProps {
+  onSearchClick?: () => void;
+  onAddClick?: () => void;
+}
+
+export function BoardHeader({ onSearchClick, onAddClick }: BoardHeaderProps = {}) {
   const { nav, setNav, patients, counts, sheetName } = useBoard();
   const isDark = typeof document !== 'undefined' && document.documentElement.classList.contains('dark');
 
@@ -77,6 +82,44 @@ export function BoardHeader() {
           );
         })}
       </div>
+
+      {/* Search field — opens command palette */}
+      <button
+        onClick={onSearchClick}
+        style={{
+          display: 'flex', alignItems: 'center', gap: '8px',
+          flex: '1 1 180px', minWidth: '180px', maxWidth: '260px',
+          height: '38px', padding: '0 12px',
+          borderRadius: '11px',
+          background: 'var(--warm-surface-2)',
+          border: '1px solid var(--warm-border)',
+          cursor: 'pointer', color: 'var(--warm-text-3)', fontSize: '13px',
+          fontFamily: 'var(--warm-font)',
+          transition: 'all var(--warm-dur-fast)',
+        }}
+      >
+        <Search size={14} style={{ flexShrink: 0 }} />
+        <span style={{ flex: 1, textAlign: 'left' as const }}>Search patients…</span>
+        <span style={{
+          fontSize: '10px', fontWeight: 600, padding: '2px 6px',
+          borderRadius: '5px', background: 'var(--warm-surface)',
+          border: '1px solid var(--warm-border)',
+        }}>⌘K</span>
+      </button>
+
+      {/* Settings */}
+      <a
+        href="/settings"
+        style={{
+          width: '38px', height: '38px', borderRadius: '50%',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          background: 'var(--warm-surface-2)', border: '1px solid var(--warm-border)',
+          color: 'var(--warm-text-3)', textDecoration: 'none',
+        }}
+        title="Settings"
+      >
+        <SlidersHorizontal size={16} />
+      </a>
 
       {/* Theme toggle */}
       <button
