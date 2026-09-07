@@ -508,9 +508,10 @@ export default function HomePage() {
     return null;
   };
 
-  const handleShiftTimeSave = async (overrides?: { start?: string; end?: string }) => {
+  const handleShiftTimeSave = async (overrides?: { start?: string; end?: string; code?: string }) => {
     const s = overrides?.start ?? shiftStart;
     const e = overrides?.end ?? shiftEnd;
+    const c = overrides?.code ?? shiftCode;
     try {
       const res = await fetch('/api/patients', {
         method: 'PATCH',
@@ -519,6 +520,7 @@ export default function HomePage() {
           sheetName,
           shiftStart: s,
           shiftEnd: e,
+          shiftCode: c || undefined,
         }),
       });
       const data = await res.json();
@@ -1346,14 +1348,30 @@ export default function HomePage() {
                   {shiftHours && (
                     <span className="text-xs font-medium flex-shrink-0" style={{ color: 'var(--dash-text-sub)' }}>{shiftHours}h</span>
                   )}
-                  {shiftCode && (
+                  {shiftStart && (
+                    <select
+                      value={shiftCode || ''}
+                      onChange={(e) => {
+                        setShiftCode(e.target.value);
+                        handleShiftTimeSave({ code: e.target.value });
+                      }}
+                      className="shift-select-header"
+                      style={{ width: 'auto', minWidth: '52px', fontSize: '10px', fontFamily: 'var(--font-mono, monospace)' }}
+                      title="Billing code"
+                    >
+                      <option value="0145">0145</option>
+                      <option value="0146">0146</option>
+                      <option value="0140">0140</option>
+                    </select>
+                  )}
+                  {shiftTotal && (
                     <span
                       onClick={() => setShowDayTotal(!showDayTotal)}
                       className="text-[11px] font-mono font-medium flex-shrink-0 cursor-pointer hover:bg-white/[0.07] px-1.5 py-0.5 rounded transition-colors"
                       style={{ color: showDayTotal ? 'var(--dash-text)' : 'var(--dash-text-sub)' }}
-                      title={showDayTotal ? 'Show fee code' : 'Show day total'}
+                      title={showDayTotal ? 'Show shift total' : 'Show day total'}
                     >
-                      {showDayTotal ? `$${dayTotal.toFixed(2)}` : shiftCode}
+                      {showDayTotal ? `$${dayTotal.toFixed(2)}` : `$${shiftTotal}`}
                     </span>
                   )}
                   {supplementalLines.length > 0 && (

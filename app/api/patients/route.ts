@@ -100,7 +100,7 @@ export async function PATCH(request: NextRequest) {
   try {
     const ctx = await getDataContext();
     const body = await request.json();
-    const { sheetName, shiftStart, shiftEnd, supplementalLines } = body;
+    const { sheetName, shiftStart, shiftEnd, shiftCode: codeOverride, supplementalLines } = body;
     if (!sheetName) {
       return NextResponse.json({ error: 'sheetName required' }, { status: 400 });
     }
@@ -115,7 +115,7 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ supplementalLines: lines });
     }
 
-    const shiftTimes = await setShiftTimes(ctx, sheetName, shiftStart || '', shiftEnd || '');
+    const shiftTimes = await setShiftTimes(ctx, sheetName, shiftStart || '', shiftEnd || '', codeOverride || undefined);
     // Also return supplemental lines
     const gs = await import('@/lib/google-sheets');
     const supLines = await gs.getSupplementalLines(ctx.sheets, sheetName);

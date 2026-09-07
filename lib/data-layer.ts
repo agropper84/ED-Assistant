@@ -358,16 +358,21 @@ export async function getShiftTimes(ctx: DataContext, sheetName: string) {
   return gs.getShiftTimes(ctx.sheets, sheetName);
 }
 
-export async function setShiftTimes(ctx: DataContext, sheetName: string, start: string, end: string) {
-  // Sheets computes fee logic, then we store the result in Drive
+export async function setShiftTimes(ctx: DataContext, sheetName: string, start: string, end: string, codeOverride?: string) {
   const gs = await import('./google-sheets');
-  const result = await gs.setShiftTimes(ctx.sheets, sheetName, start, end);
 
-  // Mirror to Drive
+  // Ensure sheet exists (creates from template if needed — handles empty-date case)
+  await gs.getOrCreateDateSheet(ctx.sheets, sheetName);
+
+  // Sheets computes fee logic, then we store the result in Drive
+  const result = await gs.setShiftTimes(ctx.sheets, sheetName, start, end, codeOverride);
+
+  // Mirror to Drive (also creates Drive file if needed)
   if (ctx.mode !== 'sheets' && ctx.drive) {
-    import('./drive-json').then(dj =>
-      dj.setShiftTimesInDrive(ctx.drive!, sheetName, result)
-    ).catch(e => console.warn('Drive shift time mirror failed:', (e as Error).message));
+    import('./drive-json').then(async (dj) => {
+      await dj.getOrCreateDateSheetInDrive(ctx.drive!, sheetName);
+      await dj.setShiftTimesInDrive(ctx.drive!, sheetName, result);
+    }).catch(e => console.warn('Drive shift time mirror failed:', (e as Error).message));
   }
 
   return result;

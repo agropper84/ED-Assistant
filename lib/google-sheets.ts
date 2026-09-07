@@ -735,22 +735,32 @@ export async function getShiftTimes(ctx: SheetsContext, sheetName?: string): Pro
   }
 }
 
+/** All time-based billing codes with rates */
+export const TIME_BASED_CODES: Record<string, { label: string; rate: number }> = {
+  '0145': { label: 'Base Fee 0800-2259', rate: 85.60 },
+  '0146': { label: 'Base Fee 2300-0759', rate: 125.10 },
+  '0140': { label: 'Emergency 2nd On-Call', rate: 26.30 },
+};
+
 /** Set shift times in row 5 and auto-populate fee type, code, and total */
 export async function setShiftTimes(
   ctx: SheetsContext,
   sheetName: string,
   start: string,
   end: string,
+  codeOverride?: string,
 ): Promise<ShiftTimes> {
   const { sheets, spreadsheetId } = ctx;
 
-  const feeInfo = getShiftFeeType(start);
+  const autoFee = getShiftFeeType(start);
   const hours = computeShiftHours(start, end);
+  // Use override code if provided, otherwise auto-detect from start time
+  const code = start ? (codeOverride && TIME_BASED_CODES[codeOverride] ? codeOverride : autoFee.code) : '';
+  const codeInfo = TIME_BASED_CODES[code] || autoFee;
   const hoursStr = hours > 0 ? hours.toString() : '';
-  const feeStr = start ? feeInfo.rate.toFixed(2) : '';
-  const totalStr = hours > 0 ? (hours * feeInfo.rate).toFixed(2) : '';
-  const feeType = start ? feeInfo.name : '';
-  const code = start ? feeInfo.code : '';
+  const feeStr = start ? codeInfo.rate.toFixed(2) : '';
+  const totalStr = hours > 0 ? (hours * codeInfo.rate).toFixed(2) : '';
+  const feeType = start ? codeInfo.label : '';
 
   await sheets.spreadsheets.values.update({
     spreadsheetId,
