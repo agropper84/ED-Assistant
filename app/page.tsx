@@ -96,6 +96,7 @@ export default function HomePage() {
   const [shiftFee, setShiftFee] = useState('');
   const [shiftTotal, setShiftTotal] = useState('');
   const [showDayTotal, setShowDayTotal] = useState(false);
+  const [showShiftTotal, setShowShiftTotal] = useState(false);
   const [supplementalLines, setSupplementalLines] = useState<{ start: string; end: string; code: string; hours: string; fee: string; total: string }[]>([]);
 
   // Patient data modal
@@ -1365,6 +1366,16 @@ export default function HomePage() {
                         <option value="0146">0146</option>
                         <option value="0140">0140</option>
                       </select>
+                    )}
+                    {shiftTotal && (
+                      <button
+                        onClick={() => setShowShiftTotal(!showShiftTotal)}
+                        className="text-[10px] font-mono font-medium flex-shrink-0 px-1 py-0.5 rounded transition-colors hover:bg-white/[0.07] cursor-pointer"
+                        style={{ color: 'var(--dash-text-sub)' }}
+                        title={showShiftTotal ? (supplementalLines.length > 0 ? 'Day total (click to hide)' : 'Shift total (click to hide)') : 'Show total'}
+                      >
+                        {showShiftTotal ? `$${supplementalLines.length > 0 ? dayTotal.toFixed(2) : shiftTotal}` : '$···'}
+                      </button>
                     )}
                     {supplementalLines.length > 0 && (
                       <button
