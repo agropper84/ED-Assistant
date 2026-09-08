@@ -688,7 +688,7 @@ export function VoiceRecorder({
     if (!audioBlob || audioBlob.size < 2000) return; // skip tiny/empty
     try {
       const contentType = mimeTypeRef.current || 'audio/webm';
-      const folder = sheetName ? encodeURIComponent(sheetName) : 'unknown';
+      const folder = sheetName ? sheetName.replace(/[^a-zA-Z0-9-]/g, '_') : 'unknown';
       if (!uploadBlob) return;
 
       if (encryptionKey && recMode === 'encounter') {
