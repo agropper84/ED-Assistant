@@ -12,12 +12,12 @@ const ENDPOINTS: SharedProps['endpoints'] = {
   transcribeDefault: '/api/transcribe',
   transcribeAsync: '/api/transcribe-async',
   medicalize: '/api/medicalize',
-  uploadAudio: '/api/blob-upload-token',
+  uploadAudio: '/api/upload-audio',
 };
 
 async function doUploadBlob(filename: string, blob: Blob): Promise<{ url: string }> {
   const { upload } = await import('@vercel/blob/client');
-  const result = await upload(filename, blob, { access: 'public', handleUploadUrl: '/api/blob-upload-token' });
+  const result = await upload(filename, blob, { access: 'public', handleUploadUrl: '/api/upload-audio' });
   return { url: result.url };
 }
 
