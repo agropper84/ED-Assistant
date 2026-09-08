@@ -58,7 +58,7 @@ Return a JSON array in this exact format:
       }],
     });
 
-    const text = response.content[0].type === 'text' ? response.content[0].text : '';
+    const text = (response.content.find((b: any) => b.type === 'text') as any)?.text || '';
 
     // Parse JSON from response (handle markdown code blocks)
     let parsed: Array<{ patientName: string; transcript: string }>;

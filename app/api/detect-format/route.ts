@@ -52,7 +52,7 @@ Return ONLY valid JSON, no explanation or markdown.`,
         }],
       });
 
-      const text = response.content[0].type === 'text' ? response.content[0].text : '';
+      const text = (response.content.find((b: any) => b.type === 'text') as any)?.text || '';
       const match = text.match(/\{[\s\S]*\}/);
       if (!match) {
         return NextResponse.json({ error: 'Failed to parse AI response' }, { status: 500 });
@@ -90,7 +90,7 @@ ${sampleText}`,
       }],
     });
 
-    const text = response.content[0].type === 'text' ? response.content[0].text : '';
+    const text = (response.content.find((b: any) => b.type === 'text') as any)?.text || '';
     const match = text.match(/\{[\s\S]*\}/);
     if (!match) {
       return NextResponse.json({ error: 'Failed to parse AI response' }, { status: 500 });

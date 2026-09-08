@@ -41,7 +41,7 @@ ${example}`,
       }],
     });
 
-    const text = response.content[0].type === 'text' ? response.content[0].text : '';
+    const text = (response.content.find((b: any) => b.type === 'text') as any)?.text || '';
 
     // Parse JSON array from response
     const match = text.match(/\[[\s\S]*\]/);

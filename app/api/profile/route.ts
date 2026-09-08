@@ -76,7 +76,7 @@ ${parts.join('\n\n---\n\n')}`,
       }],
     });
 
-    const text = response.content[0].type === 'text' ? response.content[0].text.trim() : '';
+    const text = (response.content.find((b: any) => b.type === 'text') as any)?.text?.trim() || '';
 
     // Parse the JSON response
     let profile: PatientProfile;

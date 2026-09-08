@@ -62,7 +62,7 @@ Example: [{"time":"10:00","name":"Law, Leslie","dob":"1950-09-16","hcn":"9149462
       }],
     });
 
-    const text = response.content[0].type === 'text' ? response.content[0].text : '';
+    const text = (response.content.find((b: any) => b.type === 'text') as any)?.text || '';
     const match = text.match(/\[[\s\S]*\]/);
     if (!match) {
       return NextResponse.json({ error: 'Failed to parse patients from day sheet' }, { status: 500 });

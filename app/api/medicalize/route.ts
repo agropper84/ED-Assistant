@@ -85,7 +85,7 @@ Rules:
       messages: [{ role: 'user', content: userMessage }],
     });
 
-    const result = response.content[0].type === 'text' ? response.content[0].text : '';
+    const result = (response.content.find((b: any) => b.type === 'text') as any)?.text || '';
     const trimmed = result.trim();
     if (!trimmed || trimmed === 'EMPTY') return NextResponse.json({ text: '' });
 

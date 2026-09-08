@@ -13,7 +13,7 @@ export async function POST(request: NextRequest) {
       messages: [{ role: 'user', content: 'Reply with only the word "OK".' }],
     });
 
-    const text = response.content[0]?.type === 'text' ? response.content[0].text.trim() : '';
+    const text = (response.content.find((b: any) => b.type === 'text') as any)?.text?.trim() || '';
     return NextResponse.json({ success: !!text, response: text, model: response.model });
   } catch (error: any) {
     const msg = error?.message || error?.error?.message || String(error);

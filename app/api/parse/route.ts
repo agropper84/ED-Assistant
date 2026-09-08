@@ -88,7 +88,7 @@ Return ONLY a JSON object with these fields: name, age, gender, birthday, hcn, m
     }],
   });
 
-  const text = response.content[0].type === 'text' ? response.content[0].text : '';
+  const text = (response.content.find((b: any) => b.type === 'text') as any)?.text || '';
   const match = text.match(/\{[\s\S]*\}/);
   if (!match) {
     return { name: '', age: '', gender: '', birthday: '', hcn: '', mrn: '' };

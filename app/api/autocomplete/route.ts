@@ -57,11 +57,8 @@ Output ONLY the remaining text to complete this sentence. Rules:
       messages: [{ role: 'user', content: prompt }],
     });
 
-    let completion = '';
-    const block = message.content[0];
-    if (block.type === 'text') {
-      completion = block.text;
-    }
+    const textBlock = message.content.find((b: any) => b.type === 'text') as any;
+    let completion = textBlock?.text || '';
 
     // Clean up: strip wrapping quotes
     completion = completion.replace(/^["']|["']$/g, '').trim();

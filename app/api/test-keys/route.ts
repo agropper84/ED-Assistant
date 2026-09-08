@@ -23,7 +23,7 @@ async function testClaude(apiKey: string): Promise<{ ok: boolean; detail: string
     model: 'claude-haiku-4-5-20251001', max_tokens: 10,
     messages: [{ role: 'user', content: 'Reply OK' }],
   });
-  const text = res.content[0]?.type === 'text' ? res.content[0].text.trim() : '';
+  const text = (res.content.find((b: any) => b.type === 'text') as any)?.text?.trim() || '';
   return { ok: !!text, detail: text || 'No response', ms: Date.now() - start };
 }
 

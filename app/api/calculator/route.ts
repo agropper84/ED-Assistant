@@ -57,7 +57,7 @@ Return ONLY valid JSON.`,
         }],
       });
 
-      const text = response.content[0].type === 'text' ? response.content[0].text : '';
+      const text = (response.content.find((b: any) => b.type === 'text') as any)?.text || '';
       const match = text.match(/\{[\s\S]*\}/);
       if (!match) return NextResponse.json({ error: 'Failed to parse variables' }, { status: 500 });
 
@@ -91,7 +91,7 @@ Be concise. Use markdown.`,
         }],
       });
 
-      const result = response.content[0].type === 'text' ? response.content[0].text : '';
+      const result = (response.content.find((b: any) => b.type === 'text') as any)?.text || '';
       return NextResponse.json({ result });
     }
 
@@ -121,7 +121,7 @@ INSTRUCTIONS:
       messages,
     });
 
-    const result = response.content[0].type === 'text' ? response.content[0].text : '';
+    const result = (response.content.find((b: any) => b.type === 'text') as any)?.text || '';
     return NextResponse.json({ result });
   } catch (err: any) {
     if (err.message?.includes('API key')) {

@@ -82,7 +82,7 @@ export async function processEncounter(
         messages: [{ role: 'user', content: prompt }],
       });
 
-      let text = response.content[0].type === 'text' ? response.content[0].text : '';
+      let text = (response.content.find(b => b.type === 'text') as any)?.text || '';
 
       // Re-identify: restore PHI in the response
       text = reidentifyText(text, phiMapping);
@@ -240,7 +240,7 @@ export async function callWithPHIProtection(
         messages: [{ role: 'user', content: finalPrompt }],
       });
 
-      let result = response.content[0].type === 'text' ? response.content[0].text : '';
+      let result = (response.content.find(b => b.type === 'text') as any)?.text || '';
       if (phiMapping) {
         result = reidentifyText(result, phiMapping);
       }
