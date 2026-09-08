@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
 
     console.log(`[backup-audio] Uploading ${(audioFile.size / 1024).toFixed(0)}KB (${audioFile.type || 'unknown type'})`);
 
-    const token = process.env.ed_audio_blob_public_READ_WRITE_TOKEN || process.env.BLOB_READ_WRITE_TOKEN;
+    const token = process.env.BLOB_READ_WRITE_TOKEN || process.env.ed_audio_blob_public_READ_WRITE_TOKEN;
     if (!token) {
       console.error('[backup-audio] No blob token configured');
       return NextResponse.json({ error: 'Blob storage not configured' }, { status: 500 });
