@@ -1024,7 +1024,6 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
                 <VoiceRecorder
                   mode="encounter"
                   showUpload
-                  onWarning={handleTranscribeWarning}
                   sensitivity={micSensitivity}
                   encryptionKey={encryptionKey || undefined}
                   sheetName={patient.sheetName}
@@ -1187,7 +1186,6 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
               )}
               <div className="absolute top-1.5 right-1.5 z-10">
                 <VoiceRecorder
-                  onWarning={handleTranscribeWarning}
                   onTranscript={(text) => {
                     const base = preRecordEncounterNotes || encounterNotes;
                     setEncounterNotes(base ? `${base}\n${text}` : text);
@@ -1238,7 +1236,6 @@ export function PatientDataModal({ patient, isOpen, onClose, onSaved, onNavigate
               )}
               <div className="absolute top-1.5 right-1.5 z-10">
                 <VoiceRecorder
-                  onWarning={handleTranscribeWarning}
                   onTranscript={(text) => {
                     const base = preRecordAdditional || additional;
                     setAdditional(base ? `${base}\n${text}` : text);

@@ -41,8 +41,6 @@ export interface VoiceRecorderProps {
   onMedicalizeStart?: () => void;
   onBackupSaved?: (url: string) => void;
   onBlobBackup?: (blobUrl: string, iv: string, contentType: string) => void;
-  /** Called when a non-fatal issue occurs (e.g. engine fallback) */
-  onWarning?: (message: string) => void;
 
   // Config
   encryptionKey?: string;

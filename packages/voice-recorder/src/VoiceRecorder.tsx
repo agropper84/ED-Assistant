@@ -885,11 +885,12 @@ export function VoiceRecorder({
     // Best text: refined (if long enough) or live WS/Web Speech text
     const dgWsText = accumulatedTextRef.current?.trim() || '';
     const refined = refinedTextRef.current?.trim() || '';
+    const bestText = (refined && refined.length > dgWsText.length * 0.9) ? refined : dgWsText;
 
-    if (refined && refined.length > dgWsText.length * 0.9) {
-      onInterimRef.current?.(refined);
+    if (bestText) {
+      // Always deliver final text via onTranscript so callers (e.g. encounter recorder) can save it
+      onTranscriptRef.current(bestText);
     }
-    // Otherwise the WS / Web Speech text already in the field is the final output
 
     onProcessingRef.current?.(false);
     accumulatedTextRef.current = '';
@@ -1094,6 +1095,7 @@ export function VoiceRecorder({
         }
 
         // If blob transcription produced no output, fall back to Web Speech
+        // Web Speech runs continuously during recording and may have captured more
         if (!transcriptDelivered && webSpeechSnapshot) {
           console.log(`Using Web Speech fallback (${webSpeechSnapshot.length} chars) — blob transcription produced no output`);
           deliverTranscript(webSpeechSnapshot);

@@ -970,7 +970,6 @@ export function ParseModal({ isOpen, onClose, onSave, onQuickAdd, patientRef: ex
                     <VoiceRecorder
                       mode="encounter"
                       showUpload
-                      onWarning={handleTranscribeWarning}
                       sensitivity={micSensitivity}
                       onTranscript={(text) => {
                         const base = preRecordTranscript || '';
@@ -1008,7 +1007,6 @@ export function ParseModal({ isOpen, onClose, onSave, onQuickAdd, patientRef: ex
                   <div className="absolute top-1.5 right-1.5 z-10">
                     <VoiceRecorder
                       mode="dictation"
-                      onWarning={handleTranscribeWarning}
                       onTranscript={(text) => {
                         const base = preRecordEncounter || encounterNotes;
                         setEncounterNotes(base ? `${base}\n${text}` : text);
@@ -1044,7 +1042,6 @@ export function ParseModal({ isOpen, onClose, onSave, onQuickAdd, patientRef: ex
                   <div className="absolute top-1.5 right-1.5 z-10">
                     <VoiceRecorder
                       mode="dictation"
-                      onWarning={handleTranscribeWarning}
                       onTranscript={(text) => {
                         const base = preRecordAdditional || additional;
                         setAdditional(base ? `${base}\n${text}` : text);
