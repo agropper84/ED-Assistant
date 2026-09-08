@@ -1009,7 +1009,7 @@ export function VoiceRecorder({
         // Capture Web Speech text before it's cleared — use as fallback if blob transcription fails
         const webSpeechSnapshot = accumulatedTextRef.current?.trim() || '';
 
-        // Backup to blob storage (separate from transcription blob, persists on failure)
+        // Backup to blob storage (fire-and-forget, non-critical)
         backupToBlob(blob, 'encounter');
 
         let transcriptDelivered = false;
@@ -1018,57 +1018,28 @@ export function VoiceRecorder({
         setRecState('transcribing');
         onProcessingRef.current?.(true);
         try {
-          // Upload encounter recordings to Vercel Blob, then route to user's selected engine.
           const webEngine = getEncounterEngine();
-          const transcribeViaBlob = async (audioBlob: Blob): Promise<string> => {
-            const ext = mimeType.includes('mp4') ? 'mp4' : 'webm';
-            if (!uploadBlob) return '';
-            const blobResult = await uploadBlob(`audio/enc-${Date.now()}.${ext}`, audioBlob);
+          const ext = mimeType.includes('mp4') ? 'mp4' : 'webm';
 
-            if (webEngine === 'elevenlabs') {
-              // ElevenLabs: send blob URL via FormData (supports audio isolation + keyterms)
-              const fd = new FormData();
-              fd.append('blobUrl', blobResult.url);
-              fd.append('mode', mode);
-              if (sheetName) fd.append('sheetName', sheetName);
-              const res = await fetch(endpoints.transcribeElevenlabs, { method: 'POST', body: fd });
-              if (!res.ok) { console.error('ElevenLabs error:', res.status); return ''; }
-              const { text } = await res.json();
-              return text?.trim() || '';
-            }
+          // Send audio directly via FormData to transcription endpoint (no blob upload needed)
+          const transcribeDirect = async (audioBlob: Blob): Promise<string> => {
+            const fd = new FormData();
+            fd.append('audio', audioBlob, `encounter-${Date.now()}.${ext}`);
+            fd.append('mode', 'encounter');
+            if (sheetName) fd.append('sheetName', sheetName);
 
-            // Route via transcribe-async with API selection
-            const res = await fetch(endpoints.transcribeAsync, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ blobUrl: blobResult.url, mode, contentType: mimeType, api: webEngine || 'deepgram' }),
-            });
-            if (!res.ok) {
-              const err = await res.json().catch(() => ({ error: 'Transcription failed' }));
-              console.error('Transcribe-async error:', res.status, err);
-              return '';
-            }
+            const endpoint = webEngine === 'elevenlabs' ? endpoints.transcribeElevenlabs
+              : webEngine === 'deepgram' ? endpoints.transcribeDeepgram
+              : webEngine === 'wispr' ? endpoints.transcribeWispr
+              : endpoints.transcribeDefault;
+
+            const res = await fetch(endpoint, { method: 'POST', body: fd });
+            if (!res.ok) { console.error(`Transcribe ${webEngine} error:`, res.status); return ''; }
             const { text } = await res.json();
             return text?.trim() || '';
           };
 
-          let finalText = '';
-          if (chunksRef.current.length > 30) {
-            // Chunk long recordings into ~5 min segments for parallel transcription
-            const CHUNK_GROUP = 30;
-            const groups: Blob[][] = [];
-            for (let i = 0; i < chunksRef.current.length; i += CHUNK_GROUP) {
-              groups.push(chunksRef.current.slice(i, i + CHUNK_GROUP));
-            }
-            const results: string[] = new Array(groups.length).fill('');
-            await Promise.all(groups.map(async (group, idx) => {
-              const segBlob = new Blob(group, { type: mimeType });
-              results[idx] = await transcribeViaBlob(segBlob);
-            }));
-            finalText = results.filter(Boolean).join(' ');
-          } else {
-            finalText = await transcribeViaBlob(blob);
-          }
+          const finalText = await transcribeDirect(blob);
 
           if (finalText) {
             // Optional medicalize pass — pass mode so encounter gets speaker labels
