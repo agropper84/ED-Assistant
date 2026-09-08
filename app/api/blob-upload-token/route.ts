@@ -17,9 +17,10 @@ export async function POST(request: NextRequest) {
       body,
       request,
       onBeforeGenerateToken: async () => ({
-        maximumSizeInBytes: 100 * 1024 * 1024,
+        maximumSizeInBytes: 500 * 1024 * 1024,
         allowedContentTypes: ['application/octet-stream', 'audio/webm', 'audio/webm;codecs=opus', 'audio/mp4', 'audio/ogg', 'video/webm'],
         tokenPayload: JSON.stringify({ userId: session.userId }),
+        addRandomSuffix: true,
       }),
       onUploadCompleted: async ({ blob }) => {
         console.log(`[blob-upload] Completed: ${blob.url}`);

@@ -1005,8 +1005,14 @@ export function VoiceRecorder({
         const blob = new Blob(chunksRef.current, { type: mimeType });
         if (blob.size === 0) { setRecState('idle'); onProcessingRef.current?.(false); return; }
 
+        // Capture Web Speech text before it's cleared — use as fallback if blob transcription fails
+        const webSpeechSnapshot = accumulatedTextRef.current?.trim() || '';
+
         // Backup to blob storage (separate from transcription blob, persists on failure)
         backupToBlob(blob, 'encounter');
+
+        let transcriptDelivered = false;
+        const deliverTranscript = (text: string) => { if (!transcriptDelivered) { transcriptDelivered = true; onTranscript(text); } };
 
         setRecState('transcribing');
         onProcessingRef.current?.(true);
@@ -1076,23 +1082,26 @@ export function VoiceRecorder({
                 });
                 if (medRes.ok) {
                   const { text } = await medRes.json();
-                  if (text?.trim()) { onTranscript(text.trim()); } else { onTranscript(finalText); }
-                } else { onTranscript(finalText); }
-              } catch { onTranscript(finalText); }
+                  if (text?.trim()) { deliverTranscript(text.trim()); } else { deliverTranscript(finalText); }
+                } else { deliverTranscript(finalText); }
+              } catch { deliverTranscript(finalText); }
             } else {
-              onTranscript(finalText);
+              deliverTranscript(finalText);
             }
           }
         } catch (err: any) {
           console.error('Transcription error:', err);
-          // WiFi fallback: if transcription fails, use accumulated Web Speech text
-          const fallbackText = accumulatedTextRef.current?.trim();
-          if (fallbackText) {
-            console.log('Using Web Speech fallback text due to transcription failure');
-            onTranscript(fallbackText);
-          }
         }
+
+        // If blob transcription produced no output, fall back to Web Speech
+        if (!transcriptDelivered && webSpeechSnapshot) {
+          console.log(`Using Web Speech fallback (${webSpeechSnapshot.length} chars) — blob transcription produced no output`);
+          deliverTranscript(webSpeechSnapshot);
+        }
+
         onProcessingRef.current?.(false);
+        accumulatedTextRef.current = '';
+        refinedTextRef.current = '';
         setRecState('idle');
       };
 

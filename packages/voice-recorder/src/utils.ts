@@ -3,8 +3,8 @@
 export function sensitivitySettings(sensitivity: number): { gain: number; threshold: number; ratio: number; knee: number; release: number } {
   if (sensitivity <= 1) return { gain: 1.0, threshold: -40, ratio: 2, knee: 40, release: 0.3 };
   if (sensitivity === 2) return { gain: 1.5, threshold: -45, ratio: 3, knee: 40, release: 0.25 };
-  if (sensitivity === 3) return { gain: 2.0, threshold: -50, ratio: 3.5, knee: 35, release: 0.2 };
-  return { gain: 2.5, threshold: -55, ratio: 4, knee: 30, release: 0.15 };
+  if (sensitivity === 3) return { gain: 2.5, threshold: -52, ratio: 4, knee: 30, release: 0.18 };
+  return { gain: 3.5, threshold: -58, ratio: 6, knee: 25, release: 0.12 };
 }
 
 /** Build audio constraints based on mode, sensitivity, and pocket mode. */

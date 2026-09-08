@@ -12,18 +12,15 @@ const ENDPOINTS: SharedProps['endpoints'] = {
   transcribeDefault: '/api/transcribe',
   transcribeAsync: '/api/transcribe-async',
   medicalize: '/api/medicalize',
-  uploadAudio: '/api/backup-audio',
+  uploadAudio: '/api/blob-upload-token',
 };
 
 async function doUploadBlob(filename: string, blob: Blob): Promise<{ url: string }> {
-  // ED-Assistant uses server-side blob upload via FormData POST
-  const formData = new FormData();
-  const ext = filename.split('.').pop() || 'webm';
-  formData.append('audio', blob, `recording-${Date.now()}.${ext}`);
-  const res = await fetch('/api/backup-audio', { method: 'POST', body: formData });
-  if (!res.ok) throw new Error('Backup upload failed');
-  const data = await res.json();
-  return { url: data.url };
+  // Client-side Vercel Blob upload — bypasses serverless 4.5MB body limit
+  // Matches Hospitalist Workbook pattern exactly
+  const { upload } = await import('@vercel/blob/client');
+  const result = await upload(filename, blob, { access: 'public', handleUploadUrl: '/api/blob-upload-token' });
+  return { url: result.url };
 }
 
 type VoiceRecorderProps = Omit<SharedProps, 'endpoints' | 'getSpeechEngine' | 'getTranscribeEngine' | 'getEncounterEngine' | 'nativeBridge' | 'uploadBlob'>;
