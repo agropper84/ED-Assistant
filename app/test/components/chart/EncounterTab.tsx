@@ -1,7 +1,10 @@
 'use client';
 
+import { useState } from 'react';
+import { Copy, Check, ChevronRight } from 'lucide-react';
 import type { Patient } from '@/lib/google-sheets';
 import { Eyebrow } from '../primitives/Eyebrow';
+import { Button } from '../primitives/Button';
 
 interface NoteSectionProps {
   label: string;
@@ -32,9 +35,23 @@ function NoteSection({ label, content }: NoteSectionProps) {
   );
 }
 
-export function EncounterTab({ patient }: { patient: Patient }) {
+export function EncounterTab({ patient, onSwitchTab }: { patient: Patient; onSwitchTab?: (tab: string) => void }) {
+  const [copied, setCopied] = useState(false);
   const hasNote = patient.hpi || patient.objective || patient.assessmentPlan;
   const hasTranscript = patient.transcript || patient.encounterNotes;
+
+  const handleCopyNote = () => {
+    const parts = [
+      patient.hpi && `HPI:\n${patient.hpi}`,
+      patient.objective && `EXAM:\n${patient.objective}`,
+      patient.assessmentPlan && `ASSESSMENT & PLAN:\n${patient.assessmentPlan}`,
+      patient.referral && `REFERRAL:\n${patient.referral}`,
+      patient.admission && `DISPOSITION:\n${patient.admission}`,
+    ].filter(Boolean).join('\n\n');
+    navigator.clipboard.writeText(parts);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column' as const, gap: '12px' }}>
@@ -107,6 +124,27 @@ export function EncounterTab({ patient }: { patient: Patient }) {
       <NoteSection label="DIFFERENTIAL DIAGNOSIS" content={patient.ddx || ''} />
       <NoteSection label="INVESTIGATIONS" content={patient.investigations || ''} />
       <NoteSection label="MANAGEMENT" content={patient.management || ''} />
+
+      {/* Copy + Next actions (only when note exists) */}
+      {hasNote && (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: '4px' }}>
+          <Button variant="secondary" size="sm" onClick={handleCopyNote}
+            icon={copied ? <Check size={14} /> : <Copy size={14} />}>
+            {copied ? 'Copied' : 'Copy Full Note'}
+          </Button>
+          <button
+            onClick={() => onSwitchTab?.('billing')}
+            style={{
+              display: 'flex', alignItems: 'center', gap: '4px',
+              background: 'none', border: 'none', cursor: 'pointer',
+              fontSize: '13px', fontWeight: 600, color: 'var(--warm-accent)',
+              fontFamily: 'var(--warm-font)',
+            }}
+          >
+            Next: Billing <ChevronRight size={14} />
+          </button>
+        </div>
+      )}
     </div>
   );
 }
