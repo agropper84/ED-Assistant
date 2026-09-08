@@ -113,8 +113,12 @@ export async function POST(request: NextRequest) {
 
     if (blobUrl) {
       // Fetch from Vercel Blob
+      console.log(`[transcribe-el] Fetching blob: ${blobUrl.substring(0, 80)}...`);
       const blobRes = await fetch(blobUrl);
-      if (!blobRes.ok) return NextResponse.json({ error: 'Failed to fetch audio from storage' }, { status: 500 });
+      if (!blobRes.ok) {
+        console.error(`[transcribe-el] Blob fetch failed: ${blobRes.status}`);
+        return NextResponse.json({ error: `Failed to fetch audio: ${blobRes.status}` }, { status: 500 });
+      }
       audioBuffer = Buffer.from(await blobRes.arrayBuffer());
       contentType = blobRes.headers.get('content-type') || 'audio/webm';
       // Delete blob after fetching (temporary storage)
@@ -264,7 +268,7 @@ export async function POST(request: NextRequest) {
       keytermsUsed: allKeyterms.length,
     });
   } catch (error: any) {
-    console.error('ElevenLabs transcription error:', error);
+    console.error('ElevenLabs transcription error:', error?.message || error, error?.stack?.split('\n').slice(0, 3).join(' | '));
     return NextResponse.json({ error: error?.message || 'ElevenLabs transcription failed' }, { status: 500 });
   }
 }
