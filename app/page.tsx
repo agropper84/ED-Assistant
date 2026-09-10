@@ -37,7 +37,7 @@ import {
   Calendar, Settings, CheckSquare, Square, Play, Clock, EyeOff, Eye,
   Search, ArrowUpDown, X, LogOut, Upload, Monitor, RotateCcw, Sparkles,
   ChevronDown, SlidersHorizontal, FileSpreadsheet, Bookmark, Wind, Menu,
-  LayoutGrid, LayoutList, Activity, PanelRightOpen
+  LayoutGrid, LayoutList, Activity, PanelRightOpen, CalendarRange
 } from 'lucide-react';
 import { AwayScreen } from '@/components/AwayScreen';
 import { useDraggableFab } from '@/hooks/useDraggableFab';
@@ -96,7 +96,7 @@ export default function HomePage() {
   const [shiftFee, setShiftFee] = useState('');
   const [shiftTotal, setShiftTotal] = useState('');
   const [showDayTotal, setShowDayTotal] = useState(false);
-  const [showShiftTotal, setShowShiftTotal] = useState(false);
+  const [showHeaderTotal, setShowHeaderTotal] = useState(false);
   const [supplementalLines, setSupplementalLines] = useState<{ start: string; end: string; code: string; hours: string; fee: string; total: string }[]>([]);
 
   // Patient data modal
@@ -1201,15 +1201,27 @@ export default function HomePage() {
                 className="flex items-center gap-1.5 px-2 py-1 hover:bg-white/[0.07] rounded-lg transition-colors"
               >
                 <span className="text-[17px] font-bold tracking-[-0.02em]" style={{ color: 'var(--dash-text)' }}>{formatDateDisplay(currentDate)}</span>
-                {!loading && patients.length > 0 && (
-                  <span className="text-[11px] font-semibold px-1.5 py-0.5 rounded-full bg-white/[0.12]" style={{ color: 'var(--dash-text-sub)' }}>
-                    {patients.length}
-                  </span>
+                {!loading && (patients.length > 0 || dayTotal > 0) && (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setShowHeaderTotal(t => !t); }}
+                    className="text-[11px] font-semibold px-1.5 py-0.5 rounded-full bg-white/[0.12] transition-colors hover:bg-white/[0.18]"
+                    style={{ color: showHeaderTotal ? 'rgb(94,234,212)' : 'var(--dash-text-sub)' }}
+                    title={showHeaderTotal ? 'Show patient count' : 'Show day total'}
+                  >
+                    {showHeaderTotal
+                      ? <span className="font-mono">${dayTotal.toFixed(0)}</span>
+                      : patients.length}
+                  </button>
                 )}
-                {!loading && dayTotal > 0 && (
-                  <span className="text-[10px] font-mono" style={{ color: 'var(--dash-text-muted)', opacity: 0.6 }}>
-                    ${dayTotal.toFixed(0)}
-                  </span>
+                {!loading && showHeaderTotal && dayTotal > 0 && (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setShowRangeTotal(true); setBillingMenuOpen(true); }}
+                    className="p-0.5 rounded transition-colors hover:bg-white/[0.10]"
+                    style={{ color: 'var(--dash-text-muted)', opacity: 0.5 }}
+                    title="Total across date range"
+                  >
+                    <CalendarRange className="w-3 h-3" />
+                  </button>
                 )}
               </button>
               <input
@@ -1376,16 +1388,6 @@ export default function HomePage() {
                         <option value="0146">0146</option>
                         <option value="0140">0140</option>
                       </select>
-                    )}
-                    {shiftTotal && (
-                      <button
-                        onClick={() => setShowShiftTotal(!showShiftTotal)}
-                        className="text-[10px] font-mono font-medium flex-shrink-0 px-1 py-0.5 rounded transition-colors hover:bg-white/[0.07] cursor-pointer"
-                        style={{ color: 'var(--dash-text-sub)' }}
-                        title={showShiftTotal ? (supplementalLines.length > 0 ? 'Day total (click to hide)' : 'Shift total (click to hide)') : 'Show total'}
-                      >
-                        {showShiftTotal ? `$${supplementalLines.length > 0 ? dayTotal.toFixed(2) : shiftTotal}` : '$···'}
-                      </button>
                     )}
                     {supplementalLines.length > 0 && (
                       <button
