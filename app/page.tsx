@@ -152,6 +152,11 @@ export default function HomePage() {
   const [exportingBilling, setExportingBilling] = useState(false);
   const [exportStart, setExportStart] = useState('');
   const [exportEnd, setExportEnd] = useState('');
+  const [rangeTotal, setRangeTotal] = useState<{ total: number; days: number; visitFees: number; shiftFees: number; supplementalFees: number } | null>(null);
+  const [rangeTotalLoading, setRangeTotalLoading] = useState(false);
+  const [showRangeTotal, setShowRangeTotal] = useState(false);
+  const [rangeTotalStart, setRangeTotalStart] = useState('');
+  const [rangeTotalEnd, setRangeTotalEnd] = useState('');
   useEffect(() => {
     const daySheet = formatDateForSheet(currentDate);
     setIsVchMode(getDayRegion(daySheet) === 'vch');
@@ -1201,6 +1206,11 @@ export default function HomePage() {
                     {patients.length}
                   </span>
                 )}
+                {!loading && dayTotal > 0 && (
+                  <span className="text-[10px] font-mono" style={{ color: 'var(--dash-text-muted)', opacity: 0.6 }}>
+                    ${dayTotal.toFixed(0)}
+                  </span>
+                )}
               </button>
               <input
                 ref={datePickerRef}
@@ -1491,6 +1501,73 @@ export default function HomePage() {
                           }} className="px-2 py-1 bg-teal-600 text-white rounded text-[10px] font-medium hover:bg-teal-500">Add</button>
                         </div>
                       </div>
+                    </div>
+
+                    {/* Date Range Total */}
+                    <div className="border-t border-white/8 mt-1">
+                      <button
+                        onClick={() => setShowRangeTotal(!showRangeTotal)}
+                        className="w-full flex items-center gap-2 px-3 py-2 text-left text-gray-300 hover:bg-white/5 transition-colors"
+                      >
+                        <span className="text-[10px]" style={{ opacity: 0.5 }}>$</span>
+                        <span className="text-[13px]">Date Range Total</span>
+                        <span className="text-[9px] ml-auto" style={{ color: 'var(--dash-text-muted)' }}>{showRangeTotal ? '▴' : '▾'}</span>
+                      </button>
+                      {showRangeTotal && (
+                        <div className="px-3 pb-2.5 space-y-1.5">
+                          <div className="flex gap-1.5">
+                            <input
+                              type="date"
+                              value={rangeTotalStart}
+                              onChange={(e) => { setRangeTotalStart(e.target.value); setRangeTotal(null); }}
+                              className="flex-1 px-1.5 py-1 bg-gray-800/80 border border-gray-700/50 rounded text-[10px] text-gray-200 focus:border-teal-500/50 focus:outline-none"
+                            />
+                            <input
+                              type="date"
+                              value={rangeTotalEnd}
+                              onChange={(e) => { setRangeTotalEnd(e.target.value); setRangeTotal(null); }}
+                              className="flex-1 px-1.5 py-1 bg-gray-800/80 border border-gray-700/50 rounded text-[10px] text-gray-200 focus:border-teal-500/50 focus:outline-none"
+                            />
+                            <button
+                              onClick={async () => {
+                                if (!rangeTotalStart || !rangeTotalEnd) return;
+                                setRangeTotalLoading(true);
+                                try {
+                                  const res = await fetch(`/api/billing-total?start=${rangeTotalStart}&end=${rangeTotalEnd}`);
+                                  if (res.ok) setRangeTotal(await res.json());
+                                } catch {}
+                                setRangeTotalLoading(false);
+                              }}
+                              disabled={!rangeTotalStart || !rangeTotalEnd || rangeTotalLoading}
+                              className="px-2 py-1 bg-teal-600 text-white rounded text-[10px] font-medium hover:bg-teal-500 disabled:opacity-30 transition-colors"
+                            >
+                              {rangeTotalLoading ? '...' : 'Go'}
+                            </button>
+                          </div>
+                          {rangeTotal && (
+                            <div className="space-y-0.5 pt-1">
+                              <div className="flex justify-between text-[10px]">
+                                <span className="text-gray-500">Visit fees</span>
+                                <span className="font-mono text-gray-400">${rangeTotal.visitFees.toFixed(2)}</span>
+                              </div>
+                              <div className="flex justify-between text-[10px]">
+                                <span className="text-gray-500">Shift fees</span>
+                                <span className="font-mono text-gray-400">${rangeTotal.shiftFees.toFixed(2)}</span>
+                              </div>
+                              {rangeTotal.supplementalFees > 0 && (
+                                <div className="flex justify-between text-[10px]">
+                                  <span className="text-gray-500">Supplemental</span>
+                                  <span className="font-mono text-gray-400">${rangeTotal.supplementalFees.toFixed(2)}</span>
+                                </div>
+                              )}
+                              <div className="flex justify-between text-[11px] pt-0.5" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+                                <span className="text-gray-300 font-medium">{rangeTotal.days} day{rangeTotal.days !== 1 ? 's' : ''}</span>
+                                <span className="font-mono font-semibold text-white">${rangeTotal.total.toFixed(2)}</span>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
 
                     {/* Export */}
