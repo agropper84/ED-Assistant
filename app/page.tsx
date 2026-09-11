@@ -770,8 +770,10 @@ export default function HomePage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ timestamp: newTime, _sheetName: patient.sheetName, _patientName: patient.name }),
       });
-      if (!res.ok) console.error('Time save failed:', res.status);
-      fetchPatients();
+      if (!res.ok) {
+        console.error('Time save failed:', res.status);
+        fetchPatients(); // revert optimistic update on error
+      }
     } catch (error) {
       console.error('Failed to update time:', error);
       fetchPatients(); // revert optimistic update on error
@@ -822,11 +824,11 @@ export default function HomePage() {
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
         console.error('Billing save failed:', res.status, err);
+        fetchPatients(); // revert optimistic update on error
       }
-      fetchPatients();
     } catch (error) {
       console.error('Failed to save billing:', error);
-      fetchPatients();
+      fetchPatients(); // revert optimistic update on error
     }
   };
 
@@ -850,12 +852,12 @@ export default function HomePage() {
             p.rowIndex === patient.rowIndex && p.sheetName === patient.sheetName
               ? { ...p, ...fields } : p
           ));
-          await fetch(`/api/patients/${patient.rowIndex}`, {
+          const res = await fetch(`/api/patients/${patient.rowIndex}`, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ ...fields, _sheetName: patient.sheetName, _patientName: patient.name }),
           });
-          fetchPatients();
+          if (!res.ok) fetchPatients(); // revert on error
         }}
         onBillingSave={(items) => handleDashboardBillingSave(patient, items)}
         extraFields={getSettings().gridCardFields || []}
