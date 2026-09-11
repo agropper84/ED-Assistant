@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getDataContext, updatePatientFields } from '@/lib/data-layer';
-import { emptyDateSheet, saveDateSheetToDrive } from '@/lib/drive-json';
+import { getDataContext } from '@/lib/data-layer';
+import { emptyDateSheet, saveDateSheetToDrive, patientToFields } from '@/lib/drive-json';
 import type { Patient } from '@/lib/google-sheets';
 
 export const maxDuration = 300;
@@ -249,37 +249,71 @@ export async function POST(_req: NextRequest) {
     }
 
     // ── Step 2: Reimport ─────────────────────────────────────────────────────
-    // Sheets were just cleared so rows start at 8. Use a local counter to avoid
-    // 95 individual getNextRowIndex Sheets reads that exhaust quota.
+    // Build each day's Drive file entirely in memory, then write once per day.
+    // Do the same for Sheets — one batch write per day.
+    // Total API calls: 6 Drive writes + 6 Sheets writes = 12 (was 190+).
     const DATA_START_ROW = 8;
     let totalImported = 0;
-    const gs = await import('@/lib/google-sheets');
 
     for (const day of IMPORT_DATA.days) {
       const { sheetName, patients } = day;
       if (!sheetName || !patients?.length) continue;
 
-      for (let i = 0; i < patients.length; i++) {
-        const rowIndex = DATA_START_ROW + i;
-        const patient = makePatient(patients[i], sheetName, rowIndex);
+      try {
+        // Build the Drive file with all patients in memory
+        const dateSheet = emptyDateSheet(sheetName);
+        const now = new Date().toISOString();
 
-        try {
-          const fields: Record<string, string> = {};
-          for (const [k, v] of Object.entries(patient)) {
-            if (typeof v === 'string') fields[k] = v;
-          }
-
-          await updatePatientFields(ctx, rowIndex, fields, sheetName, patient.name);
-          await gs.updatePatientFields(ctx.sheets, rowIndex, fields, sheetName);
-
-          totalImported++;
-        } catch (e: any) {
-          console.error(`[clear-and-reimport] Failed ${patient.name}:`, e?.message);
-          importResults.push(`FAILED: ${patient.name} - ${e?.message}`);
+        for (let i = 0; i < patients.length; i++) {
+          const rowIndex = DATA_START_ROW + i;
+          const patient = makePatient(patients[i], sheetName, rowIndex);
+          dateSheet.patients.push({
+            version: 1,
+            patientId: `${patient.name}_${rowIndex}`,
+            lastModified: now,
+            sheetName,
+            rowIndex,
+            data: patientToFields(patient),
+          });
         }
-      }
 
-      importResults.push(`${sheetName}: ${patients.length} patients imported`);
+        // Single Drive write for the whole day
+        if (ctx.drive) {
+          await saveDateSheetToDrive(ctx.drive, dateSheet);
+        }
+
+        // Single Sheets write for the whole day (columns A-Q per row)
+        // A=patientNum B=timestamp C=name D=age E=gender F=birthday
+        // G=hcn H=mrn I=diagnosis J=icd9 K=icd10 L-P=billing Q=comments
+        const sheetsRows = patients.map((p, i) => [
+          String(i + 1),  // A: patientNum
+          p.timestamp,    // B: timestamp
+          p.name,         // C: name
+          p.age,          // D: age
+          p.gender,       // E: gender
+          p.birthday,     // F: birthday
+          p.hcn,          // G: hcn
+          '',             // H: mrn
+          p.diagnosis,    // I: diagnosis
+          '',             // J: icd9
+          p.icd10,        // K: icd10
+          '', '', '', '', '', // L-P: visitProcedure, procCode, fee, unit, total
+          p.comments,     // Q: comments
+        ]);
+
+        await sheets.spreadsheets.values.update({
+          spreadsheetId,
+          range: `'${sheetName}'!A${DATA_START_ROW}:Q${DATA_START_ROW + patients.length - 1}`,
+          valueInputOption: 'USER_ENTERED',
+          requestBody: { values: sheetsRows },
+        });
+
+        totalImported += patients.length;
+        importResults.push(`${sheetName}: ${patients.length} patients imported`);
+      } catch (e: any) {
+        console.error(`[clear-and-reimport] Failed day ${sheetName}:`, e?.message);
+        importResults.push(`FAILED ${sheetName}: ${e?.message}`);
+      }
     }
 
     console.log(`[clear-and-reimport] Done. Imported ${totalImported} patients.`);
