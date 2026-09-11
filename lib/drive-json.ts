@@ -382,7 +382,7 @@ export async function saveDateSheetToDrive(
   await writeDriveFile(ctx, sheetFileName(data.sheetName), data, ctx.sheetsFolderId);
 }
 
-function emptyDateSheet(sheetName: string): DateSheetFile {
+export function emptyDateSheet(sheetName: string): DateSheetFile {
   return {
     version: 1,
     sheetName,
