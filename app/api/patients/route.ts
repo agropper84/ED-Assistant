@@ -37,10 +37,18 @@ export async function GET(request: NextRequest) {
     }
 
     const gs = await import('@/lib/google-sheets');
-    const [patients, shiftTimes, supplementalLines] = await Promise.all([
-      getPatients(ctx, sheetName || ''),
-      getShiftTimes(ctx, sheetName || ''),
-      gs.getSupplementalLines(ctx.sheets, sheetName || gs.getTodaySheetName()),
+    const patients = await getPatients(ctx, sheetName || '');
+
+    // Sheets-backed reads are non-fatal — quota errors or missing tabs shouldn't 500
+    const [shiftTimes, supplementalLines] = await Promise.all([
+      getShiftTimes(ctx, sheetName || '').catch((e: any) => {
+        console.warn('[patients] getShiftTimes failed:', e?.message);
+        return null;
+      }),
+      gs.getSupplementalLines(ctx.sheets, sheetName || gs.getTodaySheetName()).catch((e: any) => {
+        console.warn('[patients] getSupplementalLines failed:', e?.message);
+        return [];
+      }),
     ]);
     return NextResponse.json({ patients, sheetName, shiftTimes, supplementalLines });
   } catch (error: any) {
