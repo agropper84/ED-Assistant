@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getDataContext, getOrCreateDateSheet, getNextRowIndex, updatePatientFields } from '@/lib/data-layer';
+import { getDataContext, updatePatientFields } from '@/lib/data-layer';
 import { emptyDateSheet, saveDateSheetToDrive } from '@/lib/drive-json';
 import type { Patient } from '@/lib/google-sheets';
 
@@ -219,29 +219,29 @@ export async function POST(_req: NextRequest) {
     const importResults: string[] = [];
 
     // ── Step 1: Force-clear ──────────────────────────────────────────────────
-    // Write empty sheets directly — bypasses decryption so unreadable files get overwritten
+    // Write empty sheets directly — bypasses decryption so unreadable files get overwritten.
+    // Fetch spreadsheet metadata once (not once per date) to stay under read quota.
+    const { sheets, spreadsheetId } = ctx.sheets;
+    const spreadsheet = await sheets.spreadsheets.get({ spreadsheetId });
+    const existingTabTitles = new Set(
+      spreadsheet.data.sheets?.map((s: any) => s.properties?.title as string) ?? []
+    );
+
     for (const sheetName of CLEAR_DATES) {
       try {
         if (ctx.drive) {
-          const empty = emptyDateSheet(sheetName);
-          await saveDateSheetToDrive(ctx.drive, empty);
+          await saveDateSheetToDrive(ctx.drive, emptyDateSheet(sheetName));
           clearResults.push(`Drive ${sheetName}: force-cleared`);
         }
 
-        // Clear Sheets rows 8-200
-        const { sheets, spreadsheetId } = ctx.sheets;
-        const spreadsheet = await sheets.spreadsheets.get({ spreadsheetId });
-        const sheetExists = spreadsheet.data.sheets?.some(
-          (s: any) => s.properties?.title === sheetName
-        );
-        if (sheetExists) {
+        if (existingTabTitles.has(sheetName)) {
           await sheets.spreadsheets.values.clear({
             spreadsheetId,
             range: `'${sheetName}'!A8:AJ200`,
           });
           clearResults.push(`Sheets ${sheetName}: rows 8-200 cleared`);
         } else {
-          clearResults.push(`Sheets ${sheetName}: sheet not found`);
+          clearResults.push(`Sheets ${sheetName}: tab not found`);
         }
       } catch (e: any) {
         clearResults.push(`ERROR clearing ${sheetName}: ${e?.message}`);
@@ -249,17 +249,19 @@ export async function POST(_req: NextRequest) {
     }
 
     // ── Step 2: Reimport ─────────────────────────────────────────────────────
+    // Sheets were just cleared so rows start at 8. Use a local counter to avoid
+    // 95 individual getNextRowIndex Sheets reads that exhaust quota.
+    const DATA_START_ROW = 8;
     let totalImported = 0;
+    const gs = await import('@/lib/google-sheets');
 
     for (const day of IMPORT_DATA.days) {
       const { sheetName, patients } = day;
       if (!sheetName || !patients?.length) continue;
 
-      await getOrCreateDateSheet(ctx, sheetName);
-
-      for (const p of patients) {
-        const rowIndex = await getNextRowIndex(ctx, sheetName);
-        const patient = makePatient(p, sheetName, rowIndex);
+      for (let i = 0; i < patients.length; i++) {
+        const rowIndex = DATA_START_ROW + i;
+        const patient = makePatient(patients[i], sheetName, rowIndex);
 
         try {
           const fields: Record<string, string> = {};
@@ -268,15 +270,12 @@ export async function POST(_req: NextRequest) {
           }
 
           await updatePatientFields(ctx, rowIndex, fields, sheetName, patient.name);
-
-          // Always write to Sheets for import reliability
-          const gs = await import('@/lib/google-sheets');
           await gs.updatePatientFields(ctx.sheets, rowIndex, fields, sheetName);
 
           totalImported++;
         } catch (e: any) {
-          console.error(`[clear-and-reimport] Failed ${p.name}:`, e?.message);
-          importResults.push(`FAILED: ${p.name} - ${e?.message}`);
+          console.error(`[clear-and-reimport] Failed ${patient.name}:`, e?.message);
+          importResults.push(`FAILED: ${patient.name} - ${e?.message}`);
         }
       }
 
