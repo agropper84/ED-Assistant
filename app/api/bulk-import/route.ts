@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getDataContext, getOrCreateDateSheet, addPatient } from '@/lib/data-layer';
+import { getDataContext, getOrCreateDateSheet, getNextRowIndex, updatePatientFields } from '@/lib/data-layer';
 import type { Patient } from '@/lib/google-sheets';
 
 export const maxDuration = 300;
@@ -87,19 +87,20 @@ export async function POST(request: NextRequest) {
       await getOrCreateDateSheet(ctx, sheetName);
 
       for (let i = 0; i < patients.length; i++) {
-        const rowIndex = 8 + i; // Data starts at row 8
+        // Use the same row-index logic as manual patient creation
+        const rowIndex = await getNextRowIndex(ctx, sheetName);
         const patient = makePatient(patients[i], sheetName, rowIndex, i + 1);
 
         try {
-          // Save to Drive
-          await addPatient(ctx, patient, sheetName);
-
-          // Save to Sheets
-          const gs = await import('@/lib/google-sheets');
+          // Use the same write path as manual patient creation (Drive + optional Sheets mirror)
           const fields: Record<string, string> = {};
           for (const [k, v] of Object.entries(patient)) {
             if (typeof v === 'string') fields[k] = v;
           }
+          await updatePatientFields(ctx, rowIndex, fields, sheetName, patient.name);
+
+          // Always write to Sheets for import (ensures Sheets is current as fallback)
+          const gs = await import('@/lib/google-sheets');
           await gs.updatePatientFields(ctx.sheets, rowIndex, fields, sheetName);
 
           totalImported++;

@@ -170,10 +170,12 @@ export async function updatePatientFields(
   const dj = await import('./drive-json');
   await dj.updatePatientInDrive(ctx.drive, sheetName, rowIndex, fields as Partial<PatientFields>, originalName);
 
-  // Sheets mirror — always fire-and-forget (keeps Sheets consistent as fallback)
-  import('./google-sheets').then(gs =>
-    gs.updatePatientFields(ctx.sheets, rowIndex, fields, sheetName)
-  ).catch(() => {});
+  // Sheets mirror — fire-and-forget (optional dev feature)
+  if (ctx.sheetsDevMirror) {
+    import('./google-sheets').then(gs =>
+      gs.updatePatientFields(ctx.sheets, rowIndex, fields, sheetName)
+    ).catch(() => {});
+  }
 }
 
 // ============================================================

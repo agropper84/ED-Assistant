@@ -569,7 +569,36 @@ export async function updatePatientInDrive(
   fields: Partial<PatientFields>,
   originalName?: string,
 ): Promise<void> {
-  const dateSheet = await getOrCreateDateSheetInDrive(ctx, sheetName);
+  // Try to read existing Drive data. If missing or unreadable (e.g. old encryption key),
+  // seed the dateSheet from Sheets so all patients on this date are recovered into Drive.
+  let dateSheet: DateSheetFile;
+  const existingSheet = await getDateSheetFromDrive(ctx, sheetName);
+  if (existingSheet) {
+    dateSheet = existingSheet;
+  } else {
+    // Drive file missing or unreadable — migrate all patients from Sheets into Drive
+    dateSheet = emptyDateSheet(sheetName);
+    try {
+      const gs = await import('./google-sheets');
+      const { getSheetsContext } = await import('./google-sheets');
+      const sheetsCtx = await getSheetsContext();
+      const sheetsPatients = await gs.getPatients(sheetsCtx, sheetName);
+      for (const p of sheetsPatients) {
+        dateSheet.patients.push({
+          version: 1,
+          patientId: `${p.name || 'patient'}_${p.mrn || Date.now()}`,
+          lastModified: new Date().toISOString(),
+          sheetName,
+          rowIndex: p.rowIndex,
+          data: patientToFields(p),
+        });
+      }
+      console.log(`[drive] Seeded ${dateSheet.patients.length} patients from Sheets for "${sheetName}"`);
+    } catch (e) {
+      console.warn('[drive] Could not seed from Sheets:', (e as Error).message);
+    }
+    await saveDateSheetToDrive(ctx, dateSheet);
+  }
 
   // Deduplicate: if multiple entries share the same name, merge them first
   deduplicatePatients(dateSheet);
