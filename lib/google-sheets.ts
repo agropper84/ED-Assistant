@@ -195,6 +195,8 @@ export interface Patient {
   // Computed
   hasOutput: boolean;
   status: 'new' | 'pending' | 'processed';
+  submissionCount: number;
+  lastSubmittedAt: string;
 }
 
 // --- Timezone helper ---
@@ -1335,6 +1337,8 @@ function rowToPatient(row: string[], rowIndex: number, sheetName: string): Patie
     audioBackup: '', // Audio backup stored in Drive only
     hasOutput: !!(hpi || assessmentPlan),
     status,
+    submissionCount: 0,
+    lastSubmittedAt: '',
   };
 }
 

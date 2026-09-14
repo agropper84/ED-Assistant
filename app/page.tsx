@@ -500,11 +500,17 @@ export default function HomePage() {
             ...(data._customInstructions ? { customInstructions: data._customInstructions } : {}),
           });
           const headers = { 'Content-Type': 'application/json' };
-          fetch('/api/process', { method: 'POST', headers, body }).catch(() => {});
+          const bgTasks: Promise<any>[] = [
+            fetch('/api/process', { method: 'POST', headers, body }).catch(() => {}),
+          ];
           if (getAutoAnalysis()) {
-            fetch('/api/synopsis', { method: 'POST', headers, body: JSON.stringify({ rowIndex, sheetName: savedSheet }) }).catch(() => {});
-            fetch('/api/analysis', { method: 'POST', headers, body: JSON.stringify({ rowIndex, sheetName: savedSheet }) }).catch(() => {});
+            bgTasks.push(
+              fetch('/api/synopsis', { method: 'POST', headers, body: JSON.stringify({ rowIndex, sheetName: savedSheet }) }).catch(() => {}),
+              fetch('/api/analysis', { method: 'POST', headers, body: JSON.stringify({ rowIndex, sheetName: savedSheet }) }).catch(() => {}),
+            );
           }
+          // Refresh dashboard when background generation completes
+          Promise.all(bgTasks).then(() => fetchPatients());
         }
         return { rowIndex, sheetName: savedSheet };
       }

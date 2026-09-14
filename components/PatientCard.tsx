@@ -829,6 +829,24 @@ export const PatientCard = memo(function PatientCard({ patient, onClick, onDelet
               Add diagnosis
             </span>
           ) : null}
+
+          {/* Submission indicator — green dot + relative time */}
+          {patient.submissionCount > 0 && patient.lastSubmittedAt && (
+            <span className="flex items-center gap-1 flex-shrink-0 ml-auto" title={`${patient.submissionCount} doc${patient.submissionCount > 1 ? 's' : ''} submitted`}>
+              <span className="w-2 h-2 rounded-full bg-emerald-500 flex-shrink-0" />
+              <span className="text-emerald-600 dark:text-emerald-400 text-[11px]">
+                {(() => {
+                  const ms = Date.now() - new Date(patient.lastSubmittedAt).getTime();
+                  const mins = Math.floor(ms / 60000);
+                  if (mins < 1) return 'just now';
+                  if (mins < 60) return `${mins}m ago`;
+                  const hrs = Math.floor(mins / 60);
+                  if (hrs < 24) return `${hrs}h ago`;
+                  return `${Math.floor(hrs / 24)}d ago`;
+                })()}
+              </span>
+            </span>
+          )}
         </div>
       </button>
 

@@ -463,6 +463,10 @@ export function patientToFields(p: Patient): PatientFields {
 /** Convert Drive PatientFields back to Patient-like object */
 export function fieldsToPatient(file: EDPatientFile): Patient {
   const d = file.data;
+  const subs = file.submissions || [];
+  const lastSub = subs.length > 0
+    ? subs.reduce((latest, s) => s.submittedAt > latest.submittedAt ? s : latest).submittedAt
+    : '';
   return {
     rowIndex: file.rowIndex,
     sheetName: file.sheetName,
@@ -471,6 +475,8 @@ export function fieldsToPatient(file: EDPatientFile): Patient {
     audioBackup: d.audioBackup || '',
     hasOutput: !!(d.hpi || d.objective || d.assessmentPlan),
     status: d.hpi ? 'processed' : d.transcript ? 'pending' : 'new',
+    submissionCount: subs.length,
+    lastSubmittedAt: lastSub,
   };
 }
 
