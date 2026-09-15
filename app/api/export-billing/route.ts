@@ -217,7 +217,7 @@ async function exportYukonExcel(
 
   const d = new Date(startDate);
   while (d <= endDate) {
-    const sheetName = `${months[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`;
+    const sheetName = `${months[d.getMonth()]} ${String(d.getDate()).padStart(2, '0')}, ${d.getFullYear()}`;
 
     try {
       // ── Patients from Drive (source of truth) ────────────────────────────
