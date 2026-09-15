@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getDataContext } from '@/lib/data-layer';
+import { getDataContext, getPatients } from '@/lib/data-layer';
+import type { DataContext } from '@/lib/types-json';
 import ExcelJS from 'exceljs';
 
 // GET /api/export-billing?start=2026-03-01&end=2026-03-16&format=yukon|vch
@@ -32,7 +33,7 @@ export async function GET(req: NextRequest) {
         },
       });
     } else {
-      const buffer = await exportYukonExcel(ctx.sheets, startDate, endDate, months);
+      const buffer = await exportYukonExcel(ctx, startDate, endDate, months);
       return new NextResponse(buffer as unknown as BodyInit, {
         headers: {
           'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
@@ -156,8 +157,6 @@ async function exportVchExcel(ctx: any, startDate: Date, endDate: Date): Promise
 
 // --- Yukon Excel export (each date on a separate sheet) ---
 
-import { COLUMNS, DATA_START_ROW } from '@/lib/google-sheets';
-
 // Styling constants
 const FONT = { name: 'Calibri', size: 10 };
 const FONT_BOLD = { ...FONT, bold: true };
@@ -174,10 +173,45 @@ const BORDER_THIN: Partial<ExcelJS.Borders> = {
   right: { style: 'thin', color: { argb: 'FFD0D5DD' } },
 };
 
+/** Map ICD-10 prefix letter to a general ICD-9 chapter code */
+function icd10ToGeneralIcd9(icd10: string): string {
+  if (!icd10) return '';
+  // Use first code if multiple are stored (e.g. "M54.9 / K29.2")
+  const code = icd10.split(/[/,\n]/)[0].trim();
+  if (!code) return '';
+  const map: Record<string, string> = {
+    A: '136.9', B: '136.9',   // infectious / parasitic
+    C: '239.9', D: '239.9',   // neoplasms
+    E: '259.9',                // endocrine / metabolic
+    F: '300.9',                // mental / behavioral
+    G: '349.9',                // nervous system
+    H: '389.9',                // eye / ear
+    I: '459.9',                // circulatory
+    J: '519.9',                // respiratory
+    K: '579.9',                // digestive
+    L: '709.9',                // skin / subcutaneous
+    M: '739.9',                // musculoskeletal
+    N: '629.9',                // genitourinary
+    O: '669.9',                // pregnancy / childbirth
+    P: '779.9',                // perinatal
+    Q: '759.9',                // congenital
+    R: '799.9',                // symptoms / signs
+    S: '959.9', T: '959.9',   // injury / poisoning
+    V: 'E999',  W: 'E999', X: 'E999', Y: 'E999',  // external causes
+    Z: 'V99',                  // factors influencing health
+  };
+  return map[code.charAt(0).toUpperCase()] || '';
+}
+
+/** Split a newline-separated billing field into individual values */
+function splitField(val: string): string[] {
+  return (val || '').split('\n').map(s => s.trim());
+}
+
 async function exportYukonExcel(
-  ctx: any, startDate: Date, endDate: Date, months: string[]
+  ctx: DataContext, startDate: Date, endDate: Date, months: string[]
 ): Promise<Buffer> {
-  const { sheets, spreadsheetId } = ctx;
+  const { sheets, spreadsheetId } = ctx.sheets as any;
   const wb = new ExcelJS.Workbook();
   wb.creator = 'ED Assistant';
 
@@ -186,199 +220,174 @@ async function exportYukonExcel(
     const sheetName = `${months[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`;
 
     try {
-      // Read header rows (1-7) for shift time data
-      const headerRes = await sheets.spreadsheets.values.get({
-        spreadsheetId, range: `'${sheetName}'!A1:Q7`,
-      });
-      const headerRows = headerRes.data.values || [];
+      // ── Patients from Drive (source of truth) ────────────────────────────
+      const patients = await getPatients(ctx, sheetName);
+      patients.sort((a, b) => (a.timestamp || '').localeCompare(b.timestamp || ''));
 
-      // Read all patient data rows
-      const dataRes = await sheets.spreadsheets.values.get({
-        spreadsheetId, range: `'${sheetName}'!A${DATA_START_ROW}:Q200`,
-      });
-      const rawRows = dataRes.data.values || [];
+      // ── Time-based fees from Sheets header rows ───────────────────────────
+      let shiftStart = '', shiftEnd = '', shiftHours = '', shiftFeeType = '', shiftCode = '', shiftFee = '', shiftTotal = '';
+      let supLines: { start: string; end: string; code: string; hours: string; fee: string; total: string }[] = [];
+      try {
+        const headerRes = await sheets.spreadsheets.values.get({
+          spreadsheetId, range: `'${sheetName}'!A1:H7`,
+        });
+        const headerRows: any[][] = headerRes.data.values || [];
+        if (headerRows.length >= 5) {
+          const sv = headerRows[4] || [];
+          shiftStart = sv[0]?.toString() || '';
+          shiftEnd = sv[1]?.toString() || '';
+          shiftHours = sv[2]?.toString() || '';
+          shiftFeeType = sv[3]?.toString() || '';
+          shiftCode = sv[4]?.toString() || '';
+          shiftFee = sv[5]?.toString() || '';
+          shiftTotal = sv[6]?.toString() || '';
+        }
+        if (headerRows.length >= 6) {
+          const supRaw = headerRows[5]?.[7]?.toString() || ''; // H6 JSON backup
+          if (supRaw) try { supLines = JSON.parse(supRaw); } catch {}
+        }
+      } catch {}
 
-      if (rawRows.length === 0 && headerRows.length === 0) {
+      if (patients.length === 0 && !shiftStart) {
         d.setDate(d.getDate() + 1);
         continue;
       }
 
-      // Group rows into patient blocks
-      const patientBlocks: { timestamp: string; rows: any[][] }[] = [];
-      let currentBlock: any[][] = [];
-      for (const row of rawRows) {
-        const name = row[COLUMNS.PATIENT_NAME]?.toString().trim() || '';
-        const procCode = row[COLUMNS.PROC_CODE]?.toString().trim() || '';
-        if (name) {
-          if (currentBlock.length > 0) patientBlocks.push({ timestamp: currentBlock[0][COLUMNS.TIMESTAMP]?.toString() || '', rows: currentBlock });
-          currentBlock = [row];
-        } else if (procCode) {
-          currentBlock.push(row);
-        }
-      }
-      if (currentBlock.length > 0) patientBlocks.push({ timestamp: currentBlock[0][COLUMNS.TIMESTAMP]?.toString() || '', rows: currentBlock });
-      patientBlocks.sort((a, b) => a.timestamp.localeCompare(b.timestamp));
-
-      // Create worksheet
+      // ── Create worksheet ──────────────────────────────────────────────────
       const ws = wb.addWorksheet(sheetName);
-
-      // Column definitions — matching requested layout
       const colDefs = [
         { header: 'Time', key: 'time', width: 7 },
         { header: 'Patient Name', key: 'name', width: 22 },
         { header: 'Age', key: 'age', width: 5 },
-        { header: 'Gender', key: 'gender', width: 5 },
+        { header: 'Gender', key: 'gender', width: 6 },
         { header: 'DOB', key: 'dob', width: 11 },
         { header: 'HCN', key: 'hcn', width: 13 },
         { header: 'MRN', key: 'mrn', width: 10 },
-        { header: 'Diagnosis', key: 'diagnosis', width: 24 },
+        { header: 'Diagnosis', key: 'diagnosis', width: 26 },
         { header: 'ICD-9', key: 'icd9', width: 8 },
-        { header: 'Procedure', key: 'procedure', width: 22 },
+        { header: 'Procedure', key: 'procedure', width: 24 },
         { header: 'Code', key: 'code', width: 7 },
         { header: 'Fee', key: 'fee', width: 9 },
         { header: 'Unit', key: 'unit', width: 5 },
         { header: 'Total', key: 'total', width: 10 },
-        { header: 'Comments', key: 'comments', width: 24 },
+        { header: 'Comments', key: 'comments', width: 26 },
       ];
       ws.columns = colDefs;
 
-      // ===== ROW 1: Date title =====
       let rowNum = 1;
-      const titleRow = ws.getRow(rowNum);
+
+      // ── Date title ────────────────────────────────────────────────────────
       ws.mergeCells(rowNum, 1, rowNum, colDefs.length);
+      const titleRow = ws.getRow(rowNum);
       titleRow.getCell(1).value = sheetName;
       titleRow.getCell(1).font = FONT_TITLE;
       titleRow.getCell(1).alignment = { horizontal: 'left', vertical: 'middle' };
       titleRow.height = 22;
       rowNum++;
 
-      // ===== ROW 2-4: Time-based fees =====
-      if (headerRows.length >= 5) {
-        const shiftVals = headerRows[4] || [];
-        const shiftStart = shiftVals[0]?.toString() || '';
-        const shiftEnd = shiftVals[1]?.toString() || '';
-        const shiftHours = shiftVals[2]?.toString() || '';
-        const shiftFeeType = shiftVals[3]?.toString() || '';
-        const shiftCode = shiftVals[4]?.toString() || '';
-        const shiftFee = shiftVals[5]?.toString() || '';
-        const shiftTotal = shiftVals[6]?.toString() || '';
+      // ── Time-based fee section ────────────────────────────────────────────
+      if (shiftStart) {
+        ws.getRow(rowNum).getCell(1).value = 'TIME BASED FEE';
+        ws.getRow(rowNum).getCell(1).font = { ...FONT_BOLD, size: 11 };
+        rowNum++;
 
-        if (shiftStart) {
-          // Time-based fee label row
-          const labelRow = ws.getRow(rowNum);
-          labelRow.getCell(1).value = 'TIME BASED FEE';
-          labelRow.getCell(1).font = { ...FONT_BOLD, size: 11 };
+        const tfHdr = ws.getRow(rowNum);
+        ['Start', 'End', 'Hours', 'Fee Type', 'Code', 'Rate', 'Total'].forEach((lbl, i) => {
+          const c = tfHdr.getCell(i + 1);
+          c.value = lbl; c.font = FONT_BOLD; c.fill = TIME_LABEL_FILL; c.border = BORDER_THIN;
+        });
+        rowNum++;
+
+        const tfVal = ws.getRow(rowNum);
+        [shiftStart, shiftEnd, shiftHours, shiftFeeType, shiftCode, shiftFee, shiftTotal].forEach((val, i) => {
+          const c = tfVal.getCell(i + 1);
+          if (i === 5 || i === 6) { const n = parseFloat(val); c.value = isNaN(n) ? val : n; c.numFmt = '$#,##0.00'; }
+          else if (i === 2) { const n = parseFloat(val); c.value = isNaN(n) ? val : n; }
+          else { c.value = val; }
+          c.font = FONT; c.border = BORDER_THIN;
+        });
+        rowNum++;
+
+        for (const sl of supLines) {
+          const sr = ws.getRow(rowNum);
+          sr.getCell(1).value = sl.start;
+          sr.getCell(2).value = sl.end;
+          sr.getCell(3).value = parseFloat(sl.hours) || 0;
+          sr.getCell(4).value = 'Supplemental';
+          sr.getCell(5).value = sl.code;
+          sr.getCell(6).value = parseFloat(sl.fee) || 0; sr.getCell(6).numFmt = '$#,##0.00';
+          sr.getCell(7).value = parseFloat(sl.total) || 0; sr.getCell(7).numFmt = '$#,##0.00';
+          for (let ci = 1; ci <= 7; ci++) { sr.getCell(ci).font = SUP_FONT; sr.getCell(ci).border = BORDER_THIN; }
           rowNum++;
-
-          // Header row for time fees
-          const tfHeaderRow = ws.getRow(rowNum);
-          ['Start', 'End', 'Hours', 'Fee Type', 'Code', 'Rate', 'Total'].forEach((lbl, i) => {
-            const c = tfHeaderRow.getCell(i + 1);
-            c.value = lbl;
-            c.font = FONT_BOLD;
-            c.fill = TIME_LABEL_FILL;
-            c.border = BORDER_THIN;
-          });
-          rowNum++;
-
-          // Values row
-          const tfValRow = ws.getRow(rowNum);
-          [shiftStart, shiftEnd, shiftHours, shiftFeeType, shiftCode, shiftFee, shiftTotal].forEach((val, i) => {
-            const c = tfValRow.getCell(i + 1);
-            if (i === 6) { const n = parseFloat(val); c.value = isNaN(n) ? val : n; c.numFmt = '$#,##0.00'; }
-            else if (i === 5) { const n = parseFloat(val); c.value = isNaN(n) ? val : n; c.numFmt = '$#,##0.00'; }
-            else if (i === 2) { const n = parseFloat(val); c.value = isNaN(n) ? val : n; }
-            else { c.value = val; }
-            c.font = FONT;
-            c.border = BORDER_THIN;
-          });
-          rowNum++;
-
-          // Supplemental lines
-          const supRaw = headerRows[5]?.[0]?.toString() || '';
-          if (supRaw) {
-            try {
-              const supLines = JSON.parse(supRaw) as { start: string; end: string; code: string; hours: string; fee: string; total: string }[];
-              for (const sl of supLines) {
-                const sr = ws.getRow(rowNum);
-                sr.getCell(1).value = sl.start;
-                sr.getCell(2).value = sl.end;
-                sr.getCell(3).value = parseFloat(sl.hours) || 0;
-                sr.getCell(4).value = 'Supplemental';
-                sr.getCell(5).value = sl.code;
-                sr.getCell(6).value = parseFloat(sl.fee) || 0; sr.getCell(6).numFmt = '$#,##0.00';
-                sr.getCell(7).value = parseFloat(sl.total) || 0; sr.getCell(7).numFmt = '$#,##0.00';
-                for (let ci = 1; ci <= 7; ci++) { sr.getCell(ci).font = SUP_FONT; sr.getCell(ci).border = BORDER_THIN; }
-                rowNum++;
-              }
-            } catch {}
-          }
-
-          rowNum++; // blank spacer row
         }
+
+        rowNum++; // blank spacer
       }
 
-      // ===== PATIENT DATA HEADER =====
+      // ── Patient data header ───────────────────────────────────────────────
       const hdrRowNum = rowNum;
       const hdrRow = ws.getRow(hdrRowNum);
       colDefs.forEach((col, i) => {
         const c = hdrRow.getCell(i + 1);
-        c.value = col.header;
-        c.font = HEADER_FONT;
-        c.fill = HEADER_FILL;
-        c.alignment = { horizontal: 'left', vertical: 'middle' };
-        c.border = BORDER_THIN;
+        c.value = col.header; c.font = HEADER_FONT; c.fill = HEADER_FILL;
+        c.alignment = { horizontal: 'left', vertical: 'middle' }; c.border = BORDER_THIN;
       });
       hdrRow.height = 18;
       rowNum++;
 
-      // ===== PATIENT DATA ROWS =====
+      // ── Patient rows ──────────────────────────────────────────────────────
       let patientNum = 0;
       let grandTotal = 0;
 
-      for (const block of patientBlocks) {
-        for (let i = 0; i < block.rows.length; i++) {
-          const row = block.rows[i];
-          const wsRow = ws.getRow(rowNum);
-          const isAlt = patientNum % 2 === 1;
+      for (const patient of patients) {
+        const isAlt = patientNum % 2 === 1;
+        const icd9 = patient.icd9 || icd10ToGeneralIcd9(patient.icd10 || '');
 
-          // Map columns
+        // Split billing into per-code rows
+        const codes = splitField(patient.procCode).filter(Boolean);
+        const procedures = splitField(patient.visitProcedure);
+        const fees = splitField(patient.fee);
+        const units = splitField(patient.unit);
+        const patientTotal = parseFloat(patient.total || '') || 0;
+        if (patientTotal > 0) grandTotal += patientTotal;
+
+        const billingRowCount = Math.max(codes.length, 1);
+
+        for (let i = 0; i < billingRowCount; i++) {
+          const wsRow = ws.getRow(rowNum);
+
+          // Patient demographics — only on first billing row
           if (i === 0) {
-            wsRow.getCell(1).value = row[COLUMNS.TIMESTAMP]?.toString() || '';        // Time
-            wsRow.getCell(2).value = row[COLUMNS.PATIENT_NAME]?.toString() || '';      // Patient Name
-            wsRow.getCell(3).value = row[3]?.toString() || '';                          // Age
-            wsRow.getCell(4).value = row[4]?.toString() || '';                          // Gender
-            wsRow.getCell(5).value = row[5]?.toString() || '';                          // DOB
-            wsRow.getCell(6).value = row[6]?.toString() || '';                          // HCN
-            wsRow.getCell(7).value = row[7]?.toString() || '';                          // MRN
-            wsRow.getCell(8).value = row[COLUMNS.DIAGNOSIS]?.toString() || '';          // Diagnosis
-            wsRow.getCell(9).value = row[COLUMNS.ICD9]?.toString() || '';               // ICD-9
-            wsRow.getCell(15).value = row[COLUMNS.COMMENTS]?.toString() || '';          // Comments
+            wsRow.getCell(1).value = patient.timestamp || '';
+            wsRow.getCell(2).value = patient.name || '';
+            wsRow.getCell(3).value = patient.age || '';
+            wsRow.getCell(4).value = patient.gender || '';
+            wsRow.getCell(5).value = patient.birthday || '';
+            wsRow.getCell(6).value = patient.hcn || '';
+            wsRow.getCell(7).value = patient.mrn || '';
+            wsRow.getCell(8).value = patient.diagnosis || '';
+            wsRow.getCell(9).value = icd9;
+            wsRow.getCell(15).value = patient.comments || '';
           }
 
-          // Billing columns (present on all rows including continuation)
-          const procDesc = row[11]?.toString() || '';  // Visit/Procedure description
-          const procCode = row[COLUMNS.PROC_CODE]?.toString() || '';
-          const feeVal = row[COLUMNS.FEE]?.toString() || '';
-          const unitVal = row[COLUMNS.UNIT]?.toString() || '';
-          const totalVal = row[COLUMNS.TOTAL]?.toString() || '';
+          // Billing columns
+          if (codes.length > 0) {
+            wsRow.getCell(10).value = procedures[i] || '';
+            wsRow.getCell(11).value = codes[i] || '';
+            const feeNum = parseFloat(fees[i] || '');
+            if (!isNaN(feeNum)) { wsRow.getCell(12).value = feeNum; wsRow.getCell(12).numFmt = '$#,##0.00'; }
+            const unitNum = parseInt(units[i] || '');
+            if (!isNaN(unitNum)) wsRow.getCell(13).value = unitNum;
+            // Grand total on first billing row only
+            if (i === 0 && patientTotal > 0) {
+              wsRow.getCell(14).value = patientTotal;
+              wsRow.getCell(14).numFmt = '$#,##0.00';
+            }
+          }
 
-          wsRow.getCell(10).value = procDesc;                                           // Procedure
-          wsRow.getCell(11).value = procCode;                                           // Code
-          const feeNum = parseFloat(feeVal);
-          wsRow.getCell(12).value = isNaN(feeNum) ? feeVal : feeNum;                   // Fee
-          if (!isNaN(feeNum)) wsRow.getCell(12).numFmt = '$#,##0.00';
-          const unitNum = parseInt(unitVal);
-          wsRow.getCell(13).value = isNaN(unitNum) ? unitVal : unitNum;                 // Unit
-          const totalNum = parseFloat(totalVal);
-          wsRow.getCell(14).value = isNaN(totalNum) ? totalVal : totalNum;              // Total
-          if (!isNaN(totalNum)) { wsRow.getCell(14).numFmt = '$#,##0.00'; grandTotal += totalNum; }
-
-          // Apply styling
           for (let ci = 1; ci <= colDefs.length; ci++) {
             const c = wsRow.getCell(ci);
-            c.font = FONT;
-            c.border = BORDER_THIN;
+            c.font = FONT; c.border = BORDER_THIN;
             c.alignment = { vertical: 'top', wrapText: ci === 8 || ci === 10 || ci === 15 };
             if (isAlt) c.fill = ALT_ROW_FILL;
           }
@@ -388,9 +397,9 @@ async function exportYukonExcel(
         patientNum++;
       }
 
-      // ===== GRAND TOTAL ROW =====
+      // ── Grand total row ───────────────────────────────────────────────────
       if (grandTotal > 0) {
-        rowNum++; // blank spacer
+        rowNum++;
         const totalRow = ws.getRow(rowNum);
         totalRow.getCell(13).value = 'TOTAL';
         totalRow.getCell(13).font = FONT_BOLD;
@@ -401,22 +410,17 @@ async function exportYukonExcel(
         totalRow.getCell(14).border = { top: { style: 'double', color: { argb: 'FF1F3864' } }, bottom: { style: 'double', color: { argb: 'FF1F3864' } } };
       }
 
-      // Freeze below headers
       ws.views = [{ state: 'frozen', ySplit: hdrRowNum }];
-
-      // Print settings
       ws.pageSetup = { orientation: 'landscape', fitToPage: true, fitToWidth: 1, fitToHeight: 0 };
 
     } catch {
-      // Sheet doesn't exist for this date — skip
+      // Date tab doesn't exist — skip
     }
 
     d.setDate(d.getDate() + 1);
   }
 
-  if (wb.worksheets.length === 0) {
-    wb.addWorksheet('No Data');
-  }
+  if (wb.worksheets.length === 0) wb.addWorksheet('No Data');
 
   const buffer = await wb.xlsx.writeBuffer();
   return Buffer.from(buffer);
